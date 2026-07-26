@@ -5,7 +5,7 @@
 ## Prerequisites
 
 - Rust stable toolchain (rustup), `cargo-sqlx` CLI
-- Node.js 22+ and npm
+- Node.js 22.12+ (or 20.19+ LTS) and npm — Vite 8 engines requirement (`^20.19.0 || >=22.12.0`)
 - Docker (local Postgres only — tests and dev use a real Postgres, never a mock)
 
 ## Development setup
