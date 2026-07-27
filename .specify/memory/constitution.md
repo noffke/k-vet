@@ -1,6 +1,9 @@
 <!--
 Sync Impact Report
-- Version change: (template) → 1.0.0 (initial ratification)
+- Version change: 1.0.0 → 1.1.0 (Principle III materially expanded: i18n now explicitly
+  includes locale-aware formatting and parsing of numbers, dates, and money on output and
+  input; wire format locale-independent; invoice documents always de-DE)
+- Previous: (template) → 1.0.0 (initial ratification)
 - Modified principles: n/a — all placeholders filled for the first time
 - Added sections: Core Principles (I–V), Technology & Platform Constraints,
   Development Workflow & Quality Gates, Governance
@@ -61,7 +64,10 @@ committed; CI regenerates and fails on diff.
   first-class targets.
 - i18n: the UI supports en-US and de-DE; de-DE is the default for user-facing text
   and documentation. No hardcoded user-facing strings. Configuration files are
-  commented in both en-US and de-DE.
+  commented in both en-US and de-DE. i18n includes locale-aware formatting AND
+  parsing of numbers, dates, and money on output and input (decimal comma,
+  dd.MM.yyyy, 1.234,56 € in de-DE); the API wire format stays locale-independent
+  and invoice documents are always de-DE.
 - Visual identity follows the color scheme of the practice's website. The UI
   SHOULD be visually pleasing, but UX and usability outrank aesthetics.
 
@@ -118,4 +124,4 @@ The documents in `requirements/*.md` are the source of domain truth. A conflict
 between a requirements document and this constitution MUST be resolved by
 amending one of the two, never ignored.
 
-**Version**: 1.0.0 | **Ratified**: 2026-07-26 | **Last Amended**: 2026-07-26
+**Version**: 1.1.0 | **Ratified**: 2026-07-26 | **Last Amended**: 2026-07-27

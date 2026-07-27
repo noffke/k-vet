@@ -20,7 +20,8 @@ embedded. Stack per `requirements/vet-practice-webapp-tech-decisions.md`; test s
 **Language/Version**: Rust stable (edition 2024); TypeScript 5.x+ `strict`
 
 **Primary Dependencies**: Backend: axum, sqlx (postgres, rustls), tokio, utoipa, tower-http,
-tower-sessions (postgres store), typst, rust-embed, lettre (rustls), image, rust_decimal,
+tower-sessions (postgres store), typst, rust-embed, lettre (rustls), minijinja (invoice
+email templates — research R17), image, rust_decimal,
 argon2, serde/toml, tracing + tracing-subscriber (EnvFilter, ChronoLocal local-time
 timestamps — research R16). Frontend: react 19, vite, tailwind + shadcn/ui, @tanstack/react-query,
 @tanstack/react-table, @tanstack/react-router, react-hook-form, zod, i18next/react-i18next,
@@ -128,6 +129,10 @@ k-vet-web/
 └── tests/                   # vitest + RTL + MSW component tests
 
 e2e/                          # Playwright (desktop + pixel-9a projects), spawns real binary
+docs/
+├── installation.md           # hardware-agnostic Linux install guide (T084)
+└── templates.md              # Typst invoice + minijinja email template reference (T085)
+README.md                     # overview, dev setup, links to docs/ (T083)
 docker-compose.yml            # local Postgres
 .github/workflows/ci.yml      # backend / frontend / e2e jobs + release cross-compile
 ```

@@ -14,3 +14,4 @@
 * target invoice calculation: set desired end price and then calculate the factor to get close to the end price
 * price information: allow to build a non-persistent list of drugs and services to answer the customer the "what would it cost me" question
 * list prices from Barsoi
+* de-DE end-user manual (Benutzerhandbuch) for the daily workflows (treatment, invoice, stock)

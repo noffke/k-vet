@@ -92,9 +92,17 @@ with the decisions that were still open. No NEEDS CLARIFICATION items remain.
 - **Alternatives considered**: JWT (needless statelessness for one user), in-memory sessions
   (lost on restart), basic auth (no logout/session semantics, poor mobile UX).
 
-### R3. i18n: react-i18next
+### R3. i18n: react-i18next + Intl formatting/parsing
 - **Decision**: `i18next` + `react-i18next`, JSON resource files `de-DE` (default) and `en-US`;
   language switch persisted; no hardcoded user-facing strings (enforced in review).
+  i18n covers locale-aware **formatting and parsing**, not just translations:
+  `k-vet-web/src/lib/format.ts` wraps `Intl.NumberFormat`/`Intl.DateTimeFormat` driven by the
+  active i18next locale (money `1.234,56 €` vs `€1,234.56`, dates `dd.MM.yyyy` vs `M/d/yyyy`),
+  plus locale-aware **parse** functions and a numeric input component that accepts decimal
+  comma in de-DE / decimal point in en-US. The API wire format stays locale-independent
+  (ISO 8601 dates/timestamps, dot-decimal numeric strings) — formatting never crosses the
+  contract boundary. Invoice PDFs/emails always format de-DE (Typst template), regardless of
+  UI locale.
 - **Rationale**: De-facto standard, works with Vite code-splitting; de-DE default per
   constitution Principle III.
 - **Alternatives considered**: FormatJS/react-intl (heavier message extraction workflow),
@@ -259,3 +267,50 @@ with the decisions that were still open. No NEEDS CLARIFICATION items remain.
   unaffected (timestamptz per Constitution IV) — this is display-only.
 - **Alternatives considered**: log files + rotation (needless ops surface next to journald),
   JSON structured logs (no aggregator exists to consume them; can be layered in later).
+
+### R17. Invoice email templating
+- **Decision**: **minijinja** renders the invoice email as **plain text UTF-8** from the
+  operator-editable template file next to the config (a default template is embedded in the
+  binary; the config file path overrides it). Template file layout: first line = subject
+  template, blank line, body template. Template variables: salutation + customer name(s)
+  (both names for two-name customers), invoice number, invoice date and amount formatted
+  de-DE, practice name. Invoice emails are always de-DE (spec FR-030).
+- **Umlauts / rendering correctness**: Rust strings are UTF-8 natively — minijinja passes
+  ä/ö/ü/ß through losslessly. Client-side rendering is decided in the mail layer: lettre
+  declares `charset=utf-8` with proper content-transfer-encoding for the body and RFC 2047
+  encoded-words for non-ASCII **headers** (the subject line is where naive implementations
+  break). A test asserts umlauts in subject and body survive template rendering and message
+  building.
+- **Rationale**: the template is a runtime-loaded user-editable file (per
+  `requirements/global settings.md`), which rules out compile-time engines; minijinja is a
+  zero-dependency single crate (Pi footprint, Constitution V) with Jinja2 conditionals for
+  greeting variants ("Sehr geehrte Frau X", "… Frau X und Herr Y"). Plain text renders
+  identically in every client — the attached PDF is the document that matters.
+- **Alternatives considered**: Tera (same syntax, heavier dependency tree), handlebars-rust
+  (logic-less; weak for conditional greetings), hand-rolled placeholder substitution (no
+  conditionals — outgrown by the first greeting variant), Askama (compile-time; conflicts
+  with the editable-file requirement), HTML multipart body (client-rendering variance and a
+  second template to maintain, deferred).
+
+### R18. Invoice number pattern
+- **Decision**: The config pattern string supports the placeholders `{year}` (4-digit),
+  `{month}` (2-digit, optional) and `{counter}` / `{counter:N}` (zero-padded to width N);
+  literal text passes through. Example: `"{year}-{counter:4}"` → `2026-0042`;
+  `"R-{year}/{counter:5}"` → `R-2026/00042`. The **scope is derived from the pattern's date
+  parts** rendered for the invoice date: `{year}` → scope `"2026"` (counter resets yearly via
+  a fresh `invoice_number_sequence` row), `{year}`+`{month}` → `"2026-03"`, no date parts →
+  one global scope. Allocation is atomic:
+  `INSERT … ON CONFLICT (scope) DO UPDATE SET counter = counter + 1 RETURNING counter` —
+  monotonic, never decremented. The pattern is validated at startup (must contain
+  `{counter}`, only known placeholders; invalid pattern = boot-time config error). If a
+  pattern flip-flop ever re-renders a historical number, the `UNIQUE (invoice_number)`
+  constraint rejects it and allocation increments and retries — collisions cannot persist.
+  Date parts come from `invoice_date` (set at creation, re-stamped on update-recreate).
+- **Rationale**: deriving the scope from the pattern's date parts answers "does the counter
+  reset yearly?" without a second config knob; fail-fast validation surfaces config mistakes
+  at boot instead of at invoicing time; the UNIQUE backstop makes collisions structurally
+  impossible to persist.
+- **Alternatives considered**: separate reset-interval setting (redundant with the pattern's
+  own date parts), storing the pattern in the DB settings row (contradicts the config-vs-DB
+  split — changing the pattern is a deliberate structural event per
+  `requirements/global settings.md`).

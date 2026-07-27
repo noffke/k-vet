@@ -363,11 +363,15 @@ created ──accept──▶ accepted ──mark submitted──▶ submitted
 ### invoice_number_sequence
 | Column | Type | Constraints |
 |---|---|---|
-| scope | text | PK (e.g. `"2026"`; derived from the configured pattern) |
-| counter | bigint | NOT NULL DEFAULT 0 (monotonic; `UPDATE ... SET counter = counter + 1 RETURNING` under the row lock; never decremented) |
+| scope | text | PK — the pattern's date parts rendered for the invoice date (`{year}` → `"2026"`, `{year}`+`{month}` → `"2026-03"`, no date parts → `""` global scope) |
+| counter | bigint | NOT NULL DEFAULT 0 (monotonic; never decremented) |
 
-Numbers are never reused: `created` invoices keep their number on update; numbers of
-`accepted` invoices are burned on cancellation.
+Allocation is atomic: `INSERT … ON CONFLICT (scope) DO UPDATE SET counter = counter + 1
+RETURNING counter`, then the pattern renders the number string (see research R18). Numbers
+are never reused: `created` invoices keep their number on update; numbers of `accepted`
+invoices are burned on cancellation. If a rendered number ever collides with a historical
+one (pattern flip-flop), the `UNIQUE (invoice_number)` constraint rejects it and allocation
+increments and retries.
 
 ## Files & settings
 

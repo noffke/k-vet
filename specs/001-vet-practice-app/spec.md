@@ -249,7 +249,10 @@ reflected on the next generated invoice.
   rejected like invalid input. Abandoned records that never received any input are discarded
   automatically.
 - **FR-003**: Every screen MUST be usable on laptop/desktop screens and on a phone-sized screen.
-- **FR-004**: The UI MUST be available in German (default) and English.
+- **FR-004**: The UI MUST be available in German (default) and English. Beyond translated
+  text, all numbers, dates, and money MUST be displayed AND accepted as input in the active
+  locale's conventions (e.g. decimal comma, dd.MM.yyyy dates, "1.234,56 €" in German;
+  decimal point, "€1,234.56" in English).
 - **FR-005**: Wherever drugs or services are selected, the system MUST offer a unified picker
   with full-text search over the name, results ranked by how often the entry was used in past
   treatments (usage ranking refreshed at least nightly), and a visual distinction between
@@ -460,7 +463,8 @@ reflected on the next generated invoice.
 - **SC-009**: All screens pass a usability check on both a desktop viewport and a
   phone-sized viewport (no horizontal scrolling, all actions reachable).
 - **SC-010**: The complete UI is available in German and English with German as default; no
-  user-facing text appears only in one language.
+  user-facing text appears only in one language, and numbers, dates, and currency are
+  displayed and accepted in the active locale's conventions on every screen.
 
 ## Assumptions
 

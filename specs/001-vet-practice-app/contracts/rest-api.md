@@ -18,6 +18,10 @@ Conventions:
 - `PATCH` endpoints accept partial bodies — they are the auto-save write path (all fields
   optional; only present fields change).
 - Mutations return the updated resource so TanStack Query can update its cache directly.
+- **Locale-independent wire format**: dates/timestamps are ISO 8601, numeric values use
+  dot-decimal strings/JSON numbers. All locale-aware formatting and input parsing (decimal
+  comma, date formats, currency display) is exclusively a client concern — it never crosses
+  the contract boundary.
 - **Draft rows**: `POST /api/{resource}` on form-edited entities creates a draft immediately
   (the auto-save target); resource responses carry `draft`; the server recomputes the flag on
   every PATCH (no explicit "complete" endpoint). List endpoints include drafts flagged as
