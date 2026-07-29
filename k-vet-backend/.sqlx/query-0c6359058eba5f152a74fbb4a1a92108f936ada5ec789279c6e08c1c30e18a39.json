@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lot_id, remaining, expiration_date\n           FROM lot_remaining\n           WHERE packaging_id = $1\n           ORDER BY expiration_date ASC NULLS LAST, lot_id ASC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lot_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "lot_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "remaining",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "remaining"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "expiration_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "expiration_date"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "0c6359058eba5f152a74fbb4a1a92108f936ada5ec789279c6e08c1c30e18a39"
+}

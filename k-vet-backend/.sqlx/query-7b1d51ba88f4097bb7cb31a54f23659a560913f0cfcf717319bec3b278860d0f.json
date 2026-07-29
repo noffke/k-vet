@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM supplier\n         WHERE draft AND created_at < $1 AND name IS NULL\n           AND addr_street IS NULL AND addr_zip IS NULL AND addr_city IS NULL\n           AND NOT EXISTS (SELECT 1 FROM drug_packaging WHERE supplier_id = supplier.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7b1d51ba88f4097bb7cb31a54f23659a560913f0cfcf717319bec3b278860d0f"
+}

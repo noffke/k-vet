@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO picker_usage (kind, item_id, uses)\n         SELECT 'drug_packaging'::treatment_item_kind, drug_packaging_id, count(*)\n         FROM treatment_item WHERE drug_packaging_id IS NOT NULL\n         GROUP BY drug_packaging_id\n         UNION ALL\n         SELECT 'service'::treatment_item_kind, service_id, count(*)\n         FROM treatment_item WHERE service_id IS NOT NULL\n         GROUP BY service_id",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "b495285364ee91a0bcb0df9403cd0ee4d9b5acb82332849feda688cc9b3c8d48"
+}

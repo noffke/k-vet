@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drug_id FROM drug_packaging WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drug_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "drug_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "2723960806159cd9fa61ddbfe9a72cc0c048ae6191431a62901e227329fd6248"
+}

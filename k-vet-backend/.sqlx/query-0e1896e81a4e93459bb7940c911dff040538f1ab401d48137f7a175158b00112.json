@@ -1,0 +1,17 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment_template SET\n             name  = CASE WHEN $2 THEN $3 ELSE name END,\n             draft = $4\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0e1896e81a4e93459bb7940c911dff040538f1ab401d48137f7a175158b00112"
+}

@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient.id\n           FROM patient\n           LEFT JOIN customer ON customer.id = patient.customer_id\n           WHERE ($2 OR NOT patient.archived)\n             AND ($3::bigint IS NULL OR patient.customer_id = $3)\n             AND ($1::text IS NULL\n                  OR patient.name ILIKE '%' || $1 || '%'\n                  OR patient.chip_number ILIKE '%' || $1 || '%'\n                  OR customer.last_name ILIKE '%' || $1 || '%')\n           ORDER BY patient.name NULLS LAST, patient.id\n           LIMIT $4 OFFSET $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool",
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "5bd5be524b20942830ee9649876ce76affc21c86880eccb5c5b5d4366226bdba"
+}

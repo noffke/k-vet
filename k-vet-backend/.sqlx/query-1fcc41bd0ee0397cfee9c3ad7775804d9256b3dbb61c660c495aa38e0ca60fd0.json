@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT attachment.sha256\n         FROM global_settings\n         JOIN attachment ON attachment.id = global_settings.logo_attachment_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sha256",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "attachment",
+            "name": "sha256"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1fcc41bd0ee0397cfee9c3ad7775804d9256b3dbb61c660c495aa38e0ca60fd0"
+}

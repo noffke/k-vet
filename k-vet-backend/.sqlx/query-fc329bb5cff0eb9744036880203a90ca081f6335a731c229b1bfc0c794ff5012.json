@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM drug\n         WHERE draft AND created_at < $1\n           AND name IS NULL AND manufacturer_id IS NULL AND vat_percent IS NULL\n           AND NOT EXISTS (SELECT 1 FROM drug_packaging WHERE drug_id = drug.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "fc329bb5cff0eb9744036880203a90ca081f6335a731c229b1bfc0c794ff5012"
+}

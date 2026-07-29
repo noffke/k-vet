@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM treatment_template\n         WHERE draft AND created_at < $1 AND name IS NULL\n           AND NOT EXISTS (\n                 SELECT 1 FROM treatment_template_item\n                 WHERE template_id = treatment_template.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "bf28ca84d844ce929969913d2ac45b515ee52580c0f5748fabaeb69f94ff1b96"
+}

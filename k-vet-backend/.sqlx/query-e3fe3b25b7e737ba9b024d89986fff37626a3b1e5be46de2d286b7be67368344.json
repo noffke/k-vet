@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, quantity, list_price_net FROM drug_packaging\n         WHERE drug_id = $1 AND kind = 'original'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "list_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "list_price_net"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "e3fe3b25b7e737ba9b024d89986fff37626a3b1e5be46de2d286b7be67368344"
+}

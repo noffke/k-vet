@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM drug_stock_movement movement\n         WHERE movement.treatment_item_id = $1\n           AND movement.kind = 'dispense'\n           AND NOT EXISTS (\n               SELECT 1 FROM drug_stock_movement reversal\n               WHERE reversal.reverses_movement_id = movement.id\n           )",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "276f162d94027f70038bcb56e5c1bc42a3701785ff5632da0ec1932b77f45f2f"
+}

@@ -1,0 +1,166 @@
+name: CI
+
+on:
+  push:
+    branches: ["**"]
+    tags: ["v*"]
+  pull_request:
+
+env:
+  CARGO_TERM_COLOR: always
+  RUSTFLAGS: -D warnings
+
+jobs:
+  backend:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kvet
+          POSTGRES_PASSWORD: kvet
+          POSTGRES_DB: kvet
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kvet -d kvet"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://kvet:kvet@localhost:5432/kvet
+    defaults:
+      run:
+        working-directory: k-vet-backend
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          components: rustfmt, clippy
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: k-vet-backend
+      - name: Install sqlx-cli
+        run: cargo install sqlx-cli --version 0.9.0 --no-default-features --features rustls,postgres --locked
+      - run: cargo fmt --check
+      - name: Migrate (offline metadata must match the schema)
+        run: cargo sqlx migrate run
+      - run: cargo sqlx prepare --check -- --all-targets
+      - run: cargo clippy --all-targets -- -D warnings
+      - run: cargo test
+
+  frontend:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: k-vet-web
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+          cache-dependency-path: k-vet-web/package-lock.json
+      - run: npm ci
+      - run: npx biome ci
+      - run: npx knip
+      - run: npx tsc --noEmit
+      - run: npm test
+      - name: OpenAPI / client codegen drift
+        working-directory: .
+        run: ./scripts/check-codegen-drift.sh
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: kvet
+          POSTGRES_PASSWORD: kvet
+          POSTGRES_DB: kvet_e2e
+        ports: ["5432:5432"]
+        options: >-
+          --health-cmd "pg_isready -U kvet -d kvet_e2e"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 20
+    env:
+      DATABASE_URL: postgres://kvet:kvet@localhost:5432/kvet_e2e
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: k-vet-backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+          cache-dependency-path: k-vet-web/package-lock.json
+      - name: Build frontend
+        working-directory: k-vet-web
+        run: |
+          npm ci
+          npm run build
+      - name: Build backend with embedded frontend
+        working-directory: k-vet-backend
+        run: cargo build --features embed-frontend
+      - name: Install poppler-utils
+        # The settings spec reads the invoice PDF with pdftotext.
+        run: sudo apt-get update && sudo apt-get install -y poppler-utils
+      - name: Install Playwright dependencies
+        working-directory: e2e
+        run: npm ci
+      - name: Cache Playwright browsers
+        uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ hashFiles('e2e/package-lock.json') }}
+      - name: Install Playwright browsers
+        working-directory: e2e
+        run: npx playwright install --with-deps chromium
+      - name: Run E2E (desktop + pixel-9a)
+        working-directory: e2e
+        run: npx playwright test
+      - uses: actions/upload-artifact@v4
+        if: failure()
+        with:
+          name: playwright-report
+          path: e2e/test-results
+          retention-days: 7
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [backend, frontend, e2e]
+    runs-on: ubuntu-latest
+    env:
+      SQLX_OFFLINE: "true"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-unknown-linux-gnu
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: k-vet-backend
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22.12"
+          cache: npm
+          cache-dependency-path: k-vet-web/package-lock.json
+      - name: Build frontend
+        working-directory: k-vet-web
+        run: |
+          npm ci
+          npm run build
+      - name: Install cargo-zigbuild
+        run: |
+          pip install ziglang
+          cargo install cargo-zigbuild --locked
+      - name: Cross-compile for the Raspberry Pi (aarch64)
+        working-directory: k-vet-backend
+        run: cargo zigbuild --release --features embed-frontend --target aarch64-unknown-linux-gnu
+      - uses: softprops/action-gh-release@v2
+        with:
+          files: k-vet-backend/target/aarch64-unknown-linux-gnu/release/k-vet-backend

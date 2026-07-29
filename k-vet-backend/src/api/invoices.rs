@@ -1,0 +1,1042 @@
+//! Invoices: creation from a treatment, PDF, acceptance with email, cancellation (T035),
+//! and the bookkeeping hand-off — list, submit, bulk-submit, pending-PDF bundle (T068).
+//!
+//! Lifecycle rules that must hold (FR-030…FR-035):
+//!   * an invoice is only ever created or updated **from a treatment**
+//!   * updating a `created` invoice keeps its number; updating an `accepted` one cancels it
+//!     first — its number is burned and never reissued
+//!   * accepting freezes the treatment's dispense movements; cancelling writes linked
+//!     compensating corrections
+//!   * every lifecycle step is stamped with a timestamp as the audit trail
+
+use std::io::{Cursor, Write};
+
+use axum::extract::{Path, Query, State};
+use axum::http::{StatusCode, header};
+use axum::response::{IntoResponse, Response};
+use axum::routing::{get, post};
+use axum::{Json, Router};
+use chrono::{DateTime, Local, NaiveDate, Utc};
+use rust_decimal::Decimal;
+use serde::{Deserialize, Serialize};
+use sqlx::{PgConnection, PgPool, Postgres, Transaction};
+use utoipa::{IntoParams, ToSchema};
+use zip::CompressionMethod;
+use zip::write::{SimpleFileOptions, ZipWriter};
+
+use crate::AppState;
+use crate::api::treatment_items;
+use crate::domain::enums::{InvoiceStatus, Salutation};
+use crate::domain::files::BytesSource;
+use crate::domain::invoice_number::{NumberPattern, allocate_number, validate_pattern};
+use crate::domain::{money, stock};
+use crate::error::{AppError, AppResult};
+use crate::mail::{InvoiceMail, OutgoingInvoice, greeting};
+use crate::pdf::{
+    self, CustomerAddress, InvoiceBlock, InvoiceDocument, InvoiceLine, PracticeBlock, date_de,
+    money_de, number_de, percent_de,
+};
+
+/// Retries when a rendered number collides with a historical one (pattern flip-flop).
+const NUMBER_ALLOCATION_ATTEMPTS: usize = 5;
+/// A practice writes a few hundred invoices a year, so one page is the whole list.
+const LIST_LIMIT: i64 = 500;
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct Invoice {
+    pub id: i64,
+    pub treatment_id: i64,
+    pub invoice_number: String,
+    pub invoice_date: NaiveDate,
+    pub status: InvoiceStatus,
+    pub includes_finding: bool,
+    pub note: Option<String>,
+    pub pdf_attachment_id: Option<i64>,
+    pub email_recipients: Vec<String>,
+    pub ts_accepted: Option<DateTime<Utc>>,
+    pub ts_sent_email: Option<DateTime<Utc>>,
+    pub ts_submitted: Option<DateTime<Utc>>,
+    pub ts_cancelled: Option<DateTime<Utc>>,
+    pub customer_id: Option<i64>,
+    /// Display name of the customer, for lists.
+    pub customer_name: String,
+    pub patients: Vec<String>,
+    pub total_gross: Decimal,
+    pub created_at: DateTime<Utc>,
+}
+
+#[derive(Debug, Default, Deserialize, ToSchema)]
+pub struct CreateInvoice {
+    /// Prints the treatment's finding on the invoice.
+    #[serde(default)]
+    pub includes_finding: bool,
+    pub note: Option<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct AcceptInvoice {
+    /// Customer email addresses the PDF is sent to.
+    #[serde(default)]
+    pub recipient_emails: Vec<String>,
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "createInvoice",
+    path = "/api/treatments/{id}/invoice",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    request_body = CreateInvoice,
+    responses(
+        (status = 200, description = "Invoice in status `created`", body = Invoice),
+        (status = 422, description = "The treatment cannot be billed yet")
+    )
+)]
+pub async fn create_or_update(
+    State(state): State<AppState>,
+    Path(treatment_id): Path<i64>,
+    Json(body): Json<CreateInvoice>,
+) -> AppResult<Json<Invoice>> {
+    let pattern = validate_pattern(&state.config.invoice.number_pattern)
+        .map_err(|error| AppError::internal("invoice number pattern", error))?;
+
+    let mut transaction = state.pool.begin().await?;
+
+    let existing = sqlx::query!(
+        r#"SELECT id, invoice_number, invoice_date, status AS "status: InvoiceStatus"
+           FROM invoice WHERE treatment_id = $1 AND status <> 'cancelled' FOR UPDATE"#,
+        treatment_id,
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+
+    let invoice_id = match existing {
+        // A `created` invoice keeps its number and date (FR-032).
+        Some(current) if current.status == InvoiceStatus::Created => {
+            sqlx::query!(
+                "UPDATE invoice SET includes_finding = $2, note = $3 WHERE id = $1",
+                current.id,
+                body.includes_finding,
+                body.note,
+            )
+            .execute(&mut *transaction)
+            .await?;
+            current.id
+        }
+        // An accepted invoice is cancelled first; its number is burned.
+        Some(current) => {
+            cancel_in_transaction(&mut transaction, current.id, treatment_id).await?;
+            insert_invoice(&mut transaction, &pattern, treatment_id, &body).await?
+        }
+        None => insert_invoice(&mut transaction, &pattern, treatment_id, &body).await?,
+    };
+
+    let document = build_document(&mut transaction, &state, invoice_id).await?;
+    transaction.commit().await?;
+
+    // Rendering and storing the PDF happens outside the transaction: it touches the
+    // filesystem, and a failed render must not roll back a legitimate invoice number.
+    attach_pdf(&state, invoice_id, document).await?;
+
+    load(&state.pool, invoice_id).await.map(Json)
+}
+
+/// Allocates a number and inserts the invoice, retrying on a number collision.
+async fn insert_invoice(
+    transaction: &mut Transaction<'_, Postgres>,
+    pattern: &NumberPattern,
+    treatment_id: i64,
+    body: &CreateInvoice,
+) -> AppResult<i64> {
+    // Billing needs at least one line and a patient (the invoice's customer).
+    let lines: i64 = sqlx::query_scalar!(
+        "SELECT count(*) FROM treatment_item WHERE treatment_id = $1",
+        treatment_id
+    )
+    .fetch_one(&mut **transaction)
+    .await?
+    .unwrap_or(0);
+    if lines == 0 {
+        return Err(AppError::field("items", "invoice.noLines"));
+    }
+    let patients: i64 = sqlx::query_scalar!(
+        "SELECT count(*) FROM treatment_patient WHERE treatment_id = $1",
+        treatment_id
+    )
+    .fetch_one(&mut **transaction)
+    .await?
+    .unwrap_or(0);
+    if patients == 0 {
+        return Err(AppError::field("patients", "invoice.noPatient"));
+    }
+
+    // The invoice date is set now, and anew on every replacement invoice (FR-030).
+    let invoice_date = Local::now().date_naive();
+
+    for attempt in 1..=NUMBER_ALLOCATION_ATTEMPTS {
+        let number = allocate_number(&mut **transaction, pattern, invoice_date).await?;
+        let inserted = sqlx::query_scalar!(
+            "INSERT INTO invoice (treatment_id, invoice_number, invoice_date, includes_finding, note)
+             VALUES ($1, $2, $3, $4, $5)
+             ON CONFLICT (invoice_number) DO NOTHING
+             RETURNING id",
+            treatment_id,
+            number,
+            invoice_date,
+            body.includes_finding,
+            body.note,
+        )
+        .fetch_optional(&mut **transaction)
+        .await?;
+
+        match inserted {
+            Some(id) => return Ok(id),
+            None => tracing::warn!(
+                number,
+                attempt,
+                "invoice number already used — allocating the next one"
+            ),
+        }
+    }
+    Err(AppError::Internal(
+        "could not allocate a free invoice number".to_owned(),
+    ))
+}
+
+#[utoipa::path(
+    get,
+    operation_id = "getInvoice",
+    path = "/api/invoices/{id}",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    responses((status = 200, body = Invoice), (status = 404))
+)]
+pub async fn detail(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<Invoice>> {
+    load(&state.pool, id).await.map(Json)
+}
+
+#[utoipa::path(
+    get,
+    operation_id = "invoicePdf",
+    path = "/api/invoices/{id}/pdf",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    responses((status = 200, description = "The invoice PDF"), (status = 404))
+)]
+pub async fn pdf(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<Response> {
+    let row = sqlx::query!(
+        r#"SELECT invoice.invoice_number, attachment.sha256 AS "sha256?"
+           FROM invoice
+           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id
+           WHERE invoice.id = $1"#,
+        id,
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let sha256 = row.sha256.ok_or(AppError::NotFound)?;
+    let bytes = tokio::fs::read(state.files.content_path(&sha256)).await?;
+
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/pdf".to_owned()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("inline; filename=\"Rechnung-{}.pdf\"", row.invoice_number),
+            ),
+        ],
+        bytes,
+    )
+        .into_response())
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "acceptInvoice",
+    path = "/api/invoices/{id}/accept",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    request_body = AcceptInvoice,
+    responses(
+        (status = 200, description = "Accepted; the email is sent if SMTP accepts it", body = Invoice),
+        (status = 409, description = "Only a created invoice can be accepted")
+    )
+)]
+pub async fn accept(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<AcceptInvoice>,
+) -> AppResult<Json<Invoice>> {
+    let current = sqlx::query!(
+        r#"SELECT status AS "status: InvoiceStatus", treatment_id FROM invoice WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    if current.status != InvoiceStatus::Created {
+        return Err(AppError::Conflict(
+            "only a created invoice can be accepted".to_owned(),
+        ));
+    }
+
+    // Acceptance is the freeze point: from here the stock ledger is append-only.
+    sqlx::query!(
+        "UPDATE invoice
+         SET status = 'accepted', ts_accepted = now(), email_recipients = $2
+         WHERE id = $1",
+        id,
+        &body.recipient_emails,
+    )
+    .execute(&state.pool)
+    .await?;
+
+    // A failing send leaves the invoice accepted and retriable (FR-031).
+    if !body.recipient_emails.is_empty()
+        && let Err(error) = send_invoice_email(&state, id).await
+    {
+        tracing::error!(%error, invoice_id = id, "sending the invoice email failed");
+    }
+
+    load(&state.pool, id).await.map(Json)
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "sendInvoice",
+    path = "/api/invoices/{id}/send",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 200, body = Invoice),
+        (status = 409, description = "The invoice is not accepted, or has no recipients"),
+        (status = 500, description = "The mail server rejected the message")
+    )
+)]
+pub async fn send(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<Json<Invoice>> {
+    let current = sqlx::query!(
+        r#"SELECT status AS "status: InvoiceStatus", email_recipients FROM invoice WHERE id = $1"#,
+        id
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    if matches!(
+        current.status,
+        InvoiceStatus::Created | InvoiceStatus::Cancelled
+    ) {
+        return Err(AppError::Conflict(
+            "only an accepted invoice can be emailed".to_owned(),
+        ));
+    }
+    if current.email_recipients.unwrap_or_default().is_empty() {
+        return Err(AppError::field("recipient_emails", "field.required"));
+    }
+
+    // Unlike accept, an explicit resend reports the failure to the caller.
+    send_invoice_email(&state, id).await?;
+    load(&state.pool, id).await.map(Json)
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "cancelInvoice",
+    path = "/api/invoices/{id}/cancel",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 200, body = Invoice),
+        (status = 409, description = "The invoice is already cancelled")
+    )
+)]
+pub async fn cancel(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<Invoice>> {
+    let mut transaction = state.pool.begin().await?;
+    let current = sqlx::query!(
+        r#"SELECT status AS "status: InvoiceStatus", treatment_id FROM invoice WHERE id = $1
+           FOR UPDATE"#,
+        id,
+    )
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    if current.status == InvoiceStatus::Cancelled {
+        return Err(AppError::Conflict(
+            "the invoice is already cancelled".to_owned(),
+        ));
+    }
+
+    cancel_in_transaction(&mut transaction, id, current.treatment_id).await?;
+    transaction.commit().await?;
+
+    load(&state.pool, id).await.map(Json)
+}
+
+/// Cancels an invoice and compensates its frozen dispenses.
+async fn cancel_in_transaction(
+    transaction: &mut Transaction<'_, Postgres>,
+    invoice_id: i64,
+    treatment_id: i64,
+) -> AppResult<()> {
+    let status = sqlx::query_scalar!(
+        r#"SELECT status AS "status: InvoiceStatus" FROM invoice WHERE id = $1"#,
+        invoice_id
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+
+    sqlx::query!(
+        "UPDATE invoice SET status = 'cancelled', ts_cancelled = now() WHERE id = $1",
+        invoice_id
+    )
+    .execute(&mut **transaction)
+    .await?;
+
+    // Only frozen (accepted) dispenses need reversing — draft ones were never booked.
+    if matches!(status, InvoiceStatus::Accepted | InvoiceStatus::Submitted) {
+        let reversed = stock::reverse_treatment_dispenses(transaction, treatment_id).await?;
+        tracing::info!(
+            invoice_id,
+            reversed,
+            "invoice cancelled, dispenses compensated"
+        );
+    }
+    Ok(())
+}
+
+/// Renders the invoice email and sends it; records the timestamp only on success.
+async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> {
+    let row = sqlx::query!(
+        r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.email_recipients,
+                  attachment.sha256 AS "sha256?",
+                  customer.salutation AS "salutation?: Salutation", customer.last_name,
+                  customer.second_salutation AS "second_salutation?: Salutation",
+                  customer.second_last_name,
+                  settings.practice_name, settings.cc_emails, settings.bcc_emails
+           FROM invoice
+           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id
+           JOIN treatment ON treatment.id = invoice.treatment_id
+           LEFT JOIN treatment_patient ON treatment_patient.treatment_id = treatment.id
+           LEFT JOIN patient ON patient.id = treatment_patient.patient_id
+           LEFT JOIN customer ON customer.id = patient.customer_id
+           CROSS JOIN global_settings settings
+           WHERE invoice.id = $1
+           LIMIT 1"#,
+        invoice_id,
+    )
+    .fetch_optional(&state.pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let recipients = row.email_recipients.unwrap_or_default();
+    if recipients.is_empty() {
+        return Err(AppError::field("recipient_emails", "field.required"));
+    }
+
+    let patients = sqlx::query_scalar!(
+        "SELECT patient.name
+         FROM invoice
+         JOIN treatment_patient ON treatment_patient.treatment_id = invoice.treatment_id
+         JOIN patient ON patient.id = treatment_patient.patient_id
+         WHERE invoice.id = $1
+         ORDER BY patient.name",
+        invoice_id,
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    let total = invoice_total(&state.pool, invoice_id).await?;
+    let last_name = row.last_name.unwrap_or_default();
+    let second_last_name = row.second_last_name.unwrap_or_default();
+
+    let context = InvoiceMail {
+        greeting: greeting(
+            row.salutation,
+            &last_name,
+            row.second_salutation,
+            &second_last_name,
+        ),
+        salutation: row
+            .salutation
+            .map(|value| value.to_string())
+            .unwrap_or_default(),
+        first_name: String::new(),
+        last_name,
+        second_salutation: row
+            .second_salutation
+            .map(|value| value.to_string())
+            .unwrap_or_default(),
+        second_first_name: String::new(),
+        second_last_name,
+        invoice_number: row.invoice_number.clone(),
+        invoice_date: date_de(row.invoice_date),
+        invoice_total: money_de(total, &state.config.invoice.currency),
+        practice_name: row.practice_name,
+        patients: patients.into_iter().flatten().collect(),
+    };
+
+    let (subject, body) = state.mailer.render(&context)?;
+    let sha256 = row
+        .sha256
+        .ok_or_else(|| AppError::Internal("the invoice has no rendered PDF to send".to_owned()))?;
+    let pdf_bytes = tokio::fs::read(state.files.content_path(&sha256)).await?;
+
+    let message = state.mailer.build_message(OutgoingInvoice {
+        recipients: &recipients,
+        cc: &row.cc_emails,
+        bcc: &row.bcc_emails,
+        subject: &subject,
+        body: &body,
+        pdf_name: &format!("Rechnung-{}.pdf", row.invoice_number),
+        pdf: pdf_bytes,
+    })?;
+    state.mailer.send(message).await?;
+
+    // The timestamp is written only after the mail server accepted the message.
+    sqlx::query!(
+        "UPDATE invoice SET ts_sent_email = now() WHERE id = $1",
+        invoice_id
+    )
+    .execute(&state.pool)
+    .await?;
+    Ok(())
+}
+
+/// Renders the PDF and links it to the invoice as a content-addressed attachment.
+async fn attach_pdf(state: &AppState, invoice_id: i64, document: InvoiceDocument) -> AppResult<()> {
+    let logo = load_logo(state).await?;
+    let config = std::sync::Arc::clone(&state.config);
+
+    // Typesetting is CPU-bound — keep it off the async worker threads.
+    let bytes = tokio::task::spawn_blocking(move || pdf::render_invoice(&config, &document, logo))
+        .await
+        .map_err(|error| AppError::internal("joining the PDF task", error))??;
+
+    let number = sqlx::query_scalar!(
+        "SELECT invoice_number FROM invoice WHERE id = $1",
+        invoice_id
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    let stored = state
+        .files
+        .store(BytesSource::new(bytes.clone()), u64::MAX)
+        .await?;
+    let attachment_id: i64 = sqlx::query_scalar!(
+        r#"INSERT INTO attachment
+               (sha256, mime_type, size_bytes, orig_name, kind)
+           VALUES ($1, 'application/pdf', $2, $3, 'referenced')
+           RETURNING id"#,
+        stored.sha256,
+        stored.size_bytes,
+        format!("Rechnung-{number}.pdf"),
+    )
+    .fetch_one(&state.pool)
+    .await?;
+
+    sqlx::query!(
+        "UPDATE invoice SET pdf_attachment_id = $2 WHERE id = $1",
+        invoice_id,
+        attachment_id
+    )
+    .execute(&state.pool)
+    .await?;
+    Ok(())
+}
+
+async fn load_logo(state: &AppState) -> AppResult<Option<Vec<u8>>> {
+    let sha256 = sqlx::query_scalar!(
+        "SELECT attachment.sha256
+         FROM global_settings
+         JOIN attachment ON attachment.id = global_settings.logo_attachment_id",
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    match sha256 {
+        Some(sha256) => match tokio::fs::read(state.files.content_path(&sha256)).await {
+            Ok(bytes) => Ok(Some(bytes)),
+            Err(error) => {
+                tracing::warn!(%error, "practice logo is missing on disk, rendering without it");
+                Ok(None)
+            }
+        },
+        None => Ok(None),
+    }
+}
+
+/// Assembles everything the invoice template prints, formatted German.
+async fn build_document(
+    connection: &mut PgConnection,
+    state: &AppState,
+    invoice_id: i64,
+) -> AppResult<InvoiceDocument> {
+    let currency = state.config.invoice.currency.clone();
+
+    let invoice = sqlx::query!(
+        r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.includes_finding,
+                  invoice.note, invoice.treatment_id,
+                  treatment.treatment_reason, treatment.finding,
+                  appointment.starts_at
+           FROM invoice
+           JOIN treatment ON treatment.id = invoice.treatment_id
+           JOIN appointment ON appointment.id = treatment.appointment_id
+           WHERE invoice.id = $1"#,
+        invoice_id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let settings = sqlx::query!(
+        "SELECT practice_name, practice_address, iban, ustid, logo_attachment_id
+         FROM global_settings LIMIT 1",
+    )
+    .fetch_one(&mut *connection)
+    .await?;
+
+    let patients = sqlx::query!(
+        r#"SELECT patient.id, patient.name, patient.customer_id
+           FROM treatment_patient
+           JOIN patient ON patient.id = treatment_patient.patient_id
+           WHERE treatment_patient.treatment_id = $1
+           ORDER BY patient.name"#,
+        invoice.treatment_id,
+    )
+    .fetch_all(&mut *connection)
+    .await?;
+
+    let customer_id = patients
+        .first()
+        .and_then(|patient| patient.customer_id)
+        .ok_or_else(|| AppError::field("patients", "invoice.noPatient"))?;
+    let recipient = recipient_lines(&mut *connection, customer_id).await?;
+
+    let items = treatment_items::load_items(&mut *connection, invoice.treatment_id).await?;
+    let patient_names: std::collections::HashMap<i64, String> = patients
+        .iter()
+        .map(|patient| (patient.id, patient.name.clone().unwrap_or_default()))
+        .collect();
+
+    let lines = items
+        .iter()
+        .map(|item| InvoiceLine {
+            position: item.position,
+            name: item.name.clone(),
+            // Only worth printing when the invoice covers more than one animal.
+            patient: if patients.len() > 1 {
+                item.patient_id
+                    .and_then(|id| patient_names.get(&id).cloned())
+                    .unwrap_or_default()
+            } else {
+                String::new()
+            },
+            quantity: number_de(item.quantity),
+            unit: item.unit.clone().unwrap_or_default(),
+            factor: item.factor.map(percent_de).unwrap_or_default(),
+            got_number: item.got_number.clone().unwrap_or_default(),
+            km: item.km.map(number_de).unwrap_or_default(),
+            price: money_de(item.price_gross, &currency),
+            total: money_de(item.line_total, &currency),
+        })
+        .collect();
+
+    let groups = money::vat_summary(
+        &items
+            .iter()
+            .map(|item| (item.line_total, item.vat_percent))
+            .collect::<Vec<_>>(),
+    );
+
+    Ok(InvoiceDocument {
+        practice: PracticeBlock {
+            name: settings.practice_name,
+            address: settings.practice_address,
+            iban: settings.iban,
+            ustid: settings.ustid,
+            logo_present: settings.logo_attachment_id.is_some(),
+        },
+        invoice: InvoiceBlock {
+            number: invoice.invoice_number,
+            date: date_de(invoice.invoice_date),
+            treatment_date: invoice
+                .starts_at
+                .map(|starts_at| date_de(starts_at.with_timezone(&Local).date_naive()))
+                .unwrap_or_default(),
+            recipient,
+            patients: patients
+                .iter()
+                .map(|patient| patient.name.clone().unwrap_or_default())
+                .collect(),
+            treatment_reason: invoice.treatment_reason.unwrap_or_default(),
+            // The finding is printed only when the vet asked for it (FR-030).
+            finding: if invoice.includes_finding {
+                invoice.finding.unwrap_or_default()
+            } else {
+                String::new()
+            },
+            items: lines,
+            vat_groups: pdf::vat_groups_de(&groups, &currency),
+            total: money_de(money::total_gross(&groups), &currency),
+            note: invoice.note.unwrap_or_default(),
+        },
+    })
+}
+
+/// Loads the customer's address columns and formats the invoice address block.
+async fn recipient_lines(
+    connection: &mut PgConnection,
+    customer_id: i64,
+) -> AppResult<Vec<String>> {
+    let customer = sqlx::query!(
+        r#"SELECT salutation AS "salutation?: Salutation", first_name, last_name,
+                  second_salutation AS "second_salutation?: Salutation",
+                  second_first_name, second_last_name, has_second_name,
+                  home_addon, home_street, home_zip, home_city,
+                  invoice_salutation AS "invoice_salutation?: Salutation",
+                  invoice_first_name, invoice_last_name, invoice_addon, invoice_street,
+                  invoice_zip, invoice_city, has_invoice_address
+           FROM customer WHERE id = $1"#,
+        customer_id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    Ok(pdf::address_block(&CustomerAddress {
+        salutation: customer.salutation,
+        first_name: customer.first_name,
+        last_name: customer.last_name,
+        second_salutation: customer.second_salutation,
+        second_first_name: customer.second_first_name,
+        second_last_name: customer.second_last_name,
+        has_second_name: customer.has_second_name,
+        home_addon: customer.home_addon,
+        home_street: customer.home_street,
+        home_zip: customer.home_zip,
+        home_city: customer.home_city,
+        invoice_salutation: customer.invoice_salutation,
+        invoice_first_name: customer.invoice_first_name,
+        invoice_last_name: customer.invoice_last_name,
+        invoice_addon: customer.invoice_addon,
+        invoice_street: customer.invoice_street,
+        invoice_zip: customer.invoice_zip,
+        invoice_city: customer.invoice_city,
+        has_invoice_address: customer.has_invoice_address,
+    }))
+}
+
+/// Invoice total from the pinned line values.
+pub async fn invoice_total(pool: &PgPool, invoice_id: i64) -> AppResult<Decimal> {
+    let treatment_id: i64 =
+        sqlx::query_scalar!("SELECT treatment_id FROM invoice WHERE id = $1", invoice_id)
+            .fetch_optional(pool)
+            .await?
+            .ok_or(AppError::NotFound)?;
+
+    let mut connection = pool.acquire().await?;
+    let items = treatment_items::load_items(&mut connection, treatment_id).await?;
+    let groups = money::vat_summary(
+        &items
+            .iter()
+            .map(|item| (item.line_total, item.vat_percent))
+            .collect::<Vec<_>>(),
+    );
+    Ok(money::total_gross(&groups))
+}
+
+/// Loads one invoice with the display data lists and detail views need.
+pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
+    let row = sqlx::query!(
+        r#"SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,
+                  invoice.status AS "status: InvoiceStatus", invoice.includes_finding,
+                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,
+                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_submitted,
+                  invoice.ts_cancelled, invoice.created_at
+           FROM invoice WHERE invoice.id = $1"#,
+        id,
+    )
+    .fetch_optional(pool)
+    .await?
+    .ok_or(AppError::NotFound)?;
+
+    let patients = sqlx::query!(
+        r#"SELECT patient.name, patient.customer_id, customer.first_name, customer.last_name
+           FROM treatment_patient
+           JOIN patient ON patient.id = treatment_patient.patient_id
+           LEFT JOIN customer ON customer.id = patient.customer_id
+           WHERE treatment_patient.treatment_id = $1
+           ORDER BY patient.name"#,
+        row.treatment_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let customer_name = patients
+        .first()
+        .map(|patient| {
+            [patient.first_name.clone(), patient.last_name.clone()]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .unwrap_or_default();
+
+    Ok(Invoice {
+        id: row.id,
+        treatment_id: row.treatment_id,
+        invoice_number: row.invoice_number,
+        invoice_date: row.invoice_date,
+        status: row.status,
+        includes_finding: row.includes_finding,
+        note: row.note,
+        pdf_attachment_id: row.pdf_attachment_id,
+        email_recipients: row.email_recipients.unwrap_or_default(),
+        ts_accepted: row.ts_accepted,
+        ts_sent_email: row.ts_sent_email,
+        ts_submitted: row.ts_submitted,
+        ts_cancelled: row.ts_cancelled,
+        customer_id: patients.first().and_then(|patient| patient.customer_id),
+        customer_name,
+        patients: patients
+            .iter()
+            .map(|patient| patient.name.clone().unwrap_or_default())
+            .collect(),
+        total_gross: invoice_total(pool, id).await?,
+        created_at: row.created_at,
+    })
+}
+
+/// Filters of the invoice list. Cancelled invoices stay out unless asked for (FR-034).
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct InvoiceQuery {
+    /// Matches the invoice number or the customer's name.
+    pub q: Option<String>,
+    /// Only invoices waiting for the bookkeeper (accepted, not yet submitted).
+    pub pending: Option<bool>,
+    /// Include cancelled invoices.
+    pub cancelled: Option<bool>,
+    pub limit: Option<i64>,
+    pub offset: Option<i64>,
+}
+
+#[derive(Debug, Serialize, ToSchema)]
+pub struct BulkSubmitResult {
+    /// How many invoices were handed over.
+    pub submitted: i64,
+    /// Their numbers, so the vet can tick them off against the bookkeeper's list.
+    pub invoice_numbers: Vec<String>,
+}
+
+#[utoipa::path(
+    get,
+    operation_id = "listInvoices",
+    path = "/api/invoices",
+    tag = "invoices",
+    params(InvoiceQuery),
+    responses((status = 200, body = Vec<Invoice>))
+)]
+pub async fn list(
+    State(state): State<AppState>,
+    Query(query): Query<InvoiceQuery>,
+) -> AppResult<Json<Vec<Invoice>>> {
+    let search = query
+        .q
+        .as_ref()
+        .map(|term| term.trim().to_owned())
+        .filter(|term| !term.is_empty());
+    let pattern = search.as_ref().map(|term| format!("%{term}%"));
+
+    // Waiting-for-the-bookkeeper first; within a group the newest invoice date wins.
+    let ids = sqlx::query_scalar!(
+        r#"SELECT invoice.id
+           FROM invoice
+           WHERE (invoice.status <> 'cancelled' OR $1)
+             AND (NOT $2 OR invoice.status = 'accepted')
+             AND ($3::text IS NULL
+                  OR invoice.invoice_number ILIKE $3
+                  OR EXISTS (
+                       SELECT 1 FROM treatment_patient
+                       JOIN patient ON patient.id = treatment_patient.patient_id
+                       JOIN customer ON customer.id = patient.customer_id
+                       WHERE treatment_patient.treatment_id = invoice.treatment_id
+                         AND concat_ws(' ', customer.first_name, customer.last_name) ILIKE $3))
+           ORDER BY (invoice.status = 'accepted') DESC, invoice.invoice_date DESC, invoice.id DESC
+           LIMIT $4 OFFSET $5"#,
+        query.cancelled.unwrap_or(false),
+        query.pending.unwrap_or(false),
+        pattern.as_deref(),
+        query.limit.unwrap_or(LIST_LIMIT).clamp(1, LIST_LIMIT),
+        query.offset.unwrap_or(0).max(0),
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    // Loading row by row keeps the listed total identical to the detail view and the PDF,
+    // which compute it from the pinned lines per VAT group. Lists here are a page long.
+    let mut invoices = Vec::with_capacity(ids.len());
+    for id in ids {
+        invoices.push(load(&state.pool, id).await?);
+    }
+    Ok(Json(invoices))
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "submitInvoice",
+    path = "/api/invoices/{id}/submit",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 200, body = Invoice),
+        (status = 409, description = "Only an accepted invoice can be submitted")
+    )
+)]
+pub async fn submit(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<Invoice>> {
+    let updated = sqlx::query_scalar!(
+        "UPDATE invoice SET status = 'submitted', ts_submitted = now()
+         WHERE id = $1 AND status = 'accepted'
+         RETURNING id",
+        id,
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if updated.is_none() {
+        // Distinguish "no such invoice" from "wrong stage" — the UI shows different things.
+        load(&state.pool, id).await?;
+        return Err(AppError::Conflict(
+            "only an accepted invoice can be submitted to bookkeeping".to_owned(),
+        ));
+    }
+
+    load(&state.pool, id).await.map(Json)
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "bulkSubmitInvoices",
+    path = "/api/invoices/bulk-submit",
+    tag = "invoices",
+    responses((status = 200, body = BulkSubmitResult))
+)]
+pub async fn bulk_submit(State(state): State<AppState>) -> AppResult<Json<BulkSubmitResult>> {
+    // One statement, one timestamp: the whole month is handed over as a single act.
+    let invoice_numbers = sqlx::query_scalar!(
+        "UPDATE invoice SET status = 'submitted', ts_submitted = now()
+         WHERE status = 'accepted'
+         RETURNING invoice_number",
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    let mut invoice_numbers = invoice_numbers;
+    invoice_numbers.sort();
+    Ok(Json(BulkSubmitResult {
+        submitted: i64::try_from(invoice_numbers.len()).unwrap_or(i64::MAX),
+        invoice_numbers,
+    }))
+}
+
+#[utoipa::path(
+    get,
+    operation_id = "pendingInvoicePdfs",
+    path = "/api/invoices/pending-pdfs",
+    tag = "invoices",
+    responses(
+        (status = 200, description = "ZIP of every pending invoice PDF"),
+        (status = 409, description = "No invoice is waiting for the bookkeeper")
+    )
+)]
+pub async fn pending_pdfs(State(state): State<AppState>) -> AppResult<Response> {
+    let rows = sqlx::query!(
+        r#"SELECT invoice.invoice_number, attachment.sha256 AS "sha256?"
+           FROM invoice
+           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id
+           WHERE invoice.status = 'accepted'
+           ORDER BY invoice.invoice_number"#,
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    if rows.is_empty() {
+        return Err(AppError::Conflict(
+            "no invoice is waiting for the bookkeeper".to_owned(),
+        ));
+    }
+
+    let mut files = Vec::with_capacity(rows.len());
+    for row in rows {
+        // An accepted invoice always has its PDF; a missing one must not fail the bundle.
+        let Some(sha256) = row.sha256 else {
+            tracing::error!(invoice_number = %row.invoice_number, "pending invoice without a PDF");
+            continue;
+        };
+        let bytes = tokio::fs::read(state.files.content_path(&sha256)).await?;
+        files.push((format!("Rechnung-{}.pdf", row.invoice_number), bytes));
+    }
+
+    let archive = tokio::task::spawn_blocking(move || zip_files(files))
+        .await
+        .map_err(|error| AppError::Internal(format!("bundling the PDFs failed: {error}")))??;
+
+    let filename = format!("Rechnungen-{}.zip", Local::now().date_naive());
+    Ok((
+        StatusCode::OK,
+        [
+            (header::CONTENT_TYPE, "application/zip".to_owned()),
+            (
+                header::CONTENT_DISPOSITION,
+                format!("attachment; filename=\"{filename}\""),
+            ),
+        ],
+        archive,
+    )
+        .into_response())
+}
+
+/// Packs named files into an in-memory ZIP. Invoice PDFs are a few dozen kilobytes each.
+fn zip_files(files: Vec<(String, Vec<u8>)>) -> AppResult<Vec<u8>> {
+    let mut writer = ZipWriter::new(Cursor::new(Vec::new()));
+    let options = SimpleFileOptions::default().compression_method(CompressionMethod::Deflated);
+    for (name, bytes) in files {
+        writer
+            .start_file(name, options)
+            .and_then(|()| writer.write_all(&bytes).map_err(Into::into))
+            .map_err(|error| AppError::Internal(format!("writing the ZIP failed: {error}")))?;
+    }
+    writer
+        .finish()
+        .map(Cursor::into_inner)
+        .map_err(|error| AppError::Internal(format!("closing the ZIP failed: {error}")))
+}
+
+pub fn routes() -> Router<AppState> {
+    Router::new()
+        .route("/treatments/{id}/invoice", post(create_or_update))
+        .route("/invoices", get(list))
+        .route("/invoices/bulk-submit", post(bulk_submit))
+        .route("/invoices/pending-pdfs", get(pending_pdfs))
+        .route("/invoices/{id}", get(detail))
+        .route("/invoices/{id}/pdf", get(pdf))
+        .route("/invoices/{id}/accept", post(accept))
+        .route("/invoices/{id}/send", post(send))
+        .route("/invoices/{id}/cancel", post(cancel))
+        .route("/invoices/{id}/submit", post(submit))
+}

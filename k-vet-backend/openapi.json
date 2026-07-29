@@ -1,0 +1,6829 @@
+{
+  "openapi": "3.1.0",
+  "info": {
+    "title": "k-vet API",
+    "description": "Veterinary practice management — single user, self-hosted.",
+    "license": {
+      "name": ""
+    },
+    "version": "0.1.0"
+  },
+  "paths": {
+    "/api/appointments": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "listAppointments",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Appointment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "createAppointment",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateAppointment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Appointment"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/appointments/{id}": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "getAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Appointment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "deleteAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "An invoice exists for one of its treatments"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "patchAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchAppointment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Appointment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/appointments/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "duplicateAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Appointment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/appointments/{id}/treatments": {
+      "get": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "listTreatments",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Treatment"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "createTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTreatment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Treatment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/attachments": {
+      "post": {
+        "tags": [
+          "attachments"
+        ],
+        "operationId": "uploadAttachment",
+        "requestBody": {
+          "description": "multipart/form-data with a `file` part plus optional `kind`, `patient_id`, `treatment_id`, `reference_date` and `note` parts",
+          "content": {
+            "multipart/form-data": {
+              "schema": {
+                "type": "string"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Stored file",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Attachment"
+                }
+              }
+            }
+          },
+          "413": {
+            "description": "Upload exceeds the configured limit"
+          }
+        }
+      }
+    },
+    "/api/attachments/{id}": {
+      "get": {
+        "tags": [
+          "attachments"
+        ],
+        "operationId": "downloadAttachment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Attachment id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "File content"
+          },
+          "404": {
+            "description": "Unknown attachment"
+          }
+        }
+      }
+    },
+    "/api/attachments/{id}/thumbnail": {
+      "get": {
+        "tags": [
+          "attachments"
+        ],
+        "operationId": "attachmentThumbnail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "description": "Attachment id",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "JPEG thumbnail"
+          },
+          "404": {
+            "description": "Unknown attachment or not an image"
+          }
+        }
+      }
+    },
+    "/api/auth/login": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "login",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/LoginRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Session established",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          },
+          "401": {
+            "description": "Invalid credentials"
+          },
+          "429": {
+            "description": "Too many failed attempts"
+          }
+        }
+      }
+    },
+    "/api/auth/logout": {
+      "post": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "logout",
+        "responses": {
+          "200": {
+            "description": "Session destroyed",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/auth/session": {
+      "get": {
+        "tags": [
+          "auth"
+        ],
+        "operationId": "session_info",
+        "responses": {
+          "200": {
+            "description": "Current session",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/SessionInfo"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customer-emails/{id}": {
+      "delete": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "deleteCustomerEmail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "patchCustomerEmail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchCustomerEmail"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/customers": {
+      "get": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "listCustomers",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Customer"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "createCustomer",
+        "responses": {
+          "200": {
+            "description": "An empty draft, ready for auto-save",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers/{id}": {
+      "get": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "getCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "patchCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchCustomer"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/customers/{id}/archive": {
+      "post": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "archiveCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/customers/{id}/emails": {
+      "post": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "addCustomerEmail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCustomerEmail"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/customers/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "unarchiveCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Customer"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/dashboard": {
+      "get": {
+        "tags": [
+          "dashboard"
+        ],
+        "operationId": "getDashboard",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Dashboard"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/drugs": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listDrugs",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Drug"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "createDrug",
+        "responses": {
+          "200": {
+            "description": "An empty draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drug"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/drugs/{id}": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "getDrug",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drug"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "patchDrug",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchDrug"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drug"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/drugs/{id}/archive": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "archiveDrug",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drug"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/drugs/{id}/packagings": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listPackagings",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Packaging"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "createPackaging",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePackaging"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "An empty draft packaging",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Packaging"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The drug already has an original packaging"
+          }
+        }
+      }
+    },
+    "/api/drugs/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "unarchiveDrug",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drug"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoices": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "listInvoices",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Matches the invoice number or the customer's name.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "pending",
+            "in": "query",
+            "description": "Only invoices waiting for the bookkeeper (accepted, not yet submitted).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "cancelled",
+            "in": "query",
+            "description": "Include cancelled invoices.",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Invoice"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoices/bulk-submit": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "bulkSubmitInvoices",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/BulkSubmitResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/invoices/pending-pdfs": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "pendingInvoicePdfs",
+        "responses": {
+          "200": {
+            "description": "ZIP of every pending invoice PDF"
+          },
+          "409": {
+            "description": "No invoice is waiting for the bookkeeper"
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "getInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}/accept": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "acceptInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AcceptInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Accepted; the email is sent if SMTP accepts it",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Only a created invoice can be accepted"
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}/cancel": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "cancelInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The invoice is already cancelled"
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}/pdf": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "invoicePdf",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The invoice PDF"
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}/send": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "sendInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The invoice is not accepted, or has no recipients"
+          },
+          "500": {
+            "description": "The mail server rejected the message"
+          }
+        }
+      }
+    },
+    "/api/invoices/{id}/submit": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "submitInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Only an accepted invoice can be submitted"
+          }
+        }
+      }
+    },
+    "/api/lots": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listLots",
+        "parameters": [
+          {
+            "name": "packaging_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "drug_id",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "empty",
+            "in": "query",
+            "description": "Include lots that are used up (default: only lots with stock).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Lot"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/lots/{id}": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "getLot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotDetail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/lots/{id}/corrections": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "createCorrection",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateCorrection"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/LotDetail"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The correction would not change anything"
+          }
+        }
+      }
+    },
+    "/api/manufacturers": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listManufacturers",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AddressBookEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "createManufacturer",
+        "responses": {
+          "200": {
+            "description": "An empty draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manufacturers/{id}": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "getManufacturer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "patchManufacturer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchAddressBookEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/manufacturers/{id}/archive": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "archiveManufacturer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/manufacturers/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "unarchiveManufacturer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/packagings/{id}": {
+      "patch": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "patchPackaging",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchPackaging"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Packaging"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/packagings/{id}/stock-intakes": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "createStockIntake",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateIntake"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The new lot",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Lot"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Not an original packaging, or incomplete"
+          }
+        }
+      }
+    },
+    "/api/patient-files/{id}": {
+      "patch": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "patchPatientFile",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchPatientFile"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientFile"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/patients": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "listPatients",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "description": "Only this customer's animals",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Patient"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "createPatient",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreatePatient"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "An empty draft, ready for auto-save",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "getPatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "patchPatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchPatient"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/archive": {
+      "post": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "archivePatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/files": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "listPatientFiles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PatientFile"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/patients/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "unarchivePatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Patient"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "A deceased patient stays archived"
+          }
+        }
+      }
+    },
+    "/api/picker/items": {
+      "get": {
+        "tags": [
+          "picker"
+        ],
+        "operationId": "pickerItems",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Search term; empty returns the most-used entries.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PickerItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/pricing/preview": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "previewPrice",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PricePreviewRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PricePreview"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services": {
+      "get": {
+        "tags": [
+          "services"
+        ],
+        "operationId": "listServices",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "hidden",
+            "in": "query",
+            "description": "Include hidden services (the surgical GOT positions, by default).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "type",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "$ref": "#/components/schemas/ServiceType"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Service"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "services"
+        ],
+        "operationId": "createService",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateService"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "An empty draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/{id}": {
+      "get": {
+        "tags": [
+          "services"
+        ],
+        "operationId": "getService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "services"
+        ],
+        "operationId": "patchService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchService"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/services/{id}/archive": {
+      "post": {
+        "tags": [
+          "services"
+        ],
+        "operationId": "archiveService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/services/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "services"
+        ],
+        "operationId": "unarchiveService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Service"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/settings": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "operationId": "getSettings",
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            }
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "settings"
+        ],
+        "operationId": "patchSettings",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchSettings"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Settings"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "An address is malformed, or the logo does not exist"
+          }
+        }
+      }
+    },
+    "/api/stock/correction-reasons": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listCorrectionReasons",
+        "responses": {
+          "200": {
+            "description": "Previously used reasons, alphabetical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppliers": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listSuppliers",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/AddressBookEntry"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "createSupplier",
+        "responses": {
+          "200": {
+            "description": "An empty draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppliers/{id}": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "getSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "patchSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchAddressBookEntry"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/suppliers/{id}/archive": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "archiveSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/suppliers/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "unarchiveSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressBookEntry"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/template-items/{id}": {
+      "delete": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "deleteTemplateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "patchTemplateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTemplateItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateItem"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/template-items/{id}/move": {
+      "post": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "moveTemplateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateItem"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatment-items/{id}": {
+      "delete": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "deleteTreatmentItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "patchTreatmentItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTreatmentItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentItem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatment-items/{id}/lots": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "setTreatmentItemLots",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/LotSelection"
+                }
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentItem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatment-items/{id}/move": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "moveTreatmentItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/MoveRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TreatmentItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/treatment-templates": {
+      "get": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "listTemplates",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Template"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "createTemplate",
+        "responses": {
+          "200": {
+            "description": "An empty draft",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/treatment-templates/{id}": {
+      "get": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "getTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "patchTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTemplate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatment-templates/{id}/archive": {
+      "post": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "archiveTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/treatment-templates/{id}/items": {
+      "get": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "listTemplateItems",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "createTemplateItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTemplateItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TemplateItem"
+                  }
+                }
+              }
+            }
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatment-templates/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "templates"
+        ],
+        "operationId": "unarchiveTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Template"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}": {
+      "get": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "getTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Treatment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "deleteTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "patchTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTreatment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Treatment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/apply-template": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "applyTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyTemplate"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TreatmentItem"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/duplicate": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "duplicateTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/DuplicateRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Treatment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/invoice": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "createInvoice",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateInvoice"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Invoice in status `created`",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "The treatment cannot be billed yet"
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/items": {
+      "get": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "listTreatmentItems",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TreatmentItem"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "createTreatmentItem",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateTreatmentItem"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentItem"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/patients": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "addTreatmentPatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddPatient"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Treatment"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/patients/{patient_id}": {
+      "delete": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "removeTreatmentPatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Treatment"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": ""
+          }
+        }
+      }
+    }
+  },
+  "components": {
+    "schemas": {
+      "AcceptInvoice": {
+        "type": "object",
+        "properties": {
+          "recipient_emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Customer email addresses the PDF is sent to."
+          }
+        }
+      },
+      "AddPatient": {
+        "type": "object",
+        "required": [
+          "patient_id"
+        ],
+        "properties": {
+          "patient_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "AddressBookEntry": {
+        "type": "object",
+        "description": "An address-book entry: a name and an optional postal address.",
+        "required": [
+          "id",
+          "has_address",
+          "archived",
+          "draft",
+          "missing_fields",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_addon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_address": {
+            "type": "boolean",
+            "description": "Database-generated: the address is complete enough to print."
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ApplyTemplate": {
+        "type": "object",
+        "required": [
+          "template_id"
+        ],
+        "properties": {
+          "template_id": {
+            "type": "integer",
+            "format": "int64"
+          }
+        }
+      },
+      "Appointment": {
+        "type": "object",
+        "required": [
+          "id",
+          "draft",
+          "missing_fields",
+          "treatment_count",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Minute-resolution start; the date defaults to today in the UI, the time is typed."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft": {
+            "type": "boolean",
+            "description": "`true` while mandatory fields are missing — excluded from billing flows."
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Mandatory fields still empty, for the \"incomplete — missing: …\" hint."
+          },
+          "treatment_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "Attachment": {
+        "type": "object",
+        "description": "Stored file metadata as returned by the API.",
+        "required": [
+          "id",
+          "sha256",
+          "mime_type",
+          "size_bytes",
+          "orig_name",
+          "kind",
+          "has_thumbnail",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "sha256": {
+            "type": "string",
+            "description": "Content hash — the file's identity."
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "orig_name": {
+            "type": "string"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/AttachmentKind"
+          },
+          "patient_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "treatment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "reference_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Date the document refers to (patient files), independent of the upload time."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_thumbnail": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "AttachmentKind": {
+        "type": "string",
+        "description": "Who owns an attachment: a patient, a treatment, or a referencing record.",
+        "enum": [
+          "patient_file",
+          "treatment_file",
+          "referenced"
+        ]
+      },
+      "BulkSubmitResult": {
+        "type": "object",
+        "required": [
+          "submitted",
+          "invoice_numbers"
+        ],
+        "properties": {
+          "submitted": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many invoices were handed over."
+          },
+          "invoice_numbers": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Their numbers, so the vet can tick them off against the bookkeeper's list."
+          }
+        }
+      },
+      "CreateAppointment": {
+        "type": "object",
+        "properties": {
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateCorrection": {
+        "type": "object",
+        "description": "A stocktake: the vet states what is physically there, the server books the difference.",
+        "required": [
+          "new_remaining"
+        ],
+        "properties": {
+          "new_remaining": {
+            "type": "string",
+            "description": "The counted remaining quantity. Defaults in the UI to the derived value."
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreateCustomerEmail": {
+        "type": "object",
+        "required": [
+          "email"
+        ],
+        "properties": {
+          "email": {
+            "type": "string"
+          },
+          "email_type": {
+            "$ref": "#/components/schemas/EmailType"
+          }
+        }
+      },
+      "CreateIntake": {
+        "type": "object",
+        "required": [
+          "packages_received"
+        ],
+        "properties": {
+          "arrival_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "Defaults to today."
+          },
+          "packages_received": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "batch_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiration_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "CreateInvoice": {
+        "type": "object",
+        "properties": {
+          "includes_finding": {
+            "type": "boolean",
+            "description": "Prints the treatment's finding on the invoice."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "CreatePackaging": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PackagingKind",
+            "description": "`original` (bought and stocked) or `subset` (dispensed from the original)."
+          }
+        }
+      },
+      "CreatePatient": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Pre-selects the owner when the patient is created from a customer page."
+          }
+        }
+      },
+      "CreateService": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ServiceType"
+          }
+        }
+      },
+      "CreateTemplateItem": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/TemplateItemKind"
+          },
+          "drug_packaging_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "service_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateTreatment": {
+        "type": "object",
+        "properties": {
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finding": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patient_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Patients to attach right away; all must belong to one customer."
+          }
+        }
+      },
+      "CreateTreatmentItem": {
+        "type": "object",
+        "required": [
+          "kind"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/TreatmentItemKind"
+          },
+          "drug_packaging_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Required for `drug_packaging` lines."
+          },
+          "service_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Required for `service` lines."
+          },
+          "patient_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Defaults to the treatment's only patient when there is exactly one."
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "km": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Travel-expense lines: kilometres driven (one way)."
+          },
+          "km_multiplier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Multiplier for adverse travel conditions (1–3)."
+          }
+        }
+      },
+      "Customer": {
+        "type": "object",
+        "required": [
+          "id",
+          "archived",
+          "draft",
+          "missing_fields",
+          "has_invoice_address",
+          "has_second_name",
+          "emails",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "salutation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Salutation"
+              }
+            ]
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "second_salutation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Salutation",
+                "description": "Optional second person of the household, addressed on the invoice as well."
+              }
+            ]
+          },
+          "second_first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "second_last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_addon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_salutation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Salutation"
+              }
+            ]
+          },
+          "invoice_first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_addon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Stored E.164 form, e.g. `+493012345678`."
+          },
+          "phone_display": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The same number in the familiar national format, e.g. `030 12345678`."
+          },
+          "warning_remark": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "has_invoice_address": {
+            "type": "boolean",
+            "description": "`true` when the invoice address group is complete and replaces the home address."
+          },
+          "has_second_name": {
+            "type": "boolean"
+          },
+          "emails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/CustomerEmail"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "CustomerEmail": {
+        "type": "object",
+        "required": [
+          "id",
+          "email",
+          "email_type"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "email": {
+            "type": "string"
+          },
+          "email_type": {
+            "$ref": "#/components/schemas/EmailType"
+          }
+        }
+      },
+      "Dashboard": {
+        "type": "object",
+        "required": [
+          "pending_invoice_count",
+          "expiring_lots"
+        ],
+        "properties": {
+          "pending_invoice_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Accepted invoices not yet handed over to bookkeeping."
+          },
+          "expiring_lots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ExpiringLot"
+            },
+            "description": "The lots expiring soonest that still hold stock."
+          }
+        }
+      },
+      "Drug": {
+        "type": "object",
+        "required": [
+          "id",
+          "submission_receipt",
+          "narcotic",
+          "vaccine",
+          "refrigerate",
+          "redesignation",
+          "archived",
+          "draft",
+          "missing_fields",
+          "in_stock",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "manufacturer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "manufacturer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submission_receipt": {
+            "type": "boolean",
+            "description": "Informational flags in this version — no reminders or ledgers (FR-012)."
+          },
+          "narcotic": {
+            "type": "boolean"
+          },
+          "vaccine": {
+            "type": "boolean"
+          },
+          "refrigerate": {
+            "type": "boolean"
+          },
+          "redesignation": {
+            "type": "boolean"
+          },
+          "vat_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approval_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "in_stock": {
+            "type": "string",
+            "description": "Derived stock over the lots of the original packaging, in base units."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "DuplicateRequest": {
+        "type": "object",
+        "properties": {
+          "price_mode": {
+            "$ref": "#/components/schemas/PriceMode"
+          }
+        }
+      },
+      "EmailType": {
+        "type": "string",
+        "description": "Type of a customer email address.",
+        "enum": [
+          "private",
+          "work",
+          "other"
+        ]
+      },
+      "ExpiringLot": {
+        "type": "object",
+        "required": [
+          "lot_id",
+          "drug_id",
+          "drug_name",
+          "expiration_date",
+          "remaining"
+        ],
+        "properties": {
+          "lot_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_name": {
+            "type": "string"
+          },
+          "batch_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiration_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "remaining": {
+            "type": "string",
+            "description": "Remaining base units, from the `lot_remaining` view."
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "FieldError": {
+        "type": "object",
+        "description": "One field-level validation failure, as returned in `problem+json`.",
+        "required": [
+          "field",
+          "message"
+        ],
+        "properties": {
+          "field": {
+            "type": "string",
+            "description": "Name of the offending field, in wire format (e.g. `home_zip`)."
+          },
+          "message": {
+            "type": "string",
+            "description": "Human readable, translatable-by-key message."
+          }
+        }
+      },
+      "Invoice": {
+        "type": "object",
+        "required": [
+          "id",
+          "treatment_id",
+          "invoice_number",
+          "invoice_date",
+          "status",
+          "includes_finding",
+          "email_recipients",
+          "customer_name",
+          "patients",
+          "total_gross",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "treatment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoice_number": {
+            "type": "string"
+          },
+          "invoice_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvoiceStatus"
+          },
+          "includes_finding": {
+            "type": "boolean"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "pdf_attachment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "email_recipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "ts_accepted": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "ts_sent_email": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "ts_submitted": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "ts_cancelled": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": "string",
+            "description": "Display name of the customer, for lists."
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "total_gross": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "InvoiceStatus": {
+        "type": "string",
+        "description": "Invoice lifecycle.",
+        "enum": [
+          "created",
+          "accepted",
+          "submitted",
+          "cancelled"
+        ]
+      },
+      "ItemLot": {
+        "type": "object",
+        "required": [
+          "lot_id",
+          "quantity"
+        ],
+        "properties": {
+          "lot_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "batch_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiration_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          }
+        }
+      },
+      "LoginRequest": {
+        "type": "object",
+        "required": [
+          "username",
+          "password"
+        ],
+        "properties": {
+          "username": {
+            "type": "string"
+          },
+          "password": {
+            "type": "string"
+          }
+        }
+      },
+      "Lot": {
+        "type": "object",
+        "required": [
+          "id",
+          "packaging_id",
+          "drug_id",
+          "arrival_date",
+          "packages_received",
+          "initial_quantity",
+          "remaining",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "packaging_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "arrival_date": {
+            "type": "string",
+            "format": "date"
+          },
+          "packages_received": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "initial_quantity": {
+            "type": "string",
+            "description": "Snapshot of `packages × packaging quantity` at intake (FR-015)."
+          },
+          "batch_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiration_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "remaining": {
+            "type": "string",
+            "description": "Derived, never stored."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "LotDetail": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/Lot"
+          },
+          {
+            "type": "object",
+            "required": [
+              "movements"
+            ],
+            "properties": {
+              "movements": {
+                "type": "array",
+                "items": {
+                  "$ref": "#/components/schemas/Movement"
+                }
+              }
+            }
+          }
+        ]
+      },
+      "LotSelection": {
+        "type": "object",
+        "required": [
+          "lot_id",
+          "quantity"
+        ],
+        "properties": {
+          "lot_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantity": {
+            "type": "string"
+          }
+        }
+      },
+      "MoveDirection": {
+        "type": "string",
+        "description": "`{direction}` body of the reorder endpoints.",
+        "enum": [
+          "up",
+          "down",
+          "top",
+          "bottom"
+        ]
+      },
+      "MoveRequest": {
+        "type": "object",
+        "required": [
+          "direction"
+        ],
+        "properties": {
+          "direction": {
+            "$ref": "#/components/schemas/MoveDirection"
+          }
+        }
+      },
+      "Movement": {
+        "type": "object",
+        "description": "One line of a lot's history — a dispense with its links, or a correction with a reason.",
+        "required": [
+          "id",
+          "kind",
+          "quantity",
+          "moved_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/MovementKind"
+          },
+          "quantity": {
+            "type": "string",
+            "description": "Signed: dispenses are negative, corrections either way."
+          },
+          "moved_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "reverses_movement_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Set on the compensating correction of a cancelled invoice."
+          },
+          "treatment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "treatment_item_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patient_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "patient_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "invoice_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InvoiceStatus"
+              }
+            ]
+          }
+        }
+      },
+      "MovementKind": {
+        "type": "string",
+        "description": "A stock movement is either a dispense tied to a treatment line or a correction.",
+        "enum": [
+          "dispense",
+          "correction"
+        ]
+      },
+      "Packaging": {
+        "type": "object",
+        "required": [
+          "id",
+          "drug_id",
+          "kind",
+          "price_overridden",
+          "archived",
+          "draft",
+          "missing_fields"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/PackagingKind"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "list_price_net": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Purchase price without VAT; derived pro rata for subsets."
+          },
+          "sales_price_gross": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price_overridden": {
+            "type": "boolean",
+            "description": "`true` while the vet's manual price wins over the computed one."
+          },
+          "computed_price_gross": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "What AMPreisV would charge — shown next to an overridden price."
+          },
+          "supplier_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "supplier_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PackagingKind": {
+        "type": "string",
+        "description": "Original packaging (bought, stocked) versus a subset dispensed from it.",
+        "enum": [
+          "original",
+          "subset"
+        ]
+      },
+      "PatchAddressBookEntry": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_addon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "addr_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchAppointment": {
+        "type": "object",
+        "properties": {
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchCustomer": {
+        "type": "object",
+        "properties": {
+          "salutation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Salutation"
+              }
+            ]
+          },
+          "first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "second_salutation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Salutation"
+              }
+            ]
+          },
+          "second_first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "second_last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_addon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "home_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_salutation": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/Salutation"
+              }
+            ]
+          },
+          "invoice_first_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_last_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_addon": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "warning_remark": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchCustomerEmail": {
+        "type": "object",
+        "properties": {
+          "email": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email_type": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/EmailType"
+              }
+            ]
+          }
+        }
+      },
+      "PatchDrug": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "manufacturer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "vat_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "approval_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "submission_receipt": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "narcotic": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "vaccine": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "refrigerate": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "redesignation": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchPackaging": {
+        "type": "object",
+        "properties": {
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "list_price_net": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Only meaningful for originals; subsets derive it pro rata."
+          },
+          "sales_price_gross": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Setting this overrides the computed price; `null` returns to the computed one."
+          },
+          "supplier_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          }
+        }
+      },
+      "PatchPatient": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sex": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "species": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "race": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_of_birth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "photo_attachment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "date_of_death": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "chip_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "eu_passport_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "warning_remark": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "neutered": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "insured": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchPatientFile": {
+        "type": "object",
+        "properties": {
+          "reference_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchService": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "got_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "factor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "vat_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gross_price": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "travel_expenses": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "hidden": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchSettings": {
+        "type": "object",
+        "properties": {
+          "practice_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "practice_address": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "ustid": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "logo_attachment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "cc_emails": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          },
+          "bcc_emails": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "PatchTemplate": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchTemplateItem": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchTreatment": {
+        "type": "object",
+        "properties": {
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finding": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "PatchTreatmentItem": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price_gross": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "factor": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patient_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "km": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "km_multiplier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "Patient": {
+        "type": "object",
+        "required": [
+          "id",
+          "neutered",
+          "insured",
+          "archived",
+          "draft",
+          "missing_fields",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Customer name, so lists and pickers can show the owner."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "sex": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "`female`, `male` or `unknown`."
+          },
+          "species": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "race": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "colour": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "date_of_birth": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "photo_attachment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "date_of_death": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "chip_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "eu_passport_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "warning_remark": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "neutered": {
+            "type": "boolean"
+          },
+          "insured": {
+            "type": "boolean"
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PatientFile": {
+        "type": "object",
+        "description": "Files a customer brought along, kept per patient with the date they refer to.",
+        "required": [
+          "id",
+          "orig_name",
+          "mime_type",
+          "size_bytes",
+          "has_thumbnail",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "orig_name": {
+            "type": "string"
+          },
+          "mime_type": {
+            "type": "string"
+          },
+          "size_bytes": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "reference_date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "has_thumbnail": {
+            "type": "boolean"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PickerItem": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "drug_id",
+              "name",
+              "price_gross",
+              "vat_percent",
+              "in_stock",
+              "uses",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "drug_id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "name": {
+                "type": "string",
+                "description": "Drug name; the UI composes the display label with locale formatting."
+              },
+              "unit": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "quantity": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "price_gross": {
+                "type": "string"
+              },
+              "vat_percent": {
+                "type": "string"
+              },
+              "in_stock": {
+                "type": "string",
+                "description": "Derived stock over all lots — a shortfall is visible before picking."
+              },
+              "uses": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "drug_packaging"
+                ]
+              }
+            }
+          },
+          {
+            "type": "object",
+            "required": [
+              "id",
+              "name",
+              "price_gross",
+              "vat_percent",
+              "travel_expenses",
+              "uses",
+              "kind"
+            ],
+            "properties": {
+              "id": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "name": {
+                "type": "string"
+              },
+              "got_number": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "factor": {
+                "type": [
+                  "string",
+                  "null"
+                ]
+              },
+              "price_gross": {
+                "type": "string"
+              },
+              "vat_percent": {
+                "type": "string"
+              },
+              "travel_expenses": {
+                "type": "boolean"
+              },
+              "uses": {
+                "type": "integer",
+                "format": "int64"
+              },
+              "kind": {
+                "type": "string",
+                "enum": [
+                  "service"
+                ]
+              }
+            }
+          }
+        ],
+        "description": "A pickable catalog entry — a tagged union so the UI can show distinct icons."
+      },
+      "PriceMode": {
+        "type": "string",
+        "description": "How a duplicate treats the prices pinned on the source's lines (FR-026).",
+        "enum": [
+          "verbatim",
+          "refresh"
+        ]
+      },
+      "PricePreview": {
+        "type": "object",
+        "required": [
+          "basis_net",
+          "surcharge",
+          "net",
+          "gross",
+          "rule"
+        ],
+        "properties": {
+          "basis_net": {
+            "type": "string",
+            "description": "§ 3(2) basis the surcharge is levied on."
+          },
+          "surcharge": {
+            "type": "string",
+            "description": "The statutory surcharge."
+          },
+          "net": {
+            "type": "string"
+          },
+          "gross": {
+            "type": "string"
+          },
+          "rule": {
+            "type": "string",
+            "description": "Which rule produced the price, for the hint next to the field."
+          }
+        }
+      },
+      "PricePreviewRequest": {
+        "type": "object",
+        "required": [
+          "kind",
+          "list_price_net",
+          "vat_percent"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/PackagingKind"
+          },
+          "list_price_net": {
+            "type": "string",
+            "description": "Purchase price without VAT — of the original packaging in both cases."
+          },
+          "vat_percent": {
+            "type": "string"
+          },
+          "original_quantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Content of the original packaging (subset previews need it for the pro rata)."
+          },
+          "subset_quantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Content of the subset being priced."
+          }
+        }
+      },
+      "ProblemDetails": {
+        "type": "object",
+        "description": "RFC 7807 problem details.",
+        "required": [
+          "type",
+          "title",
+          "status",
+          "detail"
+        ],
+        "properties": {
+          "type": {
+            "type": "string",
+            "description": "URI reference identifying the problem type."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short, human readable summary."
+          },
+          "status": {
+            "type": "integer",
+            "format": "int32",
+            "description": "HTTP status code.",
+            "minimum": 0
+          },
+          "detail": {
+            "type": "string",
+            "description": "Explanation specific to this occurrence."
+          },
+          "errors": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FieldError"
+            },
+            "description": "Field-level errors — present for validation failures."
+          }
+        }
+      },
+      "Salutation": {
+        "type": "string",
+        "description": "Form of address; `familie` addresses a household.",
+        "enum": [
+          "frau",
+          "herr",
+          "familie"
+        ]
+      },
+      "Service": {
+        "type": "object",
+        "required": [
+          "id",
+          "type",
+          "travel_expenses",
+          "hidden",
+          "archived",
+          "draft",
+          "missing_fields",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "type": {
+            "$ref": "#/components/schemas/ServiceType",
+            "description": "`got` (official fee schedule) or `self_defined`."
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "got_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "factor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Percent; 100 is the single rate."
+          },
+          "vat_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "gross_price": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "travel_expenses": {
+            "type": "boolean",
+            "description": "Travel-expense lines are priced from the kilometres entered (FR-023)."
+          },
+          "hidden": {
+            "type": "boolean",
+            "description": "Hidden services stay out of pickers and lists by default (FR-021)."
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "ServiceType": {
+        "type": "string",
+        "description": "Official fee schedule position versus a self-defined service.",
+        "enum": [
+          "got",
+          "self_defined"
+        ]
+      },
+      "SessionInfo": {
+        "type": "object",
+        "required": [
+          "authenticated"
+        ],
+        "properties": {
+          "authenticated": {
+            "type": "boolean",
+            "description": "Whether the caller has a valid session."
+          },
+          "username": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Name of the logged-in user, when authenticated."
+          }
+        }
+      },
+      "Settings": {
+        "type": "object",
+        "required": [
+          "practice_name",
+          "practice_address",
+          "iban",
+          "ustid",
+          "cc_emails",
+          "bcc_emails"
+        ],
+        "properties": {
+          "practice_name": {
+            "type": "string"
+          },
+          "practice_address": {
+            "type": "string",
+            "description": "Printed on the invoice as written, line breaks included."
+          },
+          "iban": {
+            "type": "string"
+          },
+          "ustid": {
+            "type": "string"
+          },
+          "logo_attachment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "cc_emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Every outgoing invoice email is copied to these addresses."
+          },
+          "bcc_emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
+      "Template": {
+        "type": "object",
+        "required": [
+          "id",
+          "archived",
+          "draft",
+          "missing_fields",
+          "item_count",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "item_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TemplateItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "template_id",
+          "position",
+          "kind",
+          "name",
+          "quantity"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "template_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TemplateItemKind"
+          },
+          "drug_packaging_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "service_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "description": "Current catalog name — a template stores the reference, not a price."
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
+      "TemplateItemKind": {
+        "type": "string",
+        "description": "What a template line refers to.",
+        "enum": [
+          "drug_packaging",
+          "service"
+        ]
+      },
+      "Treatment": {
+        "type": "object",
+        "required": [
+          "id",
+          "appointment_id",
+          "patients",
+          "customer_emails",
+          "frozen",
+          "total_gross",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "appointment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finding": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/TreatmentPatient"
+            }
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Derived from the patients — the invoice's customer."
+          },
+          "customer_emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The customer's email addresses, offered as invoice recipients (FR-031)."
+          },
+          "invoice": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/TreatmentInvoice",
+                "description": "The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again."
+              }
+            ]
+          },
+          "frozen": {
+            "type": "boolean",
+            "description": "`true` once the invoice is accepted: lines and stock movements are frozen."
+          },
+          "total_gross": {
+            "type": "string"
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TreatmentInvoice": {
+        "type": "object",
+        "required": [
+          "id",
+          "invoice_number",
+          "status"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoice_number": {
+            "type": "string"
+          },
+          "status": {
+            "$ref": "#/components/schemas/InvoiceStatus"
+          }
+        }
+      },
+      "TreatmentItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "treatment_id",
+          "position",
+          "kind",
+          "name",
+          "quantity",
+          "price_gross",
+          "vat_percent",
+          "travel_expenses",
+          "line_total",
+          "lots",
+          "created_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "treatment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "kind": {
+            "$ref": "#/components/schemas/TreatmentItemKind"
+          },
+          "drug_packaging_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "service_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "patient_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "description": "Copied from the catalog; the vet may override it per line."
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "factor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "GOT factor in percent (100 = single rate)."
+          },
+          "got_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price_gross": {
+            "type": "string",
+            "description": "Per-unit gross price, pinned at line entry."
+          },
+          "vat_percent": {
+            "type": "string"
+          },
+          "km": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Travel-expense lines: the kilometres the price was computed from."
+          },
+          "km_multiplier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "travel_expenses": {
+            "type": "boolean",
+            "description": "`true` when the line's service bills travel expenses — the UI then asks for km."
+          },
+          "line_total": {
+            "type": "string",
+            "description": "`price_gross × quantity × factor/100`, rounded to cents."
+          },
+          "lots": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ItemLot"
+            },
+            "description": "Lots the dispense was booked against (drug lines)."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "TreatmentItemKind": {
+        "type": "string",
+        "description": "What a billing line refers to.",
+        "enum": [
+          "drug_packaging",
+          "service"
+        ]
+      },
+      "TreatmentPatient": {
+        "type": "object",
+        "required": [
+          "patient_id",
+          "name",
+          "customer_id"
+        ],
+        "properties": {
+          "patient_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "customer_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "warning_remark": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      }
+    }
+  },
+  "tags": [
+    {
+      "name": "auth",
+      "description": "Login and session"
+    },
+    {
+      "name": "attachments",
+      "description": "Uploaded files, photos and generated PDFs"
+    },
+    {
+      "name": "appointments",
+      "description": "Dated visits holding treatments"
+    },
+    {
+      "name": "treatments",
+      "description": "Treatment records and their billing lines"
+    },
+    {
+      "name": "customers",
+      "description": "Customers, their addresses and contact data"
+    },
+    {
+      "name": "patients",
+      "description": "The practice's animals"
+    },
+    {
+      "name": "pharmacy",
+      "description": "Drugs, packagings, prices and stock"
+    },
+    {
+      "name": "services",
+      "description": "GOT positions and self-defined services"
+    },
+    {
+      "name": "templates",
+      "description": "Reusable ordered sets of treatment lines"
+    },
+    {
+      "name": "picker",
+      "description": "Unified drug/service search"
+    },
+    {
+      "name": "invoices",
+      "description": "Invoice lifecycle"
+    },
+    {
+      "name": "dashboard",
+      "description": "Landing dashboard"
+    },
+    {
+      "name": "settings",
+      "description": "Practice settings"
+    }
+  ]
+}

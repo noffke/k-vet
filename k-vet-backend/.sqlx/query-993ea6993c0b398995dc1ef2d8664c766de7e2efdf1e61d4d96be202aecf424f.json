@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO invoice_number_sequence (scope, counter)\n         VALUES ($1, 1)\n         ON CONFLICT (scope) DO UPDATE SET counter = invoice_number_sequence.counter + 1\n         RETURNING counter",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "counter",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice_number_sequence",
+            "name": "counter"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "993ea6993c0b398995dc1ef2d8664c766de7e2efdf1e61d4d96be202aecf424f"
+}

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lot.id\n           FROM drug_stock_lot lot\n           JOIN lot_remaining remaining ON remaining.lot_id = lot.id\n           JOIN drug_packaging packaging ON packaging.id = lot.packaging_id\n           WHERE ($1::bigint IS NULL OR lot.packaging_id = $1)\n             AND ($2::bigint IS NULL OR packaging.drug_id = $2)\n             AND ($3 OR remaining.remaining <> 0)\n           ORDER BY lot.expiration_date ASC NULLS LAST, lot.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "28f9f553dbe65f748d24fc42088c2a60a6b858f170a4b359f40422196e0f40b5"
+}

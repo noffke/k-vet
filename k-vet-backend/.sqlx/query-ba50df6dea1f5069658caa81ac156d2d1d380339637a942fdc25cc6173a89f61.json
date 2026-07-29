@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE invoice SET status = 'submitted', ts_submitted = now()\n         WHERE status = 'accepted'\n         RETURNING invoice_number",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "invoice_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ba50df6dea1f5069658caa81ac156d2d1d380339637a942fdc25cc6173a89f61"
+}

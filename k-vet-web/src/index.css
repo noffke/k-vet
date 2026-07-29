@@ -1,111 +1,101 @@
-:root {
-  --text: #6b6375;
-  --text-h: #08060d;
-  --bg: #fff;
-  --border: #e5e4e7;
-  --code-bg: #f4f3ec;
-  --accent: #aa3bff;
-  --accent-bg: rgba(170, 59, 255, 0.1);
-  --accent-border: rgba(170, 59, 255, 0.5);
-  --social-bg: rgba(244, 243, 236, 0.5);
-  --shadow:
-    rgba(0, 0, 0, 0.1) 0 10px 15px -3px, rgba(0, 0, 0, 0.05) 0 4px 6px -2px;
+@import "tailwindcss";
 
-  --sans: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --heading: system-ui, 'Segoe UI', Roboto, sans-serif;
-  --mono: ui-monospace, Consolas, monospace;
+/*
+ * Visual identity — taken from the practice's website (T078).
+ *
+ * The practice site pairs a warm cream field with deep navy text and terracotta
+ * headings. A record-keeping tool is used for hours at a time, so the saturated
+ * cream (#F9E8C5) is kept for chrome (rail, headers, badges) while the working
+ * surface drops to a quieter paper tone. Navy carries structure and focus,
+ * terracotta carries action and attention, sage and blush carry state.
+ *
+ * Numbers are the substance of this app: money, quantities and factors always
+ * render with tabular figures so columns line up down the page.
+ */
+@theme {
+  --color-paper: #fbf7ee;
+  --color-surface: #ffffff;
+  --color-sunken: #f4eedf;
+  --color-cream: #f9e8c5;
+  --color-cream-soft: #f9f1e2;
 
-  font: 18px/145% var(--sans);
-  letter-spacing: 0.18px;
-  color-scheme: light dark;
-  color: var(--text);
-  background: var(--bg);
-  font-synthesis: none;
-  text-rendering: optimizeLegibility;
-  -webkit-font-smoothing: antialiased;
-  -moz-osx-font-smoothing: grayscale;
+  --color-ink: #1b365d;
+  --color-ink-soft: #52658a;
+  --color-ink-faint: #8b98ad;
 
-  @media (max-width: 1024px) {
-    font-size: 16px;
+  --color-rust: #9b5023;
+  --color-rust-bright: #d06d32;
+  --color-rust-soft: #f0dcc9;
+
+  --color-sage: #aad3ab;
+  --color-sage-deep: #3f7c4a;
+  --color-blush: #ffb0b0;
+  --color-danger: #a62b1f;
+
+  --color-line: #e4d9c2;
+  --color-line-strong: #cdbf9f;
+
+  --font-sans: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+  --font-numeric: ui-monospace, "SF Mono", "Cascadia Mono", "Roboto Mono", Menlo, monospace;
+
+  --radius-card: 0.625rem;
+  --radius-control: 0.375rem;
+}
+
+@layer base {
+  html {
+    -webkit-text-size-adjust: 100%;
   }
-}
 
-@media (prefers-color-scheme: dark) {
-  :root {
-    --text: #9ca3af;
-    --text-h: #f3f4f6;
-    --bg: #16171d;
-    --border: #2e303a;
-    --code-bg: #1f2028;
-    --accent: #c084fc;
-    --accent-bg: rgba(192, 132, 252, 0.15);
-    --accent-border: rgba(192, 132, 252, 0.5);
-    --social-bg: rgba(47, 48, 58, 0.5);
-    --shadow:
-      rgba(0, 0, 0, 0.4) 0 10px 15px -3px, rgba(0, 0, 0, 0.25) 0 4px 6px -2px;
+  body {
+    margin: 0;
+    background-color: var(--color-paper);
+    color: var(--color-ink);
+    font-family: var(--font-sans);
+    font-size: 0.9375rem;
+    line-height: 1.5;
+    -webkit-font-smoothing: antialiased;
+    /* The bottom tab bar on phones must not cover content. */
+    padding-bottom: env(safe-area-inset-bottom);
   }
 
-  #social .button-icon {
-    filter: invert(1) brightness(2);
+  h1,
+  h2,
+  h3 {
+    color: var(--color-rust);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+    margin: 0;
   }
-}
 
-#root {
-  width: 1126px;
-  max-width: 100%;
-  margin: 0 auto;
-  text-align: center;
-  border-inline: 1px solid var(--border);
-  min-height: 100svh;
-  display: flex;
-  flex-direction: column;
-  box-sizing: border-box;
-}
-
-body {
-  margin: 0;
-}
-
-h1,
-h2 {
-  font-family: var(--heading);
-  font-weight: 500;
-  color: var(--text-h);
-}
-
-h1 {
-  font-size: 56px;
-  letter-spacing: -1.68px;
-  margin: 32px 0;
-  @media (max-width: 1024px) {
-    font-size: 36px;
-    margin: 20px 0;
+  /* Money, quantities and identifiers: aligned digits, no proportional drift. */
+  .numeric {
+    font-family: var(--font-numeric);
+    font-variant-numeric: tabular-nums;
   }
-}
-h2 {
-  font-size: 24px;
-  line-height: 118%;
-  letter-spacing: -0.24px;
-  margin: 0 0 8px;
-  @media (max-width: 1024px) {
-    font-size: 20px;
+
+  /* Section labels echo the practice wordmark: caps, wide tracking, small. */
+  .eyebrow {
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.12em;
+    text-transform: uppercase;
+    color: var(--color-ink-faint);
   }
-}
-p {
-  margin: 0;
-}
 
-code,
-.counter {
-  font-family: var(--mono);
-  display: inline-flex;
-  border-radius: 4px;
-  color: var(--text-h);
-}
+  :focus-visible {
+    outline: 2px solid var(--color-rust-bright);
+    outline-offset: 2px;
+  }
 
-code {
-  font-size: 15px;
-  line-height: 135%;
-  padding: 4px 8px;
-  background: var(--code-bg);
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      /* biome-ignore-start lint/complexity/noImportantStyles: a reduced-motion override must beat every utility class */
+      animation-duration: 0.01ms !important;
+      transition-duration: 0.01ms !important;
+      /* biome-ignore-end lint/complexity/noImportantStyles: reduced-motion override */
+    }
+  }
 }

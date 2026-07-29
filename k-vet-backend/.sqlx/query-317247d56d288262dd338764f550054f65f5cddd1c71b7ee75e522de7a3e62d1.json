@@ -1,0 +1,196 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "invoice_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_number"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "invoice_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_date"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "status: InvoiceStatus",
+        "type_info": {
+          "Custom": {
+            "name": "invoice_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "accepted",
+                "submitted",
+                "cancelled"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "status"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "includes_finding",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "includes_finding"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "pdf_attachment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "pdf_attachment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "email_recipients",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "email_recipients"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "ts_accepted",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "ts_accepted"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "ts_sent_email",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "ts_sent_email"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "ts_submitted",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "ts_submitted"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "ts_cancelled",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "ts_cancelled"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "317247d56d288262dd338764f550054f65f5cddd1c71b7ee75e522de7a3e62d1"
+}

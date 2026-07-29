@@ -1,0 +1,12 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM picker_usage",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": []
+  },
+  "hash": "c3e0d15f058962f6a3ede8097d23d7c2287b9b188346f2a429e085c6c59b733c"
+}

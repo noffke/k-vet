@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT appointment_id FROM treatment WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "appointment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "appointment_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "4a91d2d23b9cf29697f2384b0748d276d370720877c2b7cb9ee651453e7419b5"
+}

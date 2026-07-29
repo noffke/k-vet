@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT vat_percent FROM drug WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "vat_percent"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "9eaf7c3566159726d1bc4b09589caf814eff2dbfdc2323e4a97ba88bb60da385"
+}

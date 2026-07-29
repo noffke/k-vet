@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT date_of_death FROM patient WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "date_of_death",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "date_of_death"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "3743e27efb4774fe9bc884609ad03ee5482dda6d142c0fbd407b4d2f5ed4a792"
+}

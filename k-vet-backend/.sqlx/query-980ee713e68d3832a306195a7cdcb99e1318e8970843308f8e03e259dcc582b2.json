@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT patient.customer_id\n         FROM treatment_patient\n         JOIN patient ON patient.id = treatment_patient.patient_id\n         WHERE treatment_patient.treatment_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "customer_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "980ee713e68d3832a306195a7cdcb99e1318e8970843308f8e03e259dcc582b2"
+}

@@ -1,0 +1,19 @@
+{
+  "$schema": "https://unpkg.com/knip@6/schema.json",
+  "entry": ["src/main.tsx", "tests/**/*.test.{ts,tsx}", "tests/setup.ts"],
+  "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx}"],
+  "ignore": ["src/api/generated/**"],
+  "ignoreDependencies": [
+    "tailwindcss",
+    "tw-animate-css",
+    "zod",
+    "react-hook-form",
+    "msw",
+    "@radix-ui/react-popover",
+    "@radix-ui/react-tooltip"
+  ],
+  "ignoreBinaries": ["biome"],
+  "vite": {
+    "config": ["vite.config.ts"]
+  }
+}

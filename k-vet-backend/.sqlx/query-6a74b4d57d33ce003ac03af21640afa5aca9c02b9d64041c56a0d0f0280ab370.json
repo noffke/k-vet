@@ -1,0 +1,197 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, gross_price, travel_expenses, hidden, archived, draft,\n                  created_at, updated_at\n           FROM service\n           WHERE ($2 OR NOT archived)\n             AND ($3 OR NOT hidden)\n             AND ($4::service_type IS NULL OR type = $4)\n             AND ($1::text IS NULL\n                  OR name ILIKE '%' || $1 || '%'\n                  OR got_number = $1)\n           ORDER BY got_number NULLS LAST, name NULLS LAST, id\n           LIMIT $5 OFFSET $6",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "service_type: ServiceType",
+        "type_info": {
+          "Custom": {
+            "name": "service_type",
+            "kind": {
+              "Enum": [
+                "got",
+                "self_defined"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "got_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "got_number"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "factor",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "factor"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "gross_price",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "gross_price"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "travel_expenses",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "travel_expenses"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "hidden",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "hidden"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "archived",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "archived"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool",
+        "Bool",
+        {
+          "Custom": {
+            "name": "service_type",
+            "kind": {
+              "Enum": [
+                "got",
+                "self_defined"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6a74b4d57d33ce003ac03af21640afa5aca9c02b9d64041c56a0d0f0280ab370"
+}

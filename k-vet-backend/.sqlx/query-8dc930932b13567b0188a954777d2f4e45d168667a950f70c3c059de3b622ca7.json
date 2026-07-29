@@ -1,0 +1,151 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, name, addr_addon, addr_street, addr_zip, addr_city, has_address,\n                  archived, draft, created_at, updated_at\n           FROM supplier\n           WHERE ($2 OR NOT archived)\n             AND ($1::text IS NULL OR name ILIKE '%' || $1 || '%')\n           ORDER BY name NULLS LAST, id\n           LIMIT $3 OFFSET $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "addr_addon",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "addr_addon"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "addr_street",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "addr_street"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "addr_zip",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "addr_zip"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "addr_city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "addr_city"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "has_address",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "has_address"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "archived",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "archived"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "supplier",
+            "name": "updated_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "8dc930932b13567b0188a954777d2f4e45d168667a950f70c3c059de3b622ca7"
+}

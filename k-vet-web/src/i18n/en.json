@@ -1,0 +1,316 @@
+{
+  "app": {
+    "name": "k-vet",
+    "practice": "Veterinary practice",
+    "language": "Language",
+    "logout": "Sign out"
+  },
+  "nav": {
+    "dashboard": "Dashboard",
+    "appointments": "Appointments",
+    "customers": "Customers",
+    "patients": "Patients",
+    "pharmacy": "Pharmacy",
+    "services": "Services",
+    "templates": "Treatment templates",
+    "invoices": "Invoices",
+    "settings": "Settings"
+  },
+  "login": {
+    "title": "Sign in",
+    "subtitle": "Practice management",
+    "username": "User name",
+    "password": "Password",
+    "submit": "Sign in",
+    "failed": "That user name and password do not match.",
+    "throttled": "Too many failed attempts. Wait a moment and try again."
+  },
+  "save": {
+    "saving": "Saving …",
+    "saved": "Saved",
+    "failed": "Not saved",
+    "retry": "Try again",
+    "hint": "Everything you type is saved automatically."
+  },
+  "record": {
+    "incomplete": "Incomplete",
+    "incompleteWithFields": "Incomplete — missing: {{fields}}",
+    "archived": "Archived",
+    "showArchived": "Show archived",
+    "archive": "Archive",
+    "unarchive": "Restore",
+    "warning": "Warning"
+  },
+  "field": {
+    "required": "Required",
+    "salutation": "Salutation",
+    "firstName": "First name",
+    "lastName": "Last name",
+    "secondName": "Second name",
+    "street": "Street and number",
+    "zip": "ZIP",
+    "city": "City",
+    "addon": "Address addon",
+    "phone": "Phone",
+    "email": "Email",
+    "emailType": "Type",
+    "warningRemark": "Warning",
+    "invoiceAddress": "Invoice address",
+    "homeAddress": "Address",
+    "name": "Name",
+    "sex": "Sex",
+    "species": "Species",
+    "race": "Breed",
+    "colour": "Colour",
+    "dateOfBirth": "Date of birth",
+    "dateOfDeath": "Date of death",
+    "chipNumber": "Chip number",
+    "euPassportNumber": "EU passport number",
+    "neutered": "Neutered",
+    "insured": "Insured",
+    "note": "Note",
+    "referenceDate": "Document date",
+    "quantity": "Quantity",
+    "unit": "Unit",
+    "price": "Price",
+    "vat": "VAT",
+    "factor": "Factor",
+    "gotNumber": "GOT no.",
+    "km": "Kilometres",
+    "kmMultiplier": "Multiplier (travel conditions)",
+    "manufacturer": "Manufacturer",
+    "supplier": "Supplier",
+    "listPrice": "List price (net)",
+    "salesPrice": "Sales price (gross)",
+    "batchNumber": "Batch number",
+    "expirationDate": "Expiry date",
+    "arrivalDate": "Arrival date",
+    "packagesReceived": "Packages received",
+    "reason": "Reason",
+    "startsAt": "Date and time",
+    "treatmentReason": "Reason for treatment",
+    "finding": "Finding",
+    "patient": "Patient",
+    "date": "Date",
+    "time": "Time"
+  },
+  "salutation": {
+    "frau": "Ms.",
+    "herr": "Mr.",
+    "familie": "Family"
+  },
+  "sex": {
+    "female": "female",
+    "male": "male",
+    "unknown": "unknown"
+  },
+  "emailType": {
+    "private": "private",
+    "work": "work",
+    "other": "other"
+  },
+  "species": {
+    "cat": "Cat",
+    "dog": "Dog"
+  },
+  "action": {
+    "new": "New",
+    "open": "Open",
+    "delete": "Delete",
+    "cancel": "Cancel",
+    "confirm": "Confirm",
+    "close": "Close",
+    "search": "Search",
+    "add": "Add",
+    "duplicate": "Duplicate",
+    "moveUp": "Move up",
+    "moveDown": "Move down",
+    "moveTop": "Move to top",
+    "moveBottom": "Move to bottom",
+    "upload": "Upload file",
+    "download": "Download",
+    "closeDialog": "Close dialog"
+  },
+  "value": {
+    "notANumber": "Not a valid number",
+    "notADate": "Not a valid date",
+    "mustBePositive": "Must be greater than 0",
+    "mustNotBeZero": "Must not be 0",
+    "invalidEmail": "Not a valid email address",
+    "invalidPhone": "Not a valid phone number"
+  },
+  "list": {
+    "empty": "Nothing here yet",
+    "loading": "Loading …",
+    "error": "Could not be loaded",
+    "searchPlaceholder": "Search …"
+  },
+  "customers": {
+    "title": "Customers",
+    "new": "New customer",
+    "patients": "Patients",
+    "emails": "Email addresses",
+    "addEmail": "Add email"
+  },
+  "patients": {
+    "title": "Patients",
+    "new": "New patient",
+    "files": "Files",
+    "photo": "Photo",
+    "deceasedArchived": "Date of death set — the patient was archived."
+  },
+  "appointments": {
+    "title": "Appointments",
+    "new": "New appointment",
+    "treatments": "Treatments",
+    "addTreatment": "Add treatment",
+    "duplicate": "Duplicate appointment",
+    "priceMode": "Prices",
+    "priceModeVerbatim": "Copy prices",
+    "priceModeRefresh": "Refresh prices"
+  },
+  "treatments": {
+    "title": "Treatment",
+    "items": "Lines",
+    "addItem": "Add line",
+    "applyTemplate": "Apply template",
+    "pickerPlaceholder": "Search a drug or service …",
+    "total": "Total",
+    "lots": "Lots",
+    "lotSelection": "Lot selection",
+    "shortfallWarning": "Stock is not sufficient — the dispense is recorded anyway.",
+    "files": "Files",
+    "kmHint": "One-way distance; billed per double kilometre."
+  },
+  "invoices": {
+    "title": "Invoices",
+    "create": "Create invoice",
+    "update": "Update invoice",
+    "includesFinding": "Include finding",
+    "number": "Invoice number",
+    "date": "Invoice date",
+    "status": "Status",
+    "accept": "Accept invoice",
+    "recipients": "Recipients",
+    "send": "Send email again",
+    "cancel": "Cancel invoice",
+    "submit": "Mark submitted to bookkeeping",
+    "bulkSubmit": "Mark all as submitted",
+    "bulkDownload": "Download all PDFs",
+    "pending": "Not yet submitted to bookkeeping",
+    "pdf": "PDF",
+    "acceptedWillCancel": "This invoice is accepted. Updating cancels it and burns its number.",
+    "cancelConfirm": "Cancel this invoice? Its number will never be reused.",
+    "status_created": "Created",
+    "status_accepted": "Accepted",
+    "status_submitted": "Submitted",
+    "status_cancelled": "Cancelled",
+    "submitShort": "Hand over",
+    "all": "All invoices",
+    "showCancelled": "Show cancelled",
+    "searchPlaceholder": "Search invoice number or customer …",
+    "nothingPending": "Nothing pending — all handed over",
+    "bulkSubmitConfirm": "Mark {{count}} invoices as handed over to bookkeeping? The time is recorded."
+  },
+  "pharmacy": {
+    "title": "Pharmacy",
+    "drugs": "Drugs",
+    "newDrug": "New drug",
+    "packagings": "Packagings",
+    "original": "Original packaging",
+    "subset": "Subset",
+    "stock": "Stock",
+    "intake": "Stock intake",
+    "lots": "Lots",
+    "remaining": "Remaining",
+    "correction": "Correction",
+    "movements": "Movements",
+    "priceOverride": "Price overridden manually",
+    "resetPrice": "Use the computed price",
+    "flags": {
+      "submissionReceipt": "Submission receipt",
+      "narcotic": "Narcotic",
+      "vaccine": "Vaccine",
+      "refrigerate": "Refrigerate",
+      "redesignation": "Redesignation"
+    },
+    "approvalNumber": "Approval number",
+    "subsetPriceDerived": "Derived from the original packaging",
+    "computedPerAmpreisv": "Computed per AMPreisV",
+    "flagsLegend": "Flags",
+    "showEmptyLots": "Show empty lots",
+    "intakeResult": "Adds {{quantity}} {{unit}} initial stock.",
+    "reversal": "Reversal",
+    "correctionHint": "Enter the counted stock — the difference is booked."
+  },
+  "services": {
+    "title": "Services",
+    "new": "New service",
+    "got": "GOT",
+    "selfDefined": "Self-defined",
+    "hidden": "Hidden",
+    "showHidden": "Show hidden",
+    "travelExpenses": "Travel expenses",
+    "searchPlaceholder": "Search a GOT number or a name …",
+    "gotHint": "A position of the GOT 2022 schedule — number and factor are required.",
+    "travelExpensesHint": "The price is computed from the kilometres driven (GOT § 10)."
+  },
+  "templates": {
+    "title": "Treatment templates",
+    "new": "New template",
+    "items": "Lines"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "pendingInvoices": "Invoices for bookkeeping",
+    "pendingInvoicesHint": "accepted, not yet submitted",
+    "expiringLots": "Lots expiring soon",
+    "expiringLotsHint": "the next five with remaining stock",
+    "noExpiring": "No lots with an expiry date and remaining stock."
+  },
+  "settings": {
+    "title": "Settings",
+    "practiceName": "Practice name",
+    "practiceAddress": "Address",
+    "iban": "IBAN",
+    "ustid": "VAT ID",
+    "logo": "Logo",
+    "ccEmails": "CC addresses",
+    "bccEmails": "BCC addresses",
+    "emailsHint": "One address per line.",
+    "noLogo": "No logo yet",
+    "copies": "Copies of every invoice email"
+  },
+  "error": {
+    "generic": "Something went wrong.",
+    "unauthorized": "Please sign in again.",
+    "notFound": "Not found."
+  },
+  "item": {
+    "patientRequired": "Drug lines need a patient",
+    "drugShapeInvalid": "Invalid values for a drug line",
+    "kmInvalid": "Kilometres and multiplier belong together"
+  },
+  "packaging": {
+    "supplierOnOriginalOnly": "Only original packagings have a supplier",
+    "originalAlreadyExists": "This drug already has an original packaging"
+  },
+  "service": {
+    "gotFieldsRequired": "GOT number and factor are required"
+  },
+  "lot": {
+    "originalPackagingOnly": "Stock exists for original packagings only"
+  },
+  "movement": {
+    "dispenseShapeInvalid": "Invalid dispense movement",
+    "correctionShapeInvalid": "Invalid correction movement"
+  },
+  "invoice": {
+    "liveInvoiceExists": "This treatment already has an invoice"
+  },
+  "patient": {
+    "sex": {
+      "invalid": "Invalid sex"
+    }
+  }
+}

@@ -1,0 +1,203 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,\n                  drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,\n                  drug.vat_percent, drug.approval_number, drug.archived, drug.draft,\n                  drug.created_at, drug.updated_at,\n                  manufacturer.name AS \"manufacturer_name?\",\n                  (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining\n                    WHERE lot_remaining.drug_id = drug.id) AS \"in_stock?\"\n           FROM drug\n           LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id\n           WHERE drug.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "manufacturer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "manufacturer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "submission_receipt",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "submission_receipt"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "narcotic",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "narcotic"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "vaccine",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "vaccine"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "refrigerate",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "refrigerate"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "redesignation",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "redesignation"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "approval_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "approval_number"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "archived",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "archived"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "manufacturer_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "manufacturer",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "in_stock?",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "016dc71dd561bf641c3eb5574a84edd2cde9b96a3dab28104171696ffc709455"
+}

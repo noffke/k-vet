@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment_reason, finding FROM treatment WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "treatment_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "treatment_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "finding",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "finding"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "039204deffea6ac7a6ea36143abcea6f8a6ea46b37851ecb4c7046927912dcfc"
+}

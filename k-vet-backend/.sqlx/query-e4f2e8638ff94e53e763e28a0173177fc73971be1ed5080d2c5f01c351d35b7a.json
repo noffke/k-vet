@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, manufacturer_id, vat_percent, draft FROM drug WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "manufacturer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "manufacturer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "draft"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "e4f2e8638ff94e53e763e28a0173177fc73971be1ed5080d2c5f01c351d35b7a"
+}

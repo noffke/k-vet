@@ -1,0 +1,26 @@
+# Local development / test database.
+#
+# de-DE: Lokale Entwicklungs- und Testdatenbank. Startet PostgreSQL auf Port 5432.
+# en-US: Local development and test database. Starts PostgreSQL on port 5432.
+#
+#   docker compose up -d db
+#   DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kvet
+      POSTGRES_PASSWORD: kvet
+      POSTGRES_DB: kvet
+    ports:
+      - "5432:5432"
+    volumes:
+      - kvet-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvet -d kvet"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+volumes:
+  kvet-db-data:

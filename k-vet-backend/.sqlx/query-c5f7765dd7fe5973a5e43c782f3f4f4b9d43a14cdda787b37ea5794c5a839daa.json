@@ -1,0 +1,31 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM customer\n           WHERE ($2 OR NOT archived)\n             AND ($1::text IS NULL\n                  OR last_name ILIKE '%' || $1 || '%'\n                  OR first_name ILIKE '%' || $1 || '%'\n                  OR second_last_name ILIKE '%' || $1 || '%'\n                  OR second_first_name ILIKE '%' || $1 || '%'\n                  OR home_city ILIKE '%' || $1 || '%')\n           ORDER BY last_name NULLS LAST, first_name NULLS LAST, id\n           LIMIT $3 OFFSET $4",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Bool",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "c5f7765dd7fe5973a5e43c782f3f4f4b9d43a14cdda787b37ea5794c5a839daa"
+}

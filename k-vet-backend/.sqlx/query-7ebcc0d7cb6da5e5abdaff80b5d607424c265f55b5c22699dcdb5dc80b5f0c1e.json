@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient_id FROM treatment_patient WHERE treatment_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "patient_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_patient",
+            "name": "patient_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "7ebcc0d7cb6da5e5abdaff80b5d607424c265f55b5c22699dcdb5dc80b5f0c1e"
+}

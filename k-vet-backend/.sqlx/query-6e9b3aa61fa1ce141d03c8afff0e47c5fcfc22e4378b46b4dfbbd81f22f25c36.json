@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT invoice.invoice_number, invoice.invoice_date, invoice.includes_finding,\n                  invoice.note, invoice.treatment_id,\n                  treatment.treatment_reason, treatment.finding,\n                  appointment.starts_at\n           FROM invoice\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE invoice.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "invoice_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_number"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "invoice_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_date"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "includes_finding",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "includes_finding"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "treatment_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "treatment_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "finding",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "finding"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "6e9b3aa61fa1ce141d03c8afff0e47c5fcfc22e4378b46b4dfbbd81f22f25c36"
+}

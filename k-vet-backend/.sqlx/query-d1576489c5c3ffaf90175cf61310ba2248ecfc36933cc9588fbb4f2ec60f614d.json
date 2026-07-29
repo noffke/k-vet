@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE patient SET\n               customer_id         = CASE WHEN $2  THEN $3  ELSE customer_id END,\n               name                = CASE WHEN $4  THEN $5  ELSE name END,\n               sex                 = CASE WHEN $6  THEN $7  ELSE sex END,\n               species             = CASE WHEN $8  THEN $9  ELSE species END,\n               race                = CASE WHEN $10 THEN $11 ELSE race END,\n               colour              = CASE WHEN $12 THEN $13 ELSE colour END,\n               date_of_birth       = CASE WHEN $14 THEN $15 ELSE date_of_birth END,\n               photo_attachment_id = CASE WHEN $16 THEN $17 ELSE photo_attachment_id END,\n               date_of_death       = CASE WHEN $18 THEN $19 ELSE date_of_death END,\n               chip_number         = CASE WHEN $20 THEN $21 ELSE chip_number END,\n               eu_passport_number  = CASE WHEN $22 THEN $23 ELSE eu_passport_number END,\n               warning_remark      = CASE WHEN $24 THEN $25 ELSE warning_remark END,\n               neutered            = COALESCE($26, neutered),\n               insured             = COALESCE($27, insured),\n               archived            = $28,\n               draft               = $29\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Date",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Date",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "d1576489c5c3ffaf90175cf61310ba2248ecfc36933cc9588fbb4f2ec60f614d"
+}

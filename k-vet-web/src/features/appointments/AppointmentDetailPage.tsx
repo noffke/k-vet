@@ -1,0 +1,315 @@
+import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate, useParams } from '@tanstack/react-router'
+import { Copy, Plus, Trash2 } from 'lucide-react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/api/fetcher'
+import {
+  getGetAppointmentQueryKey,
+  getListAppointmentsQueryKey,
+  getListTreatmentsQueryKey,
+  useCreateTreatment,
+  useDeleteAppointment,
+  useDuplicateAppointment,
+  useGetAppointment,
+  useListTreatments,
+  usePatchAppointment,
+} from '@/api/generated/endpoints'
+import type { Appointment, PriceMode } from '@/api/generated/model'
+import { DateInput } from '@/components/DateInput'
+import { PageHeader } from '@/components/PageHeader'
+import { IncompleteBadge } from '@/components/RecordBadges'
+import { SaveIndicator } from '@/components/SaveIndicator'
+import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
+import { Field, TextAreaField } from '@/components/ui/field'
+import { useAutoSave } from '@/lib/autosave'
+import { todayIso } from '@/lib/format'
+import { useLocaleFormat } from '@/lib/locale'
+
+/**
+ * One appointment: date and time (auto-saved), a note, and its treatments.
+ *
+ * The date defaults to today and the time is always typed by the vet — the appointment
+ * stays "incomplete" until it has one (FR-025).
+ */
+export function AppointmentDetailPage() {
+  const { t } = useTranslation()
+  const { id } = useParams({ from: '/app/appointments/$id' })
+  const appointmentId = Number(id)
+  const navigate = useNavigate()
+  const client = useQueryClient()
+  const { date: formatDate } = useLocaleFormat()
+
+  const appointment = useGetAppointment(appointmentId)
+  const treatments = useListTreatments(appointmentId)
+  const patchAppointment = usePatchAppointment()
+  const [duplicateOpen, setDuplicateOpen] = useState(false)
+
+  const autoSave = useAutoSave<Appointment>({
+    save: (patch) =>
+      patchAppointment.mutateAsync({
+        id: appointmentId,
+        data: patch as Parameters<typeof patchAppointment.mutateAsync>[0]['data'],
+      }),
+    onSaved: (updated) => {
+      client.setQueryData(getGetAppointmentQueryKey(appointmentId), updated)
+      void client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() })
+    },
+  })
+
+  const createTreatment = useCreateTreatment({
+    mutation: {
+      onSuccess: async (treatment) => {
+        await client.invalidateQueries({
+          queryKey: getListTreatmentsQueryKey(appointmentId),
+        })
+        await navigate({ to: '/treatments/$id', params: { id: String(treatment.id) } })
+      },
+    },
+  })
+
+  const duplicate = useDuplicateAppointment({
+    mutation: {
+      onSuccess: async (copy) => {
+        await client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() })
+        setDuplicateOpen(false)
+        await navigate({ to: '/appointments/$id', params: { id: String(copy.id) } })
+      },
+    },
+  })
+
+  const removeAppointment = useDeleteAppointment({
+    mutation: {
+      onSuccess: async () => {
+        await client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() })
+        await navigate({ to: '/appointments' })
+      },
+    },
+  })
+
+  if (appointment.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
+  if (!appointment.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
+
+  const record = appointment.data
+  const startsAt = record.starts_at ? new Date(record.starts_at) : null
+  const isoDate = startsAt ? localIsoDate(startsAt) : null
+  const isoTime = startsAt ? localTime(startsAt) : ''
+
+  /** Combines the typed date and time into the ISO timestamp the API stores. */
+  const writeStartsAt = (nextDate: string | null, nextTime: string) => {
+    const day = nextDate ?? isoDate ?? todayIso()
+    if (!nextTime) {
+      // Without a time the appointment stays incomplete — do not invent one.
+      autoSave.set({ starts_at: null })
+      return
+    }
+    const [hours = '0', minutes = '0'] = nextTime.split(':')
+    const combined = new Date(`${day}T00:00:00`)
+    combined.setHours(Number(hours), Number(minutes), 0, 0)
+    autoSave.set({ starts_at: combined.toISOString() })
+  }
+
+  // The generated hook types the error as `void`; the fetcher throws `ApiError`.
+  const deleteError: unknown = removeAppointment.error
+  const deleteBlocked = deleteError instanceof ApiError && deleteError.status === 409
+
+  return (
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        eyebrow={t('appointments.title')}
+        title={record.starts_at ? formatDate(record.starts_at) : t('appointments.new')}
+        actions={
+          <>
+            <SaveIndicator state={autoSave.state} error={autoSave.error} />
+            <Button onClick={() => setDuplicateOpen(true)}>
+              <Copy className="size-4" />
+              <span className="hidden sm:inline">{t('action.duplicate')}</span>
+            </Button>
+            <Button
+              variant="danger"
+              onClick={() => removeAppointment.mutate({ id: appointmentId })}
+              disabled={removeAppointment.isPending}
+            >
+              <Trash2 className="size-4" />
+              <span className="hidden sm:inline">{t('action.delete')}</span>
+            </Button>
+          </>
+        }
+      >
+        <IncompleteBadge missing={record.missing_fields} />
+      </PageHeader>
+
+      {deleteBlocked ? (
+        <p className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
+          {t('invoices.liveInvoiceExists')}
+        </p>
+      ) : null}
+
+      <section className="mt-5 grid gap-4 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
+        <DateInput
+          label={t('field.date')}
+          value={isoDate}
+          onChange={(next) => writeStartsAt(next, isoTime)}
+          error={autoSave.fieldErrors.starts_at ? t('field.required') : undefined}
+        />
+        <Field label={t('field.time')} error={undefined}>
+          {(fieldId) => (
+            <input
+              id={fieldId}
+              type="time"
+              value={isoTime}
+              onChange={(event) => writeStartsAt(isoDate, event.target.value)}
+              onBlur={() => void autoSave.flush()}
+              className="numeric w-full rounded-control border border-line-strong bg-surface px-3 py-2 min-h-11 sm:min-h-9"
+            />
+          )}
+        </Field>
+        <TextAreaField
+          label={t('field.note')}
+          defaultValue={record.note ?? ''}
+          wrapperClassName="sm:col-span-2"
+          onChange={(event) => autoSave.set({ note: event.target.value || null })}
+          onBlur={() => void autoSave.flush()}
+        />
+      </section>
+
+      <section className="mt-6">
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base">{t('appointments.treatments')}</h2>
+          <Button
+            variant="accent"
+            size="small"
+            disabled={record.draft || createTreatment.isPending}
+            title={record.draft ? t('record.incomplete') : undefined}
+            onClick={() => createTreatment.mutate({ id: appointmentId, data: { patient_ids: [] } })}
+          >
+            <Plus className="size-4" />
+            {t('appointments.addTreatment')}
+          </Button>
+        </div>
+
+        {record.draft ? (
+          <p className="mt-2 text-xs text-ink-faint">
+            {t('record.incompleteWithFields', {
+              fields: t('field.time'),
+            })}
+          </p>
+        ) : null}
+
+        <ul className="mt-3 flex flex-col gap-2">
+          {(treatments.data ?? []).map((treatment) => (
+            <li key={treatment.id}>
+              <button
+                type="button"
+                onClick={() =>
+                  void navigate({ to: '/treatments/$id', params: { id: String(treatment.id) } })
+                }
+                className="w-full rounded-card border border-line bg-surface px-3 py-3 text-left hover:bg-cream-soft"
+              >
+                <span className="flex flex-wrap items-center justify-between gap-2">
+                  <span className="font-medium text-ink">
+                    {treatment.patients.map((patient) => patient.name).join(', ') ||
+                      t('field.patient')}
+                  </span>
+                  <span className="numeric text-sm text-ink-soft">
+                    {treatment.invoice ? treatment.invoice.invoice_number : ''}
+                  </span>
+                </span>
+                {treatment.treatment_reason ? (
+                  <span className="mt-0.5 block text-sm text-ink-soft">
+                    {treatment.treatment_reason}
+                  </span>
+                ) : null}
+              </button>
+            </li>
+          ))}
+          {(treatments.data ?? []).length === 0 ? (
+            <li className="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-faint">
+              {t('list.empty')}
+            </li>
+          ) : null}
+        </ul>
+      </section>
+
+      <DuplicateDialog
+        open={duplicateOpen}
+        onOpenChange={setDuplicateOpen}
+        pending={duplicate.isPending}
+        onConfirm={(priceMode) =>
+          duplicate.mutate({ id: appointmentId, data: { price_mode: priceMode } })
+        }
+      />
+    </div>
+  )
+}
+
+/** Asks whether the copy keeps the stored prices or takes today's (FR-026). */
+function DuplicateDialog({
+  open,
+  onOpenChange,
+  pending,
+  onConfirm,
+  title,
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  pending: boolean
+  onConfirm: (priceMode: PriceMode) => void
+  title?: string
+}) {
+  const { t } = useTranslation()
+  const [priceMode, setPriceMode] = useState<PriceMode>('verbatim')
+
+  return (
+    <Dialog
+      open={open}
+      onOpenChange={onOpenChange}
+      title={title ?? t('appointments.duplicate')}
+      footer={
+        <>
+          <Button onClick={() => onOpenChange(false)}>{t('action.cancel')}</Button>
+          <Button variant="primary" disabled={pending} onClick={() => onConfirm(priceMode)}>
+            {t('action.duplicate')}
+          </Button>
+        </>
+      }
+    >
+      <fieldset className="flex flex-col gap-2 border-0 p-0">
+        <legend className="text-xs font-semibold text-ink-soft">
+          {t('appointments.priceMode')}
+        </legend>
+        {(['verbatim', 'refresh'] as PriceMode[]).map((mode) => (
+          <label
+            key={mode}
+            className="flex min-h-11 items-center gap-2 rounded-control border border-line px-3 sm:min-h-9"
+          >
+            <input
+              type="radio"
+              name="price-mode"
+              value={mode}
+              checked={priceMode === mode}
+              onChange={() => setPriceMode(mode)}
+              className="accent-ink"
+            />
+            <span className="text-sm">
+              {mode === 'verbatim'
+                ? t('appointments.priceModeVerbatim')
+                : t('appointments.priceModeRefresh')}
+            </span>
+          </label>
+        ))}
+      </fieldset>
+    </Dialog>
+  )
+}
+
+function localIsoDate(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}`
+}
+
+function localTime(date: Date): string {
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${pad(date.getHours())}:${pad(date.getMinutes())}`
+}

@@ -1,0 +1,316 @@
+{
+  "app": {
+    "name": "k-vet",
+    "practice": "Tierarztpraxis",
+    "language": "Sprache",
+    "logout": "Abmelden"
+  },
+  "nav": {
+    "dashboard": "Übersicht",
+    "appointments": "Termine",
+    "customers": "Kunden",
+    "patients": "Patienten",
+    "pharmacy": "Apotheke",
+    "services": "Leistungen",
+    "templates": "Behandlungsgruppen",
+    "invoices": "Rechnungen",
+    "settings": "Einstellungen"
+  },
+  "login": {
+    "title": "Anmelden",
+    "subtitle": "Praxisverwaltung",
+    "username": "Benutzername",
+    "password": "Passwort",
+    "submit": "Anmelden",
+    "failed": "Benutzername oder Passwort ist falsch.",
+    "throttled": "Zu viele Fehlversuche. Bitte kurz warten."
+  },
+  "save": {
+    "saving": "Speichert …",
+    "saved": "Gespeichert",
+    "failed": "Nicht gespeichert",
+    "retry": "Erneut versuchen",
+    "hint": "Eingaben werden automatisch gespeichert."
+  },
+  "record": {
+    "incomplete": "Unvollständig",
+    "incompleteWithFields": "Unvollständig — fehlt: {{fields}}",
+    "archived": "Archiviert",
+    "showArchived": "Archivierte anzeigen",
+    "archive": "Archivieren",
+    "unarchive": "Wiederherstellen",
+    "warning": "Warnhinweis"
+  },
+  "field": {
+    "required": "Pflichtfeld",
+    "salutation": "Anrede",
+    "firstName": "Vorname",
+    "lastName": "Nachname",
+    "secondName": "Zweiter Name",
+    "street": "Straße und Hausnummer",
+    "zip": "PLZ",
+    "city": "Ort",
+    "addon": "Adresszusatz",
+    "phone": "Telefon",
+    "email": "E-Mail",
+    "emailType": "Art",
+    "warningRemark": "Warnhinweis",
+    "invoiceAddress": "Rechnungsadresse",
+    "homeAddress": "Adresse",
+    "name": "Name",
+    "sex": "Geschlecht",
+    "species": "Tierart",
+    "race": "Rasse",
+    "colour": "Farbe",
+    "dateOfBirth": "Geburtsdatum",
+    "dateOfDeath": "Todesdatum",
+    "chipNumber": "Chipnummer",
+    "euPassportNumber": "EU-Ausweisnummer",
+    "neutered": "Kastriert",
+    "insured": "Versichert",
+    "note": "Notiz",
+    "referenceDate": "Datum des Dokuments",
+    "quantity": "Menge",
+    "unit": "Einheit",
+    "price": "Preis",
+    "vat": "USt.",
+    "factor": "Faktor",
+    "gotNumber": "GOT-Nr.",
+    "km": "Kilometer",
+    "kmMultiplier": "Faktor (Verkehrsverhältnisse)",
+    "manufacturer": "Hersteller",
+    "supplier": "Lieferant",
+    "listPrice": "Listenpreis (netto)",
+    "salesPrice": "Verkaufspreis (brutto)",
+    "batchNumber": "Chargennummer",
+    "expirationDate": "Verfallsdatum",
+    "arrivalDate": "Wareneingang",
+    "packagesReceived": "Anzahl Packungen",
+    "reason": "Grund",
+    "startsAt": "Datum und Uhrzeit",
+    "treatmentReason": "Behandlungsgrund",
+    "finding": "Befund",
+    "patient": "Patient",
+    "date": "Datum",
+    "time": "Uhrzeit"
+  },
+  "salutation": {
+    "frau": "Frau",
+    "herr": "Herr",
+    "familie": "Familie"
+  },
+  "sex": {
+    "female": "weiblich",
+    "male": "männlich",
+    "unknown": "unbekannt"
+  },
+  "emailType": {
+    "private": "privat",
+    "work": "geschäftlich",
+    "other": "sonstige"
+  },
+  "species": {
+    "cat": "Katze",
+    "dog": "Hund"
+  },
+  "action": {
+    "new": "Neu",
+    "open": "Öffnen",
+    "delete": "Löschen",
+    "cancel": "Abbrechen",
+    "confirm": "Bestätigen",
+    "close": "Schließen",
+    "search": "Suchen",
+    "add": "Hinzufügen",
+    "duplicate": "Duplizieren",
+    "moveUp": "Nach oben",
+    "moveDown": "Nach unten",
+    "moveTop": "An den Anfang",
+    "moveBottom": "An das Ende",
+    "upload": "Datei hochladen",
+    "download": "Herunterladen",
+    "closeDialog": "Dialog schließen"
+  },
+  "value": {
+    "notANumber": "Keine gültige Zahl",
+    "notADate": "Kein gültiges Datum",
+    "mustBePositive": "Muss größer als 0 sein",
+    "mustNotBeZero": "Darf nicht 0 sein",
+    "invalidEmail": "Keine gültige E-Mail-Adresse",
+    "invalidPhone": "Keine gültige Telefonnummer"
+  },
+  "list": {
+    "empty": "Keine Einträge",
+    "loading": "Lädt …",
+    "error": "Konnte nicht geladen werden",
+    "searchPlaceholder": "Suchen …"
+  },
+  "customers": {
+    "title": "Kunden",
+    "new": "Neuer Kunde",
+    "patients": "Patienten",
+    "emails": "E-Mail-Adressen",
+    "addEmail": "E-Mail hinzufügen"
+  },
+  "patients": {
+    "title": "Patienten",
+    "new": "Neuer Patient",
+    "files": "Dateien",
+    "photo": "Foto",
+    "deceasedArchived": "Todesdatum gesetzt — Patient wurde archiviert."
+  },
+  "appointments": {
+    "title": "Termine",
+    "new": "Neuer Termin",
+    "treatments": "Behandlungen",
+    "addTreatment": "Behandlung hinzufügen",
+    "duplicate": "Termin duplizieren",
+    "priceMode": "Preise",
+    "priceModeVerbatim": "Preise übernehmen",
+    "priceModeRefresh": "Preise aktualisieren"
+  },
+  "treatments": {
+    "title": "Behandlung",
+    "items": "Positionen",
+    "addItem": "Position hinzufügen",
+    "applyTemplate": "Behandlungsgruppe anwenden",
+    "pickerPlaceholder": "Medikament oder Leistung suchen …",
+    "total": "Summe",
+    "lots": "Chargen",
+    "lotSelection": "Chargenauswahl",
+    "shortfallWarning": "Bestand reicht nicht aus — Abgabe wird trotzdem gebucht.",
+    "files": "Dateien",
+    "kmHint": "Einfache Strecke; abgerechnet wird je Doppelkilometer."
+  },
+  "invoices": {
+    "title": "Rechnungen",
+    "create": "Rechnung erstellen",
+    "update": "Rechnung aktualisieren",
+    "includesFinding": "Befund aufführen",
+    "number": "Rechnungsnummer",
+    "date": "Rechnungsdatum",
+    "status": "Status",
+    "accept": "Rechnung freigeben",
+    "recipients": "Empfänger",
+    "send": "E-Mail erneut senden",
+    "cancel": "Rechnung stornieren",
+    "submit": "An Buchhaltung übergeben",
+    "bulkSubmit": "Alle als übergeben markieren",
+    "bulkDownload": "Alle PDFs herunterladen",
+    "pending": "Noch nicht an die Buchhaltung übergeben",
+    "pdf": "PDF",
+    "acceptedWillCancel": "Diese Rechnung ist freigegeben. Beim Aktualisieren wird sie storniert und die Nummer verfällt.",
+    "cancelConfirm": "Rechnung wirklich stornieren? Die Nummer wird nicht wiederverwendet.",
+    "status_created": "Erstellt",
+    "status_accepted": "Freigegeben",
+    "status_submitted": "Übergeben",
+    "status_cancelled": "Storniert",
+    "submitShort": "Übergeben",
+    "all": "Alle Rechnungen",
+    "showCancelled": "Stornierte anzeigen",
+    "searchPlaceholder": "Rechnungsnummer oder Kunde suchen …",
+    "nothingPending": "Nichts offen — alles übergeben",
+    "bulkSubmitConfirm": "{{count}} Rechnungen als an die Buchhaltung übergeben markieren? Der Zeitpunkt wird festgehalten."
+  },
+  "pharmacy": {
+    "title": "Apotheke",
+    "drugs": "Medikamente",
+    "newDrug": "Neues Medikament",
+    "packagings": "Packungen",
+    "original": "Originalpackung",
+    "subset": "Teilmenge",
+    "stock": "Bestand",
+    "intake": "Wareneingang",
+    "lots": "Chargen",
+    "remaining": "Restbestand",
+    "correction": "Korrektur",
+    "movements": "Bewegungen",
+    "priceOverride": "Preis manuell überschrieben",
+    "resetPrice": "Berechneten Preis verwenden",
+    "flags": {
+      "submissionReceipt": "Abgabebeleg",
+      "narcotic": "BTM",
+      "vaccine": "Impfstoff",
+      "refrigerate": "Kühlpflichtig",
+      "redesignation": "Umwidmung"
+    },
+    "approvalNumber": "Zulassungsnummer",
+    "subsetPriceDerived": "Wird aus der Originalpackung berechnet",
+    "computedPerAmpreisv": "Berechnet nach AMPreisV",
+    "flagsLegend": "Kennzeichen",
+    "showEmptyLots": "Leere Chargen anzeigen",
+    "intakeResult": "Ergibt {{quantity}} {{unit}} Anfangsbestand.",
+    "reversal": "Storno",
+    "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht."
+  },
+  "services": {
+    "title": "Leistungen",
+    "new": "Neue Leistung",
+    "got": "GOT",
+    "selfDefined": "Eigene Leistung",
+    "hidden": "Ausgeblendet",
+    "showHidden": "Ausgeblendete anzeigen",
+    "travelExpenses": "Wegegeld",
+    "searchPlaceholder": "GOT-Nummer oder Bezeichnung suchen …",
+    "gotHint": "Position aus der GOT 2022 — Nummer und Faktor sind Pflicht.",
+    "travelExpensesHint": "Der Preis wird aus den gefahrenen Kilometern berechnet (GOT § 10)."
+  },
+  "templates": {
+    "title": "Behandlungsgruppen",
+    "new": "Neue Behandlungsgruppe",
+    "items": "Positionen"
+  },
+  "dashboard": {
+    "title": "Übersicht",
+    "pendingInvoices": "Rechnungen für die Buchhaltung",
+    "pendingInvoicesHint": "freigegeben, noch nicht übergeben",
+    "expiringLots": "Chargen mit nahem Verfall",
+    "expiringLotsHint": "die fünf nächsten mit Restbestand",
+    "noExpiring": "Keine Chargen mit Verfallsdatum und Restbestand."
+  },
+  "settings": {
+    "title": "Einstellungen",
+    "practiceName": "Name der Praxis",
+    "practiceAddress": "Adresse",
+    "iban": "IBAN",
+    "ustid": "USt-IdNr.",
+    "logo": "Logo",
+    "ccEmails": "CC-Adressen",
+    "bccEmails": "BCC-Adressen",
+    "emailsHint": "Eine Adresse pro Zeile.",
+    "noLogo": "Kein Logo hinterlegt",
+    "copies": "Kopien jeder Rechnungsmail"
+  },
+  "error": {
+    "generic": "Etwas ist schiefgelaufen.",
+    "unauthorized": "Bitte erneut anmelden.",
+    "notFound": "Nicht gefunden."
+  },
+  "item": {
+    "patientRequired": "Für Medikamente ist ein Patient erforderlich",
+    "drugShapeInvalid": "Ungültige Angaben für eine Medikamentenposition",
+    "kmInvalid": "Kilometer und Faktor müssen zusammen angegeben werden"
+  },
+  "packaging": {
+    "supplierOnOriginalOnly": "Nur Originalpackungen haben einen Lieferanten",
+    "originalAlreadyExists": "Es gibt bereits eine Originalpackung"
+  },
+  "service": {
+    "gotFieldsRequired": "GOT-Nummer und Faktor sind erforderlich"
+  },
+  "lot": {
+    "originalPackagingOnly": "Bestand gibt es nur für Originalpackungen"
+  },
+  "movement": {
+    "dispenseShapeInvalid": "Ungültige Abgabebuchung",
+    "correctionShapeInvalid": "Ungültige Korrekturbuchung"
+  },
+  "invoice": {
+    "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung"
+  },
+  "patient": {
+    "sex": {
+      "invalid": "Ungültiges Geschlecht"
+    }
+  }
+}

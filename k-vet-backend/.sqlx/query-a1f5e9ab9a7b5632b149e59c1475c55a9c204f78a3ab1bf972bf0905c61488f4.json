@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lot.id, lot.packaging_id, lot.arrival_date, lot.packages_received,\n                  lot.initial_quantity, lot.batch_number, lot.expiration_date, lot.created_at,\n                  packaging.drug_id, packaging.unit, drug.name AS \"drug_name?\",\n                  remaining.remaining AS \"remaining?\"\n           FROM drug_stock_lot lot\n           JOIN drug_packaging packaging ON packaging.id = lot.packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN lot_remaining remaining ON remaining.lot_id = lot.id\n           WHERE lot.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "packaging_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "arrival_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "arrival_date"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "packages_received",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "packages_received"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "initial_quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "initial_quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "batch_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "batch_number"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "expiration_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "expiration_date"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "drug_stock_lot",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "drug_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "drug_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "drug_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "remaining?",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "remaining"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "a1f5e9ab9a7b5632b149e59c1475c55a9c204f78a3ab1bf972bf0905c61488f4"
+}

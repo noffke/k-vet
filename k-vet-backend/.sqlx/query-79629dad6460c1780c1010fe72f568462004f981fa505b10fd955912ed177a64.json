@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason)\n         VALUES ($1, 'correction', $2, $3)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "79629dad6460c1780c1010fe72f568462004f981fa505b10fd955912ed177a64"
+}

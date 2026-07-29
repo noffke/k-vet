@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment SET\n               treatment_reason = CASE WHEN $2 THEN $3 ELSE treatment_reason END,\n               finding          = CASE WHEN $4 THEN $5 ELSE finding END\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "039ae07dbe49eba77f20220f439ac2cc3e33992dd587dc9d8bdb4b65f8c288e8"
+}

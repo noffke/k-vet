@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO treatment_patient (treatment_id, patient_id)\n         SELECT $1, patient_id FROM treatment_patient WHERE treatment_id = $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "35f128895b18f781ae9523d18f02a3bb1b6b9e5f25d3caf4e1d5851e94c29478"
+}

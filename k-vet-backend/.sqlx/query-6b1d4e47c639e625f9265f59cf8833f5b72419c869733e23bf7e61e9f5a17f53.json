@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM patient\n         WHERE draft AND created_at < $1\n           AND customer_id IS NULL AND name IS NULL AND sex IS NULL AND species IS NULL\n           AND NOT EXISTS (SELECT 1 FROM treatment_patient WHERE patient_id = patient.id)\n           AND NOT EXISTS (SELECT 1 FROM attachment WHERE patient_id = patient.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6b1d4e47c639e625f9265f59cf8833f5b72419c869733e23bf7e61e9f5a17f53"
+}

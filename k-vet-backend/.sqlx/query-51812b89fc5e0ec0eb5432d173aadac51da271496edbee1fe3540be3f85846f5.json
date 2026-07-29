@@ -1,0 +1,115 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH stock AS (\n               -- Stock lives on the original packaging, so it is reported per drug: a\n               -- subset entry shows what is actually on the shelf, in base units.\n               SELECT drug_id, SUM(remaining) AS remaining\n               FROM lot_remaining GROUP BY drug_id\n           )\n           SELECT 'drug_packaging' AS kind,\n                  packaging.id            AS id,\n                  drug.id                 AS reference_id,\n                  drug.name               AS name,\n                  packaging.unit          AS unit,\n                  packaging.quantity      AS quantity,\n                  packaging.sales_price_gross AS price_gross,\n                  drug.vat_percent        AS vat_percent,\n                  COALESCE(stock.remaining, 0) AS in_stock,\n                  NULL::text              AS got_number,\n                  NULL::numeric           AS factor,\n                  false                   AS travel_expenses,\n                  COALESCE(usage.uses, 0) AS uses,\n                  CASE WHEN $1::text IS NULL THEN 0\n                       ELSE similarity(drug.name, $1) END AS score\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN picker_usage usage\n                  ON usage.kind = 'drug_packaging' AND usage.item_id = packaging.id\n           LEFT JOIN stock ON stock.drug_id = packaging.drug_id\n           WHERE NOT packaging.draft AND NOT packaging.archived\n             AND NOT drug.draft AND NOT drug.archived\n             -- No search term: only what the practice has used before.\n             AND ($1::text IS NOT NULL OR COALESCE(usage.uses, 0) > 0)\n             AND ($1::text IS NULL OR drug.name ILIKE '%' || $1 || '%'\n                  OR similarity(drug.name, $1) > 0.2)\n\n           UNION ALL\n\n           SELECT 'service' AS kind,\n                  service.id        AS id,\n                  service.id        AS reference_id,\n                  service.name      AS name,\n                  NULL::text        AS unit,\n                  NULL::numeric     AS quantity,\n                  service.gross_price AS price_gross,\n                  service.vat_percent AS vat_percent,\n                  0::numeric        AS in_stock,\n                  service.got_number AS got_number,\n                  service.factor    AS factor,\n                  service.travel_expenses AS travel_expenses,\n                  COALESCE(usage.uses, 0) AS uses,\n                  CASE WHEN $1::text IS NULL THEN 0\n                       ELSE similarity(service.name, $1) END AS score\n           FROM service\n           LEFT JOIN picker_usage usage\n                  ON usage.kind = 'service' AND usage.item_id = service.id\n           WHERE NOT service.draft AND NOT service.archived AND NOT service.hidden\n             AND ($1::text IS NOT NULL OR COALESCE(usage.uses, 0) > 0)\n             AND ($1::text IS NULL OR service.name ILIKE '%' || $1 || '%'\n                  OR service.got_number = $1\n                  OR similarity(service.name, $1) > 0.2)\n\n           ORDER BY uses DESC, score DESC, name ASC\n           LIMIT $2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "reference_id",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "price_gross",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "in_stock",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 9,
+        "name": "got_number",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 10,
+        "name": "factor",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "travel_expenses",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 12,
+        "name": "uses",
+        "type_info": "Int8",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "score",
+        "type_info": "Float4",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "51812b89fc5e0ec0eb5432d173aadac51da271496edbee1fe3540be3f85846f5"
+}

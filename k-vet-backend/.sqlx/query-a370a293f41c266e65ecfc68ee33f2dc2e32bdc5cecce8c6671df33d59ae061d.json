@@ -1,0 +1,29 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment_template_item SET quantity = COALESCE($2, quantity)\n         WHERE id = $1 RETURNING template_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "template_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_template_item",
+            "name": "template_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "a370a293f41c266e65ecfc68ee33f2dc2e32bdc5cecce8c6671df33d59ae061d"
+}

@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name, gross_price, vat_percent, factor, got_number, travel_expenses,\n                          draft, archived\n                   FROM service WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "gross_price",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "gross_price"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "factor",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "factor"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "got_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "got_number"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "travel_expenses",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "travel_expenses"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "archived",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "archived"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "c7f37d28e992c03ba9ac689a3fcc8ed8712b193fbb7aead926890380a9310cae"
+}

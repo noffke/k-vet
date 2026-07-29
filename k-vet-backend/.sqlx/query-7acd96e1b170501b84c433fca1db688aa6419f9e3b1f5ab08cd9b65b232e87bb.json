@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE manufacturer SET\n               name        = CASE WHEN $2 THEN $3 ELSE name END,\n               addr_addon  = CASE WHEN $4 THEN $5 ELSE addr_addon END,\n               addr_street = CASE WHEN $6 THEN $7 ELSE addr_street END,\n               addr_zip    = CASE WHEN $8 THEN $9 ELSE addr_zip END,\n               addr_city   = CASE WHEN $10 THEN $11 ELSE addr_city END,\n               draft       = $12\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "7acd96e1b170501b84c433fca1db688aa6419f9e3b1f5ab08cd9b65b232e87bb"
+}

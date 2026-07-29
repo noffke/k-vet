@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE invoice\n         SET status = 'accepted', ts_accepted = now(), email_recipients = $2\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "0f083b54227c00e6838a234c5cef1aa69ffe118ee39a446411ddf2e808b7d7bf"
+}

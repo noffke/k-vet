@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM appointment\n         WHERE draft AND created_at < $1 AND starts_at IS NULL\n           AND NOT EXISTS (SELECT 1 FROM treatment WHERE appointment_id = appointment.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cb98301ede71614bf64d97d3acf1fcd4392ea580702ce9e2b01e7daba00451d6"
+}

@@ -1,0 +1,268 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient.id, patient.customer_id, patient.name, patient.sex, patient.species,\n                  patient.race, patient.colour, patient.date_of_birth,\n                  patient.photo_attachment_id, patient.date_of_death, patient.chip_number,\n                  patient.eu_passport_number, patient.warning_remark, patient.neutered,\n                  patient.insured, patient.archived, patient.draft, patient.created_at,\n                  patient.updated_at,\n                  customer.first_name AS \"customer_first_name?\",\n                  customer.last_name AS \"customer_last_name?\"\n           FROM patient\n           LEFT JOIN customer ON customer.id = patient.customer_id\n           WHERE patient.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "customer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sex",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "sex"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "species",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "species"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "race",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "race"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "colour",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "colour"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "date_of_birth",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "date_of_birth"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "photo_attachment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "photo_attachment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "date_of_death",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "date_of_death"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "chip_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "chip_number"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "eu_passport_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "eu_passport_number"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "warning_remark",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "warning_remark"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "neutered",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "neutered"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "insured",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "insured"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "archived",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "archived"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 18,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "customer_first_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "customer_last_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "last_name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true
+    ]
+  },
+  "hash": "690a66e768fc9ed0c6087f8ea566fd2075490936d4a337fee9b85badc8d9c7fd"
+}

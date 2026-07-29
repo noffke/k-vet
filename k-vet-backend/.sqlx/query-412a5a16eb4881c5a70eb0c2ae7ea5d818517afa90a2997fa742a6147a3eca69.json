@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug_packaging SET\n                 list_price_net    = $2,\n                 sales_price_gross = CASE WHEN price_overridden THEN sales_price_gross ELSE $3 END\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "412a5a16eb4881c5a70eb0c2ae7ea5d818517afa90a2997fa742a6147a3eca69"
+}

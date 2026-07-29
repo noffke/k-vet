@@ -1,0 +1,142 @@
+# =============================================================================
+# k-vet — Konfigurationsdatei / configuration file
+#
+# de-DE: Diese Datei enthält alle Einstellungen, die *nicht* in der Oberfläche
+#        geändert werden können (Infrastruktur, Geheimnisse, strukturelle
+#        Festlegungen). Praxisname, Adresse, IBAN, USt-IdNr., Logo und
+#        globale CC/BCC-Adressen werden dagegen in der Anwendung unter
+#        "Einstellungen" gepflegt.
+# en-US: This file holds every setting that cannot be changed from the UI
+#        (infrastructure, secrets, structural choices). Practice name, address,
+#        IBAN, VAT ID, logo and global CC/BCC addresses live in the database and
+#        are edited on the application's settings page.
+#
+# de-DE: Pfad der Datei: Umgebungsvariable KVET_CONFIG, erstes Kommandozeilen-
+#        argument, oder Standard /etc/k-vet/config.toml.
+# en-US: File path: KVET_CONFIG environment variable, first command line
+#        argument, or the default /etc/k-vet/config.toml.
+#
+# de-DE: Geldbeträge und Prozentsätze werden als Zeichenketten geschrieben
+#        ("3.50"), damit sie exakt (ohne Gleitkommafehler) gelesen werden.
+#        Dezimaltrennzeichen ist hier immer der Punkt.
+# en-US: Money amounts and percentages are written as strings ("3.50") so they
+#        are read exactly (no floating point error). The decimal separator here
+#        is always a dot.
+# =============================================================================
+
+[server]
+# de-DE: Adresse und Port, auf denen der Dienst lauscht.
+# en-US: Address and port the service listens on.
+listen_address = "127.0.0.1"
+port = 8080
+
+# de-DE: Öffentliche Basis-URL (für Links in E-Mails).
+# en-US: Public base URL (used for links in emails).
+base_url = "http://localhost:8080"
+
+# de-DE: Log-Level: error, warn, info, debug, trace. Zur Laufzeit über die
+#        Umgebungsvariable RUST_LOG überschreibbar.
+# en-US: Log level: error, warn, info, debug, trace. Overridable at runtime via
+#        the RUST_LOG environment variable.
+log_level = "info"
+
+[auth]
+# de-DE: Der einzige Benutzer der Anwendung. Das Passwort wird ausschließlich
+#        als argon2id-Hash gespeichert — niemals im Klartext.
+#        Hash erzeugen: k-vet-backend --hash-password
+# en-US: The application's single user. The password is stored only as an
+#        argon2id hash — never in clear text.
+#        Generate a hash with: k-vet-backend --hash-password
+username = "tierarzt"
+# de-DE: Beispiel-Hash für das Passwort "changeme" — unbedingt ersetzen!
+# en-US: Example hash for the password "changeme" — replace it!
+password_hash = "$argon2id$v=19$m=19456,t=2,p=1$66WePpMhzweyGeRaUqQ7vw$fUWFDYcEd0FaZ05sARVZyiyju8FxLLutovVC896t/fM"
+
+[database]
+# de-DE: PostgreSQL-Verbindung.
+# en-US: PostgreSQL connection string.
+url = "postgres://kvet:kvet@localhost:5432/kvet"
+
+# de-DE: Maximale Anzahl gleichzeitiger Datenbankverbindungen.
+# en-US: Maximum number of concurrent database connections.
+max_connections = 5
+
+[storage]
+# de-DE: Verzeichnis für Anhänge (Fotos, Befunde, Rechnungs-PDFs, Logo).
+#        Muss auf demselben Datenträger wie die Datenbank liegen und in die
+#        Sicherung eingeschlossen werden.
+# en-US: Directory for attachments (photos, lab reports, invoice PDFs, logo).
+#        Keep it on the same volume as the database and include it in backups.
+attachments_dir = "/var/lib/k-vet/attachments"
+
+# de-DE: Maximale Uploadgröße in Megabyte.
+# en-US: Maximum upload size in megabytes.
+max_upload_mb = 25
+
+[mail]
+# de-DE: Postausgangsserver für den Rechnungsversand.
+# en-US: Outbound SMTP server used to send invoices.
+smtp_host = "smtp.example.com"
+smtp_port = 587
+
+# de-DE: STARTTLS (Port 587) oder implizites TLS (Port 465).
+# en-US: STARTTLS (port 587) or implicit TLS (port 465).
+smtp_tls = "starttls"
+
+smtp_username = "praxis@example.com"
+smtp_password = "CHANGEME"
+
+# de-DE: Absender der Rechnungs-E-Mails.
+# en-US: Sender of the invoice emails.
+from_address = "praxis@example.com"
+from_name = "Tierarztpraxis"
+
+[invoice]
+# de-DE: Muster der Rechnungsnummer. Platzhalter: {year} (4-stellig),
+#        {month} (2-stellig) und {counter} bzw. {counter:N} (mit Nullen auf N
+#        Stellen aufgefüllt). Der Zählerbereich ergibt sich aus den Datums-
+#        platzhaltern: {year} → jährlicher Neustart, {year}+{month} → monatlich,
+#        ohne Datumsteil → ein durchlaufender Zähler. Muss {counter} enthalten.
+#        Beispiele: "{year}-{counter:4}" → 2026-0042
+#                   "R-{year}/{month}/{counter:5}" → R-2026/03/00042
+# en-US: Invoice number pattern. Placeholders: {year} (4 digits), {month}
+#        (2 digits) and {counter} or {counter:N} (zero padded to N digits).
+#        The counter scope follows the pattern's date parts: {year} → yearly
+#        reset, {year}+{month} → monthly, no date part → one global counter.
+#        Must contain {counter}.
+number_pattern = "{year}-{counter:4}"
+
+# de-DE: Währung (praxisweit konstant).
+# en-US: Currency (constant practice-wide).
+currency = "EUR"
+
+# de-DE: Auswahlmöglichkeiten für den Steuersatz bei neuen Medikamenten und
+#        Leistungen (Prozent). Der tatsächliche Satz wird pro Datensatz und pro
+#        Rechnungsposition gespeichert.
+# en-US: VAT rate choices offered for new drugs and services (percent). The
+#        effective rate is stored per record and pinned per invoice line.
+vat_rates = ["19.000", "7.000"]
+
+# de-DE: Optionaler Pfad zu einer eigenen Typst-Rechnungsvorlage. Leer = die
+#        im Programm eingebettete Vorlage wird verwendet.
+# en-US: Optional path to a custom Typst invoice template. Empty = use the
+#        template embedded in the binary.
+typst_template = ""
+
+# de-DE: Optionaler Pfad zur Vorlage der Rechnungs-E-Mail (minijinja/Jinja,
+#        reiner Text, UTF-8). Die erste Zeile ist die Betreffvorlage, danach
+#        eine Leerzeile, dann der Text. Leer = eingebettete Vorlage.
+# en-US: Optional path to the invoice email template (minijinja/Jinja, plain
+#        text, UTF-8). The first line is the subject template, followed by a
+#        blank line and the body. Empty = embedded template.
+email_template = ""
+
+[travel_expenses]
+# de-DE: Wegegeld nach GOT 2022 § 10: je Doppelkilometer 3,50 €, mindestens
+#        13,00 € insgesamt. Der Multiplikator (×1 bis ×3) wird pro Position
+#        erfasst.
+# en-US: Travel expenses per GOT 2022 § 10: EUR 3.50 per double kilometer,
+#        at least EUR 13.00 in total. The multiplier (x1 to x3) is entered per
+#        invoice line.
+rate_per_double_km = "3.50"
+minimum = "13.00"

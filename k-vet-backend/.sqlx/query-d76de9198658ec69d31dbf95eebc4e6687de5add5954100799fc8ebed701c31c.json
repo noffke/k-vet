@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT lot.lot_id AS \"lot_id!\", lot.drug_id AS \"drug_id!\",\n                  drug.name AS \"drug_name?\", lot.batch_number,\n                  lot.expiration_date AS \"expiration_date!\", lot.remaining AS \"remaining!\",\n                  packaging.unit\n           FROM lot_remaining lot\n           JOIN drug_packaging packaging ON packaging.id = lot.packaging_id\n           JOIN drug ON drug.id = lot.drug_id\n           WHERE lot.expiration_date IS NOT NULL\n             AND lot.remaining > 0\n             AND NOT drug.archived\n           ORDER BY lot.expiration_date, lot.lot_id\n           LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "lot_id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "lot_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "drug_id!",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "drug_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "drug_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "batch_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "batch_number"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "expiration_date!",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "expiration_date"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "remaining!",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "remaining"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "d76de9198658ec69d31dbf95eebc4e6687de5add5954100799fc8ebed701c31c"
+}

@@ -1,0 +1,110 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT type AS \"service_type: ServiceType\", name, got_number, factor, vat_percent,\n                  gross_price, draft\n           FROM service WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "service_type: ServiceType",
+        "type_info": {
+          "Custom": {
+            "name": "service_type",
+            "kind": {
+              "Enum": [
+                "got",
+                "self_defined"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "type"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "got_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "got_number"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "factor",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "factor"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "gross_price",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "gross_price"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "draft"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "c66af733d539b690003446be43e3d2b5fefd7e8bb0a20f949d0f6412c1612112"
+}

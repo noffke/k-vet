@@ -1,0 +1,11 @@
+Ihre Rechnung {{ invoice_number }}
+{{ greeting }},
+
+vielen Dank für Ihren Besuch. Anbei erhalten Sie die Rechnung {{ invoice_number }} vom {{ invoice_date }} über {{ invoice_total }} als PDF.
+{% if patients %}
+Behandelte Tiere: {{ patients | join(", ") }}
+{% endif %}
+Bei Fragen zur Rechnung antworten Sie einfach auf diese E-Mail.
+
+Mit freundlichen Grüßen
+{{ practice_name }}

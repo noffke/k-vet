@@ -146,3 +146,10 @@ vite.config.ts.timestamp-*
 *.iml
 .idea
 
+
+# k-vet local runtime artifacts
+/config.toml
+k-vet-backend/config.toml
+attachments/
+/e2e/test-results/
+/e2e/playwright-report/

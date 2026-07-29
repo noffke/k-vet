@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer_email SET\n               email      = COALESCE($2, email),\n               email_type = COALESCE($3, email_type)\n           WHERE id = $1\n           RETURNING customer_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "customer_email",
+            "name": "customer_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        {
+          "Custom": {
+            "name": "email_type",
+            "kind": {
+              "Enum": [
+                "private",
+                "work",
+                "other"
+              ]
+            }
+          }
+        }
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "090b9898ecdc4a87fbea145ad714a746f942f41676186bf292e5ac17c41c9911"
+}

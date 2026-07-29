@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment_item SET position = position - 1\n         WHERE treatment_id = $1 AND position > $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "2cce7aa98d67a881fe1aaba34ea147b81feb8c153b21dfb7864a79045e61bf23"
+}

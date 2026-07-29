@@ -1,0 +1,99 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT salutation AS \"salutation?: Salutation\", last_name, home_street, home_zip,\n                  home_city, draft\n           FROM customer WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "salutation?: Salutation",
+        "type_info": {
+          "Custom": {
+            "name": "salutation",
+            "kind": {
+              "Enum": [
+                "frau",
+                "herr",
+                "familie"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "salutation"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "home_street",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_street"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "home_zip",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_zip"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "home_city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_city"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "draft"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "b60d419994e55d1b8e540b707dc723c9b74c48e1ab8acdf7f8e536b56d51aac4"
+}

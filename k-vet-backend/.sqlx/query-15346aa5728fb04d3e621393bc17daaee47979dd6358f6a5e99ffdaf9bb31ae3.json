@@ -1,0 +1,64 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT unit, quantity, list_price_net, sales_price_gross FROM drug_packaging\n         WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "list_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "list_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "sales_price_gross",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "sales_price_gross"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "15346aa5728fb04d3e621393bc17daaee47979dd6358f6a5e99ffdaf9bb31ae3"
+}

@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT remaining FROM lot_remaining WHERE lot_id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "remaining",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "lot_remaining",
+            "name": "remaining"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "0f8013cbc61c35bc80920af9ab5d7e357af1378eac3e2c0643ecc5893a4cebdb"
+}

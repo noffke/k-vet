@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient.name\n         FROM invoice\n         JOIN treatment_patient ON treatment_patient.treatment_id = invoice.treatment_id\n         JOIN patient ON patient.id = treatment_patient.patient_id\n         WHERE invoice.id = $1\n         ORDER BY patient.name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ee8777a4b1285e804e89505bbe35bedc48778734972ee55ac6f4a4512d21619a"
+}

@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment.id, treatment.appointment_id, treatment.treatment_reason,\n                  treatment.finding, treatment.created_at, treatment.updated_at,\n                  appointment.starts_at\n           FROM treatment\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE treatment.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "appointment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "appointment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "treatment_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "treatment_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "finding",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "finding"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "29882a2c086d1fbc56941c56f3eddae83d033da52a345ade2598d35a1a1b6f53"
+}
