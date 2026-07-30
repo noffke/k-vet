@@ -1,0 +1,115 @@
+# Dependabot keeps the pinned versions moving.
+#
+# Every dependency here is pinned exactly — full semver in `Cargo.toml` and `package.json`
+# (Constitution I), exact tags in the `Dockerfile` — so a new version is always a commit. These
+# are the pull requests that make it, and CI's gates (clippy, tests, codegen drift, Playwright)
+# decide whether one is safe to merge.
+#
+# Patch and minor updates are grouped per ecosystem to keep the queue short for a single
+# maintainer. Majors arrive as their own pull request, because they usually need a code change.
+#
+# Two pins Dependabot cannot see, so bump them by hand:
+#   * `cargo install sqlx-cli --version 0.9.0` in .github/workflows/ci.yml — keep it equal to the
+#     `sqlx` version in k-vet-backend/Cargo.toml, or `cargo sqlx prepare --check` drifts.
+#   * the Node version in the `setup-node` steps — keep it in step with the `node:` tag in the
+#     Dockerfile and the `engines` field in k-vet-web/package.json.
+version: 2
+
+updates:
+  # ── Backend crates ─────────────────────────────────────────────────────────────────────
+  - package-ecosystem: "cargo"
+    directory: "/k-vet-backend"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
+    commit-message:
+      prefix: "cargo"
+    groups:
+      cargo-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ── Frontend packages ──────────────────────────────────────────────────────────────────
+  - package-ecosystem: "npm"
+    directory: "/k-vet-web"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 5
+    # The pins stay exact; only the pinned number moves.
+    versioning-strategy: "increase"
+    commit-message:
+      prefix: "web"
+    groups:
+      web-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ── End-to-end suite ───────────────────────────────────────────────────────────────────
+  # Kept separate from the frontend: a Playwright bump also changes which browsers CI downloads.
+  - package-ecosystem: "npm"
+    directory: "/e2e"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 3
+    versioning-strategy: "increase"
+    commit-message:
+      prefix: "e2e"
+    groups:
+      e2e-minor-and-patch:
+        patterns: ["*"]
+        update-types: ["minor", "patch"]
+
+  # ── Workflow actions ───────────────────────────────────────────────────────────────────
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "ci"
+    groups:
+      actions:
+        patterns: ["*"]
+
+  # ── Container base images (Dockerfile: node, rust, ubuntu) ──────────────────────────────
+  # `ubuntu:noble` is a codename, so it stays put until the release is changed deliberately.
+  - package-ecosystem: "docker"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "docker"
+
+  # ── Images referenced by the compose files (postgres) ──────────────────────────────────
+  # `docker-compose.yml` is a standard name and is scanned; whether the non-standard
+  # `docker-compose.deploy.yml` is picked up too is not documented, so check that both files
+  # still name the same `postgres:` tag when a bump arrives.
+  - package-ecosystem: "docker-compose"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+      day: "monday"
+      time: "06:00"
+      timezone: "Europe/Berlin"
+    open-pull-requests-limit: 3
+    commit-message:
+      prefix: "docker"
+    ignore:
+      # Built locally by docker-compose.deploy.yml; there is no registry to check.
+      - dependency-name: "k-vet"
