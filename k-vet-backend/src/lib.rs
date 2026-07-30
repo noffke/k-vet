@@ -9,6 +9,7 @@ use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Router, middleware};
 use sqlx::PgPool;
+use tower_http::compression::CompressionLayer;
 use tower_http::limit::RequestBodyLimitLayer;
 use tower_http::trace::TraceLayer;
 use tower_sessions::cookie::SameSite;
@@ -237,6 +238,8 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
         // Scraped locally by Prometheus; no session, like the health probe.
         .route("/metrics", get(metrics::scrape))
         .fallback(static_assets::handler)
+        // The frontend is served from disk now, so gzip the JS and CSS on the way out.
+        .layer(CompressionLayer::new())
         .layer(RequestBodyLimitLayer::new(upload_limit))
         .layer(session_layer)
         .layer(middleware::from_fn(metrics::track))
@@ -244,7 +247,7 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
         .with_state(state))
 }
 
-/// Liveness probe for systemd and the monitoring setup.
+/// Liveness probe for the container health check and the monitoring setup.
 async fn healthz() -> (StatusCode, &'static str) {
     (StatusCode::OK, "ok")
 }

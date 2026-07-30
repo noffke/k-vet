@@ -5,9 +5,9 @@ pharmacy stock, German fee-schedule billing (GOT 2022 / AMPreisV) and the monthl
 the bookkeeper.
 
 The practice runs the app on a Raspberry Pi in the office. That shapes the technical decisions
-here: one binary, one database, no cloud services, no build step at run time. The vet works on a
-laptop in the practice and on a Pixel 9a during house calls, so both layouts are
-first-class — not one design squeezed onto a phone.
+here: one container image, one database, no cloud services, no registry, no build step at run
+time. The vet works on a laptop in the practice and on a Pixel 9a during house calls, so both
+layouts are first-class — not one design squeezed onto a phone.
 
 ## What it does
 
@@ -37,7 +37,7 @@ first-class — not one design squeezed onto a phone.
 │   src/mail/       minijinja template → plain-text email (lettre)            │
 │   src/jobs/       nightly picker weights, draft cleanup, orphan sweep        │
 │   migrations/     the invariants live here: CHECKs, partial unique indexes   │
-│   static_assets   rust-embed of k-vet-web/dist (feature `embed-frontend`)    │
+│   static_assets   the built frontend from `server.web_dir`, SPA fallback     │
 └──────────────────────────────────────────────────────────────────────────────┘
         │ sqlx 0.9, compile-time-checked SQL                    ▲ /api, /metrics
         ▼                                                       │
@@ -80,9 +80,9 @@ cargo fmt --check && cargo clippy --all-targets -- -D warnings \
 cd k-vet-web
 npx biome check && npx knip && npx tsc --noEmit && npm test
 
-# End to end: the real binary with the embedded frontend, desktop + Pixel 9a
+# End to end: the real binary serving the built frontend, desktop + Pixel 9a
 cd k-vet-web && npm run build
-cd ../k-vet-backend && cargo build --features embed-frontend
+cd ../k-vet-backend && cargo build
 cd ../e2e && npx playwright test
 ```
 
@@ -99,17 +99,23 @@ cd ../k-vet-web && npm run generate:api            # src/api/generated/
 
 ## Release
 
-Tagging `v*` cross-compiles for the Pi (aarch64) with the frontend embedded:
+The deployment artefact is a container image, built on the machine that runs it — no registry is
+involved. `Dockerfile` has three stages (Node builds the frontend, Rust builds the backend, the
+result is assembled on `ubuntu:noble`), and `docker-compose.deploy.yml` runs it next to
+PostgreSQL with the configuration, the templates and the uploaded files mounted from the host:
 
 ```bash
-cd k-vet-web && npm run build
-cd ../k-vet-backend
-cargo zigbuild --release --features embed-frontend --target aarch64-unknown-linux-gnu
+docker compose -f docker-compose.deploy.yml build
+docker compose -f docker-compose.deploy.yml up -d
 ```
+
+The container runs as uid/gid 1000, so those three mounted paths must be accessible to that
+uid/gid. Full walkthrough in [docs/installation.md](docs/installation.md). Tagging `v*` only makes
+CI verify that the image still builds.
 
 ## Documentation
 
-- [docs/installation.md](docs/installation.md) — installing and running it on a Linux host
+- [docs/installation.md](docs/installation.md) — building the image and running it on a Pi
 - [docs/templates.md](docs/templates.md) — the invoice PDF and invoice email templates
 - [specs/001-vet-practice-app/](specs/001-vet-practice-app/) — specification, plan, data model,
   research and the task list this implementation followed

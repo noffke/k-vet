@@ -4,11 +4,6 @@ version = "0.1.0"
 edition = "2024"
 publish = false
 
-[features]
-default = []
-# Embeds the built frontend (`k-vet-web/dist`) into the binary. Enabled for release builds.
-embed-frontend = []
-
 [dependencies]
 argon2 = { version = "0.5.3", features = ["std", "password-hash", "rand"] }
 async-trait = "0.1.91"
@@ -24,7 +19,6 @@ metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 mime_guess = "2.0.5"
 minijinja = "2.21.0"
 phonenumber = "0.3.10"
-rust-embed = { version = "8.12.0", features = ["mime-guess"] }
 rust_decimal = { version = "1.42.1", features = ["serde-str", "serde-with-str"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"

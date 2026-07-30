@@ -40,6 +40,15 @@ base_url = "http://localhost:8080"
 #        the RUST_LOG environment variable.
 log_level = "info"
 
+# de-DE: Verzeichnis mit der gebauten Weboberfläche (`k-vet-web/dist`). Im
+#        Container-Abbild liegt sie unter dem Standardwert; in der Entwicklung
+#        liefert der Vite-Dev-Server die Oberfläche aus und dieser Pfad wird nicht
+#        gebraucht.
+# en-US: Directory holding the built web interface (`k-vet-web/dist`). The
+#        container image ships it at the default path; in development the Vite dev
+#        server serves the interface and this path is unused.
+web_dir = "/usr/share/k-vet/web"
+
 [auth]
 # de-DE: Der einzige Benutzer der Anwendung. Das Passwort wird ausschließlich
 #        als argon2id-Hash gespeichert — niemals im Klartext.
@@ -118,17 +127,23 @@ currency = "EUR"
 vat_rates = ["19.000", "7.000"]
 
 # de-DE: Optionaler Pfad zu einer eigenen Typst-Rechnungsvorlage. Leer = die
-#        im Programm eingebettete Vorlage wird verwendet.
+#        im Programm eingebettete Vorlage wird verwendet. Im Container liegen die
+#        Vorlagen im eingebundenen Verzeichnis /etc/k-vet/templates und werden dort
+#        beim ersten Start angelegt: "/etc/k-vet/templates/invoice.typ".
 # en-US: Optional path to a custom Typst invoice template. Empty = use the
-#        template embedded in the binary.
+#        template embedded in the binary. In the container the templates live in the
+#        mounted /etc/k-vet/templates directory and are seeded there on first start:
+#        "/etc/k-vet/templates/invoice.typ".
 typst_template = ""
 
 # de-DE: Optionaler Pfad zur Vorlage der Rechnungs-E-Mail (minijinja/Jinja,
 #        reiner Text, UTF-8). Die erste Zeile ist die Betreffvorlage, danach
-#        eine Leerzeile, dann der Text. Leer = eingebettete Vorlage.
+#        eine Leerzeile, dann der Text. Leer = eingebettete Vorlage. Im Container:
+#        "/etc/k-vet/templates/invoice-email.txt".
 # en-US: Optional path to the invoice email template (minijinja/Jinja, plain
 #        text, UTF-8). The first line is the subject template, followed by a
-#        blank line and the body. Empty = embedded template.
+#        blank line and the body. Empty = embedded template. In the container:
+#        "/etc/k-vet/templates/invoice-email.txt".
 email_template = ""
 
 [travel_expenses]

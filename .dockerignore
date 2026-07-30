@@ -1,0 +1,32 @@
+# Keeps the build context small — on a Raspberry Pi a stray `target/` costs minutes.
+#
+# Everything the image needs is listed in the Dockerfile: k-vet-web/, k-vet-backend/,
+# config.example.toml and docker-entrypoint.sh.
+
+# Build outputs and dependencies (rebuilt inside the image)
+**/target
+**/node_modules
+k-vet-web/dist
+
+# Repository plumbing
+.git
+.github
+.claude
+.idea
+.specify
+*.iml
+
+# Not part of the running application
+e2e
+specs
+requirements
+docs
+scripts
+*.md
+
+# Local runtime state, including the deployment mounts
+config.toml
+attachments
+templates
+docker-compose*.yml
+*.log

@@ -48,6 +48,10 @@ Single-user, records/billing-centric practice management app, self-hosted on a R
 - **GitHub Actions**; real Postgres via `#[sqlx::test]` (no mocks, no testcontainers); **Playwright full-stack E2E** against the real binary. Details in `testing.md`.
 
 ## Deployment
-- One executable: built frontend embedded via **rust-embed**, API + static assets on one port.
-- Cross-compile with **cargo-zigbuild** for aarch64, use **rustls** (not openssl) to keep cross-builds painless.
-- systemd unit on the Pi; hooks into the existing Prometheus monitoring.
+- **One container image**, assembled on `ubuntu:noble`: the backend binary plus the built frontend as files, API and static assets on one port.
+- Multi-stage `Dockerfile` at the repo root: Node stage builds `k-vet-web`, Rust stage builds the backend (`SQLX_OFFLINE=true` against the committed `.sqlx/`), runtime stage copies both onto Ubuntu.
+- **Built on the target machine** (the Pi, natively for aarch64) with `docker compose -f docker-compose.deploy.yml build`. No registry, no cross-compilation, no release artefacts to publish; CI only verifies on a `v*` tag that the image still builds.
+- The frontend is *not* embedded in the binary: the backend serves it from `server.web_dir`, which the image points at `/usr/share/k-vet/web`.
+- Runtime state is host-mounted: `config.toml`, the templates directory and the attachments directory. The container runs as the image's `ubuntu` user (uid/gid 1000), so those paths must be accessible to that uid/gid; the entrypoint checks this and seeds missing templates.
+- **rustls** everywhere (not openssl) — keeps the build free of system TLS libraries; the invoice PDF fonts are compiled in, so the runtime image needs no font packages.
+- Compose service instead of a systemd unit; hooks into the existing Prometheus monitoring via `/metrics`, health via `/healthz`.

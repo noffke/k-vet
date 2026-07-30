@@ -193,7 +193,8 @@ fn apply_meta(meta: &mut UploadMeta, field: &str, value: &str) -> AppResult<()> 
     Ok(())
 }
 
-fn guess_mime(file_name: &str) -> String {
+/// Content type from a file name; shared with [`crate::static_assets`].
+pub(crate) fn guess_mime(file_name: &str) -> String {
     mime_guess::from_path(file_name)
         .first_or_octet_stream()
         .to_string()

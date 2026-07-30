@@ -4,10 +4,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## What this is
 
-Practice management for a **single-vet German veterinary practice**, deployed as **one binary
-plus PostgreSQL** on a Raspberry Pi. Single user, no multi-tenancy, no runtime services beyond
-Postgres. The vet works on a laptop *and* on a Pixel 9a during house calls — both viewports are
-first-class.
+Practice management for a **single-vet German veterinary practice**, deployed as **one container
+image plus PostgreSQL** on a Raspberry Pi (the image is built on the Pi itself; no registry).
+Single user, no multi-tenancy, no runtime services beyond Postgres. The vet works on a laptop
+*and* on a Pixel 9a during house calls — both viewports are first-class.
 
 Three documents outrank your judgement and each other in this order:
 
@@ -62,16 +62,22 @@ npx vitest run tests/format.test.ts -t "en-US"    # one test file / one case
 End to end (`e2e/`) — runs the **real binary** against a real database:
 
 ```bash
-cd k-vet-web && npm run build                        # dist/ is embedded, so build it first
-cd ../k-vet-backend && cargo build --features embed-frontend
+cd k-vet-web && npm run build                        # the binary serves dist/ from disk
+cd ../k-vet-backend && cargo build
 cd ../e2e && DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet_e2e npx playwright test
 npx playwright test core-loop --project=desktop      # one spec, one viewport
 KVET_BINARY=../k-vet-backend/target/release/k-vet-backend npx playwright test   # release check
 ```
 
-A plain `cargo build` overwrites `target/debug/k-vet-backend` **without** the frontend; rebuild
-with `--features embed-frontend` before any browser check, or the page just says the frontend is
-not embedded.
+`global-setup.ts` writes `server.web_dir` into the generated config, pointing at
+`k-vet-web/dist`, and fails fast when that directory has no `index.html` — so a stale or missing
+frontend build is reported instead of serving 404s. `KVET_WEB_DIR` overrides it.
+
+The deployment image (`Dockerfile`, `docker-compose.deploy.yml`) is a separate path: three stages
+(node → rust → `ubuntu:noble`), built on the Pi, with `config.toml`, the templates dir and the
+attachments dir bind-mounted. It runs as uid/gid 1000 (noble's own `ubuntu` user), and
+`docker-entrypoint.sh` preflights those mounts and seeds missing templates before exec'ing the
+binary.
 
 ## The contract pipeline (never edit generated files)
 
@@ -97,7 +103,9 @@ hook names from it and silently collides otherwise.
 integration tests drive the real router in-process. Layers, outermost first: request body limit →
 session (`tower-sessions` with a hand-written `PostgresSessionStore` — the upstream store pins
 sqlx 0.8) → metrics → tracing. `/api/*` is behind `auth::require_auth`; `/healthz` and `/metrics`
-are open; everything else falls through to `static_assets::handler` (rust-embed + SPA fallback).
+are open; everything else falls through to `static_assets::handler`, which serves
+`server.web_dir` from disk with an `index.html` fallback for client-side routes (its `resolve()`
+is pure and unit-tested, including path-traversal refusal).
 
 - `src/domain/money.rs` — the money law: AMPreisV § 3/§ 4/§ 10 drug pricing bands, GOT § 10
   Wegegeld `max(km × rate, minimum) × multiplier(1–3)`, VAT per rate, rounding. Pure functions,
@@ -129,6 +137,9 @@ sqlx 0.9 specifics that will bite you:
 
 - Query macros are compile-time checked against `DATABASE_URL`; the committed `.sqlx/` metadata
   must be refreshed with `cargo sqlx prepare -- --all-targets` (CI runs with `SQLX_OFFLINE=true`).
+  Bumping the `sqlx` crate means bumping `cargo install sqlx-cli --version …` in
+  `.github/workflows/ci.yml` in the same commit — Dependabot cannot see that pin, and a mismatch
+  shows up as `prepare --check` drift.
 - Dynamic SQL strings are rejected. Static SQL per case; in tests wrap deliberate interpolation
   in `sqlx::AssertSqlSafe`.
 - Override inferred nullability with `AS "col!"` / `AS "col?"` — `AS "col: Option<T>"` yields
@@ -188,10 +199,16 @@ overflow sheet).
 - `docs`/spec claims are verified, not assumed: the settings E2E reads the generated invoice PDF
   back with `pdftotext` (needs `poppler-utils`).
 
+Dependency bumps arrive as Dependabot pull requests (`.github/dependabot.yml`: cargo, both npm
+directories, actions, Docker base images, compose images — patch/minor grouped, majors on their
+own). Pins stay exact; the two Dependabot cannot reach are the `sqlx-cli` version above and the
+Node version, which must match the `node:` tag in the `Dockerfile` and `engines` in
+`k-vet-web/package.json`.
+
 ## Release
 
-`cargo zigbuild --release --features embed-frontend --target aarch64-unknown-linux-gnu` after
-`npm run build`; CI does this on a `v*` tag. Practice name, address, IBAN, VAT ID, logo and
-CC/BCC live in the database (settings page); mail server, invoice number pattern, currency, VAT
-choices and template paths are operator configuration in `config.toml`
-(`config.example.toml` is commented in both languages — keep it that way).
+`docker compose -f docker-compose.deploy.yml build && … up -d`, run on the Pi. CI only verifies
+on a `v*` tag that the image still builds — nothing is pushed anywhere. Practice name, address,
+IBAN, VAT ID, logo and CC/BCC live in the database (settings page); mail server, invoice number
+pattern, currency, VAT choices, `web_dir` and the template paths are operator configuration in
+`config.toml` (`config.example.toml` is commented in both languages — keep it that way).

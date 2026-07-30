@@ -12,6 +12,8 @@ const databaseUrl =
 const here = dirname(fileURLToPath(import.meta.url))
 const binary =
   process.env.KVET_BINARY ?? resolve(here, '../k-vet-backend/target/debug/k-vet-backend')
+// The frontend is served from disk (`server.web_dir`), so the suite needs a built dist.
+const webDir = process.env.KVET_WEB_DIR ?? resolve(here, '../k-vet-web/dist')
 
 function writeConfig(): { configPath: string; attachmentsDir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'kvet-e2e-'))
@@ -25,6 +27,7 @@ listen_address = "127.0.0.1"
 port = ${port}
 base_url = "${baseUrl}"
 log_level = "info"
+web_dir = "${webDir}"
 
 [auth]
 username = "${E2E_USERNAME}"
@@ -76,6 +79,11 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   if (!existsSync(binary)) {
     throw new Error(
       `backend binary not found at ${binary} — build it first (cargo build) or set KVET_BINARY`,
+    )
+  }
+  if (!existsSync(join(webDir, 'index.html'))) {
+    throw new Error(
+      `no built frontend at ${webDir} — run \`npm run build\` in k-vet-web/ or set KVET_WEB_DIR`,
     )
   }
   const { configPath } = writeConfig()

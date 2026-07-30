@@ -1,0 +1,67 @@
+# k-vet deployment stack.
+#
+# de-DE: Wird auf dem Zielgerät (Raspberry Pi) gebaut und gestartet:
+#
+#   echo "KVET_DB_PASSWORD=$(openssl rand -hex 16)" > .env
+#   mkdir -p templates attachments && cp config.example.toml config.toml   # dann ausfüllen
+#   docker compose -f docker-compose.deploy.yml build
+#   docker compose -f docker-compose.deploy.yml up -d
+#
+# en-US: Built and started on the target machine (Raspberry Pi) with the commands above.
+#
+# ── Zugriffsrechte / Access rights ───────────────────────────────────────────────────
+# de-DE: Der Container läuft als Benutzer `ubuntu` des Abbilds — UID 1000 und GID 1000.
+#        Alle drei eingebundenen Pfade müssen für diese UID/GID zugänglich sein:
+#        `config.toml` lesbar, `templates/` und `attachments/` lesbar UND schreibbar.
+#        Unter Raspberry Pi OS hat der erste Benutzer genau 1000:1000, dann passt es ohne
+#        weiteres Zutun. Andernfalls einmalig:
+#
+#          mkdir -p templates attachments
+#          sudo chown -R 1000:1000 config.toml templates attachments
+#          ls -n     # Besitzer und Gruppe müssen bei allen drei 1000 1000 sein
+#
+# en-US: The container runs as the image's `ubuntu` user — uid 1000 and gid 1000. All three
+#        mounted paths must be accessible to that uid/gid: `config.toml` readable,
+#        `templates/` and `attachments/` readable AND writable. On Raspberry Pi OS the first
+#        login user is already 1000:1000, so nothing has to be done; otherwise run the
+#        commands above once. A `user:` override below works too, but then the same rule
+#        applies to whichever uid/gid is substituted.
+
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kvet
+      # de-DE: Muss mit dem Passwort in `database.url` der config.toml übereinstimmen.
+      # en-US: Must match the password in the config file's `database.url`.
+      POSTGRES_PASSWORD: ${KVET_DB_PASSWORD:?set KVET_DB_PASSWORD in .env}
+      POSTGRES_DB: kvet
+    volumes:
+      - kvet-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvet -d kvet"]
+      interval: 10s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    image: k-vet:local
+    depends_on:
+      db:
+        condition: service_healthy
+    # de-DE: Schema-Migrationen laufen beim Start automatisch.
+    # en-US: Schema migrations run automatically at start.
+    ports:
+      - "8080:8080"
+    volumes:
+      - ./config.toml:/etc/k-vet/config.toml:ro
+      - ./templates:/etc/k-vet/templates
+      - ./attachments:/var/lib/k-vet/attachments
+    restart: unless-stopped
+
+volumes:
+  kvet-db-data:

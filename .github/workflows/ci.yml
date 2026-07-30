@@ -103,9 +103,9 @@ jobs:
         run: |
           npm ci
           npm run build
-      - name: Build backend with embedded frontend
+      - name: Build backend
         working-directory: k-vet-backend
-        run: cargo build --features embed-frontend
+        run: cargo build
       - name: Install poppler-utils
         # The settings spec reads the invoice PDF with pdftotext.
         run: sudo apt-get update && sudo apt-get install -y poppler-utils
@@ -130,37 +130,19 @@ jobs:
           path: e2e/test-results
           retention-days: 7
 
-  release:
+  # The release image is built on the Pi itself (docs/installation.md) and never pushed to a
+  # registry. This job only proves the Dockerfile still builds, so a broken image is not
+  # discovered on the appliance.
+  image:
     if: startsWith(github.ref, 'refs/tags/v')
     needs: [backend, frontend, e2e]
     runs-on: ubuntu-latest
-    env:
-      SQLX_OFFLINE: "true"
     steps:
       - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-        with:
-          targets: aarch64-unknown-linux-gnu
-      - uses: Swatinem/rust-cache@v2
-        with:
-          workspaces: k-vet-backend
-      - uses: actions/setup-node@v4
-        with:
-          node-version: "22.12"
-          cache: npm
-          cache-dependency-path: k-vet-web/package-lock.json
-      - name: Build frontend
-        working-directory: k-vet-web
+      - run: docker build -t k-vet:ci .
+      - name: The entrypoint refuses to start without a configuration
         run: |
-          npm ci
-          npm run build
-      - name: Install cargo-zigbuild
-        run: |
-          pip install ziglang
-          cargo install cargo-zigbuild --locked
-      - name: Cross-compile for the Raspberry Pi (aarch64)
-        working-directory: k-vet-backend
-        run: cargo zigbuild --release --features embed-frontend --target aarch64-unknown-linux-gnu
-      - uses: softprops/action-gh-release@v2
-        with:
-          files: k-vet-backend/target/aarch64-unknown-linux-gnu/release/k-vet-backend
+          if docker run --rm k-vet:ci; then
+            echo "expected a non-zero exit without /etc/k-vet/config.toml" >&2
+            exit 1
+          fi

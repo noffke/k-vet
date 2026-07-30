@@ -1,5 +1,19 @@
 <!--
-Sync Impact Report
+Sync Impact Report (1.2.0)
+- Version change: 1.1.0 → 1.2.0 (Principle V materially changed: deployment is one container
+  image built on the target Pi, with the frontend served from disk instead of embedded in the
+  binary, and host-mounted configuration, templates and uploaded files)
+- Modified principles: V. Simplicity & Single-User Scope — deployment bullet rewritten
+- Modified sections: Technology & Platform Constraints — rust-embed replaced by the image
+- Templates: no change needed (no template mentions the deployment shape)
+- Other files:
+  - ✅ requirements/vet-practice-webapp-tech-decisions.md — §Deployment rewritten first, as
+    governance requires
+  - ✅ docs/installation.md, README.md, CLAUDE.md, config.example.toml (`server.web_dir`)
+  - ✅ .github/workflows/ci.yml — the cross-compiled release job became an image build check
+- Follow-up TODOs: none
+
+Sync Impact Report (1.1.0)
 - Version change: 1.0.0 → 1.1.0 (Principle III materially expanded: i18n now explicitly
   includes locale-aware formatting and parsing of numbers, dates, and money on output and
   input; wire format locale-independent; invoice documents always de-DE)
@@ -83,8 +97,10 @@ committed; CI regenerates and fails on diff.
 
 - No multi-tenancy, no multi-user: a single user with login and session; user and
   password are supplied via configuration.
-- Deployment is one executable (frontend embedded via rust-embed) targeting a
-  Raspberry Pi; features MUST NOT require runtime services beyond PostgreSQL.
+- Deployment is one container image (`ubuntu:noble`) holding the backend binary and
+  the built frontend, built on the target Raspberry Pi itself and never published to a
+  registry; configuration, invoice/email templates and uploaded files are host-mounted.
+  Features MUST NOT require runtime services beyond PostgreSQL.
 - YAGNI: prefer the simplest structure that satisfies the current requirement;
   anything beyond that MUST be justified in the plan's Complexity Tracking table.
 
@@ -94,7 +110,8 @@ The stack decisions recorded in `requirements/vet-practice-webapp-tech-decisions
 are binding: Rust (Axum + sqlx) backend, PostgreSQL, Vite + React + shadcn/ui +
 Tailwind frontend, TanStack Query for all server state, OpenAPI (utoipa) as the
 single source of truth for generated TS types/hooks/zod schemas, Typst for invoice
-PDFs, content-addressed filesystem storage for attachments. Deviating from a
+PDFs, content-addressed filesystem storage for attachments, and a multi-stage
+container image (Node → Rust → Ubuntu) as the deployment artefact. Deviating from a
 recorded decision requires updating that document first.
 
 ## Development Workflow & Quality Gates
@@ -124,4 +141,4 @@ The documents in `requirements/*.md` are the source of domain truth. A conflict
 between a requirements document and this constitution MUST be resolved by
 amending one of the two, never ignored.
 
-**Version**: 1.1.0 | **Ratified**: 2026-07-26 | **Last Amended**: 2026-07-27
+**Version**: 1.2.0 | **Ratified**: 2026-07-26 | **Last Amended**: 2026-07-29

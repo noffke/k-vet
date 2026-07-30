@@ -153,3 +153,7 @@ k-vet-backend/config.toml
 attachments/
 /e2e/test-results/
 /e2e/playwright-report/
+
+# Deployment mounts and secrets next to docker-compose.deploy.yml
+/templates/
+/.env

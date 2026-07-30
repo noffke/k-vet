@@ -56,6 +56,10 @@ pub struct ServerConfig {
     pub base_url: String,
     #[serde(default = "default_log_level")]
     pub log_level: String,
+    /// Directory holding the built frontend (`k-vet-web/dist`), served with SPA fallback.
+    /// In development the Vite dev server serves the UI instead and this path is unused.
+    #[serde(default = "default_web_dir")]
+    pub web_dir: PathBuf,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -251,6 +255,9 @@ fn default_base_url() -> String {
 fn default_log_level() -> String {
     "info".to_owned()
 }
+fn default_web_dir() -> PathBuf {
+    PathBuf::from("/usr/share/k-vet/web")
+}
 fn default_max_connections() -> u32 {
     5
 }
@@ -314,6 +321,7 @@ mod tests {
         assert_eq!(config.server.listen_address, "127.0.0.1");
         assert_eq!(config.server.port, 8080);
         assert_eq!(config.server.log_level, "info");
+        assert_eq!(config.server.web_dir, PathBuf::from("/usr/share/k-vet/web"));
         assert_eq!(config.database.max_connections, 5);
         assert_eq!(config.storage.max_upload_mb, 25);
         assert_eq!(config.mail.smtp_port, 587);
@@ -392,6 +400,13 @@ mod tests {
             config.invoice.email_template,
             Some(PathBuf::from("/tmp/mail.txt"))
         );
+    }
+
+    #[test]
+    fn the_frontend_directory_can_be_pointed_at_a_checkout() {
+        let raw = MINIMAL.replace("[server]", "[server]\nweb_dir = \"/srv/k-vet/dist\"");
+        let config = parse(&raw).expect("web_dir is a plain path");
+        assert_eq!(config.server.web_dir, PathBuf::from("/srv/k-vet/dist"));
     }
 
     #[test]
