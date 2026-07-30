@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO invoice (treatment_id, invoice_number, invoice_date, includes_finding, note)\n             VALUES ($1, $2, $3, $4, $5)\n             ON CONFLICT (invoice_number) DO NOTHING\n             RETURNING id",
+  "query": "INSERT INTO invoice (treatment_id, invoice_number, invoice_date, due_date,\n                                  includes_finding, note)\n             VALUES ($1, $2, $3, $4, $5, $6)\n             ON CONFLICT (invoice_number) DO NOTHING\n             RETURNING id",
   "describe": {
     "columns": [
       {
@@ -20,6 +20,7 @@
         "Int8",
         "Text",
         "Date",
+        "Date",
         "Bool",
         "Text"
       ]
@@ -28,5 +29,5 @@
       false
     ]
   },
-  "hash": "569543ed831c3bef84f77e01656ea7b9a888026bac146aaf0d4db0f0e4814e7e"
+  "hash": "aae3595fcb25d025dddd9799a7a0429d55dcb921f52d3c9e390597b27ff33cb2"
 }

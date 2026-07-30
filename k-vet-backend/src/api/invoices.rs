@@ -26,15 +26,15 @@ use zip::write::{SimpleFileOptions, ZipWriter};
 
 use crate::AppState;
 use crate::api::treatment_items;
-use crate::domain::enums::{InvoiceStatus, Salutation};
+use crate::domain::enums::{InvoiceStatus, PackagingKind, Salutation};
 use crate::domain::files::BytesSource;
 use crate::domain::invoice_number::{NumberPattern, allocate_number, validate_pattern};
-use crate::domain::{money, stock};
+use crate::domain::{giro, money, stock};
 use crate::error::{AppError, AppResult};
 use crate::mail::{InvoiceMail, OutgoingInvoice, greeting};
 use crate::pdf::{
-    self, CustomerAddress, InvoiceBlock, InvoiceDocument, InvoiceLine, PracticeBlock, date_de,
-    money_de, number_de, percent_de,
+    self, CustomerAddress, InvoiceBlock, InvoiceDocument, InvoiceLine, PatientGroup, PracticeBlock,
+    date_de, money_de, number_de, percent_de,
 };
 
 /// Retries when a rendered number collides with a historical one (pattern flip-flop).
@@ -126,9 +126,25 @@ pub async fn create_or_update(
         // An accepted invoice is cancelled first; its number is burned.
         Some(current) => {
             cancel_in_transaction(&mut transaction, current.id, treatment_id).await?;
-            insert_invoice(&mut transaction, &pattern, treatment_id, &body).await?
+            insert_invoice(
+                &mut transaction,
+                &pattern,
+                treatment_id,
+                &body,
+                state.config.invoice.payment_terms_days,
+            )
+            .await?
         }
-        None => insert_invoice(&mut transaction, &pattern, treatment_id, &body).await?,
+        None => {
+            insert_invoice(
+                &mut transaction,
+                &pattern,
+                treatment_id,
+                &body,
+                state.config.invoice.payment_terms_days,
+            )
+            .await?
+        }
     };
 
     let document = build_document(&mut transaction, &state, invoice_id).await?;
@@ -147,6 +163,7 @@ async fn insert_invoice(
     pattern: &NumberPattern,
     treatment_id: i64,
     body: &CreateInvoice,
+    payment_terms_days: i64,
 ) -> AppResult<i64> {
     // Billing needs at least one line and a patient (the invoice's customer).
     let lines: i64 = sqlx::query_scalar!(
@@ -172,17 +189,24 @@ async fn insert_invoice(
 
     // The invoice date is set now, and anew on every replacement invoice (FR-030).
     let invoice_date = Local::now().date_naive();
+    // Pinned rather than derived on read: changing the configured term later must not move the
+    // due date of an invoice that has already gone out.
+    let due_date = invoice_date
+        .checked_add_signed(chrono::Duration::days(payment_terms_days))
+        .unwrap_or(invoice_date);
 
     for attempt in 1..=NUMBER_ALLOCATION_ATTEMPTS {
         let number = allocate_number(&mut **transaction, pattern, invoice_date).await?;
         let inserted = sqlx::query_scalar!(
-            "INSERT INTO invoice (treatment_id, invoice_number, invoice_date, includes_finding, note)
-             VALUES ($1, $2, $3, $4, $5)
+            "INSERT INTO invoice (treatment_id, invoice_number, invoice_date, due_date,
+                                  includes_finding, note)
+             VALUES ($1, $2, $3, $4, $5, $6)
              ON CONFLICT (invoice_number) DO NOTHING
              RETURNING id",
             treatment_id,
             number,
             invoice_date,
+            due_date,
             body.includes_finding,
             body.note,
         )
@@ -419,9 +443,13 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
     let row = sqlx::query!(
         r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.email_recipients,
                   attachment.sha256 AS "sha256?",
-                  customer.salutation AS "salutation?: Salutation", customer.last_name,
+                  customer.salutation AS "salutation?: Salutation",
+                  customer.first_name, customer.last_name,
                   customer.second_salutation AS "second_salutation?: Salutation",
-                  customer.second_last_name,
+                  customer.second_first_name, customer.second_last_name,
+                  customer.invoice_salutation AS "invoice_salutation?: Salutation",
+                  customer.invoice_first_name, customer.invoice_last_name,
+                  customer.has_invoice_address,
                   settings.practice_name, settings.cc_emails, settings.bcc_emails
            FROM invoice
            LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id
@@ -456,27 +484,45 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
     .await?;
 
     let total = invoice_total(&state.pool, invoice_id).await?;
-    let last_name = row.last_name.unwrap_or_default();
-    let second_last_name = row.second_last_name.unwrap_or_default();
+
+    // The letter must greet whoever the PDF is addressed to. With a separate invoice address
+    // that is the invoice recipient, and the household's second name does not belong to them.
+    let addressed_to_invoice_recipient = row.has_invoice_address;
+    let (salutation, first_name, last_name) = if addressed_to_invoice_recipient {
+        (
+            row.invoice_salutation,
+            row.invoice_first_name.unwrap_or_default(),
+            row.invoice_last_name.unwrap_or_default(),
+        )
+    } else {
+        (
+            row.salutation,
+            row.first_name.unwrap_or_default(),
+            row.last_name.unwrap_or_default(),
+        )
+    };
+    let (second_salutation, second_first_name, second_last_name) = if addressed_to_invoice_recipient
+    {
+        (None, String::new(), String::new())
+    } else {
+        (
+            row.second_salutation,
+            row.second_first_name.unwrap_or_default(),
+            row.second_last_name.unwrap_or_default(),
+        )
+    };
 
     let context = InvoiceMail {
-        greeting: greeting(
-            row.salutation,
-            &last_name,
-            row.second_salutation,
-            &second_last_name,
-        ),
-        salutation: row
-            .salutation
+        greeting: greeting(salutation, &last_name, second_salutation, &second_last_name),
+        salutation: salutation
             .map(|value| value.to_string())
             .unwrap_or_default(),
-        first_name: String::new(),
+        first_name,
         last_name,
-        second_salutation: row
-            .second_salutation
+        second_salutation: second_salutation
             .map(|value| value.to_string())
             .unwrap_or_default(),
-        second_first_name: String::new(),
+        second_first_name,
         second_last_name,
         invoice_number: row.invoice_number.clone(),
         invoice_date: date_de(row.invoice_date),
@@ -516,11 +562,13 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
 async fn attach_pdf(state: &AppState, invoice_id: i64, document: InvoiceDocument) -> AppResult<()> {
     let logo = load_logo(state).await?;
     let config = std::sync::Arc::clone(&state.config);
+    let qr = document.invoice.qr_payload.as_deref().and_then(giro_svg);
 
     // Typesetting is CPU-bound — keep it off the async worker threads.
-    let bytes = tokio::task::spawn_blocking(move || pdf::render_invoice(&config, &document, logo))
-        .await
-        .map_err(|error| AppError::internal("joining the PDF task", error))??;
+    let bytes =
+        tokio::task::spawn_blocking(move || pdf::render_invoice(&config, &document, logo, qr))
+            .await
+            .map_err(|error| AppError::internal("joining the PDF task", error))??;
 
     let number = sqlx::query_scalar!(
         "SELECT invoice_number FROM invoice WHERE id = $1",
@@ -585,7 +633,8 @@ async fn build_document(
     let currency = state.config.invoice.currency.clone();
 
     let invoice = sqlx::query!(
-        r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.includes_finding,
+        r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.due_date,
+                  invoice.includes_finding,
                   invoice.note, invoice.treatment_id,
                   treatment.treatment_reason, treatment.finding,
                   appointment.starts_at
@@ -600,14 +649,16 @@ async fn build_document(
     .ok_or(AppError::NotFound)?;
 
     let settings = sqlx::query!(
-        "SELECT practice_name, practice_address, iban, ustid, logo_attachment_id
+        "SELECT practice_name, practice_street, practice_zip, practice_city, email, iban,
+                bic, bank_name, ustid, logo_attachment_id
          FROM global_settings LIMIT 1",
     )
     .fetch_one(&mut *connection)
     .await?;
 
     let patients = sqlx::query!(
-        r#"SELECT patient.id, patient.name, patient.customer_id
+        r#"SELECT patient.id, patient.name, patient.customer_id, patient.species, patient.race,
+                  patient.date_of_birth
            FROM treatment_patient
            JOIN patient ON patient.id = treatment_patient.patient_id
            WHERE treatment_patient.treatment_id = $1
@@ -622,6 +673,7 @@ async fn build_document(
         .and_then(|patient| patient.customer_id)
         .ok_or_else(|| AppError::field("patients", "invoice.noPatient"))?;
     let recipient = recipient_lines(&mut *connection, customer_id).await?;
+    let greeting = recipient.greeting.clone();
 
     let items = treatment_items::load_items(&mut *connection, invoice.treatment_id).await?;
     let patient_names: std::collections::HashMap<i64, String> = patients
@@ -629,9 +681,63 @@ async fn build_document(
         .map(|patient| (patient.id, patient.name.clone().unwrap_or_default()))
         .collect();
 
-    let lines = items
+    // Packaging kind and marketing authorisation number for the grey sub-label; neither is
+    // pinned on the line, so they are read from the catalog at render time.
+    let packaging_ids: Vec<i64> = items
         .iter()
-        .map(|item| InvoiceLine {
+        .filter_map(|item| item.drug_packaging_id)
+        .collect();
+    let packagings: Vec<PackagingDetail> = sqlx::query!(
+        r#"SELECT packaging.id, packaging.kind AS "kind: PackagingKind", drug.approval_number
+           FROM drug_packaging packaging
+           JOIN drug ON drug.id = packaging.drug_id
+           WHERE packaging.id = ANY($1)"#,
+        &packaging_ids,
+    )
+    .fetch_all(&mut *connection)
+    .await?
+    .into_iter()
+    .map(|row| PackagingDetail {
+        id: row.id,
+        kind: row.kind,
+        approval_number: row.approval_number,
+    })
+    .collect();
+
+    let groups = money::vat_summary(
+        &items
+            .iter()
+            .map(|item| (item.line_net, item.vat_percent))
+            .collect::<Vec<_>>(),
+    );
+
+    // The gross column is derived, so it need not add up to the group totals on its own. Hand
+    // out the odd cents per VAT rate before printing, so the invoice reconciles (see
+    // `money::allocate_gross`).
+    let mut line_gross: Vec<Decimal> = vec![Decimal::ZERO; items.len()];
+    for group in &groups {
+        let indexes: Vec<usize> = items
+            .iter()
+            .enumerate()
+            .filter(|(_, item)| item.vat_percent == group.vat_percent)
+            .map(|(index, _)| index)
+            .collect();
+        let nets: Vec<Decimal> = indexes.iter().map(|index| items[*index].line_net).collect();
+        for (index, gross) in
+            indexes
+                .iter()
+                .zip(money::allocate_gross(&nets, group.vat_percent, group.gross))
+        {
+            if let Some(slot) = line_gross.get_mut(*index) {
+                *slot = gross;
+            }
+        }
+    }
+
+    let lines: Vec<InvoiceLine> = items
+        .iter()
+        .enumerate()
+        .map(|(index, item)| InvoiceLine {
             position: item.position,
             name: item.name.clone(),
             // Only worth printing when the invoice covers more than one animal.
@@ -647,58 +753,275 @@ async fn build_document(
             factor: item.factor.map(percent_de).unwrap_or_default(),
             got_number: item.got_number.clone().unwrap_or_default(),
             km: item.km.map(number_de).unwrap_or_default(),
+            vat: percent_de(item.vat_percent),
+            detail: line_detail(item, &packagings),
             price: money_de(item.price_gross, &currency),
-            total: money_de(item.line_total, &currency),
+            total: money_de(
+                line_gross.get(index).copied().unwrap_or(item.line_gross),
+                &currency,
+            ),
         })
         .collect();
 
-    let groups = money::vat_summary(
-        &items
-            .iter()
-            .map(|item| (item.line_total, item.vat_percent))
-            .collect::<Vec<_>>(),
+    let treatment_date = invoice
+        .starts_at
+        .map(|starts_at| date_de(starts_at.with_timezone(&Local).date_naive()))
+        .unwrap_or_default();
+
+    let address_lines: Vec<String> = [
+        settings.practice_street.trim(),
+        &format!(
+            "{} {}",
+            settings.practice_zip.trim(),
+            settings.practice_city.trim()
+        ),
+    ]
+    .into_iter()
+    .map(str::trim)
+    .filter(|line| !line.is_empty())
+    .map(str::to_owned)
+    .collect();
+
+    let descriptions: std::collections::HashMap<i64, String> = patients
+        .iter()
+        .map(|patient| {
+            (
+                patient.id,
+                patient_description(
+                    patient.species.as_deref(),
+                    patient.race.as_deref(),
+                    patient.date_of_birth,
+                ),
+            )
+        })
+        .collect();
+
+    let patient_pairs: Vec<(i64, String)> = patients
+        .iter()
+        .map(|patient| (patient.id, patient.name.clone().unwrap_or_default()))
+        .collect();
+
+    let total = money::total_gross(&groups);
+    // No GiroCode is not an error: an empty IBAN or a non-euro currency is ordinary
+    // configuration, and it should cost the invoice its QR code, not its render.
+    let qr_payload = giro::epc_payload(
+        &settings.practice_name,
+        &settings.iban,
+        &settings.bic,
+        total,
+        &format!("Rechnung {}", &invoice.invoice_number),
+        &currency,
     );
 
     Ok(InvoiceDocument {
         practice: PracticeBlock {
-            name: settings.practice_name,
-            address: settings.practice_address,
+            name: settings.practice_name.clone(),
+            address: address_lines.join("\n"),
+            address_line: address_lines.join(", "),
+            email: settings.email,
             iban: settings.iban,
+            bic: settings.bic,
+            bank_name: settings.bank_name,
             ustid: settings.ustid,
             logo_present: settings.logo_attachment_id.is_some(),
         },
         invoice: InvoiceBlock {
             number: invoice.invoice_number,
             date: date_de(invoice.invoice_date),
-            treatment_date: invoice
-                .starts_at
-                .map(|starts_at| date_de(starts_at.with_timezone(&Local).date_naive()))
-                .unwrap_or_default(),
-            recipient,
+            due_date: invoice.due_date.map(date_de).unwrap_or_default(),
+            treatment_date: treatment_date.clone(),
+            recipient: recipient.lines,
+            sender_line: [settings.practice_name, address_lines.join(", ")]
+                .into_iter()
+                .filter(|part| !part.trim().is_empty())
+                .collect::<Vec<_>>()
+                .join(", "),
+            greeting,
             patients: patients
                 .iter()
                 .map(|patient| patient.name.clone().unwrap_or_default())
                 .collect(),
             treatment_reason: invoice.treatment_reason.unwrap_or_default(),
+            treatment_heading: treatment_heading(&patient_pairs, &descriptions, &treatment_date),
             // The finding is printed only when the vet asked for it (FR-030).
             finding: if invoice.includes_finding {
                 invoice.finding.unwrap_or_default()
             } else {
                 String::new()
             },
+            patient_groups: group_by_patient(
+                &lines,
+                &items,
+                &patient_names,
+                &descriptions,
+                &treatment_date,
+            ),
             items: lines,
             vat_groups: pdf::vat_groups_de(&groups, &currency),
-            total: money_de(money::total_gross(&groups), &currency),
+            total: money_de(total, &currency),
             note: invoice.note.unwrap_or_default(),
+            qr_present: qr_payload.is_some(),
+            qr_payload,
         },
     })
 }
 
-/// Loads the customer's address columns and formats the invoice address block.
-async fn recipient_lines(
-    connection: &mut PgConnection,
-    customer_id: i64,
-) -> AppResult<Vec<String>> {
+/// Renders the GiroCode payload to an SVG for the template.
+fn giro_svg(payload: &str) -> Option<String> {
+    use fast_qr::convert::{Builder, Shape, svg::SvgBuilder};
+
+    // Error-correction level M is what EPC069-12 recommends for a GiroCode.
+    let code = fast_qr::QRBuilder::new(payload)
+        .ecl(fast_qr::ECL::M)
+        .build()
+        .inspect_err(|error| tracing::warn!(%error, "the GiroCode payload did not fit a QR code"))
+        .ok()?;
+    Some(SvgBuilder::default().shape(Shape::Square).to_str(&code))
+}
+
+/// Catalog facts a drug line prints but does not pin: what kind of packaging it was and, for an
+/// original, the marketing authorisation number.
+struct PackagingDetail {
+    id: i64,
+    kind: PackagingKind,
+    approval_number: Option<String>,
+}
+
+/// `Hund, Havaneser, Geburtsdatum: 01.01.2021` — empty parts are simply left out.
+fn patient_description(
+    species: Option<&str>,
+    race: Option<&str>,
+    date_of_birth: Option<chrono::NaiveDate>,
+) -> String {
+    let mut parts: Vec<String> = Vec::new();
+    parts.extend(
+        species
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned),
+    );
+    parts.extend(
+        race.map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(str::to_owned),
+    );
+    parts.extend(date_of_birth.map(|date| format!("Geburtsdatum: {}", date_de(date))));
+    parts.join(", ")
+}
+
+/// The grey second line under a billing position.
+fn line_detail(item: &treatment_items::TreatmentItem, packagings: &[PackagingDetail]) -> String {
+    if let Some(number) = item.got_number.as_deref().map(str::trim)
+        && !number.is_empty()
+    {
+        return format!("GOT-Nr: {number}");
+    }
+    let Some(packaging_id) = item.drug_packaging_id else {
+        return String::new();
+    };
+    let Some(packaging) = packagings.iter().find(|row| row.id == packaging_id) else {
+        return String::new();
+    };
+    match packaging.kind {
+        PackagingKind::Original => {
+            let label = format!("{} Originalpackung", number_de(item.quantity));
+            match packaging.approval_number.as_deref().map(str::trim) {
+                Some(approval) if !approval.is_empty() => {
+                    format!("{label}, Zulassungsnr: {approval}")
+                }
+                _ => label,
+            }
+        }
+        PackagingKind::Subset => match item.unit.as_deref().map(str::trim) {
+            Some(unit) if !unit.is_empty() => format!("{} {unit}", number_de(item.quantity)),
+            _ => number_de(item.quantity),
+        },
+    }
+}
+
+/// `Behandlung/Konsultation Eddie (Hund – Havaneser) am 28.07.2026`.
+fn treatment_heading(
+    patients: &[(i64, String)],
+    descriptions: &std::collections::HashMap<i64, String>,
+    treatment_date: &str,
+) -> String {
+    if patients.is_empty() {
+        return String::new();
+    }
+    let named: Vec<String> = patients
+        .iter()
+        .map(|(id, name)| match descriptions.get(id) {
+            // The heading reads "Eddie (Hund – Havaneser)"; the date of birth is already in the
+            // table above, so it is dropped here.
+            Some(description) if !description.is_empty() => format!(
+                "{name} ({})",
+                description
+                    .split(", Geburtsdatum:")
+                    .next()
+                    .unwrap_or(description)
+                    .replace(", ", " – "),
+            ),
+            _ => name.clone(),
+        })
+        .collect();
+    let who = named.join(", ");
+    if treatment_date.is_empty() {
+        format!("Behandlung/Konsultation {who}")
+    } else {
+        format!("Behandlung/Konsultation {who} am {treatment_date}")
+    }
+}
+
+/// Groups the printable lines per animal, keeping the vet's ordering.
+///
+/// Groups appear in the order their first line does, and lines keep their order inside a group,
+/// so reordering positions in the treatment reorders the invoice the same way. Lines with no
+/// animal (a service the vet left unattributed) collect into a trailing group with an empty
+/// name, which the template prints without a `Tier:` heading.
+fn group_by_patient(
+    lines: &[InvoiceLine],
+    items: &[treatment_items::TreatmentItem],
+    names: &std::collections::HashMap<i64, String>,
+    descriptions: &std::collections::HashMap<i64, String>,
+    service_date: &str,
+) -> Vec<PatientGroup> {
+    let mut groups: Vec<(Option<i64>, PatientGroup)> = Vec::new();
+    for (line, item) in lines.iter().zip(items.iter()) {
+        let key = item.patient_id;
+        if let Some((_, group)) = groups.iter_mut().find(|(existing, _)| *existing == key) {
+            group.items.push(line.clone());
+            continue;
+        }
+        groups.push((
+            key,
+            PatientGroup {
+                patient: key
+                    .and_then(|id| names.get(&id).cloned())
+                    .unwrap_or_default(),
+                description: key
+                    .and_then(|id| descriptions.get(&id).cloned())
+                    .unwrap_or_default(),
+                service_date: service_date.to_owned(),
+                items: vec![line.clone()],
+            },
+        ));
+    }
+    // Unattributed lines belong at the end, after every animal.
+    groups.sort_by_key(|(key, _)| key.is_none());
+    groups.into_iter().map(|(_, group)| group).collect()
+}
+
+/// The recipient of this invoice: the address block and the salutation that goes with it.
+struct Recipient {
+    lines: Vec<String>,
+    greeting: String,
+}
+
+/// Loads the customer's address columns, formats the invoice address block and the salutation.
+///
+/// Both follow the *invoice* recipient when the customer has a separate invoice address —
+/// addressing the envelope to one person and the letter inside to another would be a bug.
+async fn recipient_lines(connection: &mut PgConnection, customer_id: i64) -> AppResult<Recipient> {
     let customer = sqlx::query!(
         r#"SELECT salutation AS "salutation?: Salutation", first_name, last_name,
                   second_salutation AS "second_salutation?: Salutation",
@@ -714,7 +1037,24 @@ async fn recipient_lines(
     .await?
     .ok_or(AppError::NotFound)?;
 
-    Ok(pdf::address_block(&CustomerAddress {
+    let greeting = if customer.has_invoice_address {
+        // The second name belongs to the household, not to the invoice recipient.
+        greeting(
+            customer.invoice_salutation,
+            customer.invoice_last_name.as_deref().unwrap_or_default(),
+            None,
+            "",
+        )
+    } else {
+        greeting(
+            customer.salutation,
+            customer.last_name.as_deref().unwrap_or_default(),
+            customer.second_salutation,
+            customer.second_last_name.as_deref().unwrap_or_default(),
+        )
+    };
+
+    let lines = pdf::address_block(&CustomerAddress {
         salutation: customer.salutation,
         first_name: customer.first_name,
         last_name: customer.last_name,
@@ -734,7 +1074,9 @@ async fn recipient_lines(
         invoice_zip: customer.invoice_zip,
         invoice_city: customer.invoice_city,
         has_invoice_address: customer.has_invoice_address,
-    }))
+    });
+
+    Ok(Recipient { lines, greeting })
 }
 
 /// Invoice total from the pinned line values.
@@ -750,7 +1092,7 @@ pub async fn invoice_total(pool: &PgPool, invoice_id: i64) -> AppResult<Decimal>
     let groups = money::vat_summary(
         &items
             .iter()
-            .map(|item| (item.line_total, item.vat_percent))
+            .map(|item| (item.line_net, item.vat_percent))
             .collect::<Vec<_>>(),
     );
     Ok(money::total_gross(&groups))

@@ -10,6 +10,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option};
+use crate::api::settings::validate_country;
 use crate::domain::contact::{display_phone, validate_email, validate_phone};
 use crate::domain::draft::recompute_draft;
 use crate::domain::enums::{EmailType, Salutation};
@@ -29,6 +30,8 @@ pub struct Customer {
     pub home_street: Option<String>,
     pub home_zip: Option<String>,
     pub home_city: Option<String>,
+    /// ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.
+    pub home_country: Option<String>,
     pub invoice_salutation: Option<Salutation>,
     pub invoice_first_name: Option<String>,
     pub invoice_last_name: Option<String>,
@@ -36,6 +39,7 @@ pub struct Customer {
     pub invoice_street: Option<String>,
     pub invoice_zip: Option<String>,
     pub invoice_city: Option<String>,
+    pub invoice_country: Option<String>,
     /// Stored E.164 form, e.g. `+493012345678`.
     pub phone: Option<String>,
     /// The same number in the familiar national format, e.g. `030 12345678`.
@@ -82,6 +86,9 @@ pub struct PatchCustomer {
     #[serde(default, deserialize_with = "double_option")]
     pub home_city: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>)]
+    pub home_country: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
     pub invoice_salutation: Option<Option<Salutation>>,
     #[serde(default, deserialize_with = "double_option")]
     pub invoice_first_name: Option<Option<String>>,
@@ -95,6 +102,9 @@ pub struct PatchCustomer {
     pub invoice_zip: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     pub invoice_city: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>)]
+    pub invoice_country: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     pub phone: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
@@ -200,6 +210,16 @@ pub async fn patch(
     Path(id): Path<i64>,
     Json(body): Json<PatchCustomer>,
 ) -> AppResult<Json<Customer>> {
+    // Validated against the real ISO 3166-1 list — a shape check would accept `XX`.
+    let home_country = match &body.home_country {
+        Some(Some(code)) => Some(Some(validate_country("home_country", code)?)),
+        other => other.clone(),
+    };
+    let invoice_country = match &body.invoice_country {
+        Some(Some(code)) => Some(Some(validate_country("invoice_country", code)?)),
+        other => other.clone(),
+    };
+
     let mut transaction = state.pool.begin().await?;
 
     let current = sqlx::query!(
@@ -262,9 +282,11 @@ pub async fn patch(
                invoice_street     = CASE WHEN $30 THEN $31 ELSE invoice_street END,
                invoice_zip        = CASE WHEN $32 THEN $33 ELSE invoice_zip END,
                invoice_city       = CASE WHEN $34 THEN $35 ELSE invoice_city END,
-               phone              = CASE WHEN $36 THEN $37 ELSE phone END,
-               warning_remark     = CASE WHEN $38 THEN $39 ELSE warning_remark END,
-               draft              = $40
+               home_country       = CASE WHEN $36 THEN $37 ELSE home_country END,
+               invoice_country    = CASE WHEN $38 THEN $39 ELSE invoice_country END,
+               phone              = CASE WHEN $40 THEN $41 ELSE phone END,
+               warning_remark     = CASE WHEN $42 THEN $43 ELSE warning_remark END,
+               draft              = $44
            WHERE id = $1"#,
         id,
         body.salutation.is_some(),
@@ -301,6 +323,10 @@ pub async fn patch(
         blank_to_null(&body.invoice_zip),
         body.invoice_city.is_some(),
         blank_to_null(&body.invoice_city),
+        home_country.is_some(),
+        home_country.flatten(),
+        invoice_country.is_some(),
+        invoice_country.flatten(),
         phone.is_some(),
         blank_to_null(&phone),
         body.warning_remark.is_some(),
@@ -454,9 +480,10 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
     let row = sqlx::query!(
         r#"SELECT id, salutation AS "salutation?: Salutation", first_name, last_name,
                   second_salutation AS "second_salutation?: Salutation", second_first_name,
-                  second_last_name, home_addon, home_street, home_zip, home_city,
+                  second_last_name, home_addon, home_street, home_zip, home_city, home_country,
                   invoice_salutation AS "invoice_salutation?: Salutation", invoice_first_name,
                   invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,
+                  invoice_country,
                   phone, warning_remark, archived, draft, has_invoice_address, has_second_name,
                   created_at, updated_at
            FROM customer WHERE id = $1"#,
@@ -504,6 +531,7 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
         home_street: row.home_street,
         home_zip: row.home_zip,
         home_city: row.home_city,
+        home_country: row.home_country,
         invoice_salutation: row.invoice_salutation,
         invoice_first_name: row.invoice_first_name,
         invoice_last_name: row.invoice_last_name,
@@ -511,6 +539,7 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
         invoice_street: row.invoice_street,
         invoice_zip: row.invoice_zip,
         invoice_city: row.invoice_city,
+        invoice_country: row.invoice_country,
         phone_display: row.phone.as_deref().map(display_phone),
         phone: row.phone,
         warning_remark: row.warning_remark,

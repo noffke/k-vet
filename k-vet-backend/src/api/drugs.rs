@@ -51,11 +51,14 @@ pub struct Packaging {
     pub quantity: Option<Decimal>,
     /// Purchase price without VAT; derived pro rata for subsets.
     pub list_price_net: Option<Decimal>,
+    /// Sales price **without** VAT — the figure AMPreisV computes and the vet edits.
+    pub sales_price_net: Option<Decimal>,
+    /// Derived from `sales_price_net`; what the customer pays.
     pub sales_price_gross: Option<Decimal>,
     /// `true` while the vet's manual price wins over the computed one.
     pub price_overridden: bool,
-    /// What AMPreisV would charge — shown next to an overridden price.
-    pub computed_price_gross: Option<Decimal>,
+    /// What AMPreisV would charge, net — shown next to an overridden price.
+    pub computed_price_net: Option<Decimal>,
     pub supplier_id: Option<i64>,
     pub supplier_name: Option<String>,
     pub archived: bool,
@@ -97,7 +100,7 @@ pub struct PatchPackaging {
     pub list_price_net: Option<Option<Decimal>>,
     /// Setting this overrides the computed price; `null` returns to the computed one.
     #[serde(default, deserialize_with = "double_option")]
-    pub sales_price_gross: Option<Option<Decimal>>,
+    pub sales_price_net: Option<Option<Decimal>>,
     #[serde(default, deserialize_with = "double_option")]
     pub supplier_id: Option<Option<i64>>,
 }
@@ -368,7 +371,7 @@ pub async fn patch_packaging(
     }
 
     // An explicit price is the vet's override; `null` hands the price back to AMPreisV.
-    let price_overridden = match &body.sales_price_gross {
+    let price_overridden = match &body.sales_price_net {
         Some(Some(_)) => true,
         Some(None) => false,
         None => current.price_overridden,
@@ -398,7 +401,7 @@ pub async fn patch_packaging(
                unit              = CASE WHEN $2 THEN $3 ELSE unit END,
                quantity          = CASE WHEN $4 THEN $5 ELSE quantity END,
                list_price_net    = CASE WHEN $6 THEN $7 ELSE list_price_net END,
-               sales_price_gross = CASE WHEN $8 THEN $9 ELSE sales_price_gross END,
+               sales_price_net = CASE WHEN $8 THEN $9 ELSE sales_price_net END,
                supplier_id       = CASE WHEN $10 THEN $11 ELSE supplier_id END,
                price_overridden  = $12
            WHERE id = $1"#,
@@ -409,8 +412,8 @@ pub async fn patch_packaging(
         body.quantity.flatten(),
         body.list_price_net.is_some() && current.kind == PackagingKind::Original,
         body.list_price_net.flatten(),
-        matches!(body.sales_price_gross, Some(Some(_))),
-        body.sales_price_gross.flatten(),
+        matches!(body.sales_price_net, Some(Some(_))),
+        body.sales_price_net.flatten(),
         body.supplier_id.is_some(),
         body.supplier_id.flatten(),
         price_overridden,
@@ -423,7 +426,7 @@ pub async fn patch_packaging(
 
     // The completeness flag is decided after the recompute filled the prices in.
     let after = sqlx::query!(
-        "SELECT unit, quantity, list_price_net, sales_price_gross FROM drug_packaging
+        "SELECT unit, quantity, list_price_net, sales_price_net FROM drug_packaging
          WHERE id = $1",
         id
     )
@@ -438,7 +441,7 @@ pub async fn patch_packaging(
                 "list_price_net",
                 list_price_present && after.list_price_net.is_some(),
             ),
-            ("sales_price_gross", after.sales_price_gross.is_some()),
+            ("sales_price_net", after.sales_price_net.is_some()),
             // Only original packagings are bought from a supplier.
             (
                 "supplier_id",
@@ -483,10 +486,10 @@ pub async fn recompute_prices(connection: &mut PgConnection, drug_id: i64) -> Ap
     {
         let price = money::drug_price_original(list_price, vat);
         sqlx::query!(
-            "UPDATE drug_packaging SET sales_price_gross = $2
+            "UPDATE drug_packaging SET sales_price_net = $2
              WHERE id = $1 AND NOT price_overridden",
             original.id,
-            price.gross,
+            price.net,
         )
         .execute(&mut *connection)
         .await?;
@@ -517,11 +520,11 @@ pub async fn recompute_prices(connection: &mut PgConnection, drug_id: i64) -> Ap
         sqlx::query!(
             "UPDATE drug_packaging SET
                  list_price_net    = $2,
-                 sales_price_gross = CASE WHEN price_overridden THEN sales_price_gross ELSE $3 END
+                 sales_price_net = CASE WHEN price_overridden THEN sales_price_net ELSE $3 END
              WHERE id = $1",
             subset.id,
             list_price,
-            price.gross,
+            price.net,
         )
         .execute(&mut *connection)
         .await?;
@@ -596,7 +599,7 @@ pub async fn load_packagings(
     let rows = sqlx::query!(
         r#"SELECT packaging.id, packaging.drug_id, packaging.kind AS "kind: PackagingKind",
                   packaging.unit, packaging.quantity, packaging.list_price_net,
-                  packaging.sales_price_gross, packaging.price_overridden,
+                  packaging.sales_price_net, packaging.price_overridden,
                   packaging.supplier_id, packaging.archived, packaging.draft,
                   supplier.name AS "supplier_name?", drug.vat_percent
            FROM drug_packaging packaging
@@ -622,7 +625,7 @@ pub async fn load_packagings(
             let computed = match row.kind {
                 PackagingKind::Original => row
                     .list_price_net
-                    .map(|list_price| money::drug_price_original(list_price, vat).gross),
+                    .map(|list_price| money::drug_price_original(list_price, vat).net),
                 PackagingKind::Subset => match (original, row.quantity) {
                     (Some((Some(original_quantity), Some(original_price))), Some(quantity)) => {
                         Some(
@@ -632,7 +635,7 @@ pub async fn load_packagings(
                                 quantity,
                                 vat,
                             )
-                            .gross,
+                            .net,
                         )
                     }
                     _ => None,
@@ -643,7 +646,7 @@ pub async fn load_packagings(
                     ("unit", row.unit.is_some()),
                     ("quantity", row.quantity.is_some()),
                     ("list_price_net", row.list_price_net.is_some()),
-                    ("sales_price_gross", row.sales_price_gross.is_some()),
+                    ("sales_price_net", row.sales_price_net.is_some()),
                     (
                         "supplier_id",
                         row.kind == PackagingKind::Subset || row.supplier_id.is_some(),
@@ -658,9 +661,12 @@ pub async fn load_packagings(
                 unit: row.unit.clone(),
                 quantity: row.quantity,
                 list_price_net: row.list_price_net,
-                sales_price_gross: row.sales_price_gross,
+                sales_price_net: row.sales_price_net,
                 price_overridden: row.price_overridden,
-                computed_price_gross: computed,
+                computed_price_net: computed,
+                sales_price_gross: row
+                    .sales_price_net
+                    .map(|net| money::add_vat(net, row.vat_percent.unwrap_or(Decimal::ZERO)).gross),
                 supplier_id: row.supplier_id,
                 supplier_name: row.supplier_name.clone(),
                 archived: row.archived,

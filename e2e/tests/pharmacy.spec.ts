@@ -30,15 +30,15 @@ test.describe('pharmacy', () => {
     await page.getByLabel('Listenpreis (netto)').fill('10,00')
     await page.getByLabel('Lieferant').selectOption({ index: 1 })
 
-    // § 3(3) band 8.68–12.14 → 48 %, plus 19 % VAT.
-    await expect(page.getByLabel('Verkaufspreis (brutto)').first()).toHaveValue('17,61')
+    // § 3(3) band 8.68–12.14 → 48 %: 10.00 + 4.80 = 14.80 net (17,61 € gross).
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,8')
 
     // A 10 ml subset takes its price from § 4: basis 1.00 → 2.00 net → 2.38 gross.
     await page.getByRole('button', { name: 'Teilmenge' }).click()
     const subsetUnit = page.getByLabel('Einheit').last()
     await subsetUnit.fill('ml')
     await page.getByLabel('Menge').last().fill('10')
-    await expect(page.getByLabel('Verkaufspreis (brutto)').last()).toHaveValue('2,38')
+    await expect(page.getByLabel('Verkaufspreis (netto)').last()).toHaveValue('2')
     await expect(page.getByLabel('Listenpreis (netto)').last()).toHaveValue('1')
   })
 

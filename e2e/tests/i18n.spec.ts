@@ -23,7 +23,8 @@ test('numbers, money and dates follow the active locale', async ({ page, request
     .locator('xpath=ancestor::*[self::tr or self::li][1]')
 
   // de-DE: comma decimals, trailing currency symbol, dotted date.
-  await expect(row).toContainText('23,62 €')
+  // 23,62 € net fee plus 19 % VAT — the list shows what the customer pays.
+  await expect(row).toContainText('28,11 €')
   await expect(row).toContainText(german)
 
   const switchTo = (locale: string) =>
@@ -33,9 +34,9 @@ test('numbers, money and dates follow the active locale', async ({ page, request
   await expect(page.getByRole('link', { name: 'Invoices' }).first()).toBeVisible()
 
   // en-US: leading symbol, dot decimals, slashed date.
-  await expect(row).toContainText('€23.62')
+  await expect(row).toContainText('€28.11')
   await expect(row).toContainText(american)
 
   await switchTo('de')
-  await expect(row).toContainText('23,62 €')
+  await expect(row).toContainText('28,11 €')
 })

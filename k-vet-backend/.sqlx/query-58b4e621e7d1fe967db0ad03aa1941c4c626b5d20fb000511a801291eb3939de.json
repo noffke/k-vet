@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, gross_price, travel_expenses, hidden, archived, draft,\n                  created_at, updated_at\n           FROM service\n           WHERE ($2 OR NOT archived)\n             AND ($3 OR NOT hidden)\n             AND ($4::service_type IS NULL OR type = $4)\n             AND ($1::text IS NULL\n                  OR name ILIKE '%' || $1 || '%'\n                  OR got_number = $1)\n           ORDER BY got_number NULLS LAST, name NULLS LAST, id\n           LIMIT $5 OFFSET $6",
+  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, net_price, travel_expenses, hidden, archived, draft,\n                  created_at, updated_at\n           FROM service\n           WHERE ($2 OR NOT archived)\n             AND ($3 OR NOT hidden)\n             AND ($4::service_type IS NULL OR type = $4)\n             AND ($1::text IS NULL\n                  OR name ILIKE '%' || $1 || '%'\n                  OR got_number = $1)\n           ORDER BY got_number NULLS LAST, name NULLS LAST, id\n           LIMIT $5 OFFSET $6",
   "describe": {
     "columns": [
       {
@@ -81,12 +81,12 @@
       },
       {
         "ordinal": 6,
-        "name": "gross_price",
+        "name": "net_price",
         "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "service",
-            "name": "gross_price"
+            "name": "net_price"
           }
         }
       },
@@ -193,5 +193,5 @@
       false
     ]
   },
-  "hash": "6a74b4d57d33ce003ac03af21640afa5aca9c02b9d64041c56a0d0f0280ab370"
+  "hash": "58b4e621e7d1fe967db0ad03aa1941c4c626b5d20fb000511a801291eb3939de"
 }

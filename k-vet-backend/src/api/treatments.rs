@@ -499,7 +499,7 @@ pub async fn copy_treatment(
 
     let items = sqlx::query!(
         r#"SELECT kind AS "kind: TreatmentItemKind", drug_packaging_id, service_id, patient_id,
-                  name, quantity, unit, factor, got_number, price_gross, vat_percent,
+                  name, quantity, unit, factor, got_number, price_net, vat_percent,
                   km, km_multiplier
            FROM treatment_item WHERE treatment_id = $1 ORDER BY position"#,
         source_id,
@@ -517,7 +517,7 @@ pub async fn copy_treatment(
         let pinned = match price_mode {
             PriceMode::Verbatim => Some(CatalogLine {
                 name: item.name,
-                price_gross: item.price_gross,
+                price_net: item.price_net,
                 vat_percent: item.vat_percent,
                 unit: item.unit,
                 factor: item.factor,
@@ -592,7 +592,7 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
     let groups = money::vat_summary(
         &items
             .iter()
-            .map(|item| (item.line_total, item.vat_percent))
+            .map(|item| (item.line_net, item.vat_percent))
             .collect::<Vec<_>>(),
     );
 

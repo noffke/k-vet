@@ -91,7 +91,7 @@ async fn a_got_service_needs_its_number_and_factor_to_complete(pool: PgPool) {
     // The factor defaults to the single rate (100 %), so only the number is outstanding.
     assert_eq!(
         created.json()["missing_fields"],
-        json!(["name", "vat_percent", "gross_price", "got_number"])
+        json!(["name", "vat_percent", "net_price", "got_number"])
     );
     assert_eq!(created.json()["factor"], "100.000");
 
@@ -99,7 +99,7 @@ async fn a_got_service_needs_its_number_and_factor_to_complete(pool: PgPool) {
     let partial = app
         .patch(
             &format!("/api/services/{id}"),
-            json!({ "name": "Sonderleistung", "vat_percent": "19.000", "gross_price": "42.00" }),
+            json!({ "name": "Sonderleistung", "vat_percent": "19.000", "net_price": "42.00" }),
         )
         .await
         .json();
@@ -130,14 +130,14 @@ async fn a_self_defined_service_never_carries_a_got_number(pool: PgPool) {
     let id = created.id();
     assert_eq!(
         created.json()["missing_fields"],
-        json!(["name", "vat_percent", "gross_price"]),
+        json!(["name", "vat_percent", "net_price"]),
         "no GOT number or factor is required"
     );
 
     let complete = app
         .patch(
             &format!("/api/services/{id}"),
-            json!({ "name": "Hausbesuch", "vat_percent": "19.000", "gross_price": "25.00",
+            json!({ "name": "Hausbesuch", "vat_percent": "19.000", "net_price": "25.00",
                     "got_number": "1234" }),
         )
         .await
@@ -221,7 +221,7 @@ async fn a_travel_expense_line_is_priced_from_the_kilometres(pool: PgPool) {
     );
     let line = line.json();
     assert_eq!(line["km"], "12.00");
-    assert_eq!(line["price_gross"], "42.00");
+    assert_eq!(line["price_net"], "42.00");
 
     // A shorter trip falls back to the legal minimum.
     let item_id = line["id"].as_i64().unwrap_or_default();
@@ -232,7 +232,7 @@ async fn a_travel_expense_line_is_priced_from_the_kilometres(pool: PgPool) {
         )
         .await
         .json();
-    assert_eq!(short["price_gross"], "13.00");
+    assert_eq!(short["price_net"], "13.00");
 
     // Adverse travel conditions: ×2 on 12 km.
     let doubled = app
@@ -242,8 +242,8 @@ async fn a_travel_expense_line_is_priced_from_the_kilometres(pool: PgPool) {
         )
         .await
         .json();
-    assert_eq!(doubled["price_gross"], "84.00");
-    assert_eq!(doubled["line_total"], "84.00");
+    assert_eq!(doubled["price_net"], "84.00");
+    assert_eq!(doubled["line_net"], "84.00");
 }
 
 #[sqlx::test]
@@ -264,5 +264,5 @@ async fn an_ordinary_service_line_keeps_the_catalog_price(pool: PgPool) {
         .await
         .json();
 
-    assert_eq!(line["price_gross"], "23.62");
+    assert_eq!(line["price_net"], "23.62");
 }

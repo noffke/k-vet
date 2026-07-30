@@ -28,6 +28,11 @@ export interface Customer {
   home_zip?: string | null;
   /** @nullable */
   home_city?: string | null;
+  /**
+     * ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.
+     * @nullable
+     */
+  home_country?: string | null;
   invoice_salutation?: null | Salutation;
   /** @nullable */
   invoice_first_name?: string | null;
@@ -41,6 +46,8 @@ export interface Customer {
   invoice_zip?: string | null;
   /** @nullable */
   invoice_city?: string | null;
+  /** @nullable */
+  invoice_country?: string | null;
   /**
      * Stored E.164 form, e.g. `+493012345678`.
      * @nullable

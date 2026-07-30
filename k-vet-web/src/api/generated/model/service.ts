@@ -22,7 +22,15 @@ export interface Service {
   factor?: string | null;
   /** @nullable */
   vat_percent?: string | null;
-  /** @nullable */
+  /**
+     * The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.
+     * @nullable
+     */
+  net_price?: string | null;
+  /**
+     * Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.
+     * @nullable
+     */
   gross_price?: string | null;
   /** Travel-expense lines are priced from the kilometres entered (FR-023). */
   travel_expenses: boolean;

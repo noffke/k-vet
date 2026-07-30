@@ -26,6 +26,9 @@ pub struct Service {
     /// Percent; 100 is the single rate.
     pub factor: Option<Decimal>,
     pub vat_percent: Option<Decimal>,
+    /// The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.
+    pub net_price: Option<Decimal>,
+    /// Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.
     pub gross_price: Option<Decimal>,
     /// Travel-expense lines are priced from the kilometres entered (FR-023).
     pub travel_expenses: bool,
@@ -55,7 +58,7 @@ pub struct PatchService {
     #[serde(default, deserialize_with = "double_option")]
     pub vat_percent: Option<Option<Decimal>>,
     #[serde(default, deserialize_with = "double_option")]
-    pub gross_price: Option<Option<Decimal>>,
+    pub net_price: Option<Option<Decimal>>,
     pub travel_expenses: Option<bool>,
     pub hidden: Option<bool>,
 }
@@ -76,7 +79,7 @@ macro_rules! service_row {
         let mut fields = vec![
             ("name", row.name.is_some()),
             ("vat_percent", row.vat_percent.is_some()),
-            ("gross_price", row.gross_price.is_some()),
+            ("net_price", row.net_price.is_some()),
         ];
         if row.service_type == ServiceType::Got {
             fields.push(("got_number", row.got_number.is_some()));
@@ -93,7 +96,11 @@ macro_rules! service_row {
             got_number: row.got_number,
             factor: row.factor,
             vat_percent: row.vat_percent,
-            gross_price: row.gross_price,
+            net_price: row.net_price,
+            gross_price: row
+                .net_price
+                .zip(row.vat_percent)
+                .map(|(net, vat)| crate::domain::money::add_vat(net, vat).gross),
             travel_expenses: row.travel_expenses,
             hidden: row.hidden,
             archived: row.archived,
@@ -119,7 +126,7 @@ pub async fn list(
 ) -> AppResult<Json<Vec<Service>>> {
     let rows = sqlx::query!(
         r#"SELECT id, type AS "service_type: ServiceType", name, got_number, factor,
-                  vat_percent, gross_price, travel_expenses, hidden, archived, draft,
+                  vat_percent, net_price, travel_expenses, hidden, archived, draft,
                   created_at, updated_at
            FROM service
            WHERE ($2 OR NOT archived)
@@ -198,7 +205,7 @@ pub async fn patch(
     let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
         r#"SELECT type AS "service_type: ServiceType", name, got_number, factor, vat_percent,
-                  gross_price, draft
+                  net_price, draft
            FROM service WHERE id = $1 FOR UPDATE"#,
         id,
     )
@@ -230,8 +237,8 @@ pub async fn patch(
             number_present(&body.vat_percent, &current.vat_percent),
         ),
         (
-            "gross_price",
-            number_present(&body.gross_price, &current.gross_price),
+            "net_price",
+            number_present(&body.net_price, &current.net_price),
         ),
     ];
     if current.service_type == ServiceType::Got {
@@ -249,7 +256,7 @@ pub async fn patch(
                got_number      = CASE WHEN $4 THEN $5 ELSE got_number END,
                factor          = CASE WHEN $6 THEN $7 ELSE factor END,
                vat_percent     = CASE WHEN $8 THEN $9 ELSE vat_percent END,
-               gross_price     = CASE WHEN $10 THEN $11 ELSE gross_price END,
+               net_price     = CASE WHEN $10 THEN $11 ELSE net_price END,
                travel_expenses = COALESCE($12, travel_expenses),
                hidden          = COALESCE($13, hidden),
                draft           = $14
@@ -264,8 +271,8 @@ pub async fn patch(
         body.factor.flatten(),
         body.vat_percent.is_some(),
         body.vat_percent.flatten(),
-        body.gross_price.is_some(),
-        body.gross_price.flatten(),
+        body.net_price.is_some(),
+        body.net_price.flatten(),
         body.travel_expenses,
         body.hidden,
         draft,
@@ -324,7 +331,7 @@ async fn set_archived(state: &AppState, id: i64, archived: bool) -> AppResult<Js
 pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Service> {
     let row = sqlx::query!(
         r#"SELECT id, type AS "service_type: ServiceType", name, got_number, factor,
-                  vat_percent, gross_price, travel_expenses, hidden, archived, draft,
+                  vat_percent, net_price, travel_expenses, hidden, archived, draft,
                   created_at, updated_at
            FROM service WHERE id = $1"#,
         id,

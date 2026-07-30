@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_gross, item.vat_percent, item.km,\n                  item.km_multiplier, item.created_at,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
+  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,\n                  item.km_multiplier, item.created_at,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
   "describe": {
     "columns": [
       {
@@ -147,12 +147,12 @@
       },
       {
         "ordinal": 12,
-        "name": "price_gross",
+        "name": "price_net",
         "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "treatment_item",
-            "name": "price_gross"
+            "name": "price_net"
           }
         }
       },
@@ -233,5 +233,5 @@
       null
     ]
   },
-  "hash": "3ba746a5d319d02b68b6e5859036989bf61d96124d65fdb3da003942aa46949a"
+  "hash": "33d25bfc8daf283e71d8df51c1706c08178e4d2b9a277df5dda159b59ec04b88"
 }

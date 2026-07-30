@@ -112,10 +112,17 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   hint={isOriginal ? undefined : t('pharmacy.subsetPriceDerived')}
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
                 />
+                {/* The vet edits the net price the AMPreisV computes; the gross underneath is
+                    what the customer will see, so there is no hidden conversion either way. */}
                 <NumberInput
-                  label={t('field.salesPrice')}
-                  value={packaging.sales_price_gross ?? null}
-                  onChange={(value) => value && patch({ sales_price_gross: value })}
+                  label={t('field.salesPriceNet')}
+                  value={packaging.sales_price_net ?? null}
+                  hint={
+                    packaging.sales_price_gross
+                      ? `${t('field.salesPriceGross')}: ${money(packaging.sales_price_gross)}`
+                      : undefined
+                  }
+                  onChange={(value) => value && patch({ sales_price_net: value })}
                 />
 
                 {isOriginal ? (
@@ -143,12 +150,12 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-rust">{t('pharmacy.priceOverride')}</span>
                       <span className="numeric">
-                        {t('field.salesPrice')}: {money(packaging.computed_price_gross)}
+                        {t('field.salesPriceNet')}: {money(packaging.computed_price_net)}
                       </span>
                       <Button
                         size="small"
                         variant="ghost"
-                        onClick={() => patch({ sales_price_gross: null })}
+                        onClick={() => patch({ sales_price_net: null })}
                       >
                         <RotateCcw className="size-3.5" />
                         {t('pharmacy.resetPrice')}
@@ -156,7 +163,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     </span>
                   ) : (
                     <span className="numeric">
-                      {t('pharmacy.computedPerAmpreisv')}: {money(packaging.computed_price_gross)}
+                      {t('pharmacy.computedPerAmpreisv')}: {money(packaging.computed_price_net)}
                     </span>
                   )}
                 </p>

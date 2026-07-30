@@ -132,7 +132,7 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                 </p>
               </div>
               <span className="numeric shrink-0 font-semibold text-ink">
-                {money(item.line_total)}
+                {money(item.line_gross)}
               </span>
             </div>
 
@@ -146,11 +146,12 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                 }
               />
               <NumberInput
-                label={t('field.price')}
-                value={item.price_gross}
+                label={t('field.priceNet')}
+                value={item.price_net}
+                hint={`${t('field.priceGross')}: ${money(item.price_gross)}`}
                 disabled={readOnly}
                 onChange={(value) =>
-                  value && patchItem.mutate({ id: item.id, data: { price_gross: value } })
+                  value && patchItem.mutate({ id: item.id, data: { price_net: value } })
                 }
               />
               {item.kind === 'service' ? (

@@ -38,7 +38,9 @@ pub struct TreatmentItem {
     /// GOT factor in percent (100 = single rate).
     pub factor: Option<Decimal>,
     pub got_number: Option<String>,
-    /// Per-unit gross price, pinned at line entry.
+    /// Per-unit **net** price, pinned at line entry.
+    pub price_net: Decimal,
+    /// Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.
     pub price_gross: Decimal,
     pub vat_percent: Decimal,
     /// Travel-expense lines: the kilometres the price was computed from.
@@ -46,8 +48,10 @@ pub struct TreatmentItem {
     pub km_multiplier: Option<Decimal>,
     /// `true` when the line's service bills travel expenses — the UI then asks for km.
     pub travel_expenses: bool,
-    /// `price_gross × quantity × factor/100`, rounded to cents.
-    pub line_total: Decimal,
+    /// `price_net × quantity × factor/100`, rounded to cents — **net**.
+    pub line_net: Decimal,
+    /// `line_net` plus VAT: what the customer pays for this line.
+    pub line_gross: Decimal,
     /// Lots the dispense was booked against (drug lines).
     pub lots: Vec<ItemLot>,
     pub created_at: DateTime<Utc>,
@@ -85,7 +89,7 @@ fn one() -> Decimal {
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct PatchTreatmentItem {
     pub quantity: Option<Decimal>,
-    pub price_gross: Option<Decimal>,
+    pub price_net: Option<Decimal>,
     pub name: Option<String>,
     pub factor: Option<Decimal>,
     #[serde(default, deserialize_with = "double_option")]
@@ -105,7 +109,7 @@ pub struct LotSelection {
 /// Catalog values copied onto a new line.
 pub struct CatalogLine {
     pub name: String,
-    pub price_gross: Decimal,
+    pub price_net: Decimal,
     pub vat_percent: Decimal,
     pub unit: Option<String>,
     pub factor: Option<Decimal>,
@@ -125,7 +129,7 @@ pub async fn catalog_line(
     match kind {
         TreatmentItemKind::DrugPackaging => {
             let row = sqlx::query!(
-                r#"SELECT drug.name, drug.vat_percent, packaging.unit, packaging.sales_price_gross,
+                r#"SELECT drug.name, drug.vat_percent, packaging.unit, packaging.sales_price_net,
                           packaging.quantity, packaging.draft, packaging.archived
                    FROM drug_packaging packaging
                    JOIN drug ON drug.id = packaging.drug_id
@@ -139,7 +143,7 @@ pub async fn catalog_line(
             if row.draft {
                 return Err(AppError::field("drug_packaging_id", "record.incomplete"));
             }
-            let (Some(price), Some(vat)) = (row.sales_price_gross, row.vat_percent) else {
+            let (Some(price), Some(vat)) = (row.sales_price_net, row.vat_percent) else {
                 return Err(AppError::field("drug_packaging_id", "record.incomplete"));
             };
             // The line has to say *what* was dispensed: a 10 ml subset and the 100 ml
@@ -153,7 +157,7 @@ pub async fn catalog_line(
             };
             Ok(CatalogLine {
                 name,
-                price_gross: price,
+                price_net: price,
                 vat_percent: vat,
                 unit: row.unit,
                 factor: None,
@@ -163,7 +167,7 @@ pub async fn catalog_line(
         }
         TreatmentItemKind::Service => {
             let row = sqlx::query!(
-                r#"SELECT name, gross_price, vat_percent, factor, got_number, travel_expenses,
+                r#"SELECT name, net_price, vat_percent, factor, got_number, travel_expenses,
                           draft, archived
                    FROM service WHERE id = $1"#,
                 reference_id,
@@ -175,12 +179,12 @@ pub async fn catalog_line(
             if row.draft {
                 return Err(AppError::field("service_id", "record.incomplete"));
             }
-            let (Some(price), Some(vat)) = (row.gross_price, row.vat_percent) else {
+            let (Some(price), Some(vat)) = (row.net_price, row.vat_percent) else {
                 return Err(AppError::field("service_id", "record.incomplete"));
             };
             Ok(CatalogLine {
                 name: row.name.unwrap_or_default(),
-                price_gross: price,
+                price_net: price,
                 vat_percent: vat,
                 unit: None,
                 factor: row.factor,
@@ -290,11 +294,11 @@ pub async fn insert_pinned_item(
 
     // A travel-expense line is priced from the distance per GOT § 10; every other line
     // pins the catalog price (FR-023).
-    let price_gross = match (catalog.travel_expenses, km) {
+    let price_net = match (catalog.travel_expenses, km) {
         (true, Some(km)) => {
             money::travel_expense(km, km_multiplier, travel.rate_per_double_km, travel.minimum)
         }
-        _ => catalog.price_gross,
+        _ => catalog.price_net,
     };
 
     let position: i32 = sqlx::query_scalar!(
@@ -313,7 +317,7 @@ pub async fn insert_pinned_item(
     let item_id: i64 = sqlx::query_scalar!(
         r#"INSERT INTO treatment_item
                (treatment_id, position, kind, drug_packaging_id, service_id, patient_id,
-                name, quantity, unit, factor, got_number, price_gross, vat_percent,
+                name, quantity, unit, factor, got_number, price_net, vat_percent,
                 km, km_multiplier)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
            RETURNING id"#,
@@ -328,7 +332,7 @@ pub async fn insert_pinned_item(
         catalog.unit,
         catalog.factor,
         catalog.got_number,
-        price_gross,
+        price_net,
         catalog.vat_percent,
         km,
         km_multiplier,
@@ -414,12 +418,12 @@ pub async fn patch(
         None
     };
     // An explicit price still wins over the computed one.
-    let price_gross = body.price_gross.or(travel_price);
+    let price_net = body.price_net.or(travel_price);
 
     sqlx::query!(
         r#"UPDATE treatment_item SET
                quantity      = COALESCE($2, quantity),
-               price_gross   = COALESCE($3, price_gross),
+               price_net   = COALESCE($3, price_net),
                name          = COALESCE($4, name),
                factor        = CASE WHEN $5 THEN $6 ELSE factor END,
                patient_id    = CASE WHEN $7 THEN $8 ELSE patient_id END,
@@ -428,7 +432,7 @@ pub async fn patch(
            WHERE id = $1"#,
         id,
         body.quantity,
-        price_gross,
+        price_net,
         body.name,
         body.factor.is_some(),
         body.factor,
@@ -746,7 +750,7 @@ pub async fn load_items(
         r#"SELECT item.id, item.treatment_id, item.position,
                   item.kind AS "kind: TreatmentItemKind", item.drug_packaging_id,
                   item.service_id, item.patient_id, item.name, item.quantity, item.unit,
-                  item.factor, item.got_number, item.price_gross, item.vat_percent, item.km,
+                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,
                   item.km_multiplier, item.created_at,
                   COALESCE(service.travel_expenses, false) AS "travel_expenses!"
            FROM treatment_item item
@@ -780,7 +784,13 @@ pub async fn load_items(
     Ok(rows
         .into_iter()
         .map(|row| TreatmentItem {
-            line_total: money::line_total(row.price_gross, row.quantity, row.factor),
+            line_net: money::line_total(row.price_net, row.quantity, row.factor),
+            line_gross: money::add_vat(
+                money::line_total(row.price_net, row.quantity, row.factor),
+                row.vat_percent,
+            )
+            .gross,
+            price_gross: money::add_vat(row.price_net, row.vat_percent).gross,
             lots: lots
                 .iter()
                 .filter(|lot| lot.treatment_item_id == Some(row.id))
@@ -804,7 +814,7 @@ pub async fn load_items(
             unit: row.unit,
             factor: row.factor,
             got_number: row.got_number,
-            price_gross: row.price_gross,
+            price_net: row.price_net,
             vat_percent: row.vat_percent,
             km: row.km,
             km_multiplier: row.km_multiplier,

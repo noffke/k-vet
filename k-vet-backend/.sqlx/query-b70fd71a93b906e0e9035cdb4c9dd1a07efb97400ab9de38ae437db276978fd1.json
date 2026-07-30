@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, salutation AS \"salutation?: Salutation\", first_name, last_name,\n                  second_salutation AS \"second_salutation?: Salutation\", second_first_name,\n                  second_last_name, home_addon, home_street, home_zip, home_city,\n                  invoice_salutation AS \"invoice_salutation?: Salutation\", invoice_first_name,\n                  invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,\n                  phone, warning_remark, archived, draft, has_invoice_address, has_second_name,\n                  created_at, updated_at\n           FROM customer WHERE id = $1",
+  "query": "SELECT id, salutation AS \"salutation?: Salutation\", first_name, last_name,\n                  second_salutation AS \"second_salutation?: Salutation\", second_first_name,\n                  second_last_name, home_addon, home_street, home_zip, home_city, home_country,\n                  invoice_salutation AS \"invoice_salutation?: Salutation\", invoice_first_name,\n                  invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,\n                  invoice_country,\n                  phone, warning_remark, archived, draft, has_invoice_address, has_second_name,\n                  created_at, updated_at\n           FROM customer WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -148,6 +148,17 @@
       },
       {
         "ordinal": 11,
+        "name": "home_country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_country"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
         "name": "invoice_salutation?: Salutation",
         "type_info": {
           "Custom": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "invoice_first_name",
         "type_info": "Text",
         "origin": {
@@ -180,7 +191,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "invoice_last_name",
         "type_info": "Text",
         "origin": {
@@ -191,7 +202,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "invoice_addon",
         "type_info": "Text",
         "origin": {
@@ -202,7 +213,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "invoice_street",
         "type_info": "Text",
         "origin": {
@@ -213,7 +224,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "invoice_zip",
         "type_info": "Text",
         "origin": {
@@ -224,7 +235,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "invoice_city",
         "type_info": "Text",
         "origin": {
@@ -235,7 +246,18 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
+        "name": "invoice_country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "invoice_country"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
         "name": "phone",
         "type_info": "Text",
         "origin": {
@@ -246,7 +268,7 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 21,
         "name": "warning_remark",
         "type_info": "Text",
         "origin": {
@@ -257,7 +279,7 @@
         }
       },
       {
-        "ordinal": 20,
+        "ordinal": 22,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
@@ -268,7 +290,7 @@
         }
       },
       {
-        "ordinal": 21,
+        "ordinal": 23,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -279,7 +301,7 @@
         }
       },
       {
-        "ordinal": 22,
+        "ordinal": 24,
         "name": "has_invoice_address",
         "type_info": "Bool",
         "origin": {
@@ -290,7 +312,7 @@
         }
       },
       {
-        "ordinal": 23,
+        "ordinal": 25,
         "name": "has_second_name",
         "type_info": "Bool",
         "origin": {
@@ -301,7 +323,7 @@
         }
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -312,7 +334,7 @@
         }
       },
       {
-        "ordinal": 25,
+        "ordinal": 27,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -349,6 +371,8 @@
       true,
       true,
       true,
+      true,
+      true,
       false,
       false,
       false,
@@ -357,5 +381,5 @@
       false
     ]
   },
-  "hash": "c760126f2ea170e84f0a877e5590a3c6e9e17e183a507ade7a9df89d071b8c65"
+  "hash": "b70fd71a93b906e0e9035cdb4c9dd1a07efb97400ab9de38ae437db276978fd1"
 }

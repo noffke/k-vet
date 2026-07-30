@@ -161,9 +161,10 @@ async fn the_sales_price_of_an_original_packaging_is_computed_per_ampreisv(pool:
         .json();
     let original = packaging(&packagings, packaging_id);
 
-    // § 3(3) band 8.68–12.14 → 48 %: 10.00 + 4.80 = 14.80 net → 17.61 gross at 19 %.
+    // § 3(3) band 8.68–12.14 → 48 %: 10.00 + 4.80 = 14.80 net, shown as 17.61 gross at 19 %.
+    assert_eq!(original["sales_price_net"], "14.80");
     assert_eq!(original["sales_price_gross"], "17.61");
-    assert_eq!(original["computed_price_gross"], "17.61");
+    assert_eq!(original["computed_price_net"], "14.80");
     assert_eq!(original["price_overridden"], false);
     assert_eq!(
         original["draft"], false,
@@ -204,11 +205,12 @@ async fn a_subset_derives_its_list_price_and_carries_the_teilmengenzuschlag(pool
         .json();
     let subset = packaging(&packagings, subset_id);
 
-    // § 4: pro-rata basis 1.00 → +100 % → 2.00 net → 2.38 gross.
+    // § 4: pro-rata basis 1.00 → +100 % → 2.00 net, shown as 2.38 gross.
     assert_eq!(
         subset["list_price_net"], "1.00",
         "derived pro rata, not typed"
     );
+    assert_eq!(subset["sales_price_net"], "2.00");
     assert_eq!(subset["sales_price_gross"], "2.38");
     assert_eq!(subset["draft"], false, "a subset needs no supplier");
     assert!(subset["supplier_id"].is_null());
@@ -243,17 +245,26 @@ async fn changing_the_purchase_price_or_vat_moves_every_computed_price(pool: PgP
         .get(&format!("/api/drugs/{drug_id}/packagings"))
         .await
         .json();
+    // § 3(3) band 35.95–543.91 → 30 %: 40.00 + 12.00 = 52.00 net, 61.88 gross.
+    assert_eq!(
+        packaging(&packagings, packaging_id)["sales_price_net"],
+        "52.00"
+    );
     assert_eq!(
         packaging(&packagings, packaging_id)["sales_price_gross"],
         "61.88"
     );
     assert_eq!(packaging(&packagings, subset_id)["list_price_net"], "4.00");
+    // § 4: basis 4.00 → +100 % → 8.00 net, 9.52 gross.
+    assert_eq!(packaging(&packagings, subset_id)["sales_price_net"], "8.00");
     assert_eq!(
         packaging(&packagings, subset_id)["sales_price_gross"],
         "9.52"
     );
 
-    // The reduced VAT rate reaches both packagings as well.
+    // A VAT change moves what the customer pays, not what the practice earns. This is the
+    // concrete pay-off of storing net: while prices were stored gross, dropping 19 % to 7 %
+    // silently cut the margin, because the stored figure had the old rate baked into it.
     app.patch(
         &format!("/api/drugs/{drug_id}"),
         json!({ "vat_percent": "7.000" }),
@@ -264,9 +275,15 @@ async fn changing_the_purchase_price_or_vat_moves_every_computed_price(pool: PgP
         .await
         .json();
     assert_eq!(
+        packaging(&packagings, packaging_id)["sales_price_net"],
+        "52.00",
+        "the AMPreisV net price is unaffected by the tax rate"
+    );
+    assert_eq!(
         packaging(&packagings, packaging_id)["sales_price_gross"],
         "55.64"
     );
+    assert_eq!(packaging(&packagings, subset_id)["sales_price_net"], "8.00");
     assert_eq!(
         packaging(&packagings, subset_id)["sales_price_gross"],
         "8.56"
@@ -282,14 +299,14 @@ async fn a_manual_price_wins_until_it_is_cleared(pool: PgPool) {
     let overridden = app
         .patch(
             &format!("/api/packagings/{packaging_id}"),
-            json!({ "sales_price_gross": "19.99" }),
+            json!({ "sales_price_net": "19.99" }),
         )
         .await
         .json();
-    assert_eq!(overridden["sales_price_gross"], "19.99");
+    assert_eq!(overridden["sales_price_net"], "19.99");
     assert_eq!(overridden["price_overridden"], true);
     assert_eq!(
-        overridden["computed_price_gross"], "17.61",
+        overridden["computed_price_net"], "14.80",
         "the computed price stays visible next to the manual one"
     );
 
@@ -304,23 +321,25 @@ async fn a_manual_price_wins_until_it_is_cleared(pool: PgPool) {
         .await
         .json();
     assert_eq!(
-        packaging(&packagings, packaging_id)["sales_price_gross"],
+        packaging(&packagings, packaging_id)["sales_price_net"],
         "19.99"
     );
     assert_eq!(
-        packaging(&packagings, packaging_id)["computed_price_gross"],
-        "61.88"
+        packaging(&packagings, packaging_id)["computed_price_net"],
+        "52.00",
+        "AMPreisV keeps computing alongside, so the vet can compare"
     );
 
     // Clearing the override hands the price back to AMPreisV.
     let restored = app
         .patch(
             &format!("/api/packagings/{packaging_id}"),
-            json!({ "sales_price_gross": null }),
+            json!({ "sales_price_net": null }),
         )
         .await
         .json();
     assert_eq!(restored["price_overridden"], false);
+    assert_eq!(restored["sales_price_net"], "52.00");
     assert_eq!(restored["sales_price_gross"], "61.88");
 }
 

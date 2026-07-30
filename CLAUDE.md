@@ -109,8 +109,15 @@ is pure and unit-tested, including path-traversal refusal).
 
 - `src/domain/money.rs` — the money law: AMPreisV § 3/§ 4/§ 10 drug pricing bands, GOT § 10
   Wegegeld `max(km × rate, minimum) × multiplier(1–3)`, VAT per rate, rounding. Pure functions,
-  worked-example tests carrying `⚠ FOR VET REVIEW` comments. **Do not compute money anywhere
-  else** — templates and the frontend only place pre-formatted strings.
+  worked-example tests carrying `⚠ FOR VET REVIEW` comments — those are answered by **`review.md`**
+  at the repository root, a German, code-free checklist for the vet; keep it in step when the
+  worked examples change. **Do not compute money anywhere else** — templates and the frontend only
+  place pre-formatted strings.
+  **Prices are net**, the gross is derived (`add_vat`). This is what the fee schedules compute in,
+  and it is why migration `0009` exists: the GOT catalogue's published *net* fees had been imported
+  into a column called `gross_price`, so every GOT position was billed ~16 % too low. The invoice
+  still prints gross columns, with the odd cent handed out by `allocate_gross` so the column sums to
+  the VAT group's total — never re-derive a gross amount by multiplying.
 - `src/domain/stock.rs` — FEFO allocation and the append-only movement ledger. A dispense is a
   *draft* until the invoice is accepted, then *frozen*; corrections are compensating rows that
   reference what they reverse. A movement with a reversal is never deleted. Line quantity counts
@@ -208,7 +215,8 @@ Node version, which must match the `node:` tag in the `Dockerfile` and `engines`
 ## Release
 
 `docker compose -f docker-compose.deploy.yml build && … up -d`, run on the Pi. CI only verifies
-on a `v*` tag that the image still builds — nothing is pushed anywhere. Practice name, address,
-IBAN, VAT ID, logo and CC/BCC live in the database (settings page); mail server, invoice number
-pattern, currency, VAT choices, `web_dir` and the template paths are operator configuration in
-`config.toml` (`config.example.toml` is commented in both languages — keep it that way).
+on a `v*` tag that the image still builds — nothing is pushed anywhere. Practice name, structured
+address, e-mail, IBAN, BIC, bank name, VAT ID, logo and CC/BCC live in the database (settings page);
+mail server, invoice number pattern, currency, VAT choices, default country, payment term, `web_dir`
+and the template paths are operator configuration in `config.toml` (`config.example.toml` is
+commented in both languages — keep it that way).

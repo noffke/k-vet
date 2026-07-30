@@ -151,6 +151,7 @@ export function ServicesPage() {
  */
 function ServiceDialog({ service, onClose }: { service: Service; onClose: () => void }) {
   const { t } = useTranslation()
+  const { money } = useLocaleFormat()
   const client = useQueryClient()
   const [current, setCurrent] = useState(service)
   const patchService = usePatchService({
@@ -212,10 +213,17 @@ function ServiceDialog({ service, onClose }: { service: Service; onClose: () => 
           <option value="19.000">19 %</option>
           <option value="7.000">7 %</option>
         </SelectField>
+        {/* The GOT publishes net fees, so that is the figure edited here; the gross beneath
+            it is what the customer will be billed. */}
         <NumberInput
-          label={t('field.price')}
-          value={current.gross_price ?? null}
-          onChange={(value) => value && patch({ gross_price: value })}
+          label={t('field.priceNet')}
+          value={current.net_price ?? null}
+          hint={
+            current.gross_price
+              ? `${t('field.priceGross')}: ${money(current.gross_price)}`
+              : undefined
+          }
+          onChange={(value) => value && patch({ net_price: value })}
         />
 
         <div className="flex flex-col gap-1 sm:col-span-2">

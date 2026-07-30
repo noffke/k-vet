@@ -1,4 +1,4 @@
-Ihre Rechnung {{ invoice_number }}
+Ihre Rechnung {{ invoice_number }} – {{ practice_name }}
 {{ greeting }},
 
 vielen Dank für Ihren Besuch. Anbei erhalten Sie die Rechnung {{ invoice_number }} vom {{ invoice_date }} über {{ invoice_total }} als PDF.

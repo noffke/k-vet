@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.invoice_number, invoice.invoice_date, invoice.includes_finding,\n                  invoice.note, invoice.treatment_id,\n                  treatment.treatment_reason, treatment.finding,\n                  appointment.starts_at\n           FROM invoice\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE invoice.id = $1",
+  "query": "SELECT invoice.invoice_number, invoice.invoice_date, invoice.due_date,\n                  invoice.includes_finding,\n                  invoice.note, invoice.treatment_id,\n                  treatment.treatment_reason, treatment.finding,\n                  appointment.starts_at\n           FROM invoice\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE invoice.id = $1",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,17 @@
       },
       {
         "ordinal": 2,
+        "name": "due_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "due_date"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
         "name": "includes_finding",
         "type_info": "Bool",
         "origin": {
@@ -37,7 +48,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "note",
         "type_info": "Text",
         "origin": {
@@ -48,7 +59,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "treatment_id",
         "type_info": "Int8",
         "origin": {
@@ -59,7 +70,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "treatment_reason",
         "type_info": "Text",
         "origin": {
@@ -70,7 +81,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "finding",
         "type_info": "Text",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "starts_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -100,6 +111,7 @@
     "nullable": [
       false,
       false,
+      true,
       false,
       true,
       false,
@@ -108,5 +120,5 @@
       true
     ]
   },
-  "hash": "6e9b3aa61fa1ce141d03c8afff0e47c5fcfc22e4378b46b4dfbbd81f22f25c36"
+  "hash": "d7fef67f26f38a3820fae56dacb7e82f48cd20d8965ce1b9b5c4f786d4bc7c76"
 }

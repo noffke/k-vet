@@ -31,7 +31,9 @@ export interface TreatmentItem {
   factor?: string | null;
   /** @nullable */
   got_number?: string | null;
-  /** Per-unit gross price, pinned at line entry. */
+  /** Per-unit **net** price, pinned at line entry. */
+  price_net: string;
+  /** Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price. */
   price_gross: string;
   vat_percent: string;
   /**
@@ -43,8 +45,10 @@ export interface TreatmentItem {
   km_multiplier?: string | null;
   /** `true` when the line's service bills travel expenses — the UI then asks for km. */
   travel_expenses: boolean;
-  /** `price_gross × quantity × factor/100`, rounded to cents. */
-  line_total: string;
+  /** `price_net × quantity × factor/100`, rounded to cents — **net**. */
+  line_net: string;
+  /** `line_net` plus VAT: what the customer pays for this line. */
+  line_gross: string;
   /** Lots the dispense was booked against (drug lines). */
   lots: ItemLot[];
   created_at: string;

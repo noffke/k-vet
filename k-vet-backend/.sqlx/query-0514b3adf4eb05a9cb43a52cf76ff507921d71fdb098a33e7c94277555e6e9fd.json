@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT kind AS \"kind: TreatmentItemKind\", drug_packaging_id, service_id, patient_id,\n                  name, quantity, unit, factor, got_number, price_gross, vat_percent,\n                  km, km_multiplier\n           FROM treatment_item WHERE treatment_id = $1 ORDER BY position",
+  "query": "SELECT kind AS \"kind: TreatmentItemKind\", drug_packaging_id, service_id, patient_id,\n                  name, quantity, unit, factor, got_number, price_net, vat_percent,\n                  km, km_multiplier\n           FROM treatment_item WHERE treatment_id = $1 ORDER BY position",
   "describe": {
     "columns": [
       {
@@ -114,12 +114,12 @@
       },
       {
         "ordinal": 9,
-        "name": "price_gross",
+        "name": "price_net",
         "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "treatment_item",
-            "name": "price_gross"
+            "name": "price_net"
           }
         }
       },
@@ -178,5 +178,5 @@
       true
     ]
   },
-  "hash": "8dd041e1e94ca0717697a365f0fc749c2be96cde2cc27e02a304a791e5467fd4"
+  "hash": "0514b3adf4eb05a9cb43a52cf76ff507921d71fdb098a33e7c94277555e6e9fd"
 }

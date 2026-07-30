@@ -30,8 +30,14 @@ pub struct InvoiceDocument {
 #[derive(Debug, Serialize)]
 pub struct PracticeBlock {
     pub name: String,
+    /// Street and town on separate lines, for the letterhead.
     pub address: String,
+    /// The same address comma-joined, for the one-line footer and the sender line.
+    pub address_line: String,
+    pub email: String,
     pub iban: String,
+    pub bic: String,
+    pub bank_name: String,
     pub ustid: String,
     pub logo_present: bool,
 }
@@ -40,20 +46,48 @@ pub struct PracticeBlock {
 pub struct InvoiceBlock {
     pub number: String,
     pub date: String,
+    /// Printed as its own labelled line so document recognition can pick it up.
+    pub due_date: String,
     pub treatment_date: String,
     /// Address block lines: recipient name(s) followed by the address.
     pub recipient: Vec<String>,
+    /// The practice on one line, above the recipient block (DIN 5008 Rücksendeangabe).
+    pub sender_line: String,
+    /// Ready-made salutation, e.g. `Sehr geehrter Herr Mustermann`.
+    pub greeting: String,
     pub patients: Vec<String>,
     pub treatment_reason: String,
+    /// e.g. `Behandlung/Konsultation Eddie (Hund – Havaneser) am 28.07.2026`.
+    pub treatment_heading: String,
     /// Only filled when the invoice was created with "includes finding".
     pub finding: String,
+    /// Lines grouped per animal, the way the invoice prints them.
+    pub patient_groups: Vec<PatientGroup>,
+    /// Every line in one flat list, kept so templates written before grouping still work.
     pub items: Vec<InvoiceLine>,
     pub vat_groups: Vec<InvoiceVatGroup>,
     pub total: String,
     pub note: String,
+    pub qr_present: bool,
+    /// The GiroCode payload, kept out of the template data: the template places the picture,
+    /// it has no use for the bytes behind it.
+    #[serde(skip)]
+    pub qr_payload: Option<String>,
 }
 
+/// The billing lines of one animal, under a heading that identifies it.
 #[derive(Debug, Serialize)]
+pub struct PatientGroup {
+    /// Empty for lines the vet did not attribute to an animal; the template then omits the
+    /// `Tier:` heading and simply lists them.
+    pub patient: String,
+    /// e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`.
+    pub description: String,
+    pub service_date: String,
+    pub items: Vec<InvoiceLine>,
+}
+
+#[derive(Debug, Serialize, Clone)]
 pub struct InvoiceLine {
     pub position: i32,
     pub name: String,
@@ -63,6 +97,12 @@ pub struct InvoiceLine {
     pub factor: String,
     pub got_number: String,
     pub km: String,
+    /// VAT rate of this line, e.g. `19 %`.
+    pub vat: String,
+    /// The small grey second line: `GOT-Nr: 16`, `1 Stück`, or
+    /// `1 Originalpackung, Zulassungsnr: 402485.00.00`.
+    pub detail: String,
+    /// Gross unit price and gross line total — what a private customer expects to read.
     pub price: String,
     pub total: String,
 }
@@ -72,6 +112,7 @@ pub struct InvoiceVatGroup {
     pub rate: String,
     pub net: String,
     pub vat: String,
+    pub gross: String,
 }
 
 /// Renders the invoice to PDF bytes.
@@ -79,6 +120,7 @@ pub fn render_invoice(
     config: &Config,
     document: &InvoiceDocument,
     logo: Option<Vec<u8>>,
+    qr: Option<String>,
 ) -> AppResult<Vec<u8>> {
     let template = load_template(config)?;
     let data = serde_json::to_string(document)
@@ -99,6 +141,12 @@ pub fn render_invoice(
     inputs.insert(
         Str::from("logo"),
         Bytes::new(logo.unwrap_or_default()).into_value(),
+    );
+    // An SVG rather than a bitmap: a QR is pure rectangles, so it stays sharp at any print size
+    // and needs none of the fonts the binary does not carry.
+    inputs.insert(
+        Str::from("qr"),
+        Bytes::new(qr.unwrap_or_default().into_bytes()).into_value(),
     );
 
     let compiled = engine.compile_with_input::<_, PagedDocument>(inputs);
@@ -276,6 +324,7 @@ pub fn vat_groups_de(groups: &[VatGroup], currency: &str) -> Vec<InvoiceVatGroup
             rate: percent_de(group.vat_percent),
             net: money_de(group.net, currency),
             vat: money_de(group.vat, currency),
+            gross: money_de(group.gross, currency),
         })
         .collect()
 }
@@ -388,9 +437,8 @@ mod tests {
 
     /// Compiles the embedded template with realistic data — the guard against a template
     /// change that only breaks at invoicing time.
-    #[test]
-    fn renders_the_embedded_template_to_a_pdf() {
-        let config = crate::config::Config::parse(
+    fn empty_config() -> crate::config::Config {
+        crate::config::Config::parse(
             r#"
             [server]
             [auth]
@@ -411,70 +459,201 @@ mod tests {
             "#,
             "test.toml",
         )
-        .expect("test config");
+        .expect("test config")
+    }
+
+    /// Compiles the embedded template with realistic data — the guard against a template
+    /// change that only breaks at invoicing time.
+    #[test]
+    fn renders_the_embedded_template_to_a_pdf() {
+        let config = empty_config();
+
+        let examination = InvoiceLine {
+            position: 1,
+            name: "Allgemeine Untersuchung".to_owned(),
+            patient: "Bello".to_owned(),
+            quantity: "1".to_owned(),
+            unit: String::new(),
+            factor: "100 %".to_owned(),
+            got_number: "1".to_owned(),
+            km: String::new(),
+            vat: "19 %".to_owned(),
+            detail: "GOT-Nr: 1".to_owned(),
+            price: "28,11 €".to_owned(),
+            total: "28,11 €".to_owned(),
+        };
+        let medicine = InvoiceLine {
+            position: 2,
+            name: "Amoxicillin 100".to_owned(),
+            patient: "Minka".to_owned(),
+            quantity: "30".to_owned(),
+            unit: "ml".to_owned(),
+            factor: String::new(),
+            got_number: String::new(),
+            km: String::new(),
+            vat: "7 %".to_owned(),
+            detail: "1 Originalpackung, Zulassungsnr: 402485.00.00".to_owned(),
+            price: "0,50 €".to_owned(),
+            total: "15,00 €".to_owned(),
+        };
 
         let document = InvoiceDocument {
             practice: PracticeBlock {
                 name: "Tierärztin Dr. Käthe Musterfrau".to_owned(),
                 address: "Musterweg 5\n12345 Musterstadt".to_owned(),
+                address_line: "Musterweg 5, 12345 Musterstadt".to_owned(),
+                email: "praxis@example.com".to_owned(),
                 iban: "DE02120300000000202051".to_owned(),
+                bic: "BYLADEM1001".to_owned(),
+                bank_name: "Musterbank".to_owned(),
                 ustid: "DE123456789".to_owned(),
                 logo_present: false,
             },
             invoice: InvoiceBlock {
                 number: "2026-0042".to_owned(),
                 date: "04.05.2026".to_owned(),
+                due_date: "18.05.2026".to_owned(),
                 treatment_date: "03.05.2026".to_owned(),
                 recipient: vec![
                     "Frau Erika Mustermann".to_owned(),
                     "Musterstraße 1".to_owned(),
                     "12345 Musterstadt".to_owned(),
                 ],
-                patients: vec!["Bello".to_owned()],
+                sender_line: "Tierärztin Dr. Käthe Musterfrau, Musterweg 5, 12345 Musterstadt"
+                    .to_owned(),
+                greeting: "Sehr geehrte Frau Mustermann".to_owned(),
+                patients: vec!["Bello".to_owned(), "Minka".to_owned()],
                 treatment_reason: "Routinekontrolle".to_owned(),
+                treatment_heading: "Behandlung/Konsultation Bello (Hund – Havaneser), \
+                                    Minka (Katze) am 03.05.2026"
+                    .to_owned(),
                 finding: "Ohne Befund".to_owned(),
-                items: vec![
-                    InvoiceLine {
-                        position: 1,
-                        name: "Allgemeine Untersuchung".to_owned(),
+                patient_groups: vec![
+                    PatientGroup {
                         patient: "Bello".to_owned(),
-                        quantity: "1".to_owned(),
-                        unit: String::new(),
-                        factor: "100 %".to_owned(),
-                        got_number: "1".to_owned(),
-                        km: String::new(),
-                        price: "23,62 €".to_owned(),
-                        total: "23,62 €".to_owned(),
+                        description: "Hund, Havaneser, Geburtsdatum: 01.01.2021".to_owned(),
+                        service_date: "03.05.2026".to_owned(),
+                        items: vec![examination.clone()],
                     },
-                    InvoiceLine {
-                        position: 2,
-                        name: "Amoxicillin 100".to_owned(),
-                        patient: "Bello".to_owned(),
-                        quantity: "30".to_owned(),
-                        unit: "ml".to_owned(),
-                        factor: String::new(),
-                        got_number: String::new(),
-                        km: String::new(),
-                        price: "0,50 €".to_owned(),
-                        total: "15,00 €".to_owned(),
+                    PatientGroup {
+                        patient: "Minka".to_owned(),
+                        description: "Katze".to_owned(),
+                        service_date: "03.05.2026".to_owned(),
+                        items: vec![medicine.clone()],
                     },
                 ],
-                vat_groups: vec![InvoiceVatGroup {
-                    rate: "19 %".to_owned(),
-                    net: "32,45 €".to_owned(),
-                    vat: "6,17 €".to_owned(),
-                }],
-                total: "38,62 €".to_owned(),
+                items: vec![examination, medicine],
+                vat_groups: vec![
+                    InvoiceVatGroup {
+                        rate: "19 %".to_owned(),
+                        net: "23,62 €".to_owned(),
+                        vat: "4,49 €".to_owned(),
+                        gross: "28,11 €".to_owned(),
+                    },
+                    InvoiceVatGroup {
+                        rate: "7 %".to_owned(),
+                        net: "14,02 €".to_owned(),
+                        vat: "0,98 €".to_owned(),
+                        gross: "15,00 €".to_owned(),
+                    },
+                ],
+                total: "43,11 €".to_owned(),
                 note: "Vielen Dank für Ihr Vertrauen.".to_owned(),
+                qr_present: true,
+                qr_payload: None,
             },
         };
 
-        let pdf = render_invoice(&config, &document, None).expect("the template compiles");
+        let qr = crate::domain::giro::epc_payload(
+            "Tierärztin Dr. Käthe Musterfrau",
+            "DE02120300000000202051",
+            "BYLADEM1001",
+            Decimal::from_str_exact("43.11").expect("amount"),
+            "Rechnung 2026-0042",
+            "EUR",
+        )
+        .and_then(|payload| {
+            use fast_qr::convert::{Builder, Shape, svg::SvgBuilder};
+            let code = fast_qr::QRBuilder::new(payload)
+                .ecl(fast_qr::ECL::M)
+                .build()
+                .ok()?;
+            Some(SvgBuilder::default().shape(Shape::Square).to_str(&code))
+        });
+        assert!(qr.is_some(), "the sample invoice can carry a GiroCode");
+
+        let pdf = render_invoice(&config, &document, None, qr).expect("the template compiles");
         assert!(pdf.starts_with(b"%PDF-"), "output is a PDF");
         assert!(
             pdf.len() > 2_000,
             "a one-page invoice is a few kilobytes, got {}",
             pdf.len()
         );
+    }
+
+    /// A fresh install has no logo, no bank details and no findings. The template must still
+    /// produce a usable invoice rather than a page of stray separators — or an error.
+    #[test]
+    fn renders_with_everything_the_practice_has_not_filled_in_yet() {
+        let config = empty_config();
+        let document = InvoiceDocument {
+            practice: PracticeBlock {
+                name: "Praxis".to_owned(),
+                address: String::new(),
+                address_line: String::new(),
+                email: String::new(),
+                iban: String::new(),
+                bic: String::new(),
+                bank_name: String::new(),
+                ustid: String::new(),
+                logo_present: false,
+            },
+            invoice: InvoiceBlock {
+                number: "2026-0001".to_owned(),
+                date: "04.05.2026".to_owned(),
+                due_date: String::new(),
+                treatment_date: String::new(),
+                recipient: vec!["Herr Mustermann".to_owned()],
+                sender_line: "Praxis".to_owned(),
+                greeting: "Sehr geehrter Herr Mustermann".to_owned(),
+                patients: Vec::new(),
+                treatment_reason: String::new(),
+                treatment_heading: String::new(),
+                finding: String::new(),
+                patient_groups: vec![PatientGroup {
+                    patient: String::new(),
+                    description: String::new(),
+                    service_date: String::new(),
+                    items: vec![InvoiceLine {
+                        position: 1,
+                        name: "Beratung".to_owned(),
+                        patient: String::new(),
+                        quantity: "1".to_owned(),
+                        unit: String::new(),
+                        factor: String::new(),
+                        got_number: String::new(),
+                        km: String::new(),
+                        vat: "19 %".to_owned(),
+                        detail: String::new(),
+                        price: "13,40 €".to_owned(),
+                        total: "13,40 €".to_owned(),
+                    }],
+                }],
+                items: Vec::new(),
+                vat_groups: vec![InvoiceVatGroup {
+                    rate: "19 %".to_owned(),
+                    net: "11,26 €".to_owned(),
+                    vat: "2,14 €".to_owned(),
+                    gross: "13,40 €".to_owned(),
+                }],
+                total: "13,40 €".to_owned(),
+                note: String::new(),
+                qr_present: false,
+                qr_payload: None,
+            },
+        };
+
+        let pdf = render_invoice(&config, &document, None, None).expect("the template compiles");
+        assert!(pdf.starts_with(b"%PDF-"), "output is a PDF");
     }
 }

@@ -108,14 +108,14 @@ async fn lines_can_be_reordered_and_removed(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_got_service(&pool).await;
     let other_service: i64 = sqlx::query_scalar(
-        "INSERT INTO service (type, name, vat_percent, gross_price, draft)
+        "INSERT INTO service (type, name, vat_percent, net_price, draft)
          VALUES ('self_defined', 'Zweite Leistung', 19.000, 10.00, false) RETURNING id",
     )
     .fetch_one(&pool)
     .await
     .expect("seed service");
     let third_service: i64 = sqlx::query_scalar(
-        "INSERT INTO service (type, name, vat_percent, gross_price, draft)
+        "INSERT INTO service (type, name, vat_percent, net_price, draft)
          VALUES ('self_defined', 'Dritte Leistung', 19.000, 10.00, false) RETURNING id",
     )
     .fetch_one(&pool)
@@ -220,7 +220,7 @@ async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool)
     .await;
 
     // The price at apply time is what gets pinned.
-    sqlx::query("UPDATE service SET gross_price = 30.00 WHERE id = $1")
+    sqlx::query("UPDATE service SET net_price = 30.00 WHERE id = $1")
         .bind(service_id)
         .execute(&pool)
         .await
@@ -248,11 +248,11 @@ async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool)
     // Template order, current prices, and the drug line dispensed FEFO.
     assert_eq!(items[0]["drug_packaging_id"], drug.subset_packaging_id);
     assert_eq!(items[0]["quantity"], "2.00");
-    assert_eq!(items[0]["price_gross"], "2.50");
+    assert_eq!(items[0]["price_net"], "2.50");
     assert_eq!(items[0]["lots"].as_array().map(Vec::len), Some(1));
     assert_eq!(items[1]["service_id"], service_id);
     assert_eq!(
-        items[1]["price_gross"], "30.00",
+        items[1]["price_net"], "30.00",
         "the price of today, not of yesterday"
     );
 

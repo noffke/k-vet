@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT unit, quantity, list_price_net, sales_price_gross FROM drug_packaging\n         WHERE id = $1",
+  "query": "SELECT unit, quantity, list_price_net, sales_price_net FROM drug_packaging\n         WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -38,12 +38,12 @@
       },
       {
         "ordinal": 3,
-        "name": "sales_price_gross",
+        "name": "sales_price_net",
         "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "drug_packaging",
-            "name": "sales_price_gross"
+            "name": "sales_price_net"
           }
         }
       }
@@ -60,5 +60,5 @@
       true
     ]
   },
-  "hash": "15346aa5728fb04d3e621393bc17daaee47979dd6358f6a5e99ffdaf9bb31ae3"
+  "hash": "5e52959804a3b9d6acc1ea3cfe23cfb15ad1a552dae7dea17cb6121519c76115"
 }

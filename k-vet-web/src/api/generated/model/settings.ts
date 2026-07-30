@@ -8,9 +8,22 @@
 
 export interface Settings {
   practice_name: string;
-  /** Printed on the invoice as written, line breaks included. */
-  practice_address: string;
+  practice_street: string;
+  practice_zip: string;
+  practice_city: string;
+  /**
+     * ISO 3166-1 alpha-2; empty falls back to `[invoice] default_country`.
+     * @nullable
+     */
+  practice_country?: string | null;
+  /**
+     * Shown in the invoice footer. The sender address of outgoing mail is operator
+     * configuration and lives in `config.toml`.
+     */
+  email: string;
   iban: string;
+  bic: string;
+  bank_name: string;
   ustid: string;
   /** @nullable */
   logo_attachment_id?: number | null;

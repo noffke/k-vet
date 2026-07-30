@@ -385,7 +385,7 @@ pub async fn seed_drug(pool: &PgPool) -> SeededDrug {
     .expect("seed drug");
     let packaging_id: i64 = sqlx::query_scalar(
         "INSERT INTO drug_packaging
-             (drug_id, kind, unit, quantity, list_price_net, sales_price_gross, supplier_id, draft)
+             (drug_id, kind, unit, quantity, list_price_net, sales_price_net, supplier_id, draft)
          VALUES ($1, 'original', 'ml', 100.00, 10.00, 12.50, $2, false) RETURNING id",
     )
     .bind(drug_id)
@@ -395,7 +395,7 @@ pub async fn seed_drug(pool: &PgPool) -> SeededDrug {
     .expect("seed packaging");
     let subset_packaging_id: i64 = sqlx::query_scalar(
         "INSERT INTO drug_packaging
-             (drug_id, kind, unit, quantity, list_price_net, sales_price_gross, draft)
+             (drug_id, kind, unit, quantity, list_price_net, sales_price_net, draft)
          VALUES ($1, 'subset', 'ml', 10.00, 1.50, 2.50, false) RETURNING id",
     )
     .bind(drug_id)
@@ -437,7 +437,7 @@ pub async fn seed_lot(
 /// A GOT service: general examination, 100% factor, 19% VAT, 23.62 EUR gross.
 pub async fn seed_got_service(pool: &PgPool) -> i64 {
     sqlx::query_scalar(
-        "INSERT INTO service (type, name, got_number, factor, vat_percent, gross_price, draft)
+        "INSERT INTO service (type, name, got_number, factor, vat_percent, net_price, draft)
          VALUES ('got', 'Allgemeine Untersuchung', '1', 100.000, 19.000, 23.62, false)
          RETURNING id",
     )
@@ -449,7 +449,7 @@ pub async fn seed_got_service(pool: &PgPool) -> i64 {
 /// A self-defined travel-expense service (price computed from kilometres).
 pub async fn seed_travel_service(pool: &PgPool) -> i64 {
     sqlx::query_scalar(
-        "INSERT INTO service (type, name, vat_percent, gross_price, travel_expenses, draft)
+        "INSERT INTO service (type, name, vat_percent, net_price, travel_expenses, draft)
          VALUES ('self_defined', 'Wegegeld', 19.000, 13.00, true, false) RETURNING id",
     )
     .fetch_one(pool)

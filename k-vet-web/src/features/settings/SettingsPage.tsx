@@ -74,20 +74,75 @@ export function SettingsPage() {
             onChange={(event) => autoSave.set({ practice_name: event.target.value })}
             onBlur={() => void autoSave.flush()}
           />
-          <TextAreaField
-            label={t('settings.practiceAddress')}
-            defaultValue={record.practice_address}
-            rows={3}
-            error={errorFor('practice_address')}
-            onChange={(event) => autoSave.set({ practice_address: event.target.value })}
+          <TextField
+            label={t('settings.practiceStreet')}
+            defaultValue={record.practice_street}
+            error={errorFor('practice_street')}
+            onChange={(event) => autoSave.set({ practice_street: event.target.value })}
             onBlur={() => void autoSave.flush()}
           />
+          <div className="grid gap-3 sm:grid-cols-[1fr_2fr_auto]">
+            <TextField
+              label={t('settings.practiceZip')}
+              defaultValue={record.practice_zip}
+              error={errorFor('practice_zip')}
+              onChange={(event) => autoSave.set({ practice_zip: event.target.value })}
+              onBlur={() => void autoSave.flush()}
+            />
+            <TextField
+              label={t('settings.practiceCity')}
+              defaultValue={record.practice_city}
+              error={errorFor('practice_city')}
+              onChange={(event) => autoSave.set({ practice_city: event.target.value })}
+              onBlur={() => void autoSave.flush()}
+            />
+            <TextField
+              label={t('settings.country')}
+              defaultValue={record.practice_country ?? ''}
+              error={errorFor('practice_country')}
+              onChange={(event) =>
+                autoSave.set({ practice_country: event.target.value.toUpperCase() || null })
+              }
+              onBlur={() => void autoSave.flush()}
+            />
+          </div>
+          <TextField
+            label={t('settings.email')}
+            hint={t('settings.emailHint')}
+            defaultValue={record.email}
+            error={errorFor('email')}
+            onChange={(event) => autoSave.set({ email: event.target.value })}
+            onBlur={() => void autoSave.flush()}
+          />
+        </div>
+      </section>
+
+      <section className="mt-4 rounded-card border border-line bg-surface p-4">
+        <h2 className="eyebrow">{t('settings.banking')}</h2>
+        <div className="mt-2 grid gap-3">
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField
               label={t('settings.iban')}
               defaultValue={record.iban}
               error={errorFor('iban')}
               onChange={(event) => autoSave.set({ iban: event.target.value })}
+              onBlur={() => void autoSave.flush()}
+            />
+            <TextField
+              label={t('settings.bic')}
+              hint={t('settings.bicHint')}
+              defaultValue={record.bic}
+              error={errorFor('bic')}
+              onChange={(event) => autoSave.set({ bic: event.target.value.toUpperCase() })}
+              onBlur={() => void autoSave.flush()}
+            />
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2">
+            <TextField
+              label={t('settings.bankName')}
+              defaultValue={record.bank_name}
+              error={errorFor('bank_name')}
+              onChange={(event) => autoSave.set({ bank_name: event.target.value })}
               onBlur={() => void autoSave.flush()}
             />
             <TextField

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, gross_price, vat_percent, factor, got_number, travel_expenses,\n                          draft, archived\n                   FROM service WHERE id = $1",
+  "query": "SELECT drug.name, drug.vat_percent, packaging.unit, packaging.sales_price_net,\n                          packaging.quantity, packaging.draft, packaging.archived\n                   FROM drug_packaging packaging\n                   JOIN drug ON drug.id = packaging.drug_id\n                   WHERE packaging.id = $1",
   "describe": {
     "columns": [
       {
@@ -9,84 +9,73 @@
         "type_info": "Text",
         "origin": {
           "Table": {
-            "table": "service",
+            "table": "drug",
             "name": "name"
           }
         }
       },
       {
         "ordinal": 1,
-        "name": "gross_price",
-        "type_info": "Numeric",
-        "origin": {
-          "Table": {
-            "table": "service",
-            "name": "gross_price"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
         "name": "vat_percent",
         "type_info": "Numeric",
         "origin": {
           "Table": {
-            "table": "service",
+            "table": "drug",
             "name": "vat_percent"
           }
         }
       },
       {
+        "ordinal": 2,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      },
+      {
         "ordinal": 3,
-        "name": "factor",
+        "name": "sales_price_net",
         "type_info": "Numeric",
         "origin": {
           "Table": {
-            "table": "service",
-            "name": "factor"
+            "table": "drug_packaging",
+            "name": "sales_price_net"
           }
         }
       },
       {
         "ordinal": 4,
-        "name": "got_number",
-        "type_info": "Text",
+        "name": "quantity",
+        "type_info": "Numeric",
         "origin": {
           "Table": {
-            "table": "service",
-            "name": "got_number"
+            "table": "drug_packaging",
+            "name": "quantity"
           }
         }
       },
       {
         "ordinal": 5,
-        "name": "travel_expenses",
-        "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "service",
-            "name": "travel_expenses"
-          }
-        }
-      },
-      {
-        "ordinal": 6,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
           "Table": {
-            "table": "service",
+            "table": "drug_packaging",
             "name": "draft"
           }
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
           "Table": {
-            "table": "service",
+            "table": "drug_packaging",
             "name": "archived"
           }
         }
@@ -104,9 +93,8 @@
       true,
       true,
       false,
-      false,
       false
     ]
   },
-  "hash": "c7f37d28e992c03ba9ac689a3fcc8ed8712b193fbb7aead926890380a9310cae"
+  "hash": "94f7e26dd79284acd81128afedff171099f0579c67a8e438c37173fdf64043e2"
 }

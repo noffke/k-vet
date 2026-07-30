@@ -26,6 +26,8 @@ export interface PatchCustomer {
   home_zip?: string | null;
   /** @nullable */
   home_city?: string | null;
+  /** @nullable */
+  home_country?: string | null;
   invoice_salutation?: null | Salutation;
   /** @nullable */
   invoice_first_name?: string | null;
@@ -39,6 +41,8 @@ export interface PatchCustomer {
   invoice_zip?: string | null;
   /** @nullable */
   invoice_city?: string | null;
+  /** @nullable */
+  invoice_country?: string | null;
   /** @nullable */
   phone?: string | null;
   /** @nullable */

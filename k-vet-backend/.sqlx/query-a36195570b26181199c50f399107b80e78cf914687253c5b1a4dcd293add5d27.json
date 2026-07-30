@@ -1,0 +1,170 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT practice_name, practice_street, practice_zip, practice_city, practice_country,\n                email, iban, bic, bank_name, ustid, logo_attachment_id, cc_emails, bcc_emails\n         FROM global_settings WHERE id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "practice_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_name"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "practice_street",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_street"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "practice_zip",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_zip"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "practice_city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_city"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "practice_country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_country"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "email",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "email"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "iban",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "iban"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "bic",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "bic"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "bank_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "bank_name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "ustid",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "ustid"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "logo_attachment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "logo_attachment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "cc_emails",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "cc_emails"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "bcc_emails",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "bcc_emails"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "a36195570b26181199c50f399107b80e78cf914687253c5b1a4dcd293add5d27"
+}

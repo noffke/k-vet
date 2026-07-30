@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::AppState;
+use crate::domain::money;
 use crate::error::AppResult;
 
 /// Results are a short list the vet scans, not a page they browse.
@@ -38,6 +39,8 @@ pub enum PickerItem {
         name: String,
         unit: Option<String>,
         quantity: Option<Decimal>,
+        /// Net price; `price_gross` is derived from it for display.
+        price_net: Decimal,
         price_gross: Decimal,
         vat_percent: Decimal,
         /// Derived stock over all lots — a shortfall is visible before picking.
@@ -49,6 +52,8 @@ pub enum PickerItem {
         name: String,
         got_number: Option<String>,
         factor: Option<Decimal>,
+        /// Net price; `price_gross` is derived from it for display.
+        price_net: Decimal,
         price_gross: Decimal,
         vat_percent: Decimal,
         travel_expenses: bool,
@@ -87,7 +92,7 @@ pub async fn items(
                   drug.name               AS name,
                   packaging.unit          AS unit,
                   packaging.quantity      AS quantity,
-                  packaging.sales_price_gross AS price_gross,
+                  packaging.sales_price_net AS price_net,
                   drug.vat_percent        AS vat_percent,
                   COALESCE(stock.remaining, 0) AS in_stock,
                   NULL::text              AS got_number,
@@ -116,7 +121,7 @@ pub async fn items(
                   service.name      AS name,
                   NULL::text        AS unit,
                   NULL::numeric     AS quantity,
-                  service.gross_price AS price_gross,
+                  service.net_price AS price_net,
                   service.vat_percent AS vat_percent,
                   0::numeric        AS in_stock,
                   service.got_number AS got_number,
@@ -145,8 +150,9 @@ pub async fn items(
     let items = rows
         .into_iter()
         .filter_map(|row| {
-            let price_gross = row.price_gross?;
+            let price_net = row.price_net?;
             let vat_percent = row.vat_percent?;
+            let price_gross = money::add_vat(price_net, vat_percent).gross;
             let name = row.name.unwrap_or_default();
             let uses = row.uses.unwrap_or(0);
             match row.kind.as_deref() {
@@ -156,6 +162,7 @@ pub async fn items(
                     name,
                     unit: row.unit,
                     quantity: row.quantity,
+                    price_net,
                     price_gross,
                     vat_percent,
                     in_stock: row.in_stock.unwrap_or_default(),
@@ -166,6 +173,7 @@ pub async fn items(
                     name,
                     got_number: row.got_number,
                     factor: row.factor,
+                    price_net,
                     price_gross,
                     vat_percent,
                     travel_expenses: row.travel_expenses.unwrap_or(false),

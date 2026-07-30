@@ -10,9 +10,21 @@ export interface PatchSettings {
   /** @nullable */
   practice_name?: string | null;
   /** @nullable */
-  practice_address?: string | null;
+  practice_street?: string | null;
+  /** @nullable */
+  practice_zip?: string | null;
+  /** @nullable */
+  practice_city?: string | null;
+  /** @nullable */
+  practice_country?: string | null;
+  /** @nullable */
+  email?: string | null;
   /** @nullable */
   iban?: string | null;
+  /** @nullable */
+  bic?: string | null;
+  /** @nullable */
+  bank_name?: string | null;
   /** @nullable */
   ustid?: string | null;
   /** @nullable */

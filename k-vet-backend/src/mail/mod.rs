@@ -210,7 +210,16 @@ fn render_template(template: &str, context: &InvoiceMail) -> AppResult<(String, 
         .and_then(|template| template.render(context))
         .map_err(|error| AppError::internal("rendering the email body", error))?;
 
-    Ok((subject.trim().to_owned(), body))
+    let subject = subject.trim().to_owned();
+    // A stray leading blank line in an operator's template would otherwise send a mail with no
+    // subject at all, which most clients file as spam and nobody notices until a customer asks.
+    if subject.is_empty() {
+        return Err(AppError::Internal(
+            "the email template's first line is the subject and must not be empty".to_owned(),
+        ));
+    }
+
+    Ok((subject, body))
 }
 
 fn format_mailbox(name: &str, address: &str) -> AppResult<Mailbox> {
@@ -285,7 +294,10 @@ mod tests {
     #[test]
     fn template_first_line_is_the_subject() {
         let (subject, body) = render_template(DEFAULT_TEMPLATE, &context()).expect("renders");
-        assert_eq!(subject, "Ihre Rechnung 2026-0042");
+        assert_eq!(
+            subject,
+            "Ihre Rechnung 2026-0042 – Tierärztin Dr. Musterfrau"
+        );
         assert!(
             body.starts_with("Sehr geehrte Frau Müller,"),
             "body was: {body}"

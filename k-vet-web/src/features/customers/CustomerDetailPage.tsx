@@ -164,9 +164,10 @@ export function CustomerDetailPage() {
           <legend className="eyebrow">{t('field.homeAddress')}</legend>
           <div className="mt-2 grid gap-4 sm:grid-cols-4">
             {field('home_addon', t('field.addon'), { className: 'sm:col-span-4' })}
-            {field('home_street', t('field.street'), { className: 'sm:col-span-2' })}
+            {field('home_street', t('field.street'), { className: 'sm:col-span-4' })}
             {field('home_zip', t('field.zip'))}
-            {field('home_city', t('field.city'))}
+            {field('home_city', t('field.city'), { className: 'sm:col-span-2' })}
+            {field('home_country', t('field.country'))}
           </div>
         </fieldset>
 
@@ -209,9 +210,10 @@ export function CustomerDetailPage() {
               {field('invoice_first_name', t('field.firstName'))}
               {field('invoice_last_name', t('field.lastName'), { className: 'sm:col-span-2' })}
               {field('invoice_addon', t('field.addon'), { className: 'sm:col-span-4' })}
-              {field('invoice_street', t('field.street'), { className: 'sm:col-span-2' })}
+              {field('invoice_street', t('field.street'), { className: 'sm:col-span-4' })}
               {field('invoice_zip', t('field.zip'))}
-              {field('invoice_city', t('field.city'))}
+              {field('invoice_city', t('field.city'), { className: 'sm:col-span-2' })}
+              {field('invoice_country', t('field.country'))}
             </div>
           </fieldset>
         ) : (

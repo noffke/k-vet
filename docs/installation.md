@@ -93,8 +93,9 @@ an `.env` file next to the compose file so the second copy is not in the shell h
 echo "KVET_DB_PASSWORD=$(openssl rand -hex 16)" > .env
 ```
 
-Practice name, address, IBAN, VAT ID, logo and the global CC/BCC addresses are **not** in this
-file — the vet edits them in the application under *Einstellungen*.
+Practice name, address, e-mail, bank details (IBAN, BIC, bank name), VAT ID, logo and the global
+CC/BCC addresses are **not** in this file — the vet edits them in the application under
+*Einstellungen*.
 
 ## 4. Build and start
 
@@ -116,7 +117,8 @@ Logs: `docker compose -f docker-compose.deploy.yml logs -f app`.
 
 Open `base_url` in a browser and sign in with the credentials from `[auth]`. Then, in this order:
 
-1. **Einstellungen** — practice name, address, IBAN, VAT ID, logo. These appear on every invoice
+1. **Einstellungen** — practice name, address (street, postcode, town, country), practice e-mail,
+   IBAN, BIC, bank name, VAT ID, logo. These appear on every invoice
    generated afterwards, so fill them in before billing anything.
 2. **Leistungen** — the GOT 2022 catalogue is already there (surgical positions hidden). Add the
    practice's own positions, including a travel-expenses position if house calls are billed.

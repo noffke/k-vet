@@ -39,7 +39,7 @@ test.describe('services and templates', () => {
 
     await page.getByLabel('Name').fill('Wegegeld Hausbesuch')
     await page.getByLabel('USt.').selectOption('19.000')
-    await page.getByLabel('Preis').fill('13,00')
+    await page.getByLabel('Preis (netto)').fill('13,00')
     await page.getByLabel('Wegegeld').check()
     await page.getByRole('button', { name: 'Schließen', exact: true }).click()
 
@@ -49,11 +49,11 @@ test.describe('services and templates', () => {
     await page.getByRole('option', { name: /Wegegeld/ }).first().click()
 
     await page.getByLabel('Kilometer').fill('12')
-    // 12 km × 3.50 = 42.00.
-    await expect(page.getByLabel('Preis').first()).toHaveValue('42')
+    // 12 km × 3.50 € net = 42.00 € net (GOT quotes the Wegegeld net).
+    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('42')
 
     await page.getByLabel('Faktor (Verkehrsverhältnisse)').fill('2')
-    await expect(page.getByLabel('Preis').first()).toHaveValue('84')
+    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('84')
   })
 
   test('a template applies its lines in order with current prices', async ({ page, request }) => {
@@ -87,9 +87,9 @@ test.describe('services and templates', () => {
     await page.getByRole('button', { name: new RegExp(templateName) }).click()
 
     await expect(page.getByLabel('Name').first()).toHaveValue(new RegExp(drugName))
-    // The 10 ml subset of a 100 ml bottle bought for 10.00 net: § 4 basis 1.00, +100 %,
-    // plus 19 % VAT = 2.38 — pinned at apply time.
-    await expect(page.getByLabel('Preis').first()).toHaveValue('2,38')
+    // The 10 ml subset of a 100 ml bottle bought for 10.00 net: § 4 basis 1.00, +100 % = 2.00
+    // net — pinned at apply time. The customer pays 2,38 € once VAT is added.
+    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('2')
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
 })

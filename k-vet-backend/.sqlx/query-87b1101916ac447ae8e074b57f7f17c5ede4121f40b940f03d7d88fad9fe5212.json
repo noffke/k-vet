@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug_packaging SET\n               unit              = CASE WHEN $2 THEN $3 ELSE unit END,\n               quantity          = CASE WHEN $4 THEN $5 ELSE quantity END,\n               list_price_net    = CASE WHEN $6 THEN $7 ELSE list_price_net END,\n               sales_price_net = CASE WHEN $8 THEN $9 ELSE sales_price_net END,\n               supplier_id       = CASE WHEN $10 THEN $11 ELSE supplier_id END,\n               price_overridden  = $12\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Numeric",
+        "Bool",
+        "Numeric",
+        "Bool",
+        "Numeric",
+        "Bool",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "87b1101916ac447ae8e074b57f7f17c5ede4121f40b940f03d7d88fad9fe5212"
+}

@@ -100,7 +100,7 @@ async fn kind_bound_checks_are_draft_aware(pool: PgPool) {
     // ... but completing it without a supplier is not.
     let result = sqlx::query(
         "UPDATE drug_packaging
-         SET unit = 'ml', quantity = 100, list_price_net = 10, sales_price_gross = 12.5,
+         SET unit = 'ml', quantity = 100, list_price_net = 10, sales_price_net = 12.5,
              draft = false
          WHERE drug_id = $1",
     )
@@ -138,7 +138,7 @@ async fn stock_lots_reference_original_packagings_only(pool: PgPool) {
     let seeded = common::seed_drug(&pool).await;
     let subset_id: i64 = sqlx::query_scalar(
         "INSERT INTO drug_packaging
-             (drug_id, kind, unit, quantity, list_price_net, sales_price_gross, draft)
+             (drug_id, kind, unit, quantity, list_price_net, sales_price_net, draft)
          VALUES ($1, 'subset', 'ml', 10.00, 1.00, 1.50, false) RETURNING id",
     )
     .bind(seeded.drug_id)

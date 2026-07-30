@@ -35,6 +35,7 @@ Typst is called with two system inputs:
 | --- | --- |
 | `inputs.data` | The whole invoice as a JSON string. |
 | `inputs.logo` | The practice logo's bytes, empty when none is set. |
+| `inputs.qr` | The GiroCode as SVG bytes, empty when the invoice cannot carry one. Guard with `invoice.qr_present` rather than testing the bytes. |
 
 ```typst
 #import sys: inputs
@@ -53,8 +54,12 @@ font falls back silently and changes the metrics, so stay with these.
 | Field | Type | Notes |
 | --- | --- | --- |
 | `name` | string | From *Einstellungen*; may be empty. |
-| `address` | string | Multi-line as entered. |
+| `address` | string | Street and town, one per line. |
+| `address_line` | string | The same address joined with `, ` — for a footer or sender line. |
+| `email` | string | Practice address for the footer; empty when not set. |
 | `iban` | string | Empty when not set — guard before printing a payment sentence. |
+| `bic` | string | Empty when not set. |
+| `bank_name` | string | Empty when not set. |
 | `ustid` | string | VAT ID, empty when not set. |
 | `logo_present` | bool | `true` when `inputs.logo` holds an image. |
 
@@ -64,15 +69,30 @@ font falls back silently and changes the metrics, so stay with these.
 | --- | --- | --- |
 | `number` | string | e.g. `2026-0042`. |
 | `date` | string | Invoice date, `dd.mm.yyyy`. |
+| `due_date` | string | Pinned at creation from `[invoice] payment_terms_days`; empty on invoices written before that existed. |
 | `treatment_date` | string | Appointment date; empty when unknown. |
 | `recipient` | string[] | Address block, one line each: name(s) then street, then zip and city. Already picks the invoice address over the home address, and includes a second household name when there is one. |
+| `sender_line` | string | Practice and address on one line, for the DIN 5008 Rücksendeangabe above the address block. |
+| `greeting` | string | Ready-made salutation, e.g. `Sehr geehrter Herr Mustermann` — follows the invoice recipient when one is set. Write the comma yourself. |
 | `patients` | string[] | Animal names on this invoice. |
 | `treatment_reason` | string | May be empty. |
+| `treatment_heading` | string | e.g. `Behandlung/Konsultation Eddie (Hund – Havaneser) am 28.07.2026`; empty when there are no animals. |
 | `finding` | string | Only filled when the invoice was created with *Befund aufführen*; otherwise empty. |
-| `items` | line[] | See below, in the vet's chosen order. |
+| `patient_groups` | group[] | The lines grouped per animal — what the default template prints. See below. |
+| `items` | line[] | Every line in one flat list, in the vet's chosen order. Kept so templates written before grouping keep working. |
 | `vat_groups` | group[] | One entry per VAT rate on the invoice. |
 | `total` | string | Gross total, e.g. `38,62 €`. |
 | `note` | string | Free note from the create dialog; may be empty. |
+| `qr_present` | bool | `true` when `inputs.qr` holds a GiroCode. Guard the QR block with this. |
+
+A patient group (`invoice.patient_groups[]`):
+
+| Field | Notes |
+| --- | --- |
+| `patient` | Animal name. **Empty** for lines the vet did not attribute to an animal — print those without a heading. Such a group always comes last. |
+| `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`; empty parts are left out. |
+| `service_date` | Treatment date, repeated per group. |
+| `items` | The group's lines, in the vet's order. |
 
 A line (`invoice.items[]`):
 
@@ -86,12 +106,18 @@ A line (`invoice.items[]`):
 | `factor` | GOT factor as a percentage (`150 %`); empty when none applies. |
 | `got_number` | GOT position number; empty for self-defined services and drugs. |
 | `km` | Kilometres on a travel-expense line; empty otherwise. |
+| `vat` | This line's VAT rate, e.g. `19 %`. |
+| `detail` | The small second line: `GOT-Nr: 16`, `1 Stück`, or `1 Originalpackung, Zulassungsnr: 402485.00.00`. Empty when there is nothing to add. |
 | `price` | Unit price, gross. |
 | `total` | Line total, gross. |
 
-A VAT group (`invoice.vat_groups[]`) has `rate` (e.g. `19 %`), `net` and `vat`. Sum the groups
-rather than recomputing anything: rounding happens per group, and `total` is the authoritative
-gross amount.
+A VAT group (`invoice.vat_groups[]`) has `rate` (e.g. `19 %`), `net`, `vat` and `gross`. Sum the
+groups rather than recomputing anything: prices are stored **net**, VAT is computed per group, and
+`total` is the authoritative gross amount.
+
+**Never derive a gross amount yourself.** `price` and `total` are not simply `net × 1,19`: the odd
+cent is allocated across a group's lines so the printed column adds up to `gross` exactly
+(`money::allocate_gross`). Multiplying by hand produces a column that is a cent off its own total.
 
 Empty strings are the "absent" signal throughout — there are no nulls. Guard optional fields:
 

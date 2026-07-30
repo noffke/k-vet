@@ -20,7 +20,7 @@ export interface PatchPackaging {
      * Setting this overrides the computed price; `null` returns to the computed one.
      * @nullable
      */
-  sales_price_gross?: string | null;
+  sales_price_net?: string | null;
   /** @nullable */
   supplier_id?: number | null;
 }

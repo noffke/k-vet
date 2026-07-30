@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_gross, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
+  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
   "describe": {
     "columns": [
       {
@@ -81,12 +81,12 @@
       },
       {
         "ordinal": 6,
-        "name": "sales_price_gross",
+        "name": "sales_price_net",
         "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "drug_packaging",
-            "name": "sales_price_gross"
+            "name": "sales_price_net"
           }
         }
       },
@@ -178,5 +178,5 @@
       true
     ]
   },
-  "hash": "775aab7323a0a742131914bd0811d0fa699a306657b89d0e53506b5c342481de"
+  "hash": "97170056c6dd12262a0ec8a38db3878a16d833e2598fa858a5fa780f114d32ee"
 }

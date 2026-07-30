@@ -1,0 +1,90 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer SET\n               salutation         = CASE WHEN $2  THEN $3  ELSE salutation END,\n               first_name         = CASE WHEN $4  THEN $5  ELSE first_name END,\n               last_name          = CASE WHEN $6  THEN $7  ELSE last_name END,\n               second_salutation  = CASE WHEN $8  THEN $9  ELSE second_salutation END,\n               second_first_name  = CASE WHEN $10 THEN $11 ELSE second_first_name END,\n               second_last_name   = CASE WHEN $12 THEN $13 ELSE second_last_name END,\n               home_addon         = CASE WHEN $14 THEN $15 ELSE home_addon END,\n               home_street        = CASE WHEN $16 THEN $17 ELSE home_street END,\n               home_zip           = CASE WHEN $18 THEN $19 ELSE home_zip END,\n               home_city          = CASE WHEN $20 THEN $21 ELSE home_city END,\n               invoice_salutation = CASE WHEN $22 THEN $23 ELSE invoice_salutation END,\n               invoice_first_name = CASE WHEN $24 THEN $25 ELSE invoice_first_name END,\n               invoice_last_name  = CASE WHEN $26 THEN $27 ELSE invoice_last_name END,\n               invoice_addon      = CASE WHEN $28 THEN $29 ELSE invoice_addon END,\n               invoice_street     = CASE WHEN $30 THEN $31 ELSE invoice_street END,\n               invoice_zip        = CASE WHEN $32 THEN $33 ELSE invoice_zip END,\n               invoice_city       = CASE WHEN $34 THEN $35 ELSE invoice_city END,\n               home_country       = CASE WHEN $36 THEN $37 ELSE home_country END,\n               invoice_country    = CASE WHEN $38 THEN $39 ELSE invoice_country END,\n               phone              = CASE WHEN $40 THEN $41 ELSE phone END,\n               warning_remark     = CASE WHEN $42 THEN $43 ELSE warning_remark END,\n               draft              = $44\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        {
+          "Custom": {
+            "name": "salutation",
+            "kind": {
+              "Enum": [
+                "frau",
+                "herr",
+                "familie"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        {
+          "Custom": {
+            "name": "salutation",
+            "kind": {
+              "Enum": [
+                "frau",
+                "herr",
+                "familie"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        {
+          "Custom": {
+            "name": "salutation",
+            "kind": {
+              "Enum": [
+                "frau",
+                "herr",
+                "familie"
+              ]
+            }
+          }
+        },
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "acc934e10cf837863089f6ca34d069e23cd0463647983c3812d7f37866e3ca74"
+}

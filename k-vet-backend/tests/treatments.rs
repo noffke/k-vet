@@ -48,14 +48,14 @@ async fn line_values_are_pinned_at_entry_and_survive_catalog_changes(pool: PgPoo
     );
     let item = added.json();
     assert_eq!(item["name"], "Allgemeine Untersuchung");
-    assert_eq!(item["price_gross"], "23.62");
+    assert_eq!(item["price_net"], "23.62");
     assert_eq!(item["vat_percent"], "19.000");
     assert_eq!(item["factor"], "100.000");
     assert_eq!(item["got_number"], "1");
-    assert_eq!(item["line_total"], "23.62");
+    assert_eq!(item["line_net"], "23.62");
 
     // The catalog changes afterwards — the documented treatment must not move.
-    sqlx::query("UPDATE service SET gross_price = 99.99, name = 'Neuer Name' WHERE id = $1")
+    sqlx::query("UPDATE service SET net_price = 99.99, name = 'Neuer Name' WHERE id = $1")
         .bind(service_id)
         .execute(&pool)
         .await
@@ -66,7 +66,7 @@ async fn line_values_are_pinned_at_entry_and_survive_catalog_changes(pool: PgPoo
         .await
         .json();
     assert_eq!(
-        items[0]["price_gross"], "23.62",
+        items[0]["price_net"], "23.62",
         "the pinned price is never re-read"
     );
     assert_eq!(items[0]["name"], "Allgemeine Untersuchung");
@@ -85,7 +85,7 @@ async fn line_total_applies_quantity_and_factor(pool: PgPool) {
         )
         .await
         .json();
-    assert_eq!(item["line_total"], "47.24");
+    assert_eq!(item["line_net"], "47.24");
 
     // 23.62 × 2 × 1.5 = 70.86
     let patched = app
@@ -98,7 +98,7 @@ async fn line_total_applies_quantity_and_factor(pool: PgPool) {
         )
         .await
         .json();
-    assert_eq!(patched["line_total"], "70.86");
+    assert_eq!(patched["line_net"], "70.86");
 }
 
 #[sqlx::test]
@@ -523,7 +523,7 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
     .expect("seed template item");
 
     // The catalog price at apply time is what gets pinned.
-    sqlx::query("UPDATE service SET gross_price = 30.00 WHERE id = $1")
+    sqlx::query("UPDATE service SET net_price = 30.00 WHERE id = $1")
         .bind(service_id)
         .execute(&pool)
         .await
@@ -544,7 +544,7 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
 
     let items = response.json();
     assert_eq!(items[0]["service_id"], service_id, "template order is kept");
-    assert_eq!(items[0]["price_gross"], "30.00", "current price is copied");
+    assert_eq!(items[0]["price_net"], "30.00", "current price is copied");
     assert_eq!(items[1]["drug_packaging_id"], drug.packaging_id);
     assert_eq!(items[1]["quantity"], "5.00");
     assert_eq!(
@@ -565,7 +565,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
     )
     .await;
 
-    sqlx::query("UPDATE service SET gross_price = 40.00 WHERE id = $1")
+    sqlx::query("UPDATE service SET net_price = 40.00 WHERE id = $1")
         .bind(service_id)
         .execute(&pool)
         .await
@@ -586,7 +586,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
         .await
         .json();
     assert_eq!(
-        verbatim_items[0]["price_gross"], "23.62",
+        verbatim_items[0]["price_net"], "23.62",
         "verbatim keeps the old price"
     );
 
@@ -605,7 +605,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
         .await
         .json();
     assert_eq!(
-        refreshed_items[0]["price_gross"], "40.00",
+        refreshed_items[0]["price_net"], "40.00",
         "refresh re-reads the catalog"
     );
 }

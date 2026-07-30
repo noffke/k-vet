@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM service\n         WHERE draft AND created_at < $1\n           AND name IS NULL AND vat_percent IS NULL AND net_price IS NULL\n           AND got_number IS NULL\n           AND NOT EXISTS (SELECT 1 FROM treatment_item WHERE service_id = service.id)\n           AND NOT EXISTS (\n                 SELECT 1 FROM treatment_template_item WHERE service_id = service.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "c0f7bc58830b595703c998dd460cabb89b526d72d51fb40653f6bce2fbaf9966"
+}

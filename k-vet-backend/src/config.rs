@@ -121,6 +121,15 @@ pub struct InvoiceConfig {
     pub currency: String,
     #[serde(default = "default_vat_rates")]
     pub vat_rates: Vec<Decimal>,
+    /// ISO 3166-1 alpha-2 used when a customer or the practice has no country of its own.
+    /// A business preference rather than an invariant, so it lives here and not as a column
+    /// default — the database stores NULL and this fills in.
+    #[serde(default = "default_country")]
+    pub default_country: String,
+    /// Days between the invoice date and the due date. Pinned onto each invoice at creation,
+    /// so changing it never moves the due date of an invoice already issued.
+    #[serde(default = "default_payment_terms_days")]
+    pub payment_terms_days: i64,
     #[serde(default, deserialize_with = "empty_path_as_none")]
     pub typst_template: Option<PathBuf>,
     #[serde(default, deserialize_with = "empty_path_as_none")]
@@ -194,6 +203,17 @@ impl Config {
         if self.invoice.currency.trim().len() != 3 {
             return Err(ConfigError::Invalid(
                 "invoice.currency must be a three-letter ISO 4217 code".into(),
+            ));
+        }
+        if rust_iso3166::from_alpha2(&self.invoice.default_country.to_uppercase()).is_none() {
+            return Err(ConfigError::Invalid(format!(
+                "invoice.default_country must be an ISO 3166-1 alpha-2 country code, got `{}`",
+                self.invoice.default_country,
+            )));
+        }
+        if self.invoice.payment_terms_days < 0 {
+            return Err(ConfigError::Invalid(
+                "invoice.payment_terms_days must not be negative".into(),
             ));
         }
         if self.invoice.vat_rates.is_empty() {
@@ -270,6 +290,14 @@ fn default_smtp_port() -> u16 {
 fn default_smtp_tls() -> SmtpTls {
     SmtpTls::Starttls
 }
+fn default_country() -> String {
+    "DE".to_owned()
+}
+
+fn default_payment_terms_days() -> i64 {
+    14
+}
+
 fn default_currency() -> String {
     "EUR".to_owned()
 }

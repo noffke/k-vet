@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT packaging.id, packaging.kind AS \"kind: PackagingKind\", drug.approval_number\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           WHERE packaging.id = ANY($1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind: PackagingKind",
+        "type_info": {
+          "Custom": {
+            "name": "packaging_kind",
+            "kind": {
+              "Enum": [
+                "original",
+                "subset"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "approval_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "approval_number"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "e38e47ecab269f0b1bb7a75daf729a921347e2e5baa7a5eb7c58351c1bac157f"
+}

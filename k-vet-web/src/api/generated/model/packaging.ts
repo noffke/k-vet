@@ -20,15 +20,23 @@ export interface Packaging {
      * @nullable
      */
   list_price_net?: string | null;
-  /** @nullable */
+  /**
+     * Sales price **without** VAT — the figure AMPreisV computes and the vet edits.
+     * @nullable
+     */
+  sales_price_net?: string | null;
+  /**
+     * Derived from `sales_price_net`; what the customer pays.
+     * @nullable
+     */
   sales_price_gross?: string | null;
   /** `true` while the vet's manual price wins over the computed one. */
   price_overridden: boolean;
   /**
-     * What AMPreisV would charge — shown next to an overridden price.
+     * What AMPreisV would charge, net — shown next to an overridden price.
      * @nullable
      */
-  computed_price_gross?: string | null;
+  computed_price_net?: string | null;
   /** @nullable */
   supplier_id?: number | null;
   /** @nullable */

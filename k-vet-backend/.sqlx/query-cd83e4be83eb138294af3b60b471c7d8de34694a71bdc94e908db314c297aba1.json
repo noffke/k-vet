@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM drug_packaging\n         WHERE draft AND created_at < $1\n           AND unit IS NULL AND quantity IS NULL AND list_price_net IS NULL\n           AND sales_price_net IS NULL AND supplier_id IS NULL\n           AND NOT EXISTS (SELECT 1 FROM drug_stock_lot WHERE packaging_id = drug_packaging.id)\n           AND NOT EXISTS (\n                 SELECT 1 FROM treatment_item WHERE drug_packaging_id = drug_packaging.id)\n           AND NOT EXISTS (\n                 SELECT 1 FROM treatment_template_item\n                 WHERE drug_packaging_id = drug_packaging.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "cd83e4be83eb138294af3b60b471c7d8de34694a71bdc94e908db314c297aba1"
+}

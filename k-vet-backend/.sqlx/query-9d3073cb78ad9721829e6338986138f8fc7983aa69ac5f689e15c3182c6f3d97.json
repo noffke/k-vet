@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug_packaging SET sales_price_net = $2\n             WHERE id = $1 AND NOT price_overridden",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9d3073cb78ad9721829e6338986138f8fc7983aa69ac5f689e15c3182c6f3d97"
+}

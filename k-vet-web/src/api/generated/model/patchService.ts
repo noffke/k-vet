@@ -16,7 +16,7 @@ export interface PatchService {
   /** @nullable */
   vat_percent?: string | null;
   /** @nullable */
-  gross_price?: string | null;
+  net_price?: string | null;
   /** @nullable */
   travel_expenses?: boolean | null;
   /** @nullable */

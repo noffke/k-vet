@@ -86,7 +86,7 @@ async fn returns_drugs_and_services_as_a_tagged_union(pool: PgPool) {
         drug_item["in_stock"], "100.00",
         "a shortfall is visible before picking"
     );
-    assert_eq!(drug_item["price_gross"], "12.50");
+    assert_eq!(drug_item["price_net"], "12.50");
 
     let subset_item = items
         .as_array()
@@ -97,7 +97,7 @@ async fn returns_drugs_and_services_as_a_tagged_union(pool: PgPool) {
         })
         .expect("the subset packaging is pickable too");
     assert_eq!(subset_item["quantity"], "10.00");
-    assert_eq!(subset_item["price_gross"], "2.50");
+    assert_eq!(subset_item["price_net"], "2.50");
     assert_eq!(
         subset_item["in_stock"], "100.00",
         "stock is reported per drug, in base units"
@@ -149,14 +149,14 @@ async fn hidden_archived_and_draft_entries_are_excluded(pool: PgPool) {
 
     sqlx::query(
         "INSERT INTO service
-             (type, name, got_number, factor, vat_percent, gross_price, hidden, draft)
+             (type, name, got_number, factor, vat_percent, net_price, hidden, draft)
          VALUES ('got', 'Chirurgische Leistung', '99', 100.000, 19.000, 100.00, true, false)",
     )
     .execute(&pool)
     .await
     .expect("hidden service");
     sqlx::query(
-        "INSERT INTO service (type, name, vat_percent, gross_price, archived, draft)
+        "INSERT INTO service (type, name, vat_percent, net_price, archived, draft)
                  VALUES ('self_defined', 'Alte Leistung', 19.000, 10.00, true, false)",
     )
     .execute(&pool)
@@ -214,14 +214,14 @@ async fn hidden_archived_and_draft_entries_are_excluded(pool: PgPool) {
 async fn frequently_used_entries_rank_first(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let rare: i64 = sqlx::query_scalar(
-        "INSERT INTO service (type, name, vat_percent, gross_price, draft)
+        "INSERT INTO service (type, name, vat_percent, net_price, draft)
          VALUES ('self_defined', 'Zzz-Sonderleistung selten', 19.000, 10.00, false) RETURNING id",
     )
     .fetch_one(&pool)
     .await
     .expect("seed service");
     let common_service: i64 = sqlx::query_scalar(
-        "INSERT INTO service (type, name, vat_percent, gross_price, draft)
+        "INSERT INTO service (type, name, vat_percent, net_price, draft)
          VALUES ('self_defined', 'Zzz-Sonderleistung häufig', 19.000, 10.00, false) RETURNING id",
     )
     .fetch_one(&pool)
@@ -258,7 +258,7 @@ async fn ranked_results_arrive_well_within_a_second(pool: PgPool) {
 
     // A full catalog: the GOT schedule is ~1000 positions, plus the practice's drugs.
     sqlx::query(
-        "INSERT INTO service (type, name, got_number, factor, vat_percent, gross_price, draft)
+        "INSERT INTO service (type, name, got_number, factor, vat_percent, net_price, draft)
          SELECT 'got', 'GOT Position ' || i, i::text, 100.000, 19.000, 20.00 + i, false
          FROM generate_series(1, 1200) AS i",
     )
@@ -276,7 +276,7 @@ async fn ranked_results_arrive_well_within_a_second(pool: PgPool) {
     .expect("seed drugs");
     sqlx::query(
         "INSERT INTO drug_packaging
-             (drug_id, kind, unit, quantity, list_price_net, sales_price_gross, supplier_id, draft)
+             (drug_id, kind, unit, quantity, list_price_net, sales_price_net, supplier_id, draft)
          SELECT id, 'original', 'Stück', 1, 5.00, 7.50, $1, false FROM drug",
     )
     .bind(common::seed_supplier(&pool).await)

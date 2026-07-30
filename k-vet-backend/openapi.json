@@ -4413,6 +4413,13 @@
               "null"
             ]
           },
+          "home_country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`."
+          },
           "invoice_salutation": {
             "oneOf": [
               {
@@ -4454,6 +4461,12 @@
             ]
           },
           "invoice_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_country": {
             "type": [
               "string",
               "null"
@@ -5174,22 +5187,30 @@
             ],
             "description": "Purchase price without VAT; derived pro rata for subsets."
           },
+          "sales_price_net": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Sales price **without** VAT — the figure AMPreisV computes and the vet edits."
+          },
           "sales_price_gross": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Derived from `sales_price_net`; what the customer pays."
           },
           "price_overridden": {
             "type": "boolean",
             "description": "`true` while the vet's manual price wins over the computed one."
           },
-          "computed_price_gross": {
+          "computed_price_net": {
             "type": [
               "string",
               "null"
             ],
-            "description": "What AMPreisV would charge — shown next to an overridden price."
+            "description": "What AMPreisV would charge, net — shown next to an overridden price."
           },
           "supplier_id": {
             "type": [
@@ -5350,6 +5371,12 @@
               "null"
             ]
           },
+          "home_country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "invoice_salutation": {
             "oneOf": [
               {
@@ -5391,6 +5418,12 @@
             ]
           },
           "invoice_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_country": {
             "type": [
               "string",
               "null"
@@ -5513,7 +5546,7 @@
             ],
             "description": "Only meaningful for originals; subsets derive it pro rata."
           },
-          "sales_price_gross": {
+          "sales_price_net": {
             "type": [
               "string",
               "null"
@@ -5667,7 +5700,7 @@
               "null"
             ]
           },
-          "gross_price": {
+          "net_price": {
             "type": [
               "string",
               "null"
@@ -5696,13 +5729,49 @@
               "null"
             ]
           },
-          "practice_address": {
+          "practice_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "practice_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "practice_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "practice_country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "email": {
             "type": [
               "string",
               "null"
             ]
           },
           "iban": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bic": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "bank_name": {
             "type": [
               "string",
               "null"
@@ -5789,7 +5858,7 @@
               "null"
             ]
           },
-          "price_gross": {
+          "price_net": {
             "type": [
               "string",
               "null"
@@ -6013,6 +6082,7 @@
               "id",
               "drug_id",
               "name",
+              "price_net",
               "price_gross",
               "vat_percent",
               "in_stock",
@@ -6044,6 +6114,10 @@
                   "null"
                 ]
               },
+              "price_net": {
+                "type": "string",
+                "description": "Net price; `price_gross` is derived from it for display."
+              },
               "price_gross": {
                 "type": "string"
               },
@@ -6071,6 +6145,7 @@
             "required": [
               "id",
               "name",
+              "price_net",
               "price_gross",
               "vat_percent",
               "travel_expenses",
@@ -6096,6 +6171,10 @@
                   "string",
                   "null"
                 ]
+              },
+              "price_net": {
+                "type": "string",
+                "description": "Net price; `price_gross` is derived from it for display."
               },
               "price_gross": {
                 "type": "string"
@@ -6286,11 +6365,19 @@
               "null"
             ]
           },
+          "net_price": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The fee **without** VAT — the GOT publishes net, so that is what is stored and edited."
+          },
           "gross_price": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "Derived from `net_price` and `vat_percent` so the UI can show what the customer pays."
           },
           "travel_expenses": {
             "type": "boolean",
@@ -6353,8 +6440,13 @@
         "type": "object",
         "required": [
           "practice_name",
-          "practice_address",
+          "practice_street",
+          "practice_zip",
+          "practice_city",
+          "email",
           "iban",
+          "bic",
+          "bank_name",
           "ustid",
           "cc_emails",
           "bcc_emails"
@@ -6363,11 +6455,33 @@
           "practice_name": {
             "type": "string"
           },
-          "practice_address": {
+          "practice_street": {
+            "type": "string"
+          },
+          "practice_zip": {
+            "type": "string"
+          },
+          "practice_city": {
+            "type": "string"
+          },
+          "practice_country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; empty falls back to `[invoice] default_country`."
+          },
+          "email": {
             "type": "string",
-            "description": "Printed on the invoice as written, line breaks included."
+            "description": "Shown in the invoice footer. The sender address of outgoing mail is operator\nconfiguration and lives in `config.toml`."
           },
           "iban": {
+            "type": "string"
+          },
+          "bic": {
+            "type": "string"
+          },
+          "bank_name": {
             "type": "string"
           },
           "ustid": {
@@ -6624,10 +6738,12 @@
           "kind",
           "name",
           "quantity",
+          "price_net",
           "price_gross",
           "vat_percent",
           "travel_expenses",
-          "line_total",
+          "line_net",
+          "line_gross",
           "lots",
           "created_at"
         ],
@@ -6694,9 +6810,13 @@
               "null"
             ]
           },
+          "price_net": {
+            "type": "string",
+            "description": "Per-unit **net** price, pinned at line entry."
+          },
           "price_gross": {
             "type": "string",
-            "description": "Per-unit gross price, pinned at line entry."
+            "description": "Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price."
           },
           "vat_percent": {
             "type": "string"
@@ -6718,9 +6838,13 @@
             "type": "boolean",
             "description": "`true` when the line's service bills travel expenses — the UI then asks for km."
           },
-          "line_total": {
+          "line_net": {
             "type": "string",
-            "description": "`price_gross × quantity × factor/100`, rounded to cents."
+            "description": "`price_net × quantity × factor/100`, rounded to cents — **net**."
+          },
+          "line_gross": {
+            "type": "string",
+            "description": "`line_net` plus VAT: what the customer pays for this line."
           },
           "lots": {
             "type": "array",

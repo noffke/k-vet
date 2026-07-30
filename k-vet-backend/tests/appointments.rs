@@ -171,10 +171,7 @@ async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(po
         .get(&format!("/api/treatments/{}/items", treatments[0]["id"]))
         .await
         .json();
-    assert_eq!(
-        items[0]["price_gross"], "23.62",
-        "prices are copied verbatim"
-    );
+    assert_eq!(items[0]["price_net"], "23.62", "prices are copied verbatim");
     assert_eq!(items[0]["patient_id"], patient_id);
 }
 

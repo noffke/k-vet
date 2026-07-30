@@ -202,15 +202,45 @@ async fn settings_start_empty_and_are_patched_field_by_field(pool: PgPool) {
     let addressed = app
         .patch(
             "/api/settings",
-            json!({ "practice_address": "Dorfstraße 1\n12345 Musterstadt", "iban": "DE02120300000000202051" }),
+            json!({
+                "practice_street": "Dorfstraße 1",
+                "practice_zip": "12345",
+                "practice_city": "Musterstadt",
+                "practice_country": "DE",
+                "email": "praxis@example.com",
+                "iban": "DE02120300000000202051",
+                "bic": "BYLADEM1001",
+                "bank_name": "Musterbank",
+            }),
         )
         .await
         .json();
     assert_eq!(addressed["practice_name"], "Tierarztpraxis Musterfrau");
     assert_eq!(addressed["iban"], "DE02120300000000202051");
+    assert_eq!(addressed["practice_street"], "Dorfstraße 1");
+    assert_eq!(addressed["practice_zip"], "12345");
+    assert_eq!(addressed["practice_city"], "Musterstadt");
+    assert_eq!(addressed["practice_country"], "DE");
+    assert_eq!(addressed["email"], "praxis@example.com");
+    assert_eq!(addressed["bic"], "BYLADEM1001");
+    assert_eq!(addressed["bank_name"], "Musterbank");
+
+    // A BIC that is not 8 or 11 characters would silently break the GiroCode.
+    let rejected = app.patch("/api/settings", json!({ "bic": "NOPE" })).await;
     assert_eq!(
-        addressed["practice_address"],
-        "Dorfstraße 1\n12345 Musterstadt"
+        rejected.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "a malformed BIC is refused"
+    );
+
+    // Country validation is a real ISO 3166-1 lookup, not a shape check.
+    let bogus = app
+        .patch("/api/settings", json!({ "practice_country": "XX" }))
+        .await;
+    assert_eq!(
+        bogus.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "XX is not a country"
     );
 
     // Still one row, whatever happens.

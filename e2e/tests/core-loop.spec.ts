@@ -53,8 +53,9 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
 
   const lines = page.getByLabel('Name')
   await expect(lines).toHaveCount(2)
-  // 2,38 € for the 10 ml subset (AMPreisV § 4) plus 23,62 € for the service.
-  await expect(page.getByText('26,00 €').first()).toBeVisible()
+  // Net 2,00 € for the 10 ml subset (AMPreisV § 4) plus 23,62 € for the service = 25,62 €,
+  // plus 19 % VAT = 4,87 €.
+  await expect(page.getByText('30,49 €').first()).toBeVisible()
 
   // ── Invoice with the finding printed ────────────────────────────────────────
   await page.getByRole('button', { name: 'Rechnung erstellen' }).click()

@@ -126,6 +126,27 @@ currency = "EUR"
 #        effective rate is stored per record and pinned per invoice line.
 vat_rates = ["19.000", "7.000"]
 
+# de-DE: Land, das gilt, wenn bei einer Kundin oder der Praxis keines hinterlegt
+#        ist (ISO 3166-1 alpha-2). Wird beim Start gegen die echte Länderliste
+#        geprüft. Steht hier und nicht als Vorgabewert in der Datenbank, damit
+#        ein Umzug ins Ausland keine Datenbankänderung braucht.
+# en-US: Country used when a customer or the practice has none of its own
+#        (ISO 3166-1 alpha-2). Validated against the real country list at
+#        startup. It lives here rather than as a database default so that moving
+#        abroad needs no schema change.
+default_country = "DE"
+
+# de-DE: Zahlungsziel in Tagen. Wird beim Anlegen der Rechnung als Fälligkeits-
+#        datum festgeschrieben — eine spätere Änderung verschiebt also nie das
+#        Datum bereits gestellter Rechnungen. Das Fälligkeitsdatum steht als
+#        eigene Zeile auf der Rechnung, damit die Buchhaltungssoftware es beim
+#        Hochladen selbst erkennt.
+# en-US: Payment term in days. Pinned onto each invoice as its due date when the
+#        invoice is created, so changing it never moves the due date of an
+#        invoice already issued. The due date is printed as its own labelled
+#        line so bookkeeping software can pick it up on upload.
+payment_terms_days = 14
+
 # de-DE: Optionaler Pfad zu einer eigenen Typst-Rechnungsvorlage. Leer = die
 #        im Programm eingebettete Vorlage wird verwendet. Im Container liegen die
 #        Vorlagen im eingebundenen Verzeichnis /etc/k-vet/templates und werden dort

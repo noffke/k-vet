@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT type AS \"service_type: ServiceType\", name, got_number, factor, vat_percent,\n                  gross_price, draft\n           FROM service WHERE id = $1 FOR UPDATE",
+  "query": "SELECT type AS \"service_type: ServiceType\", name, got_number, factor, vat_percent,\n                  net_price, draft\n           FROM service WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -70,12 +70,12 @@
       },
       {
         "ordinal": 5,
-        "name": "gross_price",
+        "name": "net_price",
         "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "service",
-            "name": "gross_price"
+            "name": "net_price"
           }
         }
       },
@@ -106,5 +106,5 @@
       false
     ]
   },
-  "hash": "c66af733d539b690003446be43e3d2b5fefd7e8bb0a20f949d0f6412c1612112"
+  "hash": "b402181ecc1d88bef1d3a3c01f43f784433253060ef7cbd062fa9827152ef634"
 }

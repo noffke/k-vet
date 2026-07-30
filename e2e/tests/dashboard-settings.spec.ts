@@ -53,20 +53,23 @@ test.describe('dashboard and settings', () => {
     await expect(page).toHaveURL(new RegExp(`/lots/${lotId}$`))
   })
 
-  test('a changed IBAN and practice name are on the next invoice PDF', async ({
-    page,
-    request,
-  }) => {
+  test('the practice and bank details are on the next invoice PDF', async ({ page, request }) => {
     const iban = `DE${Date.now().toString().slice(-18)}`
     const practiceName = `Tierarztpraxis ${Date.now().toString().slice(-6)}`
+    const practiceEmail = `praxis-${Date.now().toString().slice(-6)}@example.com`
+    const bic = 'BYLADEM1001'
 
     await signIn(page)
     await navigate(page, 'Einstellungen')
 
     await page.getByLabel('Name der Praxis').fill(practiceName)
+    await page.getByLabel('Straße und Hausnummer').fill('Dorfstraße 1')
+    await page.getByLabel('PLZ').fill('12345')
+    await page.getByLabel('Ort').fill('Musterstadt')
+    await page.getByLabel('E-Mail der Praxis').fill(practiceEmail)
     await page.getByLabel('IBAN').fill(iban)
-    await page.getByLabel('Adresse', { exact: true }).fill('Dorfstraße 1\n12345 Musterstadt')
-    await page.getByLabel('Adresse', { exact: true }).blur()
+    await page.getByLabel('BIC').fill(bic)
+    await page.getByLabel('BIC').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     // The invoice is written after the change, so it must carry the new values.
@@ -77,7 +80,16 @@ test.describe('dashboard and settings', () => {
 
     expect(text).toContain(iban)
     expect(text).toContain(practiceName)
+    expect(text).toContain(practiceEmail)
+    expect(text).toContain(bic)
     expect(text).toContain(invoice.invoiceNumber)
+
+    // The due date carries the whole reason it exists: lexoffice should read it off the PDF
+    // instead of the vet retyping it. Assert the label, not just some date.
+    expect(text).toContain('Fälligkeitsdatum:')
+
+    // The GiroCode is an image, so pdftotext cannot see it — assert its caption instead.
+    expect(text).toContain('GiroCode')
   })
 
   test('a malformed copy address is refused with a field error', async ({ page }) => {

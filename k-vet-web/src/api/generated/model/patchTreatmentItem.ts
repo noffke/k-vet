@@ -10,7 +10,7 @@ export interface PatchTreatmentItem {
   /** @nullable */
   quantity?: string | null;
   /** @nullable */
-  price_gross?: string | null;
+  price_net?: string | null;
   /** @nullable */
   name?: string | null;
   /** @nullable */

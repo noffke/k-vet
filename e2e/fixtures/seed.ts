@@ -144,7 +144,7 @@ export interface SeededService {
 /** A complete self-defined service, priced gross. */
 export async function seedService(
   request: APIRequestContext,
-  options: { grossPrice?: string; travelExpenses?: boolean } = {},
+  options: { netPrice?: string; travelExpenses?: boolean } = {},
 ): Promise<SeededService> {
   await login(request)
   const service = await post<{ id: number }>(request, '/api/services', { type: 'self_defined' })
@@ -152,7 +152,7 @@ export async function seedService(
   await patch(request, `/api/services/${service.id}`, {
     name: serviceName,
     vat_percent: '19.000',
-    gross_price: options.grossPrice ?? '23.62',
+    net_price: options.netPrice ?? '23.62',
     travel_expenses: options.travelExpenses ?? false,
   })
   return { serviceId: service.id, serviceName }

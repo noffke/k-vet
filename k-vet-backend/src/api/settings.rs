@@ -19,9 +19,17 @@ use crate::error::{AppError, AppResult};
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Settings {
     pub practice_name: String,
-    /// Printed on the invoice as written, line breaks included.
-    pub practice_address: String,
+    pub practice_street: String,
+    pub practice_zip: String,
+    pub practice_city: String,
+    /// ISO 3166-1 alpha-2; empty falls back to `[invoice] default_country`.
+    pub practice_country: Option<String>,
+    /// Shown in the invoice footer. The sender address of outgoing mail is operator
+    /// configuration and lives in `config.toml`.
+    pub email: String,
     pub iban: String,
+    pub bic: String,
+    pub bank_name: String,
     pub ustid: String,
     pub logo_attachment_id: Option<i64>,
     /// Every outgoing invoice email is copied to these addresses.
@@ -32,8 +40,16 @@ pub struct Settings {
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct PatchSettings {
     pub practice_name: Option<String>,
-    pub practice_address: Option<String>,
+    pub practice_street: Option<String>,
+    pub practice_zip: Option<String>,
+    pub practice_city: Option<String>,
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>)]
+    pub practice_country: Option<Option<String>>,
+    pub email: Option<String>,
     pub iban: Option<String>,
+    pub bic: Option<String>,
+    pub bank_name: Option<String>,
     pub ustid: Option<String>,
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<i64>)]
@@ -70,6 +86,18 @@ pub async fn patch_settings(
 ) -> AppResult<Json<Settings>> {
     let cc_emails = validate_all("cc_emails", body.cc_emails)?;
     let bcc_emails = validate_all("bcc_emails", body.bcc_emails)?;
+    let email = body
+        .email
+        .map(|value| match value.trim() {
+            "" => Ok(String::new()),
+            address => validate_email("email", address),
+        })
+        .transpose()?;
+    let bic = body.bic.map(validate_bic).transpose()?;
+    let country = match &body.practice_country {
+        Some(Some(code)) => Some(Some(validate_country("practice_country", code)?)),
+        other => other.clone(),
+    };
 
     if let Some(Some(attachment_id)) = body.logo_attachment_id {
         let exists =
@@ -84,16 +112,29 @@ pub async fn patch_settings(
     sqlx::query!(
         "UPDATE global_settings
          SET practice_name    = COALESCE($1, practice_name),
-             practice_address = COALESCE($2, practice_address),
-             iban             = COALESCE($3, iban),
-             ustid            = COALESCE($4, ustid),
-             logo_attachment_id = CASE WHEN $5 THEN $6 ELSE logo_attachment_id END,
-             cc_emails        = COALESCE($7, cc_emails),
-             bcc_emails       = COALESCE($8, bcc_emails)
+             practice_street  = COALESCE($2, practice_street),
+             practice_zip     = COALESCE($3, practice_zip),
+             practice_city    = COALESCE($4, practice_city),
+             practice_country = CASE WHEN $5 THEN $6 ELSE practice_country END,
+             email            = COALESCE($7, email),
+             iban             = COALESCE($8, iban),
+             bic              = COALESCE($9, bic),
+             bank_name        = COALESCE($10, bank_name),
+             ustid            = COALESCE($11, ustid),
+             logo_attachment_id = CASE WHEN $12 THEN $13 ELSE logo_attachment_id END,
+             cc_emails        = COALESCE($14, cc_emails),
+             bcc_emails       = COALESCE($15, bcc_emails)
          WHERE id",
         body.practice_name,
-        body.practice_address,
+        body.practice_street,
+        body.practice_zip,
+        body.practice_city,
+        country.is_some(),
+        country.flatten(),
+        email,
         body.iban,
+        bic,
+        body.bank_name,
         body.ustid,
         body.logo_attachment_id.is_some(),
         body.logo_attachment_id.flatten(),
@@ -104,6 +145,32 @@ pub async fn patch_settings(
     .await?;
 
     load(&state).await.map(Json)
+}
+
+/// A BIC is 8 or 11 alphanumeric characters (ISO 9362).
+///
+/// Worth rejecting rather than storing verbatim like the IBAN: the BIC also goes into the
+/// GiroCode, where a malformed value produces a QR a banking app silently refuses.
+fn validate_bic(value: String) -> AppResult<String> {
+    let bic = value.trim().to_uppercase();
+    if bic.is_empty() {
+        return Ok(bic);
+    }
+    let shaped = matches!(bic.len(), 8 | 11) && bic.chars().all(|c| c.is_ascii_alphanumeric());
+    if shaped {
+        Ok(bic)
+    } else {
+        Err(AppError::field("bic", "value.invalidBic"))
+    }
+}
+
+/// Validates a country against the real ISO 3166-1 list, not just its shape.
+pub fn validate_country(field: &str, value: &str) -> AppResult<String> {
+    let code = value.trim().to_uppercase();
+    match rust_iso3166::from_alpha2(&code) {
+        Some(_) => Ok(code),
+        None => Err(AppError::field(field, "value.invalidCountry")),
+    }
 }
 
 /// Validates a list of addresses, reporting the list's own field name.
@@ -120,8 +187,8 @@ fn validate_all(field: &str, emails: Option<Vec<String>>) -> AppResult<Option<Ve
 
 async fn load(state: &AppState) -> AppResult<Settings> {
     let row = sqlx::query!(
-        "SELECT practice_name, practice_address, iban, ustid, logo_attachment_id,
-                cc_emails, bcc_emails
+        "SELECT practice_name, practice_street, practice_zip, practice_city, practice_country,
+                email, iban, bic, bank_name, ustid, logo_attachment_id, cc_emails, bcc_emails
          FROM global_settings WHERE id",
     )
     .fetch_one(&state.pool)
@@ -129,8 +196,14 @@ async fn load(state: &AppState) -> AppResult<Settings> {
 
     Ok(Settings {
         practice_name: row.practice_name,
-        practice_address: row.practice_address,
+        practice_street: row.practice_street,
+        practice_zip: row.practice_zip,
+        practice_city: row.practice_city,
+        practice_country: row.practice_country,
+        email: row.email,
         iban: row.iban,
+        bic: row.bic,
+        bank_name: row.bank_name,
         ustid: row.ustid,
         logo_attachment_id: row.logo_attachment_id,
         cc_emails: row.cc_emails,

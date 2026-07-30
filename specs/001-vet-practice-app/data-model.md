@@ -399,8 +399,14 @@ invoice PDF, practice logo).
 |---|---|---|
 | id | boolean | PK DEFAULT true, CHECK (id) — the classic single-row guard |
 | practice_name | text | NOT NULL DEFAULT '' |
-| practice_address | text | NOT NULL DEFAULT '' |
+| practice_street | text | NOT NULL DEFAULT '' |
+| practice_zip | text | NOT NULL DEFAULT '' |
+| practice_city | text | NOT NULL DEFAULT '' |
+| practice_country | text | NULL — falls back to `[invoice] default_country` |
+| email | text | NOT NULL DEFAULT '' — printed in the invoice footer |
 | iban | text | NOT NULL DEFAULT '' |
+| bic | text | NOT NULL DEFAULT '' — also feeds the GiroCode |
+| bank_name | text | NOT NULL DEFAULT '' |
 | ustid | text | NOT NULL DEFAULT '' |
 | logo_attachment_id | bigint | FK → attachment, NULL |
 | cc_emails | text[] | NOT NULL DEFAULT '{}' |

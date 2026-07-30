@@ -86,8 +86,8 @@ async fn creating_an_invoice_allocates_a_number_and_renders_a_pdf(pool: PgPool) 
     );
     assert_eq!(invoice["includes_finding"], true);
     assert_eq!(
-        invoice["total_gross"], "26.12",
-        "23.62 service + 2.50 for the 10 ml subset"
+        invoice["total_gross"], "31.08",
+        "net 23.62 service + 2.50 subset = 26.12, plus 19 % VAT = 4.96",
     );
     assert!(
         invoice["pdf_attachment_id"].is_i64(),
@@ -460,4 +460,165 @@ async fn resending_requires_an_accepted_invoice_with_recipients(pool: PgPool) {
         .post_empty(&format!("/api/invoices/{invoice_id}/send"))
         .await;
     assert_eq!(without_recipients.status, StatusCode::UNPROCESSABLE_ENTITY);
+}
+
+/// The regression guard for the bug migration `0009` fixed.
+///
+/// GOT fees are published **net**, and `0008` imported them as such — but everything downstream
+/// used to treat them as gross and extract VAT from them, billing every position about 16 % too
+/// low. The expected values here were not produced by this project: they are read off the
+/// practice's own RE-289, written by the system k-vet replaces. See item `GOT-01` in `review.md`.
+#[sqlx::test]
+async fn got_positions_are_billed_with_vat_on_top(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+
+    // (GOT number, published net fee, gross amount on RE-289)
+    let positions = [
+        ("16", "23.62", "28.11"),
+        ("17", "15.39", "18.31"),
+        ("40", "34.50", "41.06"),
+        ("251", "17.25", "20.53"),
+        ("394", "16.50", "19.64"),
+        ("662", "10.26", "12.21"),
+    ];
+
+    for (got_number, net, gross) in positions {
+        let customer_id = common::seed_customer(&pool).await;
+        let patient_id = common::seed_patient(&pool, customer_id).await;
+        let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+        let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+
+        // Straight from the catalogue migration `0008` imported, not from a fixture.
+        let service_id: i64 =
+            sqlx::query_scalar("SELECT id FROM service WHERE got_number = $1 AND type = 'got'")
+                .bind(got_number)
+                .fetch_one(&pool)
+                .await
+                .expect("the GOT catalogue is in every test database");
+
+        let added = app
+            .post(
+                &format!("/api/treatments/{treatment_id}/items"),
+                json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+            )
+            .await;
+        assert_eq!(
+            added.status,
+            StatusCode::OK,
+            "{}",
+            String::from_utf8_lossy(&added.body)
+        );
+
+        let item = added.json();
+        assert_eq!(
+            item["price_net"], net,
+            "GOT {got_number} keeps the published net fee",
+        );
+        assert_eq!(
+            item["line_gross"], gross,
+            "GOT {got_number} must bill {gross} EUR — the amount on RE-289 — not the net fee",
+        );
+
+        let invoice = create_invoice(&app, treatment_id).await;
+        assert_eq!(
+            invoice["total_gross"], gross,
+            "GOT {got_number}: the invoice total is the gross amount",
+        );
+    }
+}
+
+/// Renders a two-animal invoice with the practice fully configured and writes it to
+/// `KVET_PDF_DUMP` when set, so the layout can be eyeballed against RE-289.
+#[sqlx::test]
+async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+
+    sqlx::query(
+        "UPDATE global_settings SET
+             practice_name = 'Mobile Tierärztin Dr. Erika Musterfrau',
+             practice_street = 'Musterstraße 1', practice_zip = '12345',
+             practice_city = 'Musterstadt', practice_country = 'DE',
+             email = 'praxis@example.com', iban = 'DE02120300000000202051',
+             bic = 'BYLADEM1001', bank_name = 'Musterbank', ustid = 'DE123456789'
+         WHERE id",
+    )
+    .execute(&pool)
+    .await
+    .expect("settings");
+
+    let customer_id = common::seed_customer(&pool).await;
+    sqlx::query(
+        "UPDATE customer SET salutation = 'herr', first_name = 'Thomas',
+             last_name = 'Mustermann', home_street = 'Musterweg 7a',
+             home_zip = '12345', home_city = 'Musterstadt' WHERE id = $1",
+    )
+    .bind(customer_id)
+    .execute(&pool)
+    .await
+    .expect("customer");
+
+    let eddie = common::seed_patient(&pool, customer_id).await;
+    let helene = common::seed_patient(&pool, customer_id).await;
+    sqlx::query(
+        "UPDATE patient SET name = 'Eddie', species = 'Hund', race = 'Havaneser',
+             date_of_birth = DATE '2021-01-01' WHERE id = $1",
+    )
+    .bind(eddie)
+    .execute(&pool)
+    .await
+    .expect("eddie");
+    sqlx::query(
+        "UPDATE patient SET name = 'Helene', species = 'Heimtier',
+             race = 'Kaninchen (Zwergwidder)', date_of_birth = DATE '2017-07-01' WHERE id = $1",
+    )
+    .bind(helene)
+    .execute(&pool)
+    .await
+    .expect("helene");
+
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, eddie).await;
+    sqlx::query("INSERT INTO treatment_patient (treatment_id, patient_id) VALUES ($1, $2)")
+        .bind(treatment_id)
+        .bind(helene)
+        .execute(&pool)
+        .await
+        .expect("second patient");
+    sqlx::query(
+        "UPDATE treatment SET treatment_reason = 'Vorstellung zum Verbandswechsel.',
+             finding = 'Allgemeinbefinden: gut. Wunde sauber und trocken.' WHERE id = $1",
+    )
+    .bind(treatment_id)
+    .execute(&pool)
+    .await
+    .expect("treatment notes");
+
+    for (got_number, patient_id) in [("16", eddie), ("251", eddie), ("17", helene)] {
+        let service_id: i64 =
+            sqlx::query_scalar("SELECT id FROM service WHERE got_number = $1 AND type = 'got'")
+                .bind(got_number)
+                .fetch_one(&pool)
+                .await
+                .expect("GOT position");
+        app.post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "service", "service_id": service_id,
+                "quantity": "1", "patient_id": patient_id,
+            }),
+        )
+        .await;
+    }
+
+    let invoice = create_invoice(&app, treatment_id).await;
+    let pdf = app
+        .get(&format!("/api/invoices/{}/pdf", invoice["id"]))
+        .await;
+    assert_eq!(pdf.status, StatusCode::OK);
+    assert!(pdf.body.starts_with(b"%PDF-"));
+
+    if let Ok(path) = std::env::var("KVET_PDF_DUMP") {
+        std::fs::write(&path, &pdf.body).expect("write the PDF");
+        println!("wrote {} bytes to {path}", pdf.body.len());
+    }
 }

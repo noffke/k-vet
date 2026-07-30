@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.invoice_number, invoice.invoice_date, invoice.email_recipients,\n                  attachment.sha256 AS \"sha256?\",\n                  customer.salutation AS \"salutation?: Salutation\", customer.last_name,\n                  customer.second_salutation AS \"second_salutation?: Salutation\",\n                  customer.second_last_name,\n                  settings.practice_name, settings.cc_emails, settings.bcc_emails\n           FROM invoice\n           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           LEFT JOIN treatment_patient ON treatment_patient.treatment_id = treatment.id\n           LEFT JOIN patient ON patient.id = treatment_patient.patient_id\n           LEFT JOIN customer ON customer.id = patient.customer_id\n           CROSS JOIN global_settings settings\n           WHERE invoice.id = $1\n           LIMIT 1",
+  "query": "SELECT invoice.invoice_number, invoice.invoice_date, invoice.email_recipients,\n                  attachment.sha256 AS \"sha256?\",\n                  customer.salutation AS \"salutation?: Salutation\",\n                  customer.first_name, customer.last_name,\n                  customer.second_salutation AS \"second_salutation?: Salutation\",\n                  customer.second_first_name, customer.second_last_name,\n                  customer.invoice_salutation AS \"invoice_salutation?: Salutation\",\n                  customer.invoice_first_name, customer.invoice_last_name,\n                  customer.has_invoice_address,\n                  settings.practice_name, settings.cc_emails, settings.bcc_emails\n           FROM invoice\n           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           LEFT JOIN treatment_patient ON treatment_patient.treatment_id = treatment.id\n           LEFT JOIN patient ON patient.id = treatment_patient.patient_id\n           LEFT JOIN customer ON customer.id = patient.customer_id\n           CROSS JOIN global_settings settings\n           WHERE invoice.id = $1\n           LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -71,6 +71,17 @@
       },
       {
         "ordinal": 5,
+        "name": "first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
         "name": "last_name",
         "type_info": "Text",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "second_salutation?: Salutation",
         "type_info": {
           "Custom": {
@@ -103,7 +114,18 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
+        "name": "second_first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "second_first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
         "name": "second_last_name",
         "type_info": "Text",
         "origin": {
@@ -114,7 +136,62 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
+        "name": "invoice_salutation?: Salutation",
+        "type_info": {
+          "Custom": {
+            "name": "salutation",
+            "kind": {
+              "Enum": [
+                "frau",
+                "herr",
+                "familie"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "invoice_salutation"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "invoice_first_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "invoice_first_name"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "invoice_last_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "invoice_last_name"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "has_invoice_address",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "has_invoice_address"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
         "name": "practice_name",
         "type_info": "Text",
         "origin": {
@@ -125,7 +202,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 15,
         "name": "cc_emails",
         "type_info": "TextArray",
         "origin": {
@@ -136,7 +213,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 16,
         "name": "bcc_emails",
         "type_info": "TextArray",
         "origin": {
@@ -161,10 +238,16 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      false,
       false,
       false,
       false
     ]
   },
-  "hash": "7229cf2bdc234fb113688e96a6b9782d60574f25f5a38f3ff95c7a46a692baee"
+  "hash": "f2e47d099691ce7c5b7e011b1bde0fda82d7dacacd1d003cac98264912c5e7d6"
 }

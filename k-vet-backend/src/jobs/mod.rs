@@ -119,7 +119,7 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
         "DELETE FROM drug_packaging
          WHERE draft AND created_at < $1
            AND unit IS NULL AND quantity IS NULL AND list_price_net IS NULL
-           AND sales_price_gross IS NULL AND supplier_id IS NULL
+           AND sales_price_net IS NULL AND supplier_id IS NULL
            AND NOT EXISTS (SELECT 1 FROM drug_stock_lot WHERE packaging_id = drug_packaging.id)
            AND NOT EXISTS (
                  SELECT 1 FROM treatment_item WHERE drug_packaging_id = drug_packaging.id)
@@ -168,7 +168,7 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
     removed.services = sqlx::query!(
         "DELETE FROM service
          WHERE draft AND created_at < $1
-           AND name IS NULL AND vat_percent IS NULL AND gross_price IS NULL
+           AND name IS NULL AND vat_percent IS NULL AND net_price IS NULL
            AND got_number IS NULL
            AND NOT EXISTS (SELECT 1 FROM treatment_item WHERE service_id = service.id)
            AND NOT EXISTS (
