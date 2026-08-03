@@ -5,6 +5,7 @@ import { useTranslation } from 'react-i18next'
 import {
   getGetDrugQueryKey,
   getListDrugsQueryKey,
+  getListPackagingsQueryKey,
   useArchiveDrug,
   useGetDrug,
   useListManufacturers,
@@ -62,8 +63,10 @@ export function DrugDetailPage() {
       }),
     onSaved: (updated) => {
       store(updated)
-      // A changed VAT rate moves the computed packaging prices.
-      void client.invalidateQueries({ queryKey: ['GET', `/api/drugs/${drugId}/packagings`] })
+      // A changed VAT rate — or the Humanpräparat flag, which picks the AMPreisV rule — moves
+      // every computed packaging price. Use the generated key: a hand-written one silently
+      // matches nothing, which is why this refresh never actually happened.
+      void client.invalidateQueries({ queryKey: getListPackagingsQueryKey(drugId) })
     },
   })
 

@@ -265,9 +265,12 @@ reflected on the next generated invoice.
   the same structure (households where both persons are addressed on the invoice, e.g.
   non-married couples); a mandatory structured home address and an optional invoice address
   with its own recipient name (salutation, optional first name, last name) — each address
-  consisting of an optional addon line (e.g. "c/o Fr. Müller"), street including house number,
-  ZIP, and city — multiple email addresses with type, an optional phone number, and an
-  optional warning remark.
+  consisting of an optional company name, an optional addon line (e.g. "c/o Fr. Müller"), street
+  including house number, ZIP, city and country — multiple email addresses with type, an optional
+  phone number, and an optional warning remark. The company prints as the *first* line of the
+  address block, above the name; first and last name stay mandatory, so there is never a
+  company-only recipient and the salutation is unaffected. The country defaults from
+  `[invoice] default_country` rather than from a column default.
 - **FR-007**: Warning remarks on customers and patients MUST be shown as a warning banner at
   the top of the record when it is opened, and indicated in list views via a warning icon with
   the text as tooltip.
@@ -294,10 +297,22 @@ reflected on the next generated invoice.
 - **FR-013**: Each drug MUST have exactly one original packaging and any number of subset
   packagings, each with unit and quantity; only the original packaging has a supplier and
   stock.
-- **FR-014**: After VAT selection and list-price entry, the system MUST compute the sales gross
-  price per the statutory veterinary drug pricing rules (AMPreisV, veterinarian part),
-  including the subset surcharge for subset packagings; the computed price MUST be manually
-  overridable.
+- **FR-014**: After VAT selection and list-price entry, the system MUST compute the sales **net**
+  price per the statutory drug pricing rules (AMPreisV, veterinarian part), including the subset
+  surcharge for subset packagings; the computed price MUST be manually overridable. The gross is
+  derived from the net, not the other way round: the fee schedules and § 14 UStG both compute in
+  net, and the listed price the surcharge is levied on is § 3 Abs. 2's, not the negotiated one.
+- **FR-014a**: The rule MUST be chosen per drug. A medicine approved for animals takes § 3 Abs. 1
+  Satz 3 (the bands of Abs. 3/4, capped by § 10 Abs. 2); a medicine approved for humans and
+  dispensed for use in an animal takes § 3 Abs. 1 Satz 2 (3 % plus 8,10 €). A `human_drug` flag on
+  the drug selects it, and changing it MUST reprice every packaging of that drug.
+- **FR-014b**: The system MAY be configured to price a subset packaging no lower than its share of
+  the whole package. This is a deliberate deviation — § 10 Abs. 1 permits *höchstens* the § 4
+  surcharge — so it MUST default to off and be enabled per installation. It can only take effect on
+  human preparations, whose fixed 8,10 € on the pack has no counterpart in the § 4 subset rule.
+- **FR-014c**: A treatment line dispensing a drug MUST be markable as an ad-hoc redesignation
+  (Umwidmung) — an eye preparation used in an ear — independently of the drug-wide flag. It is
+  documentation only and MUST NOT change the price. Only a drug line can carry it.
 - **FR-015**: Recording a stock intake MUST create a new lot for an original packaging with
   arrival date (default today), packages received, optional batch number and expiration date;
   the lot's initial quantity is snapshotted as packages received × packaging quantity at that
@@ -363,6 +378,16 @@ reflected on the next generated invoice.
   separate lines when a second name exists — at the home address. The invoice date is set when
   the invoice is created and is set anew when an update creates the replacement invoice.
   Invoice PDFs and invoice emails are always German (de-DE), regardless of the UI language.
+- **FR-030a**: The invoice MUST carry a due date, pinned when the invoice is created from
+  `[invoice] payment_terms_days`, and print it as its own labelled line so that document
+  recognition in the practice's bookkeeping software can read it instead of the vet retyping it.
+  Changing the configured term MUST NOT move the due date of an invoice already issued.
+- **FR-030b**: The invoice MUST carry a GiroCode (EPC069-12 version 002) when the practice has an
+  IBAN and the currency is EUR, so a customer can pay by scanning it. Where it cannot be produced
+  the invoice MUST render without it rather than fail.
+- **FR-030c**: The invoice prints **gross** amounts per line, derived from the stored net. Because
+  gross is derived, the odd cent MUST be allocated across a VAT group's lines so the printed column
+  sums exactly to that group's gross.
 - **FR-031**: Accepting a Created invoice MUST allow selecting one or more of the customer's
   email addresses and emailing the invoice PDF; configured global CC/BCC addresses are
   applied; the sent timestamp is recorded on successful send. A failed or repeated send can be
@@ -452,7 +477,8 @@ reflected on the next generated invoice.
 - **SC-004**: For any batch number in stock history, the full list of receiving
   customers/patients is readable from one view, reachable in under 30 seconds.
 - **SC-005**: 100% of computed drug sales prices and travel-expense lines match the statutory
-  worked examples to the cent.
+  worked examples to the cent, for both AMPreisV rules. The worked examples are answered by
+  `review.md` at the repository root — a German, code-free checklist the vet signs off.
 - **SC-006**: Invoice numbers are unique and gap-explainable: every number is issued at most
   once, and every burned number corresponds to exactly one cancelled invoice.
 - **SC-007**: Derived stock always reconciles: for every lot, initial quantity plus all
@@ -474,7 +500,8 @@ reflected on the next generated invoice.
   - Travel expenses are computed from a kilometer input using the official travel-fee rule
     (rate per double kilometer, legal minimum), with rates operator-configurable.
   - Drug sales prices are computed per AMPreisV only; a configurable "list price + VAT" mode
-    is deferred.
+    is deferred. The § 2 wholesale surcharge is *not* computed: the practice buys from a
+    wholesaler, so it is already inside the listed price it enters.
 - Single-user system: one vet account, no roles, no concurrent-user handling beyond
   last-write-wins between the user's own sessions.
 - Appointment *scheduling* stays in the practice's external calendar; appointments here are

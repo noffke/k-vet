@@ -47,8 +47,8 @@ the completeness CHECK to leave draft state):
 | customer | salutation, last_name, home_street, home_zip, home_city |
 | patient | customer_id, name, sex, species |
 | drug | name, manufacturer_id, vat_percent |
-| drug_packaging | unit, quantity, list_price_net, sales_price_gross; supplier_id for originals |
-| service | name, vat_percent, gross_price; got_number + factor for GOT type |
+| drug_packaging | unit, quantity, list_price_net, sales_price_net; supplier_id for originals |
+| service | name, vat_percent, net_price; got_number + factor for GOT type |
 | supplier / manufacturer | name |
 | treatment_template | name |
 | appointment | starts_at |
@@ -177,7 +177,7 @@ Identical shape: `id` PK, `name text` ★, optional address column group
 | unit | text | ★ |
 | quantity | numeric(10,2) | ★ CHECK (> 0 when set) |
 | list_price_net | numeric(10,2) | ★ (entered for original; derived pro-rata for subset) |
-| sales_price_gross | numeric(10,2) | ★ (computed per AMPreisV, manually overridable) |
+| sales_price_net | numeric(10,2) | ★ (computed per AMPreisV, manually overridable; net) |
 | supplier_id | bigint | FK → supplier, NULL (★ for originals) |
 | archived | boolean | NOT NULL DEFAULT false |
 | draft | boolean | NOT NULL DEFAULT true (see Draft rows) |
@@ -245,7 +245,7 @@ Semantics (application layer, tested against the real DB):
 | got_number | text | NULL (★ for GOT type) |
 | factor | numeric(7,3) | NULL, DEFAULT 100 (★ for GOT type) |
 | vat_percent | numeric(7,3) | ★ |
-| gross_price | numeric(10,2) | ★ (single GOT rate for `got`) |
+| net_price | numeric(10,2) | ★ (single GOT rate for `got`, **net** — the GOT publishes net fees) |
 | travel_expenses | boolean | NOT NULL DEFAULT false |
 | hidden | boolean | NOT NULL DEFAULT false |
 | archived | boolean | NOT NULL DEFAULT false |
@@ -313,18 +313,21 @@ All billing-relevant values are **pinned at line entry** (copied from catalog; n
 | unit | text | NULL |
 | factor | numeric(7,3) | NULL |
 | got_number | text | NULL (copied for GOT services) |
-| price_gross | numeric(10,2) | NOT NULL (per-unit gross price; copied, overridable) |
+| price_net | numeric(10,2) | NOT NULL (per-unit **net** price; copied, overridable) |
 | vat_percent | numeric(7,3) | NOT NULL (copied) |
 | km | numeric(10,2) | NULL (travel-expense lines: entered kilometers the price was computed from) |
+| redesignation | boolean | NOT NULL DEFAULT false — ad-hoc Umwidmung, documentation only |
 
 CHECKs:
 - XOR: `(kind = 'drug_packaging') = (drug_packaging_id IS NOT NULL) AND (kind = 'service') = (service_id IS NOT NULL)`
 - Patient attribution: `kind = 'drug_packaging' → patient_id IS NOT NULL` (mandatory for drug
   lines, optional for service lines).
 - Drug lines: `unit IS NOT NULL AND factor IS NULL AND got_number IS NULL AND km IS NULL`.
+- Redesignation is a drug concept: `kind = 'drug_packaging' OR NOT redesignation`.
 
-Line total = `round(price_gross × quantity × coalesce(factor,100)/100, 2)`; VAT is extracted
-from gross per rate for the invoice VAT summary.
+Line total = `round(price_net × quantity × coalesce(factor,100)/100, 2)`, **net**; VAT is added per
+rate for the invoice VAT summary, and the gross the invoice prints is derived from it. The odd cent
+is allocated across a group's lines so the printed column sums to the group's gross exactly.
 
 ## Invoicing
 

@@ -42,6 +42,39 @@ test.describe('pharmacy', () => {
     await expect(page.getByLabel('Listenpreis (netto)').last()).toHaveValue('1')
   })
 
+  test('marking a drug as a Humanpräparat switches the AMPreisV rule', async ({
+    page,
+    request,
+  }) => {
+    await seedDrug(request)
+    await signIn(page)
+    await navigate(page, 'Apotheke')
+    await page.getByRole('button', { name: 'Neues Medikament' }).click()
+
+    await page.getByLabel('Name').fill('Humanpräparat-Test')
+    await page.getByLabel('Hersteller').selectOption({ index: 1 })
+    await page.getByLabel('USt.').selectOption('19.000')
+
+    await page.getByRole('button', { name: 'Originalpackung' }).click()
+    await page.getByLabel('Einheit').fill('ml')
+    await page.getByLabel('Menge').fill('100')
+    await page.getByLabel('Listenpreis (netto)').fill('10,00')
+    await page.getByLabel('Lieferant').selectOption({ index: 1 })
+
+    // The veterinary bands of § 3 Abs. 3: 48 % of 10,00 € → 14,80 € net.
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,8')
+
+    // § 3 Abs. 1 Satz 2 instead: 3 % + 8,10 € → 18,40 € net. The checkbox label also proves the
+    // i18n key resolves — a missing one would render as `pharmacy.flags.humanDrug`.
+    await page.getByLabel('Humanpräparat').check()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('18,4')
+
+    // And back again, so the flag is not a one-way door.
+    await page.getByLabel('Humanpräparat').uncheck()
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,8')
+  })
+
   test('a delivery becomes a lot whose stock is derived', async ({ page, request }) => {
     const { drugId } = await seedDrug(request)
     await signIn(page)

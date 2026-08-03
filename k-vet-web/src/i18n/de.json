@@ -230,7 +230,7 @@
     "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht.",
     "drugs": "Medikamente",
     "flags": {
-      "human_drug": "Humanpräparat",
+      "humanDrug": "Humanpräparat",
       "narcotic": "BTM",
       "redesignation": "Umwidmung",
       "refrigerate": "Kühlpflichtig",

@@ -93,3 +93,30 @@ test.describe('services and templates', () => {
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
 })
+
+test.describe('treatment lines', () => {
+  test('a drug line can be marked as an ad-hoc Umwidmung', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const drug = await seedDrug(request)
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drug.drugName)
+    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+
+    // The price before and after must be identical: an Umwidmung documents, it does not price.
+    const price = page.getByLabel('Preis (netto)').first()
+    const before = await price.inputValue()
+
+    const umwidmung = page.getByLabel('Umwidmung')
+    await expect(umwidmung).not.toBeChecked()
+    await umwidmung.check()
+    await expect(price).toHaveValue(before)
+
+    // It survives a reload — it is stored on the line, not just ticked in the browser.
+    await page.reload()
+    await expect(page.getByLabel('Umwidmung')).toBeChecked()
+  })
+})

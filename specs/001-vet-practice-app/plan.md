@@ -161,3 +161,25 @@ one-binary deployment (release builds embed `k-vet-web/dist` via rust-embed).
 | Violation | Why Needed | Simpler Alternative Rejected Because |
 |-----------|------------|-------------------------------------|
 | — | — | — |
+
+## Amendments after implementation
+
+Recorded here so the plan does not read as if these were foreseen. Each is spelled out in
+`requirements/prices.md` and in the migration that carries it.
+
+- **Prices are stored net** (migration `0009`). The GOT publishes net fees and `0008` imported them
+  into a column named `gross_price`, so every GOT position was billed roughly 16 % too low. Net is
+  also the unit AMPreisV § 3 Abs. 2 and § 14 UStG compute in. The invoice still prints gross, with
+  the odd cent allocated across each VAT group so the column reconciles.
+- **The AMPreisV basis is a listed price**, not the negotiated purchase price — § 3 Abs. 2 names
+  the "Abgabepreis des pharmazeutischen Unternehmers". No code changed; the documentation had it
+  wrong and was steering the vet toward entering discounted prices.
+- **Two AMPreisV rules** (migration `0011`), chosen per drug by `human_drug`: § 3 Abs. 1 Satz 3 for
+  veterinary medicines, Satz 2 (3 % + 8,10 €) for human ones used on animals. `[pharmacy]
+  subset_never_below_proportional` is an off-by-default deviation that can exceed the statutory
+  maximum; the practice enabled it knowingly.
+- **Structured practice address, bank and contact details, and a pinned due date** (`0009`), so the
+  invoice footer, the GiroCode and an eventual e-invoice all have the parts they need.
+- **Optional company per address** (`0010`) and **ad-hoc redesignation per treatment line** (`0011`).
+- **E-invoicing (ZUGFeRD/XRechnung) remains out of scope**, with the research recorded in
+  `requirements/future ideas.md`: B2C is exempt, and the B2B obligation starts 2028-01-01.

@@ -65,7 +65,7 @@ Resource-specific additions:
 | `GET /api/patients/{id}/files` / `POST /api/patients/{id}/files` | patient files (reference date, note) |
 | `PATCH /api/patient-files/{id}` | edit reference date/note |
 | `GET /api/drugs/{id}/packagings` | packagings of a drug |
-| `POST /api/drugs/{id}/packagings` / `PATCH /api/packagings/{id}` | manage packagings; server computes `sales_price_gross` (AMPreisV) on list-price/VAT change unless overridden |
+| `POST /api/drugs/{id}/packagings` / `PATCH /api/packagings/{id}` | manage packagings; server computes `sales_price_net` (AMPreisV, rule per `drug.human_drug`) on list-price/VAT/flag change unless overridden |
 | `POST /api/pricing/preview` | `{list_price_net, vat_percent, kind, quantity…}` → computed gross price (UI live preview) |
 | `GET /api/treatment-templates/{id}/items` + `POST/PATCH/DELETE` item endpoints | template items |
 | `POST /api/template-items/{id}/move` | `{direction: up\|down\|top\|bottom}` position change |

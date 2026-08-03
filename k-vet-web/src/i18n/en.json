@@ -230,7 +230,7 @@
     "correctionHint": "Enter the counted stock — the difference is booked.",
     "drugs": "Drugs",
     "flags": {
-      "human_drug": "Human preparation",
+      "humanDrug": "Human preparation",
       "narcotic": "Narcotic",
       "redesignation": "Redesignation",
       "refrigerate": "Refrigerate",

@@ -177,7 +177,8 @@ with the decisions that were still open. No NEEDS CLARIFICATION items remain.
 - **Alternatives considered**: automatic distance from addresses (explicitly a future idea).
 
 ### R11. AMPreisV price calculation — structure verified from the official text
-- **Decision**: `sales_price_gross` for an **original packaging** = list price net → vet may
+- **Decision** (amended: the column is `sales_price_net`, and the gross is derived from it — see
+  requirements/prices.md): the sales price of an **original packaging** = list price net → vet may
   apply at most the pharmacy surcharges per **AMPreisV § 10**, which caps veterinarian
   surcharges at those of § 3(1) sentences 2–3, § 3(2)–(4), § 4(1)–(2), § 5(1)–(3), plus VAT.
   For a **subset packaging**: pro-rata net price of the dispensed quantity from the original
