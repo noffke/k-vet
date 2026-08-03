@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment_item SET\n               quantity      = COALESCE($2, quantity),\n               price_net   = COALESCE($3, price_net),\n               name          = COALESCE($4, name),\n               factor        = CASE WHEN $5 THEN $6 ELSE factor END,\n               patient_id    = CASE WHEN $7 THEN $8 ELSE patient_id END,\n               km            = CASE WHEN $9 THEN $10 ELSE km END,\n               km_multiplier = CASE WHEN $11 THEN $12 ELSE km_multiplier END,\n               redesignation = COALESCE($13, redesignation)\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Bool",
+        "Numeric",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Numeric",
+        "Bool",
+        "Numeric",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9e4539d214b7b66c5f0e89817b72680ec76c0cbd655bbc82c8c597db685d5db6"
+}

@@ -4323,6 +4323,10 @@
               "null"
             ],
             "description": "Multiplier for adverse travel conditions (1–3)."
+          },
+          "redesignation": {
+            "type": "boolean",
+            "description": "Ad-hoc Umwidmung; only meaningful on a drug line."
           }
         }
       },
@@ -4590,6 +4594,7 @@
           "vaccine",
           "refrigerate",
           "redesignation",
+          "human_drug",
           "archived",
           "draft",
           "missing_fields",
@@ -4636,6 +4641,10 @@
           },
           "redesignation": {
             "type": "boolean"
+          },
+          "human_drug": {
+            "type": "boolean",
+            "description": "A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands."
           },
           "vat_percent": {
             "type": [
@@ -5546,6 +5555,12 @@
               "boolean",
               "null"
             ]
+          },
+          "human_drug": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         }
       },
@@ -5917,6 +5932,12 @@
           "km_multiplier": {
             "type": [
               "string",
+              "null"
+            ]
+          },
+          "redesignation": {
+            "type": [
+              "boolean",
               "null"
             ]
           }
@@ -6294,6 +6315,10 @@
               "null"
             ],
             "description": "Content of the subset being priced."
+          },
+          "human_drug": {
+            "type": "boolean",
+            "description": "A human preparation is priced by § 3 Abs. 1 Satz 2, not by the veterinary bands."
           }
         }
       },
@@ -6767,6 +6792,7 @@
           "price_gross",
           "vat_percent",
           "travel_expenses",
+          "redesignation",
           "line_net",
           "line_gross",
           "lots",
@@ -6862,6 +6888,10 @@
           "travel_expenses": {
             "type": "boolean",
             "description": "`true` when the line's service bills travel expenses — the UI then asks for km."
+          },
+          "redesignation": {
+            "type": "boolean",
+            "description": "Ad-hoc Umwidmung: this dispense is outside the preparation's approval — an eye\npreparation used in an ear. Documentation only; it does not move the price."
           },
           "line_net": {
             "type": "string",

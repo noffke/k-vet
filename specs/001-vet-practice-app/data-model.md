@@ -162,6 +162,7 @@ Identical shape: `id` PK, `name text` ★, optional address column group
 | vaccine | boolean | NOT NULL DEFAULT false |
 | refrigerate | boolean | NOT NULL DEFAULT false |
 | redesignation | boolean | NOT NULL DEFAULT false |
+| human_drug | boolean | NOT NULL DEFAULT false — selects AMPreisV § 3 Abs. 1 Satz 2 |
 | vat_percent | numeric(7,3) | ★ (chosen from configured rates; pinned per row) |
 | approval_number | text | NULL |
 | archived | boolean | NOT NULL DEFAULT false |

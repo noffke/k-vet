@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT vat_percent FROM drug WHERE id = $1",
+  "query": "SELECT vat_percent, human_drug FROM drug WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -13,6 +13,17 @@
             "name": "vat_percent"
           }
         }
+      },
+      {
+        "ordinal": 1,
+        "name": "human_drug",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "human_drug"
+          }
+        }
       }
     ],
     "parameters": {
@@ -21,8 +32,9 @@
       ]
     },
     "nullable": [
-      true
+      true,
+      false
     ]
   },
-  "hash": "9eaf7c3566159726d1bc4b09589caf814eff2dbfdc2323e4a97ba88bb60da385"
+  "hash": "c3dddd9e4136518be7825bfd4ed3760a79ba26c58d112fd70a14de4ebad08687"
 }

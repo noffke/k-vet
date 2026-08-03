@@ -20,6 +20,11 @@ export interface Drug {
   vaccine: boolean;
   refrigerate: boolean;
   redesignation: boolean;
+  /**
+     * A medicine approved for humans, dispensed for use in an animal: priced by
+     * § 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.
+     */
+  human_drug: boolean;
   /** @nullable */
   vat_percent?: string | null;
   /** @nullable */

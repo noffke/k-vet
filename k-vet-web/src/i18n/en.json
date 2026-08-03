@@ -187,6 +187,8 @@
     "lotSelection": "Lot selection",
     "lots": "Lots",
     "pickerPlaceholder": "Search a drug or service …",
+    "redesignation": "Redesignation",
+    "redesignationHint": "Dispensed outside the approval — recorded on this line, no effect on the price.",
     "shortfallWarning": "Stock is not sufficient — the dispense is recorded anyway.",
     "title": "Treatment",
     "total": "Total"
@@ -228,11 +230,12 @@
     "correctionHint": "Enter the counted stock — the difference is booked.",
     "drugs": "Drugs",
     "flags": {
-      "submissionReceipt": "Submission receipt",
+      "human_drug": "Human preparation",
       "narcotic": "Narcotic",
-      "vaccine": "Vaccine",
+      "redesignation": "Redesignation",
       "refrigerate": "Refrigerate",
-      "redesignation": "Redesignation"
+      "submissionReceipt": "Submission receipt",
+      "vaccine": "Vaccine"
     },
     "flagsLegend": "Flags",
     "intake": "Stock intake",

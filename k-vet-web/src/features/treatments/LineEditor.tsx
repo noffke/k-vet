@@ -26,6 +26,7 @@ import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
 interface LineEditorProps {
@@ -213,6 +214,25 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                 </label>
               ) : null}
             </div>
+
+            {item.kind === 'drug_packaging' ? (
+              // Ad-hoc Umwidmung — an eye preparation used in an ear. Documentation only: it is
+              // recorded on this line and never touches the price.
+              <div className="mt-2">
+                <CheckboxField
+                  label={t('treatments.redesignation')}
+                  defaultChecked={item.redesignation}
+                  disabled={readOnly}
+                  onChange={(event) =>
+                    patchItem.mutate({
+                      id: item.id,
+                      data: { redesignation: event.target.checked },
+                    })
+                  }
+                />
+                <p className="text-xs text-ink-faint">{t('treatments.redesignationHint')}</p>
+              </div>
+            ) : null}
 
             {item.lots.length > 0 ? (
               <p className="mt-2 text-xs text-ink-faint">

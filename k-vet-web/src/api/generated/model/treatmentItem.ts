@@ -45,6 +45,11 @@ export interface TreatmentItem {
   km_multiplier?: string | null;
   /** `true` when the line's service bills travel expenses — the UI then asks for km. */
   travel_expenses: boolean;
+  /**
+     * Ad-hoc Umwidmung: this dispense is outside the preparation's approval — an eye
+     * preparation used in an ear. Documentation only; it does not move the price.
+     */
+  redesignation: boolean;
   /** `price_net × quantity × factor/100`, rounded to cents — **net**. */
   line_net: string;
   /** `line_net` plus VAT: what the customer pays for this line. */

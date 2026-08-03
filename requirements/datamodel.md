@@ -38,6 +38,9 @@ Generally, all entities should have a created and updated timestamp.
   * Unit
   * Quantity
   * List Price Net (Listenpreis Netto) (entered for original packaging; for subsets there is a formula, see AMPreisV)
+  * Human Preparation (Humanpräparat, bool) — a medicine approved for humans, dispensed for use in
+    an animal. Selects AMPreisV § 3 Abs. 1 Satz 2 (3 % + 8,10 €) instead of the veterinary bands of
+    Abs. 3/4; see prices.md.
   * Sales Price Gross (Verkaufspreis Brutto) (formula for original packaging; for subsets: surcharge)
   * Relation: 1 Drug (at most one original packaging per drug: partial unique index on `(drug_id) WHERE kind = 'original'`)
   * Relation: 1 Supplier (original packaging only, CHECK-enforced; subsets have no supplier)

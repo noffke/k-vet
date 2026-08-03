@@ -655,3 +655,63 @@ async fn treatments_need_a_complete_appointment(pool: PgPool) {
 
     assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+/// The ad-hoc Umwidmung is a documentation flag on the line, and only a drug line can carry it.
+#[sqlx::test]
+async fn a_drug_line_can_be_redesignated_but_a_service_line_cannot(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, patient_id) = treatment(&pool).await;
+    let drug = common::seed_drug(&pool).await;
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+
+    let line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "drug_packaging",
+                "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "1",
+                "patient_id": patient_id,
+                "redesignation": true,
+            }),
+        )
+        .await;
+    assert_eq!(
+        line.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&line.body)
+    );
+    let line = line.json();
+    assert_eq!(line["redesignation"], true);
+    let price_before = line["price_net"].clone();
+
+    // Clearing it is just as ordinary, and the price never moves either way.
+    let cleared = app
+        .patch(
+            &format!("/api/treatment-items/{}", line["id"]),
+            json!({ "redesignation": false }),
+        )
+        .await
+        .json();
+    assert_eq!(cleared["redesignation"], false);
+    assert_eq!(
+        cleared["price_net"], price_before,
+        "an Umwidmung documents, it does not price",
+    );
+
+    // A GOT position cannot be redesignated — the database refuses it.
+    let service_id = common::seed_got_service(&pool).await;
+    let service_line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": service_id, "quantity": "1",
+                    "redesignation": true }),
+        )
+        .await;
+    assert_ne!(
+        service_line.status,
+        StatusCode::OK,
+        "only a dispensed drug can be redesignated"
+    );
+}

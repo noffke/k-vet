@@ -96,10 +96,27 @@ impl TestApp {
         app
     }
 
+    /// Builds the app with the configuration tweaked, and logs in.
+    ///
+    /// For the handful of settings whose whole point is that they change behaviour — the
+    /// AMPreisV Teilmengen floor, for one — a test has to be able to run both ways.
+    pub async fn with_config(pool: PgPool, adjust: impl FnOnce(&mut Config)) -> Self {
+        let app = Self::anonymous_with_config(pool, adjust).await;
+        let response = app.login(TEST_USER, TEST_PASSWORD).await;
+        assert_eq!(response.status, StatusCode::OK, "test login must succeed");
+        app
+    }
+
     /// Builds the app without logging in.
     pub async fn anonymous(pool: PgPool) -> Self {
+        Self::anonymous_with_config(pool, |_| {}).await
+    }
+
+    async fn anonymous_with_config(pool: PgPool, adjust: impl FnOnce(&mut Config)) -> Self {
         let attachments = TempDir::new().expect("temp dir for attachments");
-        let config = Arc::new(test_config(attachments.path().to_string_lossy().as_ref()));
+        let mut settings = test_config(attachments.path().to_string_lossy().as_ref());
+        adjust(&mut settings);
+        let config = Arc::new(settings);
         let state = AppState::new(pool.clone(), Arc::clone(&config)).expect("state builds");
         let router = build_app(state).await.expect("app builds");
         Self {

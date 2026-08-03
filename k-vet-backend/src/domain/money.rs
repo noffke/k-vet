@@ -224,6 +224,34 @@ const PHARMACY_FIXED_BANDS: [(&str, &str, &str); 6] = [
     ("29.15", "35.94", "10.78"),
 ];
 
+/// Which Satz of § 3 Abs. 1 a drug falls under when a vet dispenses it.
+///
+/// § 10 Abs. 1 permits surcharges "entsprechend § 3 Abs. 1 Satz 2 und 3" — one Satz per case, so
+/// the choice is a property of the drug, not of the practice.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum DrugRule {
+    /// § 3 Abs. 1 Satz 3 → the bands of Abs. 3/4: a medicine approved for animals.
+    #[default]
+    Veterinary,
+    /// § 3 Abs. 1 Satz 2: a human medicine dispensed for use in an animal ("Umwidmung").
+    Human,
+}
+
+/// How this installation prices drugs: the statutory rule, plus one deliberate deviation.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct PricingPolicy {
+    pub rule: DrugRule,
+    /// Never price a Teilmenge below its share of the whole pack — see [`drug_price_subset`].
+    pub subset_proportional_floor: bool,
+}
+
+impl PricingPolicy {
+    /// The statutory default: veterinary rule, no floor.
+    pub fn veterinary() -> Self {
+        Self::default()
+    }
+}
+
 /// A computed drug price, so the UI can show what the surcharge did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DrugPrice {
@@ -279,27 +307,74 @@ fn vet_surcharge(basis: Decimal) -> Decimal {
     surcharge
 }
 
-/// Sales price of an **original packaging**: the listed price plus the § 3(3)/(4) surcharge
-/// capped by § 10(2), plus VAT.
-pub fn drug_price_original(list_price_net: Decimal, vat_percent: Decimal) -> DrugPrice {
-    price_from(list_price_net, vet_surcharge(list_price_net), vat_percent)
+/// § 3 Abs. 1 Satz 2: the most a vet may add to a **human** medicine used on an animal.
+///
+/// "höchstens ein Zuschlag von 3 Prozent zuzüglich 8,10 Euro". Flat where the veterinary bands are
+/// proportional, so it is far more than the bands allow on a cheap drug and far less on a dear one;
+/// the two cross somewhere around 20–30 EUR of listed price.
+///
+/// § 10(2) is deliberately not applied on top: it caps the surcharge on the part above 51,13 EUR at
+/// 25 % and then 20 %, and 3 % never reaches either, so it cannot bind. A test pins that down
+/// rather than leaving it to be re-derived.
+fn human_surcharge(basis: Decimal) -> Decimal {
+    basis * decimal("3") / hundred() + decimal("8.10")
+}
+
+/// Sales price of an **original packaging**: the listed price plus the statutory surcharge for its
+/// rule — § 3(3)/(4) capped by § 10(2) for a veterinary medicine, § 3 Abs. 1 Satz 2 for a human
+/// one — plus VAT.
+pub fn drug_price_original(
+    list_price_net: Decimal,
+    vat_percent: Decimal,
+    policy: PricingPolicy,
+) -> DrugPrice {
+    let surcharge = match policy.rule {
+        DrugRule::Veterinary => vet_surcharge(list_price_net),
+        DrugRule::Human => human_surcharge(list_price_net),
+    };
+    price_from(list_price_net, surcharge, vat_percent)
 }
 
 /// Sales price of a **subset packaging** (§ 4(1)–(2), the Teilmengenzuschlag).
 ///
 /// The basis is the pro-rata listed price of the dispensed quantity — the price of the
 /// usual pack is decisive — and the surcharge is 100 % (a 50 % margin), plus VAT.
+///
+/// # The proportional floor
+///
+/// For a **human** preparation the whole pack carries a flat 8,10 EUR while a Teilmenge carries
+/// only a percentage, so a cheap one comes out *below* its share of the pack: a 10 ml pack listed
+/// at 1,00 EUR sells for 9,13 EUR net, yet 5 ml of it is 1,00 EUR against 4,57 EUR for half the
+/// pack. `policy.subset_proportional_floor` lifts the Teilmenge to that share.
+///
+/// **That floor exceeds the statutory maximum.** § 10 Abs. 1 permits *höchstens* the § 4 surcharge,
+/// and 4,57 EUR on a pro-rata basis of 0,50 EUR is a 357 % surcharge where § 4 allows 100 %. It is
+/// off by default and switched on per installation in `[pharmacy]`, as a deliberate decision by the
+/// practice — not something this code should do on its own.
+///
+/// The floor applies whatever the rule, which costs one branch less than restricting it to human
+/// preparations; for a veterinary medicine it provably never binds, because the bands stay below
+/// 100 % and so § 4 always already exceeds the pro-rata share.
 pub fn drug_price_subset(
     original_list_price_net: Decimal,
     original_quantity: Decimal,
     subset_quantity: Decimal,
     vat_percent: Decimal,
+    policy: PricingPolicy,
 ) -> DrugPrice {
     if original_quantity <= Decimal::ZERO || subset_quantity <= Decimal::ZERO {
         return price_from(Decimal::ZERO, Decimal::ZERO, vat_percent);
     }
     let basis = original_list_price_net / original_quantity * subset_quantity;
-    price_from(basis, basis, vat_percent)
+    let mut surcharge = basis;
+
+    if policy.subset_proportional_floor {
+        let pack = drug_price_original(original_list_price_net, vat_percent, policy);
+        let share = pack.net / original_quantity * subset_quantity;
+        surcharge = surcharge.max(share - basis);
+    }
+
+    price_from(basis, surcharge, vat_percent)
 }
 
 /// Pro-rata net listed price of a subset — what a subset packaging stores as its own
@@ -550,18 +625,18 @@ mod tests {
     #[test]
     fn original_packaging_uses_the_percentage_tiers_of_ampreisv_3_3() {
         // § 3(3): bis 1,22 Euro → 68 %. 1.00 + 0.68 = 1.68 net, ×1.19 = 2.00 gross.
-        let cheap = drug_price_original(dec("1.00"), dec("19"));
+        let cheap = drug_price_original(dec("1.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(cheap.surcharge, dec("0.68"));
         assert_eq!(cheap.net, dec("1.68"));
         assert_eq!(cheap.gross, dec("2.00"));
 
         // § 3(3): von 8,68 bis 12,14 Euro → 48 %. 10.00 + 4.80 = 14.80 net → 17.61 gross.
-        let middle = drug_price_original(dec("10.00"), dec("19"));
+        let middle = drug_price_original(dec("10.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(middle.surcharge, dec("4.80"));
         assert_eq!(middle.gross, dec("17.61"));
 
         // § 3(3): von 35,95 bis 543,91 Euro → 30 %. 40.00 + 12.00 = 52.00 → 61.88 gross.
-        let upper = drug_price_original(dec("40.00"), dec("19"));
+        let upper = drug_price_original(dec("40.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(upper.surcharge, dec("12.00"));
         assert_eq!(upper.gross, dec("61.88"));
     }
@@ -569,17 +644,17 @@ mod tests {
     #[test]
     fn the_fixed_amounts_of_ampreisv_3_4_fill_the_gaps_between_the_tiers() {
         // § 3(4): von 1,23 bis 1,34 Euro → 0,83 Euro.
-        let first_gap = drug_price_original(dec("1.30"), dec("19"));
+        let first_gap = drug_price_original(dec("1.30"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(first_gap.surcharge, dec("0.83"));
         assert_eq!(first_gap.gross, dec("2.53"));
 
         // § 3(4): von 19,43 bis 22,57 Euro → 8,35 Euro.
-        let fifth_gap = drug_price_original(dec("20.00"), dec("19"));
+        let fifth_gap = drug_price_original(dec("20.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(fifth_gap.surcharge, dec("8.35"));
         assert_eq!(fifth_gap.gross, dec("33.74"));
 
         // § 3(4): von 29,15 bis 35,94 Euro → 10,78 Euro.
-        let last_gap = drug_price_original(dec("30.00"), dec("19"));
+        let last_gap = drug_price_original(dec("30.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(last_gap.surcharge, dec("10.78"));
     }
 
@@ -589,7 +664,7 @@ mod tests {
         // never produce a gap (a missing band would silently price a drug at zero margin).
         for cents in 1..60_000u64 {
             let basis = Decimal::new(i64::try_from(cents).unwrap_or(i64::MAX), 2);
-            let price = drug_price_original(basis, Decimal::ZERO);
+            let price = drug_price_original(basis, Decimal::ZERO, PricingPolicy::veterinary());
             assert!(
                 price.surcharge > Decimal::ZERO,
                 "no surcharge band covers a basis of {basis}"
@@ -605,13 +680,13 @@ mod tests {
     fn expensive_drugs_fall_under_the_reduced_rates_of_ampreisv_10_2() {
         // § 10(2): 30 % on the first 51.13 (§ 3(3) band) plus 25 % of the excess up to
         // 127.82. 15.339 + 12.2175 = 27.5565 → net 127.5565 → gross 151.79.
-        let hundred = drug_price_original(dec("100.00"), dec("19"));
+        let hundred = drug_price_original(dec("100.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(hundred.surcharge, dec("27.56"));
         assert_eq!(hundred.gross, dec("151.79"));
 
         // § 10(2): plus 20 % of the part above 127.82.
         // 15.339 + 19.1725 + 14.436 = 48.9475 → net 248.9475 → gross 296.25.
-        let expensive = drug_price_original(dec("200.00"), dec("19"));
+        let expensive = drug_price_original(dec("200.00"), dec("19"), PricingPolicy::veterinary());
         assert_eq!(expensive.surcharge, dec("48.95"));
         assert_eq!(expensive.gross, dec("296.25"));
 
@@ -628,9 +703,110 @@ mod tests {
         let mut previous = Decimal::ZERO;
         for cents in 1..20_000u64 {
             let basis = Decimal::new(i64::try_from(cents).unwrap_or(i64::MAX), 2);
-            let net = drug_price_original(basis, Decimal::ZERO).net;
+            let net = drug_price_original(basis, Decimal::ZERO, PricingPolicy::veterinary()).net;
             assert!(net >= previous, "the net price fell at a basis of {basis}");
             previous = net;
+        }
+    }
+
+    // ⚠ FOR VET REVIEW (SC-005): a human preparation used on an animal is priced by § 3 Abs. 1
+    // Satz 2 — "höchstens ein Zuschlag von 3 Prozent zuzüglich 8,10 Euro" — not by the veterinary
+    // bands of Abs. 3/4. Until migration `0011` every drug took the bands, which was wrong in both
+    // directions: far too little on a cheap preparation, more than the law allows on a dear one.
+    #[test]
+    fn a_human_preparation_is_priced_by_ampreisv_3_1_s2() {
+        let human = PricingPolicy {
+            rule: DrugRule::Human,
+            ..PricingPolicy::default()
+        };
+        // (listed price, the Satz 2 surcharge, what the veterinary bands would have charged)
+        let cases = [
+            ("1.00", "8.13", "0.68"),
+            ("10.00", "8.40", "4.80"),
+            ("100.00", "11.10", "27.56"),
+        ];
+        for (list, satz2, bands) in cases {
+            let price = drug_price_original(dec(list), dec("19"), human);
+            assert_eq!(
+                price.surcharge,
+                dec(satz2),
+                "a human preparation listed at {list} carries 3 % + 8,10 EUR",
+            );
+            assert_eq!(
+                drug_price_original(dec(list), dec("19"), PricingPolicy::veterinary()).surcharge,
+                dec(bands),
+                "and the veterinary bands would have charged something else entirely",
+            );
+        }
+    }
+
+    #[test]
+    fn the_reduced_rates_of_10_2_never_bind_for_a_human_preparation() {
+        // § 10(2) caps the part above 51,13 EUR at 25 % and then 20 %. Satz 2 charges 3 %, so the
+        // cap can never be the binding one — asserted rather than argued.
+        let human = PricingPolicy {
+            rule: DrugRule::Human,
+            ..PricingPolicy::default()
+        };
+        for list in ["51.13", "127.82", "500.00", "5000.00"] {
+            let satz2 = drug_price_original(dec(list), dec("19"), human).surcharge;
+            let capped =
+                drug_price_original(dec(list), dec("19"), PricingPolicy::veterinary()).surcharge;
+            assert!(
+                satz2 < capped,
+                "at {list} EUR Satz 2 charges {satz2}, § 10(2) would allow {capped}",
+            );
+        }
+    }
+
+    // ⚠ FOR VET REVIEW (SC-005): why the floor switch exists.
+    #[test]
+    fn a_cheap_human_teilmenge_falls_below_the_proportional_price() {
+        let human = PricingPolicy {
+            rule: DrugRule::Human,
+            subset_proportional_floor: false,
+        };
+        // A 10 ml pack listed at 1,00 EUR: the pack carries the flat 8,10 EUR, the Teilmenge only
+        // the § 4 percentage, so 5 ml costs a fifth of what half the pack does.
+        let pack = drug_price_original(dec("1.00"), dec("19"), human);
+        assert_eq!(pack.net, dec("9.13"));
+
+        let half = drug_price_subset(dec("1.00"), dec("10"), dec("5"), dec("19"), human);
+        assert_eq!(half.net, dec("1.00"), "§ 4: 0,50 pro rata plus 100 %");
+        assert!(
+            half.net < pack.net / dec("2"),
+            "1,00 EUR for 5 ml against 4,57 EUR for half the pack",
+        );
+    }
+
+    #[test]
+    fn the_proportional_floor_lifts_a_cheap_human_teilmenge() {
+        let floored = PricingPolicy {
+            rule: DrugRule::Human,
+            subset_proportional_floor: true,
+        };
+        let half = drug_price_subset(dec("1.00"), dec("10"), dec("5"), dec("19"), floored);
+        assert_eq!(half.net, dec("4.57"), "half of the pack's 9,13 EUR");
+        // The basis is still the pro-rata listed price; only the surcharge was lifted.
+        assert_eq!(half.basis_net, dec("0.50"));
+        assert_eq!(half.surcharge, dec("4.07"));
+    }
+
+    #[test]
+    fn the_floor_never_binds_for_a_veterinary_drug() {
+        // § 4 charges 100 % while the bands top out at 68 %, so a Teilmenge already exceeds its
+        // share of the pack — switching the floor on must change nothing.
+        let plain = PricingPolicy::veterinary();
+        let floored = PricingPolicy {
+            subset_proportional_floor: true,
+            ..PricingPolicy::veterinary()
+        };
+        for list in ["1.00", "10.00", "40.00", "100.00", "600.00"] {
+            assert_eq!(
+                drug_price_subset(dec(list), dec("100"), dec("10"), dec("19"), plain),
+                drug_price_subset(dec(list), dec("100"), dec("10"), dec("19"), floored),
+                "the floor must not touch a veterinary drug listed at {list}",
+            );
         }
     }
 
@@ -639,19 +815,37 @@ mod tests {
         // § 4(1)–(2): the basis is the pro-rata listed price of the dispensed quantity
         // (the usual pack's price is decisive), the surcharge is 100 % (margin 50 %).
         // 10 ml out of a 100 ml bottle bought for 10.00 → basis 1.00 → net 2.00 → 2.38.
-        let subset = drug_price_subset(dec("10.00"), dec("100"), dec("10"), dec("19"));
+        let subset = drug_price_subset(
+            dec("10.00"),
+            dec("100"),
+            dec("10"),
+            dec("19"),
+            PricingPolicy::veterinary(),
+        );
         assert_eq!(subset.basis_net, dec("1.00"));
         assert_eq!(subset.surcharge, dec("1.00"));
         assert_eq!(subset.net, dec("2.00"));
         assert_eq!(subset.gross, dec("2.38"));
 
         // A half pack: basis 5.00 → net 10.00 → 11.90 gross.
-        let half = drug_price_subset(dec("10.00"), dec("100"), dec("50"), dec("19"));
+        let half = drug_price_subset(
+            dec("10.00"),
+            dec("100"),
+            dec("50"),
+            dec("19"),
+            PricingPolicy::veterinary(),
+        );
         assert_eq!(half.net, dec("10.00"));
         assert_eq!(half.gross, dec("11.90"));
 
         // The reduced VAT rate is applied just as faithfully.
-        let reduced = drug_price_subset(dec("10.00"), dec("100"), dec("10"), dec("7"));
+        let reduced = drug_price_subset(
+            dec("10.00"),
+            dec("100"),
+            dec("10"),
+            dec("7"),
+            PricingPolicy::veterinary(),
+        );
         assert_eq!(reduced.gross, dec("2.14"));
     }
 
@@ -659,8 +853,14 @@ mod tests {
     fn a_subset_of_the_whole_pack_costs_more_than_the_pack_itself() {
         // Dispensing 100 ml as a "subset" is priced per § 4 (100 %), the whole bottle per
         // § 3(3) (48 % in this band) — the surcharge for repackaging is the difference.
-        let pack = drug_price_original(dec("10.00"), dec("19"));
-        let all_of_it = drug_price_subset(dec("10.00"), dec("100"), dec("100"), dec("19"));
+        let pack = drug_price_original(dec("10.00"), dec("19"), PricingPolicy::veterinary());
+        let all_of_it = drug_price_subset(
+            dec("10.00"),
+            dec("100"),
+            dec("100"),
+            dec("19"),
+            PricingPolicy::veterinary(),
+        );
         assert!(
             all_of_it.gross > pack.gross,
             "{} vs {}",
@@ -672,16 +872,30 @@ mod tests {
     #[test]
     fn a_zero_or_negative_purchase_price_yields_no_price() {
         assert_eq!(
-            drug_price_original(Decimal::ZERO, dec("19")).gross,
+            drug_price_original(Decimal::ZERO, dec("19"), PricingPolicy::veterinary()).gross,
             Decimal::ZERO
         );
         assert_eq!(
-            drug_price_subset(dec("10.00"), dec("100"), Decimal::ZERO, dec("19")).gross,
+            drug_price_subset(
+                dec("10.00"),
+                dec("100"),
+                Decimal::ZERO,
+                dec("19"),
+                PricingPolicy::veterinary(),
+            )
+            .gross,
             Decimal::ZERO
         );
         // A packaging without a quantity cannot be priced pro rata.
         assert_eq!(
-            drug_price_subset(dec("10.00"), Decimal::ZERO, dec("10"), dec("19")).gross,
+            drug_price_subset(
+                dec("10.00"),
+                Decimal::ZERO,
+                dec("10"),
+                dec("19"),
+                PricingPolicy::veterinary(),
+            )
+            .gross,
             Decimal::ZERO
         );
     }

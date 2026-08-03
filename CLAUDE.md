@@ -113,6 +113,10 @@ is pure and unit-tested, including path-traversal refusal).
   at the repository root, a German, code-free checklist for the vet; keep it in step when the
   worked examples change. **Do not compute money anywhere else** — templates and the frontend only
   place pre-formatted strings.
+  Which AMPreisV rule applies is chosen per drug by `drug.human_drug`: § 3 Abs. 1 Satz 3 (the
+  Abs. 3/4 bands) for a veterinary medicine, Satz 2 (3 % + 8,10 €) for a human one used on an
+  animal. `[pharmacy] subset_never_below_proportional` is a deliberate, off-by-default deviation
+  that can exceed the statutory maximum — see `requirements/prices.md`.
   **Prices are net**, the gross is derived (`add_vat`). This is what the fee schedules compute in,
   and it is why migration `0009` exists: the GOT catalogue's published *net* fees had been imported
   into a column called `gross_price`, so every GOT position was billed ~16 % too low. The invoice

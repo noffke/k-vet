@@ -35,4 +35,6 @@ export interface CreateTreatmentItem {
      * @nullable
      */
   km_multiplier?: string | null;
+  /** Ad-hoc Umwidmung; only meaningful on a drug line. */
+  redesignation?: boolean;
 }

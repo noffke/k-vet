@@ -446,3 +446,108 @@ async fn drugs_can_be_searched_by_name_manufacturer_and_approval_number(pool: Pg
         Some(0)
     );
 }
+
+/// Marking a drug as a Humanpräparat switches it to § 3 Abs. 1 Satz 2 and reprices the catalogue.
+#[sqlx::test]
+async fn a_human_preparation_switches_the_ampreisv_rule(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let (supplier, manufacturer) = address_book(&app).await;
+    let (drug_id, packaging_id) = drug_with_original(&app, supplier, manufacturer).await;
+
+    // Listed at 10,00 €: the veterinary bands give 48 % → 14,80 € net.
+    let before = app
+        .get(&format!("/api/drugs/{drug_id}/packagings"))
+        .await
+        .json();
+    assert_eq!(packaging(&before, packaging_id)["sales_price_net"], "14.80");
+
+    let flagged = app
+        .patch(
+            &format!("/api/drugs/{drug_id}"),
+            json!({ "human_drug": true }),
+        )
+        .await
+        .json();
+    assert_eq!(flagged["human_drug"], true);
+
+    // § 3 Abs. 1 Satz 2: 3 % + 8,10 € → 8,40 € surcharge → 18,40 € net.
+    let after = app
+        .get(&format!("/api/drugs/{drug_id}/packagings"))
+        .await
+        .json();
+    assert_eq!(
+        packaging(&after, packaging_id)["sales_price_net"],
+        "18.40",
+        "the whole catalogue reprices when the flag flips",
+    );
+}
+
+/// The configured floor lifts a cheap human Teilmenge to its share of the pack.
+///
+/// This is the switch's whole purpose, exercised through the real API rather than the pure
+/// function, so the config actually reaches the price.
+#[sqlx::test]
+async fn the_configured_floor_lifts_a_cheap_human_teilmenge(pool: PgPool) {
+    for (floor, expected) in [(false, "1.00"), (true, "4.57")] {
+        let app = TestApp::with_config(pool.clone(), |config| {
+            config.pharmacy.subset_never_below_proportional = floor;
+        })
+        .await;
+        let (supplier, manufacturer) = address_book(&app).await;
+        let drug = app.post("/api/drugs", json!({})).await.json();
+        let drug_id = drug["id"].as_i64().expect("drug id");
+        app.patch(
+            &format!("/api/drugs/{drug_id}"),
+            json!({
+                "name": format!("Humanpräparat {floor}"),
+                "manufacturer_id": manufacturer,
+                "vat_percent": "19.000",
+                "human_drug": true,
+            }),
+        )
+        .await;
+
+        let original = app
+            .post(
+                &format!("/api/drugs/{drug_id}/packagings"),
+                json!({ "kind": "original" }),
+            )
+            .await
+            .json();
+        app.patch(
+            &format!("/api/packagings/{}", original["id"]),
+            json!({ "unit": "ml", "quantity": "10", "list_price_net": "1.00",
+                    "supplier_id": supplier }),
+        )
+        .await;
+
+        let subset = app
+            .post(
+                &format!("/api/drugs/{drug_id}/packagings"),
+                json!({ "kind": "subset" }),
+            )
+            .await
+            .json();
+        let subset_id = subset["id"].as_i64().expect("subset id");
+        app.patch(
+            &format!("/api/packagings/{subset_id}"),
+            json!({ "unit": "ml", "quantity": "5" }),
+        )
+        .await;
+
+        let packagings = app
+            .get(&format!("/api/drugs/{drug_id}/packagings"))
+            .await
+            .json();
+        // The pack itself is 9,13 € either way — § 3 Abs. 1 Satz 2, not the veterinary bands.
+        assert_eq!(
+            packaging(&packagings, original["id"].as_i64().expect("id"))["sales_price_net"],
+            "9.13",
+        );
+        assert_eq!(
+            packaging(&packagings, subset_id)["sales_price_net"],
+            expected,
+            "with the floor {floor}, 5 ml of a 10 ml pack listed at 1,00 €",
+        );
+    }
+}

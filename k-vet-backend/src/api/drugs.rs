@@ -14,10 +14,26 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option};
+use crate::config::PharmacyConfig;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::PackagingKind;
 use crate::domain::money;
 use crate::error::{AppError, AppResult};
+
+/// Turns the drug's flag and the practice's configuration into the pricing policy.
+///
+/// Kept in one place so every price — stored, recomputed and previewed — comes from the same
+/// decision rather than three near-copies of it.
+pub fn pricing_policy(human_drug: bool, pharmacy: &PharmacyConfig) -> money::PricingPolicy {
+    money::PricingPolicy {
+        rule: if human_drug {
+            money::DrugRule::Human
+        } else {
+            money::DrugRule::Veterinary
+        },
+        subset_proportional_floor: pharmacy.subset_never_below_proportional,
+    }
+}
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Drug {
@@ -31,6 +47,9 @@ pub struct Drug {
     pub vaccine: bool,
     pub refrigerate: bool,
     pub redesignation: bool,
+    /// A medicine approved for humans, dispensed for use in an animal: priced by
+    /// § 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.
+    pub human_drug: bool,
     pub vat_percent: Option<Decimal>,
     pub approval_number: Option<String>,
     pub archived: bool,
@@ -81,6 +100,7 @@ pub struct PatchDrug {
     pub vaccine: Option<bool>,
     pub refrigerate: Option<bool>,
     pub redesignation: Option<bool>,
+    pub human_drug: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -230,7 +250,8 @@ pub async fn patch(
                vaccine            = COALESCE($12, vaccine),
                refrigerate        = COALESCE($13, refrigerate),
                redesignation      = COALESCE($14, redesignation),
-               draft              = $15
+               human_drug         = COALESCE($15, human_drug),
+               draft              = $16
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -246,13 +267,14 @@ pub async fn patch(
         body.vaccine,
         body.refrigerate,
         body.redesignation,
+        body.human_drug,
         draft,
     )
     .execute(&mut *transaction)
     .await?;
 
     // A changed VAT rate moves every computed price of this drug.
-    recompute_prices(&mut transaction, id).await?;
+    recompute_prices(&mut transaction, id, &state.config.pharmacy).await?;
     transaction.commit().await?;
     Ok(Json(load(&state.pool, id).await?))
 }
@@ -307,7 +329,9 @@ pub async fn list_packagings(
     Path(drug_id): Path<i64>,
 ) -> AppResult<Json<Vec<Packaging>>> {
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_packagings(&mut connection, drug_id).await?))
+    Ok(Json(
+        load_packagings(&mut connection, drug_id, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -336,7 +360,9 @@ pub async fn create_packaging(
     .await?;
 
     let mut connection = state.pool.acquire().await?;
-    load_packaging(&mut connection, id).await.map(Json)
+    load_packaging(&mut connection, id, &state.config.pharmacy)
+        .await
+        .map(Json)
 }
 
 #[utoipa::path(
@@ -422,7 +448,7 @@ pub async fn patch_packaging(
     .await?;
 
     // Recompute every derived price of the drug: a changed original moves its subsets.
-    recompute_prices(&mut transaction, current.drug_id).await?;
+    recompute_prices(&mut transaction, current.drug_id, &state.config.pharmacy).await?;
 
     // The completeness flag is decided after the recompute filled the prices in.
     let after = sqlx::query!(
@@ -459,19 +485,29 @@ pub async fn patch_packaging(
 
     transaction.commit().await?;
     let mut connection = state.pool.acquire().await?;
-    load_packaging(&mut connection, id).await.map(Json)
+    load_packaging(&mut connection, id, &state.config.pharmacy)
+        .await
+        .map(Json)
 }
 
 /// Recomputes the AMPreisV price of every packaging of a drug that is not overridden.
 ///
 /// The original's price follows § 3(3)/(4) capped by § 10(2); a subset takes its list
 /// price pro rata from the original and adds the § 4 Teilmengenzuschlag.
-pub async fn recompute_prices(connection: &mut PgConnection, drug_id: i64) -> AppResult<()> {
-    let drug = sqlx::query!("SELECT vat_percent FROM drug WHERE id = $1", drug_id)
-        .fetch_optional(&mut *connection)
-        .await?
-        .ok_or(AppError::NotFound)?;
+pub async fn recompute_prices(
+    connection: &mut PgConnection,
+    drug_id: i64,
+    pharmacy: &PharmacyConfig,
+) -> AppResult<()> {
+    let drug = sqlx::query!(
+        "SELECT vat_percent, human_drug FROM drug WHERE id = $1",
+        drug_id
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .ok_or(AppError::NotFound)?;
     let vat = drug.vat_percent.unwrap_or(Decimal::ZERO);
+    let policy = pricing_policy(drug.human_drug, pharmacy);
 
     let original = sqlx::query!(
         "SELECT id, quantity, list_price_net FROM drug_packaging
@@ -484,7 +520,7 @@ pub async fn recompute_prices(connection: &mut PgConnection, drug_id: i64) -> Ap
     if let Some(original) = &original
         && let Some(list_price) = original.list_price_net
     {
-        let price = money::drug_price_original(list_price, vat);
+        let price = money::drug_price_original(list_price, vat, policy);
         sqlx::query!(
             "UPDATE drug_packaging SET sales_price_net = $2
              WHERE id = $1 AND NOT price_overridden",
@@ -515,7 +551,8 @@ pub async fn recompute_prices(connection: &mut PgConnection, drug_id: i64) -> Ap
         let Some(quantity) = subset.quantity else {
             continue;
         };
-        let price = money::drug_price_subset(original_price, original_quantity, quantity, vat);
+        let price =
+            money::drug_price_subset(original_price, original_quantity, quantity, vat, policy);
         let list_price = money::subset_list_price(original_price, original_quantity, quantity);
         sqlx::query!(
             "UPDATE drug_packaging SET
@@ -536,6 +573,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
     let row = sqlx::query!(
         r#"SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,
                   drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,
+                  drug.human_drug,
                   drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
@@ -569,6 +607,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         vaccine: row.vaccine,
         refrigerate: row.refrigerate,
         redesignation: row.redesignation,
+        human_drug: row.human_drug,
         vat_percent: row.vat_percent,
         approval_number: row.approval_number,
         archived: row.archived,
@@ -580,12 +619,16 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
     })
 }
 
-pub async fn load_packaging(connection: &mut PgConnection, id: i64) -> AppResult<Packaging> {
+pub async fn load_packaging(
+    connection: &mut PgConnection,
+    id: i64,
+    pharmacy: &PharmacyConfig,
+) -> AppResult<Packaging> {
     let drug_id: i64 = sqlx::query_scalar!("SELECT drug_id FROM drug_packaging WHERE id = $1", id)
         .fetch_optional(&mut *connection)
         .await?
         .ok_or(AppError::NotFound)?;
-    load_packagings(connection, drug_id)
+    load_packagings(connection, drug_id, pharmacy)
         .await?
         .into_iter()
         .find(|packaging| packaging.id == id)
@@ -595,13 +638,14 @@ pub async fn load_packaging(connection: &mut PgConnection, id: i64) -> AppResult
 pub async fn load_packagings(
     connection: &mut PgConnection,
     drug_id: i64,
+    pharmacy: &PharmacyConfig,
 ) -> AppResult<Vec<Packaging>> {
     let rows = sqlx::query!(
         r#"SELECT packaging.id, packaging.drug_id, packaging.kind AS "kind: PackagingKind",
                   packaging.unit, packaging.quantity, packaging.list_price_net,
                   packaging.sales_price_net, packaging.price_overridden,
                   packaging.supplier_id, packaging.archived, packaging.draft,
-                  supplier.name AS "supplier_name?", drug.vat_percent
+                  supplier.name AS "supplier_name?", drug.vat_percent, drug.human_drug
            FROM drug_packaging packaging
            JOIN drug ON drug.id = packaging.drug_id
            LEFT JOIN supplier ON supplier.id = packaging.supplier_id
@@ -622,10 +666,11 @@ pub async fn load_packagings(
         .iter()
         .map(|row| {
             let vat = row.vat_percent.unwrap_or(Decimal::ZERO);
+            let policy = pricing_policy(row.human_drug, pharmacy);
             let computed = match row.kind {
                 PackagingKind::Original => row
                     .list_price_net
-                    .map(|list_price| money::drug_price_original(list_price, vat).net),
+                    .map(|list_price| money::drug_price_original(list_price, vat, policy).net),
                 PackagingKind::Subset => match (original, row.quantity) {
                     (Some((Some(original_quantity), Some(original_price))), Some(quantity)) => {
                         Some(
@@ -634,6 +679,7 @@ pub async fn load_packagings(
                                 original_quantity,
                                 quantity,
                                 vat,
+                                policy,
                             )
                             .net,
                         )

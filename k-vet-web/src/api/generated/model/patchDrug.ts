@@ -25,4 +25,6 @@ export interface PatchDrug {
   refrigerate?: boolean | null;
   /** @nullable */
   redesignation?: boolean | null;
+  /** @nullable */
+  human_drug?: boolean | null;
 }

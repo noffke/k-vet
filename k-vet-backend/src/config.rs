@@ -43,6 +43,9 @@ pub struct Config {
     pub mail: MailConfig,
     pub invoice: InvoiceConfig,
     pub travel_expenses: TravelExpenseConfig,
+    /// Optional: a `config.toml` written before this section existed still loads.
+    #[serde(default)]
+    pub pharmacy: PharmacyConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -134,6 +137,24 @@ pub struct InvoiceConfig {
     pub typst_template: Option<PathBuf>,
     #[serde(default, deserialize_with = "empty_path_as_none")]
     pub email_template: Option<PathBuf>,
+}
+
+/// Deviations from the statutory drug price, decided per practice.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct PharmacyConfig {
+    /// Never price a Teilmenge below its share of the whole pack.
+    ///
+    /// Off by default, and deliberately so: it can exceed the statutory maximum. § 10 Abs. 1
+    /// AMPreisV permits *höchstens* the § 4 surcharge of 100 % on the pro-rata listed price, and
+    /// the floor can go well past that — a 10 ml human preparation listed at 1,00 EUR gives a 5 ml
+    /// Teilmenge of 1,00 EUR under § 4, which the floor lifts to 4,57 EUR, a 357 % surcharge. Only
+    /// switch it on where the practice has decided to.
+    ///
+    /// It only ever bites on human preparations: the veterinary bands stay below 100 %, so § 4
+    /// already exceeds the pro-rata share there.
+    #[serde(default)]
+    pub subset_never_below_proportional: bool,
 }
 
 #[derive(Debug, Clone, Deserialize)]

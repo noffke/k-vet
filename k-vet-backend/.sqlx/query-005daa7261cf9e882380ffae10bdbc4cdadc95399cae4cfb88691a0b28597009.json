@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
+  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent, drug.human_drug\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
   "describe": {
     "columns": [
       {
@@ -155,6 +155,17 @@
             "name": "vat_percent"
           }
         }
+      },
+      {
+        "ordinal": 13,
+        "name": "human_drug",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "human_drug"
+          }
+        }
       }
     ],
     "parameters": {
@@ -175,8 +186,9 @@
       false,
       false,
       true,
-      true
+      true,
+      false
     ]
   },
-  "hash": "97170056c6dd12262a0ec8a38db3878a16d833e2598fa858a5fa780f114d32ee"
+  "hash": "005daa7261cf9e882380ffae10bdbc4cdadc95399cae4cfb88691a0b28597009"
 }

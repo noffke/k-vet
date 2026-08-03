@@ -187,6 +187,8 @@
     "lotSelection": "Chargenauswahl",
     "lots": "Chargen",
     "pickerPlaceholder": "Medikament oder Leistung suchen …",
+    "redesignation": "Umwidmung",
+    "redesignationHint": "Abgabe außerhalb der Zulassung — wird auf dieser Zeile dokumentiert, ändert den Preis nicht.",
     "shortfallWarning": "Bestand reicht nicht aus — Abgabe wird trotzdem gebucht.",
     "title": "Behandlung",
     "total": "Summe"
@@ -228,11 +230,12 @@
     "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht.",
     "drugs": "Medikamente",
     "flags": {
-      "submissionReceipt": "Abgabebeleg",
+      "human_drug": "Humanpräparat",
       "narcotic": "BTM",
-      "vaccine": "Impfstoff",
+      "redesignation": "Umwidmung",
       "refrigerate": "Kühlpflichtig",
-      "redesignation": "Umwidmung"
+      "submissionReceipt": "Abgabebeleg",
+      "vaccine": "Impfstoff"
     },
     "flagsLegend": "Kennzeichen",
     "intake": "Wareneingang",

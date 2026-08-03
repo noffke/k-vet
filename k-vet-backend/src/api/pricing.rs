@@ -22,6 +22,9 @@ pub struct PricePreviewRequest {
     pub original_quantity: Option<Decimal>,
     /// Content of the subset being priced.
     pub subset_quantity: Option<Decimal>,
+    /// A human preparation is priced by § 3 Abs. 1 Satz 2, not by the veterinary bands.
+    #[serde(default)]
+    pub human_drug: bool,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -45,23 +48,46 @@ pub struct PricePreview {
     responses((status = 200, body = PricePreview))
 )]
 pub async fn preview(
-    State(_state): State<AppState>,
+    State(state): State<AppState>,
     Json(body): Json<PricePreviewRequest>,
 ) -> AppResult<Json<PricePreview>> {
+    let policy = crate::api::drugs::pricing_policy(body.human_drug, &state.config.pharmacy);
     let (price, rule) = match body.kind {
-        PackagingKind::Original => (
-            money::drug_price_original(body.list_price_net, body.vat_percent),
-            "AMPreisV § 3 Abs. 3/4, § 10 Abs. 2",
+        PackagingKind::Original if body.human_drug => (
+            money::drug_price_original(body.list_price_net, body.vat_percent, policy),
+            "AMPreisV § 3 Abs. 1 Satz 2 (Humanpräparat), § 10".to_owned(),
         ),
-        PackagingKind::Subset => (
-            money::drug_price_subset(
+        PackagingKind::Original => (
+            money::drug_price_original(body.list_price_net, body.vat_percent, policy),
+            "AMPreisV § 3 Abs. 3/4, § 10 Abs. 2".to_owned(),
+        ),
+        PackagingKind::Subset => {
+            let price = money::drug_price_subset(
                 body.list_price_net,
                 body.original_quantity.unwrap_or(Decimal::ZERO),
                 body.subset_quantity.unwrap_or(Decimal::ZERO),
                 body.vat_percent,
-            ),
-            "AMPreisV § 4 Abs. 1/2 (Teilmengenzuschlag)",
-        ),
+                policy,
+            );
+            // Say so when the configured floor, not § 4, is what set the price — otherwise the
+            // citation would claim a statutory basis the number does not have.
+            let statutory = money::drug_price_subset(
+                body.list_price_net,
+                body.original_quantity.unwrap_or(Decimal::ZERO),
+                body.subset_quantity.unwrap_or(Decimal::ZERO),
+                body.vat_percent,
+                money::PricingPolicy {
+                    subset_proportional_floor: false,
+                    ..policy
+                },
+            );
+            let rule = if price.net > statutory.net {
+                "Anteiliger Packungspreis (Untergrenze laut Konfiguration, über § 4)".to_owned()
+            } else {
+                "AMPreisV § 4 Abs. 1/2 (Teilmengenzuschlag)".to_owned()
+            };
+            (price, rule)
+        }
     };
 
     Ok(Json(PricePreview {

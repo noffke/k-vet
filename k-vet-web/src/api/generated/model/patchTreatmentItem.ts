@@ -21,4 +21,6 @@ export interface PatchTreatmentItem {
   km?: string | null;
   /** @nullable */
   km_multiplier?: string | null;
+  /** @nullable */
+  redesignation?: boolean | null;
 }

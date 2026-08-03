@@ -17,6 +17,33 @@ computed on top. Note that veterinary price lists (Barsoi among them) label this
 "Einkaufspreis" — in AMPreisV usage that word means the *listed* purchase price, which is why the
 column is named `list_price_net` instead.
 
+## Two AMPreisV rules, chosen per drug
+
+§ 3 Abs. 1 AMPreisV has one Satz per case, and § 10 Abs. 1 lets a vet use both:
+
+* **Satz 3 — veterinary medicine.** The percentage bands of Abs. 3 and the fixed amounts of Abs. 4,
+  capped for expensive preparations by § 10 Abs. 2. This is the default.
+* **Satz 2 — human medicine used on an animal ("Umwidmung").** "höchstens ein Zuschlag von
+  3 Prozent zuzüglich 8,10 Euro". Flat where the bands are proportional, so it is far more than the
+  bands on a cheap preparation and far less on a dear one; the two cross around 20–30 € of listed
+  price. § 10 Abs. 2 cannot bind on top, because 3 % never reaches its 25 %/20 % ceiling.
+
+`drug.human_drug` selects the rule. Everything before migration `0011` used the bands for every
+drug, which undercharged a preparation listed at 1,00 € (0,68 € instead of 8,13 €) and overcharged
+one at 100,00 € (27,56 € instead of 11,10 €).
+
+## The Teilmengen floor is a deliberate deviation
+
+For a human preparation the whole pack carries the flat 8,10 € while a § 4 Teilmenge carries only a
+percentage, so a cheap one comes out below its share of the pack: a 10 ml pack listed at 1,00 €
+sells for 9,13 € net, yet 5 ml of it is 1,00 € against 4,57 € for half the pack.
+
+`[pharmacy] subset_never_below_proportional` lifts the Teilmenge to that share. It is **off by
+default and exceeds the statutory maximum**: § 10 Abs. 1 permits *höchstens* the § 4 surcharge of
+100 %, and 4,57 € on a basis of 0,50 € is 357 %. It is a decision for the practice, confirmed with
+the vet, not a default of this application. It never bites on veterinary medicines, whose bands stay
+below 100 %.
+
 ## Net is the stored unit
 
 Prices are stored and edited **net**; the gross is derived. This follows the law rather than

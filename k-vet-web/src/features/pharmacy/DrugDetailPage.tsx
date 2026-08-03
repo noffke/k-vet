@@ -24,7 +24,15 @@ import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
 
 /** The regulatory flags of a drug — informational in this version (FR-012). */
-const FLAGS = ['submission_receipt', 'narcotic', 'vaccine', 'refrigerate', 'redesignation'] as const
+const FLAGS = [
+  'submission_receipt',
+  'narcotic',
+  'vaccine',
+  'refrigerate',
+  'redesignation',
+  // Selects the AMPreisV rule: § 3 Abs. 1 Satz 2 instead of the veterinary bands.
+  'human_drug',
+] as const
 
 /** One drug: identity, VAT, flags, its packagings and its stock. */
 export function DrugDetailPage() {

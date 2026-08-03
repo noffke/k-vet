@@ -664,6 +664,7 @@ export const ListDrugsResponseItem = zod.object({
   "vaccine": zod.boolean(),
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -686,6 +687,7 @@ export const CreateDrugResponse = zod.object({
   "vaccine": zod.boolean(),
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -711,6 +713,7 @@ export const GetDrugResponse = zod.object({
   "vaccine": zod.boolean(),
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -735,7 +738,8 @@ export const PatchDrugBody = zod.object({
   "narcotic": zod.boolean().nullish(),
   "vaccine": zod.boolean().nullish(),
   "refrigerate": zod.boolean().nullish(),
-  "redesignation": zod.boolean().nullish()
+  "redesignation": zod.boolean().nullish(),
+  "human_drug": zod.boolean().nullish()
 })
 
 export const PatchDrugResponse = zod.object({
@@ -748,6 +752,7 @@ export const PatchDrugResponse = zod.object({
   "vaccine": zod.boolean(),
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -773,6 +778,7 @@ export const ArchiveDrugResponse = zod.object({
   "vaccine": zod.boolean(),
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -849,6 +855,7 @@ export const UnarchiveDrugResponse = zod.object({
   "vaccine": zod.boolean(),
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1601,7 +1608,8 @@ export const PreviewPriceBody = zod.object({
   "list_price_net": zod.string().describe('Purchase price without VAT — of the original packaging in both cases.'),
   "vat_percent": zod.string(),
   "original_quantity": zod.string().nullish().describe('Content of the original packaging (subset previews need it for the pro rata).'),
-  "subset_quantity": zod.string().nullish().describe('Content of the subset being priced.')
+  "subset_quantity": zod.string().nullish().describe('Content of the subset being priced.'),
+  "human_drug": zod.boolean().optional().describe('A human preparation is priced by § 3 Abs. 1 Satz 2, not by the veterinary bands.')
 })
 
 export const PreviewPriceResponse = zod.object({
@@ -2018,7 +2026,8 @@ export const PatchTreatmentItemBody = zod.object({
   "factor": zod.string().nullish(),
   "patient_id": zod.int().nullish(),
   "km": zod.string().nullish(),
-  "km_multiplier": zod.string().nullish()
+  "km_multiplier": zod.string().nullish(),
+  "redesignation": zod.boolean().nullish()
 })
 
 export const PatchTreatmentItemResponse = zod.object({
@@ -2040,6 +2049,7 @@ export const PatchTreatmentItemResponse = zod.object({
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2081,6 +2091,7 @@ export const SetTreatmentItemLotsResponse = zod.object({
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2120,6 +2131,7 @@ export const MoveTreatmentItemResponseItem = zod.object({
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2375,6 +2387,7 @@ export const ApplyTemplateResponseItem = zod.object({
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2476,6 +2489,7 @@ export const ListTreatmentItemsResponseItem = zod.object({
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2500,7 +2514,8 @@ export const CreateTreatmentItemBody = zod.object({
   "patient_id": zod.int().nullish().describe('Defaults to the treatment\'s only patient when there is exactly one.'),
   "quantity": zod.string().optional(),
   "km": zod.string().nullish().describe('Travel-expense lines: kilometres driven (one way).'),
-  "km_multiplier": zod.string().nullish().describe('Multiplier for adverse travel conditions (1–3).')
+  "km_multiplier": zod.string().nullish().describe('Multiplier for adverse travel conditions (1–3).'),
+  "redesignation": zod.boolean().optional().describe('Ad-hoc Umwidmung; only meaningful on a drug line.')
 })
 
 export const CreateTreatmentItemResponse = zod.object({
@@ -2522,6 +2537,7 @@ export const CreateTreatmentItemResponse = zod.object({
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({

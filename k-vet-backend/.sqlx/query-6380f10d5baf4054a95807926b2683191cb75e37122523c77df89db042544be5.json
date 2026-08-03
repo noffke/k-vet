@@ -1,43 +1,10 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,\n                  item.km_multiplier, item.created_at,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
+  "query": "SELECT kind AS \"kind: TreatmentItemKind\", drug_packaging_id, service_id, patient_id,\n                  name, quantity, unit, factor, got_number, price_net, vat_percent,\n                  km, km_multiplier, redesignation\n           FROM treatment_item WHERE treatment_id = $1 ORDER BY position",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "id",
-        "type_info": "Int8",
-        "origin": {
-          "Table": {
-            "table": "treatment_item",
-            "name": "id"
-          }
-        }
-      },
-      {
-        "ordinal": 1,
-        "name": "treatment_id",
-        "type_info": "Int8",
-        "origin": {
-          "Table": {
-            "table": "treatment_item",
-            "name": "treatment_id"
-          }
-        }
-      },
-      {
-        "ordinal": 2,
-        "name": "position",
-        "type_info": "Int4",
-        "origin": {
-          "Table": {
-            "table": "treatment_item",
-            "name": "position"
-          }
-        }
-      },
-      {
-        "ordinal": 3,
         "name": "kind: TreatmentItemKind",
         "type_info": {
           "Custom": {
@@ -58,7 +25,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 1,
         "name": "drug_packaging_id",
         "type_info": "Int8",
         "origin": {
@@ -69,7 +36,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 2,
         "name": "service_id",
         "type_info": "Int8",
         "origin": {
@@ -80,7 +47,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 3,
         "name": "patient_id",
         "type_info": "Int8",
         "origin": {
@@ -91,7 +58,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 4,
         "name": "name",
         "type_info": "Text",
         "origin": {
@@ -102,7 +69,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 5,
         "name": "quantity",
         "type_info": "Numeric",
         "origin": {
@@ -113,7 +80,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 6,
         "name": "unit",
         "type_info": "Text",
         "origin": {
@@ -124,7 +91,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 7,
         "name": "factor",
         "type_info": "Numeric",
         "origin": {
@@ -135,7 +102,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 8,
         "name": "got_number",
         "type_info": "Text",
         "origin": {
@@ -146,7 +113,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 9,
         "name": "price_net",
         "type_info": "Numeric",
         "origin": {
@@ -157,7 +124,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 10,
         "name": "vat_percent",
         "type_info": "Numeric",
         "origin": {
@@ -168,7 +135,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 11,
         "name": "km",
         "type_info": "Numeric",
         "origin": {
@@ -179,7 +146,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 12,
         "name": "km_multiplier",
         "type_info": "Numeric",
         "origin": {
@@ -190,21 +157,15 @@
         }
       },
       {
-        "ordinal": 16,
-        "name": "created_at",
-        "type_info": "Timestamptz",
+        "ordinal": 13,
+        "name": "redesignation",
+        "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "treatment_item",
-            "name": "created_at"
+            "name": "redesignation"
           }
         }
-      },
-      {
-        "ordinal": 17,
-        "name": "travel_expenses!",
-        "type_info": "Bool",
-        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -214,9 +175,6 @@
     },
     "nullable": [
       false,
-      false,
-      false,
-      false,
       true,
       true,
       true,
@@ -229,9 +187,8 @@
       false,
       true,
       true,
-      false,
-      null
+      false
     ]
   },
-  "hash": "33d25bfc8daf283e71d8df51c1706c08178e4d2b9a277df5dda159b59ec04b88"
+  "hash": "6380f10d5baf4054a95807926b2683191cb75e37122523c77df89db042544be5"
 }

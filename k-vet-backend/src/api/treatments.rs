@@ -411,6 +411,7 @@ pub async fn apply_template(
             None,
             None,
             None,
+            false,
             None,
             &state.config.travel_expenses,
         )
@@ -500,7 +501,7 @@ pub async fn copy_treatment(
     let items = sqlx::query!(
         r#"SELECT kind AS "kind: TreatmentItemKind", drug_packaging_id, service_id, patient_id,
                   name, quantity, unit, factor, got_number, price_net, vat_percent,
-                  km, km_multiplier
+                  km, km_multiplier, redesignation
            FROM treatment_item WHERE treatment_id = $1 ORDER BY position"#,
         source_id,
     )
@@ -536,6 +537,7 @@ pub async fn copy_treatment(
             item.patient_id,
             item.km,
             item.km_multiplier,
+            item.redesignation,
             pinned,
             travel,
         )

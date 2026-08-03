@@ -22,4 +22,6 @@ export interface PricePreviewRequest {
      * @nullable
      */
   subset_quantity?: string | null;
+  /** A human preparation is priced by § 3 Abs. 1 Satz 2, not by the veterinary bands. */
+  human_drug?: boolean;
 }

@@ -133,6 +133,15 @@ Wichtig dabei:
   unser „Listenpreis". Wir nennen das Feld bewusst „Listenpreis", damit keine Verwechslung mit
   Ihrem tatsächlich gezahlten Preis entsteht.
 
+> **Bereits mit Ihnen abgestimmt, hier nur zur Ablage** — kein weiterer Prüfpunkt:
+> **Humanpräparate.** Ein für Menschen zugelassenes Mittel, das Sie am Tier anwenden, wird nach
+> § 3 Abs. 1 Satz 2 abgerechnet: **3 % zuzüglich 8,10 €**, nicht nach der Staffel unten. Sie
+> kennzeichnen das am Medikament mit dem Haken „Humanpräparat".
+> **Teilmengen von Humanpräparaten.** Weil die ganze Packung die festen 8,10 € trägt, eine
+> Teilmenge nach § 4 aber nur einen Prozentsatz, kann eine Teilmenge unter ihrem anteiligen
+> Packungspreis liegen. Auf Ihren Wunsch gibt es dafür eine Untergrenze, die in der
+> Konfigurationsdatei eingeschaltet wird.
+
 ### AMP-01 · Prozentuale Zuschläge nach § 3 Abs. 3
 
 | Listenpreis (netto) | Zuschlag | Verkauf netto | Verkauf **brutto** (19 %) |

@@ -48,6 +48,9 @@ pub struct TreatmentItem {
     pub km_multiplier: Option<Decimal>,
     /// `true` when the line's service bills travel expenses — the UI then asks for km.
     pub travel_expenses: bool,
+    /// Ad-hoc Umwidmung: this dispense is outside the preparation's approval — an eye
+    /// preparation used in an ear. Documentation only; it does not move the price.
+    pub redesignation: bool,
     /// `price_net × quantity × factor/100`, rounded to cents — **net**.
     pub line_net: Decimal,
     /// `line_net` plus VAT: what the customer pays for this line.
@@ -80,6 +83,9 @@ pub struct CreateTreatmentItem {
     pub km: Option<Decimal>,
     /// Multiplier for adverse travel conditions (1–3).
     pub km_multiplier: Option<Decimal>,
+    /// Ad-hoc Umwidmung; only meaningful on a drug line.
+    #[serde(default)]
+    pub redesignation: bool,
 }
 
 fn one() -> Decimal {
@@ -98,6 +104,7 @@ pub struct PatchTreatmentItem {
     pub km: Option<Option<Decimal>>,
     #[serde(default, deserialize_with = "double_option")]
     pub km_multiplier: Option<Option<Decimal>>,
+    pub redesignation: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -246,6 +253,7 @@ pub async fn create(
         body.patient_id,
         body.km,
         body.km_multiplier,
+        body.redesignation,
         None,
         &state.config.travel_expenses,
     )
@@ -271,6 +279,7 @@ pub async fn insert_pinned_item(
     patient_id: Option<i64>,
     km: Option<Decimal>,
     km_multiplier: Option<Decimal>,
+    redesignation: bool,
     pinned: Option<CatalogLine>,
     travel: &TravelExpenseConfig,
 ) -> AppResult<i64> {
@@ -318,8 +327,8 @@ pub async fn insert_pinned_item(
         r#"INSERT INTO treatment_item
                (treatment_id, position, kind, drug_packaging_id, service_id, patient_id,
                 name, quantity, unit, factor, got_number, price_net, vat_percent,
-                km, km_multiplier)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15)
+                km, km_multiplier, redesignation)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
            RETURNING id"#,
         treatment_id,
         position,
@@ -336,6 +345,7 @@ pub async fn insert_pinned_item(
         catalog.vat_percent,
         km,
         km_multiplier,
+        redesignation,
     )
     .fetch_one(&mut **transaction)
     .await?;
@@ -428,7 +438,8 @@ pub async fn patch(
                factor        = CASE WHEN $5 THEN $6 ELSE factor END,
                patient_id    = CASE WHEN $7 THEN $8 ELSE patient_id END,
                km            = CASE WHEN $9 THEN $10 ELSE km END,
-               km_multiplier = CASE WHEN $11 THEN $12 ELSE km_multiplier END
+               km_multiplier = CASE WHEN $11 THEN $12 ELSE km_multiplier END,
+               redesignation = COALESCE($13, redesignation)
            WHERE id = $1"#,
         id,
         body.quantity,
@@ -442,6 +453,7 @@ pub async fn patch(
         body.km.flatten(),
         body.km_multiplier.is_some(),
         body.km_multiplier.flatten(),
+        body.redesignation,
     )
     .execute(&mut *transaction)
     .await?;
@@ -751,6 +763,7 @@ pub async fn load_items(
                   item.kind AS "kind: TreatmentItemKind", item.drug_packaging_id,
                   item.service_id, item.patient_id, item.name, item.quantity, item.unit,
                   item.factor, item.got_number, item.price_net, item.vat_percent, item.km,
+                  item.redesignation,
                   item.km_multiplier, item.created_at,
                   COALESCE(service.travel_expenses, false) AS "travel_expenses!"
            FROM treatment_item item
@@ -791,6 +804,7 @@ pub async fn load_items(
             )
             .gross,
             price_gross: money::add_vat(row.price_net, row.vat_percent).gross,
+            redesignation: row.redesignation,
             lots: lots
                 .iter()
                 .filter(|lot| lot.treatment_item_id == Some(row.id))
