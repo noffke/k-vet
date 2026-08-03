@@ -109,7 +109,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   label={t('field.listPrice')}
                   value={packaging.list_price_net ?? null}
                   disabled={!isOriginal}
-                  hint={isOriginal ? undefined : t('pharmacy.subsetPriceDerived')}
+                  hint={isOriginal ? t('field.listPriceHint') : t('pharmacy.subsetPriceDerived')}
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
                 />
                 {/* The vet edits the net price the AMPreisV computes; the gross underneath is

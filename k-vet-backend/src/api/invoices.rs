@@ -809,7 +809,7 @@ async fn build_document(
         &settings.iban,
         &settings.bic,
         total,
-        &format!("Rechnung {}", &invoice.invoice_number),
+        &format!("Rechnung {}", invoice.invoice_number),
         &currency,
     );
 

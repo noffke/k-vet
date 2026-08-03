@@ -3,8 +3,8 @@
 //! Grows per story: line totals and VAT (US1), AMPreisV drug prices (US3), GOT § 10 travel
 //! expenses (US4).
 //!
-//! **Prices are net.** The GOT publishes net fees, AMPreisV § 3(2) levies its surcharges on the
-//! net purchase price, and § 14 UStG states an invoice as Entgelt plus Steuerbetrag — so the net
+//! **Prices are net.** The GOT publishes net fees, AMPreisV § 3(2) levies its surcharges on a
+//! net listed price, and § 14 UStG states an invoice as Entgelt plus Steuerbetrag — so the net
 //! is the figure the law computes and the catalogue stores, and the gross is derived from it.
 //! (This was the other way round until migration `0009`, which meant every GOT position was
 //! billed roughly 16 % too low; see that migration for the full story.)
@@ -53,7 +53,7 @@ pub struct VatSplit {
 ///
 /// This is the direction § 14 UStG states an invoice in — the Steuerbetrag is computed *from*
 /// the Entgelt, not extracted out of a gross figure — and it is the direction the fee schedules
-/// compute in (GOT publishes net fees, AMPreisV § 3(2) levies its surcharges on the net purchase
+/// compute in (GOT publishes net fees, AMPreisV § 3(2) levies its surcharges on a net listed
 /// price). Taking the gross as the sum keeps `net + vat == gross` exact to the cent.
 pub fn add_vat(net: Decimal, vat_percent: Decimal) -> VatSplit {
     if vat_percent.is_zero() {
@@ -188,10 +188,17 @@ pub fn allocate_gross(
 // § 10(1): "Bei der Abgabe von Arzneimitteln durch Tierärzte an Tierhalter dürfen
 // höchstens Zuschläge entsprechend § 3 Abs. 1 Satz 2 und 3 und Abs. 2 bis 4, § 4 Abs. 1
 // und 2 und § 5 Abs. 1 bis 3 sowie die Umsatzsteuer erhoben werden."
-// § 10(2): above a basis of 51.13 EUR, the excess carries at most 25 % (to 127.82 EUR)
-// and 20 % (beyond).
+// § 10(2): "Liegt der für den Zuschlag entsprechend § 3 Abs. 2 maßgebliche Betrag über
+// 51,13 Euro, so sind für den 51,13 Euro übersteigenden Betrag folgende Zuschläge zu erheben:
+// von 51,13 Euro bis 127,82 Euro höchstens 25 Prozent, von mehr als 127,82 Euro höchstens
+// 20 Prozent."
 //
-// The basis (§ 3(2)) is the vet's purchase price without VAT — the packaging's list price.
+// The basis (§ 3(2)) is a **listed** price without VAT: the manufacturer's Abgabepreis plus the
+// § 2 wholesale surcharge — the figure a wholesaler's catalogue quotes. It is *not* what the
+// practice negotiated; a rebate does not lower what may be charged on. Note that price lists,
+// Barsoi among them, label this figure "Einkaufspreis": in AMPreisV usage that word already
+// means the listed purchase price, which is why the column is called `list_price_net`. Same
+// number, unambiguous name.
 
 /// Percentage bands of § 3(3): `(upper bound inclusive, percent)`.
 const PHARMACY_PERCENT_BANDS: [(&str, &str); 8] = [
@@ -220,7 +227,7 @@ const PHARMACY_FIXED_BANDS: [(&str, &str, &str); 6] = [
 /// A computed drug price, so the UI can show what the surcharge did.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct DrugPrice {
-    /// § 3(2) basis: the purchase price the surcharge is levied on, without VAT.
+    /// § 3(2) basis: the listed price the surcharge is levied on, without VAT.
     pub basis_net: Decimal,
     /// The statutory surcharge, rounded to cents for display.
     pub surcharge: Decimal,
@@ -252,7 +259,7 @@ fn pharmacy_surcharge(basis: Decimal) -> Decimal {
     basis * decimal("8.263") / hundred() + decimal("118.24")
 }
 
-/// § 10(1) together with § 10(2): the most a vet may add to the purchase price.
+/// § 10(1) together with § 10(2): the most a vet may add to the listed price.
 ///
 /// Up to 51.13 EUR the pharmacy surcharge applies unchanged. Above it, the first
 /// 51.13 EUR keep their band's rate and only the excess is surcharged at 25 % / 20 %.
@@ -272,7 +279,7 @@ fn vet_surcharge(basis: Decimal) -> Decimal {
     surcharge
 }
 
-/// Sales price of an **original packaging**: purchase price plus the § 3(3)/(4) surcharge
+/// Sales price of an **original packaging**: the listed price plus the § 3(3)/(4) surcharge
 /// capped by § 10(2), plus VAT.
 pub fn drug_price_original(list_price_net: Decimal, vat_percent: Decimal) -> DrugPrice {
     price_from(list_price_net, vet_surcharge(list_price_net), vat_percent)
@@ -280,7 +287,7 @@ pub fn drug_price_original(list_price_net: Decimal, vat_percent: Decimal) -> Dru
 
 /// Sales price of a **subset packaging** (§ 4(1)–(2), the Teilmengenzuschlag).
 ///
-/// The basis is the pro-rata purchase price of the dispensed quantity — the price of the
+/// The basis is the pro-rata listed price of the dispensed quantity — the price of the
 /// usual pack is decisive — and the surcharge is 100 % (a 50 % margin), plus VAT.
 pub fn drug_price_subset(
     original_list_price_net: Decimal,
@@ -295,7 +302,7 @@ pub fn drug_price_subset(
     price_from(basis, basis, vat_percent)
 }
 
-/// Pro-rata net purchase price of a subset — what a subset packaging stores as its own
+/// Pro-rata net listed price of a subset — what a subset packaging stores as its own
 /// list price.
 pub fn subset_list_price(
     original_list_price_net: Decimal,
@@ -589,7 +596,7 @@ mod tests {
             );
             assert!(
                 price.net > basis,
-                "the net price must exceed the purchase price"
+                "the net price must exceed the listed price"
             );
         }
     }
@@ -617,7 +624,7 @@ mod tests {
 
     #[test]
     fn the_surcharge_never_jumps_backwards_across_a_band() {
-        // A cent more purchase price must never mean a cent less sales price.
+        // A cent more on the listed price must never mean a cent less sales price.
         let mut previous = Decimal::ZERO;
         for cents in 1..20_000u64 {
             let basis = Decimal::new(i64::try_from(cents).unwrap_or(i64::MAX), 2);
@@ -629,7 +636,7 @@ mod tests {
 
     #[test]
     fn subset_packagings_carry_the_teilmengenzuschlag_of_ampreisv_4() {
-        // § 4(1)–(2): the basis is the pro-rata purchase price of the dispensed quantity
+        // § 4(1)–(2): the basis is the pro-rata listed price of the dispensed quantity
         // (the usual pack's price is decisive), the surcharge is 100 % (margin 50 %).
         // 10 ml out of a 100 ml bottle bought for 10.00 → basis 1.00 → net 2.00 → 2.38.
         let subset = drug_price_subset(dec("10.00"), dec("100"), dec("10"), dec("19"));

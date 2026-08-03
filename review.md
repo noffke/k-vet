@@ -110,12 +110,32 @@ Alle GOT-Positionen sind mit **19 %** hinterlegt.
 
 ## B · Arzneimittel (AMPreisV)
 
-Das Programm rechnet den Verkaufspreis selbst aus. Ausgangspunkt ist immer Ihr **Einkaufspreis
-ohne Mehrwertsteuer**.
+> **Korrigiert nach Ihrer Rückmeldung.** Hier stand vorher, Ausgangspunkt sei „Ihr Einkaufspreis".
+> Das war falsch formuliert, und Sie haben zu Recht widersprochen. Maßgeblich ist der
+> **Listenpreis**, nicht der Betrag, den Sie nach Rabatten tatsächlich zahlen. Am gerechneten
+> Ergebnis ändert sich nichts — das Programm hat immer schon mit dem Feld „Listenpreis (netto)"
+> gerechnet. Nur die Erklärung war irreführend.
+
+Das Programm rechnet den Verkaufspreis selbst aus. Ausgangspunkt ist immer der **Listenpreis ohne
+Mehrwertsteuer** — also der Preis aus der Liste Ihres Großhändlers.
+
+Wichtig dabei:
+
+* Ein **Rabatt, den Sie ausgehandelt haben, senkt die Grundlage nicht.** § 3 Abs. 2 AMPreisV nennt
+  ausdrücklich den „Abgabepreis des pharmazeutischen Unternehmers ohne die Umsatzsteuer" zuzüglich
+  des Großhandelszuschlags — also einen *gelisteten* Preis. Was Sie im Einzelfall bezahlt haben,
+  spielt dafür keine Rolle. Sie dürfen den Listenpreis zugrunde legen, auch wenn Sie günstiger
+  eingekauft haben.
+* Der **Großhandelszuschlag ist bereits enthalten**, wenn Sie den Preis aus der Liste Ihres
+  Großhändlers nehmen. Sie müssen dazu nichts rechnen.
+* **Vorsicht bei der Wortwahl:** Preislisten für Tierärzte — auch die Barsoi-Liste — nennen genau
+  diesen Betrag „Einkaufspreis". Gemeint ist dort der *gelistete* Einkaufspreis, also dasselbe wie
+  unser „Listenpreis". Wir nennen das Feld bewusst „Listenpreis", damit keine Verwechslung mit
+  Ihrem tatsächlich gezahlten Preis entsteht.
 
 ### AMP-01 · Prozentuale Zuschläge nach § 3 Abs. 3
 
-| Ihr Einkauf (netto) | Zuschlag | Verkauf netto | Verkauf **brutto** (19 %) |
+| Listenpreis (netto) | Zuschlag | Verkauf netto | Verkauf **brutto** (19 %) |
 | ------------------- | -------- | ------------- | ------------------------- |
 | 1,00 €              | 0,68 € (68 %) | 1,68 €   | **2,00 €**                |
 | 10,00 €             | 4,80 € (48 %) | 14,80 €  | **17,61 €**               |
@@ -131,11 +151,11 @@ ohne Mehrwertsteuer**.
 
 Zwischen den Prozentstufen gibt die Verordnung feste Beträge vor:
 
-| Einkauf (netto) von–bis | fester Zuschlag |
-| ----------------------- | --------------- |
-| 1,23 € – 1,34 €         | 0,83 €          |
-| 19,43 € – 22,57 €       | 8,35 €          |
-| 29,15 € – 35,94 €       | 10,78 €         |
+| Listenpreis (netto) von–bis | fester Zuschlag |
+| --------------------------- | --------------- |
+| 1,23 € – 1,34 €             | 0,83 €          |
+| 19,43 € – 22,57 €           | 8,35 €          |
+| 29,15 € – 35,94 €           | 10,78 €         |
 
 **Frage:** Stimmen diese drei Stufen mit Ihrer AMPreisV-Tabelle überein?
 
@@ -143,15 +163,15 @@ Zwischen den Prozentstufen gibt die Verordnung feste Beträge vor:
 
 ### AMP-03 · Ermäßigte Sätze bei teuren Präparaten (§ 10 Abs. 2)
 
-Ab einem Einkaufspreis von **51,13 €** wird der übersteigende Teil geringer bezuschlagt: bis
+Ab einem Listenpreis von **51,13 €** wird der übersteigende Teil geringer bezuschlagt: bis
 127,82 € mit 25 %, darüber mit 20 %.
 
-| Ihr Einkauf (netto) | Zuschlag | Verkauf **brutto** (19 %) |
+| Listenpreis (netto) | Zuschlag | Verkauf **brutto** (19 %) |
 | ------------------- | -------- | ------------------------- |
 | 100,00 €            | 27,56 €  | **151,79 €**              |
 | 200,00 €            | 48,95 €  | **296,25 €**              |
 
-Die Spanne wird also mit steigendem Einkaufspreis kleiner — so ist die Verordnung gedacht.
+Die Spanne wird also mit steigendem Listenpreis kleiner — so ist die Verordnung gedacht.
 
 **Frage:** Passt das zu dem, was Sie bei teuren Präparaten abrechnen?
 
@@ -160,15 +180,15 @@ Die Spanne wird also mit steigendem Einkaufspreis kleiner — so ist die Verordn
 ### AMP-04 · Teilmengen (§ 4) — Umfüllen kostet mehr
 
 Wenn Sie aus einer Originalpackung eine Teilmenge abgeben, gilt ein Zuschlag von **100 %** auf den
-anteiligen Einkaufspreis.
+anteiligen Listenpreis.
 
-Beispiel: 100-ml-Flasche, Einkauf 10,00 € netto.
+Beispiel: 100-ml-Flasche, Listenpreis 10,00 € netto.
 
-| Abgabe   | anteiliger Einkauf | Zuschlag | Verkauf **brutto** |
-| -------- | ------------------ | -------- | ------------------ |
-| 10 ml    | 1,00 €             | 1,00 €   | **2,38 €**         |
-| 50 ml    | 5,00 €             | 5,00 €   | **11,90 €**        |
-| bei 7 % MwSt: 10 ml | 1,00 €  | 1,00 €   | **2,14 €**         |
+| Abgabe   | anteiliger Listenpreis | Zuschlag | Verkauf **brutto** |
+| -------- | ---------------------- | -------- | ------------------ |
+| 10 ml    | 1,00 €                 | 1,00 €   | **2,38 €**         |
+| 50 ml    | 5,00 €                 | 5,00 €   | **11,90 €**        |
+| bei 7 % MwSt: 10 ml | 1,00 €      | 1,00 €   | **2,14 €**         |
 
 Folge daraus: die **ganze Flasche als Teilmenge** abzugeben ist teurer, als die Originalpackung zu
 verkaufen (dort gilt in dieser Preisklasse nur 48 %). Das ist gewollt — es ist der Aufwand fürs
@@ -178,12 +198,13 @@ Umfüllen.
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
-### AMP-05 · Grundlage ist der Einkaufspreis **ohne** Mehrwertsteuer
+### AMP-05 · Welchen Betrag tragen Sie als „Listenpreis (netto)" ein?
 
-Das Programm rechnet alle Zuschläge auf Ihren Netto-Einkaufspreis (also den Betrag ohne
-Mehrwertsteuer auf der Lieferantenrechnung).
+Das Programm rechnet alle Zuschläge auf diesen einen Wert. Er sollte aus der Preisliste Ihres
+Großhändlers stammen und **ohne Mehrwertsteuer** angegeben sein.
 
-**Frage:** Erfassen Sie Ihre Einkaufspreise so — netto, ohne Mehrwertsteuer?
+**Frage:** Nehmen Sie den Betrag aus der Liste Ihres Großhändlers — und nicht den Preis, den Sie
+nach Rabatt tatsächlich überwiesen haben? Und ist dieser Betrag netto?
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 

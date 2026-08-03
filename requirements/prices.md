@@ -4,6 +4,19 @@ Only the part about veterinarians (Tierärzte) is relevant. §4 also gives the s
 
 ## Design
 Decision: v1 calculates per AMPreisV only (veterinarian part, incl. §4 Teilmengenzuschlag for subsets); the computed gross price remains manually overridable per packaging. A configurable "list price + VAT" mode is deferred.
+## The AMPreisV basis is a listed price
+
+Drug surcharges are levied on the **Listenpreis**, not on what the practice actually paid. § 3
+Abs. 2 AMPreisV names the "Abgabepreis des pharmazeutischen Unternehmers ohne die Umsatzsteuer"
+plus the § 2 wholesale surcharge, and § 10 Abs. 2 refers back to exactly that figure — it never
+says *Einkaufspreis*. A negotiated rebate therefore does not lower what may be charged on.
+
+The practice buys from a wholesaler, so the § 2 surcharge is already inside every price it sees:
+`drug_packaging.list_price_net` holds the wholesaler's listed net price and nothing has to be
+computed on top. Note that veterinary price lists (Barsoi among them) label this same figure
+"Einkaufspreis" — in AMPreisV usage that word means the *listed* purchase price, which is why the
+column is named `list_price_net` instead.
+
 ## Net is the stored unit
 
 Prices are stored and edited **net**; the gross is derived. This follows the law rather than

@@ -13,7 +13,14 @@
 * vaccination reminders
 * target invoice calculation: set desired end price and then calculate the factor to get close to the end price
 * price information: allow to build a non-persistent list of drugs and services to answer the customer the "what would it cost me" question
-* list prices from Barsoi
+* list prices from Barsoi (barsoiliste.de). Researched 2026-08-03: there is an XML "Preisliste zum
+  Einlesen in Verwaltungs- und Bestellsysteme", 12 € per month plus VAT, carrying
+  "Medikamentennamen, Hersteller, Handelsformen, Einkaufs- und Verkaufspreise" with the prices
+  "kalkuliert nach Arzneimittelpreisverordnung § 3, 4 oder 10" and the 7 %/19 % VAT rate. An import
+  would fill `list_price_net` and `vat_percent`; because Barsoi computes § 3/4/10 itself, it would
+  also hand us an independent cross-check of our own `sales_price_net`, which is worth having for
+  SC-005. One purchase price per product, with no wholesale/manufacturer split — so nothing extra
+  to reconcile. All of this is from the product description; nobody has seen the actual XML.
 * de-DE end-user manual (Benutzerhandbuch) for the daily workflows (treatment, invoice, stock)
 ## E-Rechnung (ZUGFeRD / XRechnung)
 

@@ -68,6 +68,7 @@
     "kmMultiplier": "Faktor (Verkehrsverhältnisse)",
     "lastName": "Nachname",
     "listPrice": "Listenpreis (netto)",
+    "listPriceHint": "Aus der Liste des Großhändlers, nicht der Preis nach Rabatt (§ 3 Abs. 2 AMPreisV).",
     "manufacturer": "Hersteller",
     "name": "Name",
     "neutered": "Kastriert",

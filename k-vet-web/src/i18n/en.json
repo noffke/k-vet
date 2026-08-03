@@ -68,6 +68,7 @@
     "kmMultiplier": "Multiplier (travel conditions)",
     "lastName": "Last name",
     "listPrice": "List price (net)",
+    "listPriceHint": "From the wholesaler's list, not the price after any rebate (§ 3(2) AMPreisV).",
     "manufacturer": "Manufacturer",
     "name": "Name",
     "neutered": "Neutered",
