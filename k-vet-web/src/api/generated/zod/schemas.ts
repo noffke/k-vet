@@ -248,6 +248,7 @@ export const PatchCustomerEmailBody = zod.object({
 
 export const PatchCustomerEmailResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -259,6 +260,7 @@ export const PatchCustomerEmailResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -294,6 +296,7 @@ export const ListCustomersQueryParams = zod.object({
 
 export const ListCustomersResponseItem = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -305,6 +308,7 @@ export const ListCustomersResponseItem = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -334,6 +338,7 @@ export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
 
 export const CreateCustomerResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -345,6 +350,7 @@ export const CreateCustomerResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -377,6 +383,7 @@ export const GetCustomerParams = zod.object({
 
 export const GetCustomerResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -388,6 +395,7 @@ export const GetCustomerResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -419,6 +427,7 @@ export const PatchCustomerParams = zod.object({
 })
 
 export const PatchCustomerBody = zod.object({
+  "company": zod.string().nullish(),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -430,6 +439,7 @@ export const PatchCustomerBody = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish(),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -444,6 +454,7 @@ export const PatchCustomerBody = zod.object({
 
 export const PatchCustomerResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -455,6 +466,7 @@ export const PatchCustomerResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -487,6 +499,7 @@ export const ArchiveCustomerParams = zod.object({
 
 export const ArchiveCustomerResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -498,6 +511,7 @@ export const ArchiveCustomerResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -535,6 +549,7 @@ export const AddCustomerEmailBody = zod.object({
 
 export const AddCustomerEmailResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -546,6 +561,7 @@ export const AddCustomerEmailResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
@@ -578,6 +594,7 @@ export const UnarchiveCustomerParams = zod.object({
 
 export const UnarchiveCustomerResponse = zod.object({
   "id": zod.int(),
+  "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
   "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
@@ -589,6 +606,7 @@ export const UnarchiveCustomerResponse = zod.object({
   "home_zip": zod.string().nullish(),
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
+  "invoice_company": zod.string().nullish(),
   "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),

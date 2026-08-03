@@ -19,6 +19,8 @@ use crate::error::{AppError, AppResult};
 #[derive(Debug, Serialize, ToSchema)]
 pub struct Customer {
     pub id: i64,
+    /// Optional company; printed above the name on the invoice, never instead of it.
+    pub company: Option<String>,
     pub salutation: Option<Salutation>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -32,6 +34,7 @@ pub struct Customer {
     pub home_city: Option<String>,
     /// ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.
     pub home_country: Option<String>,
+    pub invoice_company: Option<String>,
     pub invoice_salutation: Option<Salutation>,
     pub invoice_first_name: Option<String>,
     pub invoice_last_name: Option<String>,
@@ -66,6 +69,9 @@ pub struct CustomerEmail {
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct PatchCustomer {
     #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>)]
+    pub company: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
     pub salutation: Option<Option<Salutation>>,
     #[serde(default, deserialize_with = "double_option")]
     pub first_name: Option<Option<String>>,
@@ -88,6 +94,9 @@ pub struct PatchCustomer {
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<String>)]
     pub home_country: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<String>)]
+    pub invoice_company: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     pub invoice_salutation: Option<Option<Salutation>>,
     #[serde(default, deserialize_with = "double_option")]
@@ -284,9 +293,11 @@ pub async fn patch(
                invoice_city       = CASE WHEN $34 THEN $35 ELSE invoice_city END,
                home_country       = CASE WHEN $36 THEN $37 ELSE home_country END,
                invoice_country    = CASE WHEN $38 THEN $39 ELSE invoice_country END,
-               phone              = CASE WHEN $40 THEN $41 ELSE phone END,
-               warning_remark     = CASE WHEN $42 THEN $43 ELSE warning_remark END,
-               draft              = $44
+               company            = CASE WHEN $40 THEN $41 ELSE company END,
+               invoice_company    = CASE WHEN $42 THEN $43 ELSE invoice_company END,
+               phone              = CASE WHEN $44 THEN $45 ELSE phone END,
+               warning_remark     = CASE WHEN $46 THEN $47 ELSE warning_remark END,
+               draft              = $48
            WHERE id = $1"#,
         id,
         body.salutation.is_some(),
@@ -327,6 +338,10 @@ pub async fn patch(
         home_country.flatten(),
         invoice_country.is_some(),
         invoice_country.flatten(),
+        body.company.is_some(),
+        blank_to_null(&body.company),
+        body.invoice_company.is_some(),
+        blank_to_null(&body.invoice_company),
         phone.is_some(),
         blank_to_null(&phone),
         body.warning_remark.is_some(),
@@ -480,7 +495,8 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
     let row = sqlx::query!(
         r#"SELECT id, salutation AS "salutation?: Salutation", first_name, last_name,
                   second_salutation AS "second_salutation?: Salutation", second_first_name,
-                  second_last_name, home_addon, home_street, home_zip, home_city, home_country,
+                  second_last_name, company, invoice_company,
+                  home_addon, home_street, home_zip, home_city, home_country,
                   invoice_salutation AS "invoice_salutation?: Salutation", invoice_first_name,
                   invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,
                   invoice_country,
@@ -530,6 +546,8 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
         home_addon: row.home_addon,
         home_street: row.home_street,
         home_zip: row.home_zip,
+        company: row.company,
+        invoice_company: row.invoice_company,
         home_city: row.home_city,
         home_country: row.home_country,
         invoice_salutation: row.invoice_salutation,

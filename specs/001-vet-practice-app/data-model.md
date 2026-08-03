@@ -73,6 +73,7 @@ Semantics:
 | Column | Type | Constraints |
 |---|---|---|
 | id | identity | PK |
+| company | text | NULL — printed above the name, never instead of it |
 | salutation | salutation | ★ |
 | first_name | text | NULL |
 | last_name | text | ★ |
@@ -83,6 +84,7 @@ Semantics:
 | home_street | text | ★ (incl. house number) |
 | home_zip | text | ★ |
 | home_city | text | ★ |
+| invoice_company | text | NULL — the invoice recipient's own, never the home one |
 | invoice_salutation | salutation | NULL |
 | invoice_first_name | text | NULL |
 | invoice_last_name | text | NULL |
@@ -104,9 +106,11 @@ CHECKs:
   invoice_street, invoice_zip, invoice_city)`; `invoice_first_name`/`invoice_addon` only when
   the group is present.
 
-Invoice address-block rendering: the invoice recipient (salutation, first name, last name +
-invoice address) when the group is set; otherwise the primary name line, the second name as a
-second line when present, and the home address. Lists sort by `last_name, first_name`;
+Invoice address-block rendering: the invoice recipient (company, salutation, first name, last
+name + invoice address) when the group is set; otherwise the company, the primary name line, the
+second name as a second line when present, and the home address. A company leads the block —
+DIN 5008 order — while `*_addon` stays below the names; neither company is part of the
+completeness sets, so it never holds a customer in draft. Lists sort by `last_name, first_name`;
 customer search matches both names.
 
 ### customer_email

@@ -4344,6 +4344,13 @@
             "type": "integer",
             "format": "int64"
           },
+          "company": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Optional company; printed above the name on the invoice, never instead of it."
+          },
           "salutation": {
             "oneOf": [
               {
@@ -4419,6 +4426,12 @@
               "null"
             ],
             "description": "ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`."
+          },
+          "invoice_company": {
+            "type": [
+              "string",
+              "null"
+            ]
           },
           "invoice_salutation": {
             "oneOf": [
@@ -5303,6 +5316,12 @@
       "PatchCustomer": {
         "type": "object",
         "properties": {
+          "company": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "salutation": {
             "oneOf": [
               {
@@ -5372,6 +5391,12 @@
             ]
           },
           "home_country": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_company": {
             "type": [
               "string",
               "null"

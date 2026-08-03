@@ -243,6 +243,44 @@ async fn an_invoice_address_is_only_used_once_it_is_complete(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn a_company_round_trips_per_address_and_stays_optional(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+
+    let saved = app
+        .patch(
+            &format!("/api/customers/{id}"),
+            json!({
+                "company": "Hundepension Musterhof GmbH",
+                "invoice_company": "Musterhof Verwaltungs KG"
+            }),
+        )
+        .await
+        .json();
+    assert_eq!(saved["company"], "Hundepension Musterhof GmbH");
+    assert_eq!(saved["invoice_company"], "Musterhof Verwaltungs KG");
+    assert!(
+        !saved["missing_fields"]
+            .as_array()
+            .expect("missing_fields")
+            .iter()
+            .any(|field| field == "company"),
+        "a company is optional — it must never hold a customer in draft",
+    );
+
+    // Cleared again: an empty string means "no company", not a blank first address line.
+    let cleared = app
+        .patch(&format!("/api/customers/{id}"), json!({ "company": "" }))
+        .await
+        .json();
+    assert!(cleared["company"].is_null());
+    assert_eq!(
+        cleared["invoice_company"], "Musterhof Verwaltungs KG",
+        "clearing one address's company leaves the other alone",
+    );
+}
+
+#[sqlx::test]
 async fn a_warning_remark_round_trips(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;

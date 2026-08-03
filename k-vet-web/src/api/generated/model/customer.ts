@@ -10,6 +10,11 @@ import type { Salutation } from './salutation';
 
 export interface Customer {
   id: number;
+  /**
+     * Optional company; printed above the name on the invoice, never instead of it.
+     * @nullable
+     */
+  company?: string | null;
   salutation?: null | Salutation;
   /** @nullable */
   first_name?: string | null;
@@ -33,6 +38,8 @@ export interface Customer {
      * @nullable
      */
   home_country?: string | null;
+  /** @nullable */
+  invoice_company?: string | null;
   invoice_salutation?: null | Salutation;
   /** @nullable */
   invoice_first_name?: string | null;

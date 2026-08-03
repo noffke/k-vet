@@ -232,6 +232,8 @@ fn group_de(value: Decimal, decimals: u32) -> String {
 /// The customer columns the invoice address block is built from.
 #[derive(Debug, Default, Clone)]
 pub struct CustomerAddress {
+    /// Optional company; printed above the name, never instead of it.
+    pub company: Option<String>,
     pub salutation: Option<Salutation>,
     pub first_name: Option<String>,
     pub last_name: Option<String>,
@@ -244,6 +246,7 @@ pub struct CustomerAddress {
     pub home_street: Option<String>,
     pub home_zip: Option<String>,
     pub home_city: Option<String>,
+    pub invoice_company: Option<String>,
     pub invoice_salutation: Option<Salutation>,
     pub invoice_first_name: Option<String>,
     pub invoice_last_name: Option<String>,
@@ -260,6 +263,9 @@ pub struct CustomerAddress {
 /// With an invoice address set, the PDF shows only that recipient at that address.
 /// Without one it shows the customer name, the second name as its own line when present,
 /// and the home address.
+///
+/// A company, where there is one, goes **above** the name — DIN 5008 order, and the reason it is
+/// its own column rather than something typed into `*_addon`, which prints below.
 pub fn address_block(customer: &CustomerAddress) -> Vec<String> {
     let name_line =
         |salutation: Option<Salutation>, first: &Option<String>, last: &Option<String>| {
@@ -276,6 +282,7 @@ pub fn address_block(customer: &CustomerAddress) -> Vec<String> {
 
     let mut lines = Vec::new();
     if customer.has_invoice_address {
+        lines.extend(customer.invoice_company.clone());
         lines.push(name_line(
             customer.invoice_salutation,
             &customer.invoice_first_name,
@@ -285,6 +292,7 @@ pub fn address_block(customer: &CustomerAddress) -> Vec<String> {
         lines.extend(customer.invoice_street.clone());
         lines.push(zip_city(&customer.invoice_zip, &customer.invoice_city));
     } else {
+        lines.extend(customer.company.clone());
         lines.push(name_line(
             customer.salutation,
             &customer.first_name,
@@ -393,6 +401,47 @@ mod tests {
     }
 
     #[test]
+    fn a_company_is_the_first_line_of_the_home_address() {
+        let mut business = customer();
+        business.company = Some("Hundepension Musterhof GmbH".to_owned());
+
+        assert_eq!(
+            address_block(&business),
+            vec![
+                "Hundepension Musterhof GmbH",
+                "Frau Erika Mustermann",
+                "Musterweg 5",
+                "12345 Musterstadt",
+            ],
+            "the company goes above the name, not below it like an addon",
+        );
+    }
+
+    #[test]
+    fn an_invoice_address_carries_its_own_company() {
+        let mut business = customer();
+        business.company = Some("Hundepension Musterhof GmbH".to_owned());
+        business.has_invoice_address = true;
+        business.invoice_company = Some("Musterhof Verwaltungs KG".to_owned());
+        business.invoice_salutation = Some(Salutation::Herr);
+        business.invoice_last_name = Some("Buchhalter".to_owned());
+        business.invoice_street = Some("Rechnungsallee 9".to_owned());
+        business.invoice_zip = Some("54321".to_owned());
+        business.invoice_city = Some("Zahlstadt".to_owned());
+
+        assert_eq!(
+            address_block(&business),
+            vec![
+                "Musterhof Verwaltungs KG",
+                "Herr Buchhalter",
+                "Rechnungsallee 9",
+                "54321 Zahlstadt",
+            ],
+            "the home company must not leak into the invoice recipient",
+        );
+    }
+
+    #[test]
     fn an_invoice_address_replaces_the_customer_block_entirely() {
         let mut with_invoice = customer();
         with_invoice.has_second_name = true;
@@ -422,6 +471,8 @@ mod tests {
     fn address_block_skips_empty_lines() {
         let sparse = CustomerAddress {
             last_name: Some("Mustermann".to_owned()),
+            // A company the vet typed and cleared again must not leave a blank line behind.
+            company: Some("   ".to_owned()),
             ..CustomerAddress::default()
         };
         assert_eq!(address_block(&sparse), vec!["Mustermann"]);

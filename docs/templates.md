@@ -71,7 +71,7 @@ font falls back silently and changes the metrics, so stay with these.
 | `date` | string | Invoice date, `dd.mm.yyyy`. |
 | `due_date` | string | Pinned at creation from `[invoice] payment_terms_days`; empty on invoices written before that existed. |
 | `treatment_date` | string | Appointment date; empty when unknown. |
-| `recipient` | string[] | Address block, one line each: name(s) then street, then zip and city. Already picks the invoice address over the home address, and includes a second household name when there is one. |
+| `recipient` | string[] | Address block, one line each: optional company, then name(s), then street, then zip and city. Already picks the invoice address over the home address, and includes a second household name when there is one. |
 | `sender_line` | string | Practice and address on one line, for the DIN 5008 Rücksendeangabe above the address block. |
 | `greeting` | string | Ready-made salutation, e.g. `Sehr geehrter Herr Mustermann` — follows the invoice recipient when one is set. Write the comma yourself. |
 | `patients` | string[] | Animal names on this invoice. |

@@ -1023,7 +1023,8 @@ struct Recipient {
 /// addressing the envelope to one person and the letter inside to another would be a bug.
 async fn recipient_lines(connection: &mut PgConnection, customer_id: i64) -> AppResult<Recipient> {
     let customer = sqlx::query!(
-        r#"SELECT salutation AS "salutation?: Salutation", first_name, last_name,
+        r#"SELECT company, invoice_company,
+                  salutation AS "salutation?: Salutation", first_name, last_name,
                   second_salutation AS "second_salutation?: Salutation",
                   second_first_name, second_last_name, has_second_name,
                   home_addon, home_street, home_zip, home_city,
@@ -1055,6 +1056,8 @@ async fn recipient_lines(connection: &mut PgConnection, customer_id: i64) -> App
     };
 
     let lines = pdf::address_block(&CustomerAddress {
+        company: customer.company,
+        invoice_company: customer.invoice_company,
         salutation: customer.salutation,
         first_name: customer.first_name,
         last_name: customer.last_name,

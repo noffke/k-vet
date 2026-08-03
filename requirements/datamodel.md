@@ -94,9 +94,12 @@ A template set of Drugs and services for Treatment Items / Invoices
 ### Master Data (Stammdaten)
 * Customer
   * Name (structured, see Modeling Conventions: salutation, optional first name, last name)
+  * Company (optional) — some customers are businesses. It prints as the *first* line of the
+    invoice address, above the name. First and last name stay mandatory, so there is never a
+    company-only recipient and the salutation is unaffected.
   * Second Name (optional, same structure — both persons are addressed on the invoice, e.g. non-married couples)
   * Home Address (structured, see Modeling Conventions; mandatory — the place to drive to)
-  * Invoice Address (structured, optional) with its own recipient name (salutation, optional first name, last name); when set, invoices use it — otherwise invoices use the customer name(s) and home address
+  * Invoice Address (structured, optional) with its own recipient name (optional company, salutation, optional first name, last name); when set, invoices use it — otherwise invoices use the customer name(s) and home address. The company belongs to the recipient, so the invoice address has its own and never borrows the home one.
   * E-Mail Address (multiple, with type)
   * Phone Number (single, optional; validated, see Modeling Conventions)
   * Warning Remark (Warnhinweis) (e.g. dangerous animal etc., prominently displayed) (optional)

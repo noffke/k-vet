@@ -549,7 +549,8 @@ async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
     let customer_id = common::seed_customer(&pool).await;
     sqlx::query(
         "UPDATE customer SET salutation = 'herr', first_name = 'Thomas',
-             last_name = 'Mustermann', home_street = 'Musterweg 7a',
+             last_name = 'Mustermann', company = 'Hundepension Musterhof GmbH',
+             home_street = 'Musterweg 7a',
              home_zip = '12345', home_city = 'Musterstadt' WHERE id = $1",
     )
     .bind(customer_id)

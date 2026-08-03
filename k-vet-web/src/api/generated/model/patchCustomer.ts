@@ -8,6 +8,8 @@
 import type { Salutation } from './salutation';
 
 export interface PatchCustomer {
+  /** @nullable */
+  company?: string | null;
   salutation?: null | Salutation;
   /** @nullable */
   first_name?: string | null;
@@ -28,6 +30,8 @@ export interface PatchCustomer {
   home_city?: string | null;
   /** @nullable */
   home_country?: string | null;
+  /** @nullable */
+  invoice_company?: string | null;
   invoice_salutation?: null | Salutation;
   /** @nullable */
   invoice_first_name?: string | null;
