@@ -711,33 +711,9 @@ async fn build_document(
             .collect::<Vec<_>>(),
     );
 
-    // The gross column is derived, so it need not add up to the group totals on its own. Hand
-    // out the odd cents per VAT rate before printing, so the invoice reconciles (see
-    // `money::allocate_gross`).
-    let mut line_gross: Vec<Decimal> = vec![Decimal::ZERO; items.len()];
-    for group in &groups {
-        let indexes: Vec<usize> = items
-            .iter()
-            .enumerate()
-            .filter(|(_, item)| item.vat_percent == group.vat_percent)
-            .map(|(index, _)| index)
-            .collect();
-        let nets: Vec<Decimal> = indexes.iter().map(|index| items[*index].line_net).collect();
-        for (index, gross) in
-            indexes
-                .iter()
-                .zip(money::allocate_gross(&nets, group.vat_percent, group.gross))
-        {
-            if let Some(slot) = line_gross.get_mut(*index) {
-                *slot = gross;
-            }
-        }
-    }
-
     let lines: Vec<InvoiceLine> = items
         .iter()
-        .enumerate()
-        .map(|(index, item)| InvoiceLine {
+        .map(|item| InvoiceLine {
             position: item.position,
             name: item.name.clone(),
             // Only worth printing when the invoice covers more than one animal.
@@ -756,10 +732,9 @@ async fn build_document(
             vat: percent_de(item.vat_percent),
             detail: line_detail(item, &packagings),
             price: money_de(item.price_gross, &currency),
-            total: money_de(
-                line_gross.get(index).copied().unwrap_or(item.line_gross),
-                &currency,
-            ),
+            // Exact by construction: VAT is rounded per line, so `net + vat` needs no further
+            // rounding and the column sums to the VAT group's gross (`money::vat_summary`).
+            total: money_de(item.line_gross, &currency),
         })
         .collect();
 

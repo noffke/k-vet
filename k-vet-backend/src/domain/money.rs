@@ -82,100 +82,47 @@ pub struct VatGroup {
 
 /// Groups `(net, vat_percent)` line totals per rate, highest rate first.
 ///
-/// VAT is computed on each group's total, not per line: rounding per line would make the
-/// invoice's VAT summary disagree with its own line sums.
+/// VAT is rounded **per line** and then summed — the *horizontale Berechnung*, one of the two
+/// methods German practice accepts under § 14 UStG (the other sums the raw amounts and rounds the
+/// total). It is the right one here because the invoice prints a gross column: with the VAT of a
+/// line rounded first, that line's gross is `net + vat` exactly, and the column therefore adds up
+/// to the group's gross by construction. Rounding on the group total instead leaves the printed
+/// column a cent adrift — visible on the invoice this replaces, whose GOT 40 line shows 41,05 €
+/// per unit against a 41,06 € line total.
+///
+/// The cost is inherent to the method and accepted: a group's VAT is the sum of its lines' VAT
+/// rather than the rate applied to the group's net, so the two can differ by a cent or so on a
+/// long invoice. § 14 Abs. 4 UStG asks for the Entgelt per rate (Nr. 7) and the Steuerbetrag on it
+/// (Nr. 8); it does not prescribe which of the two roundings produces them.
 pub fn vat_summary(lines: &[(Decimal, Decimal)]) -> Vec<VatGroup> {
-    let mut totals: Vec<(Decimal, Decimal)> = Vec::new();
+    let mut totals: Vec<VatGroup> = Vec::new();
     for (net, vat_percent) in lines {
-        match totals.iter_mut().find(|(rate, _)| rate == vat_percent) {
-            Some((_, sum)) => *sum += *net,
-            None => totals.push((*vat_percent, *net)),
+        let line = add_vat(*net, *vat_percent);
+        match totals
+            .iter_mut()
+            .find(|group| group.vat_percent == *vat_percent)
+        {
+            Some(group) => {
+                group.net += line.net;
+                group.vat += line.vat;
+                group.gross += line.gross;
+            }
+            None => totals.push(VatGroup {
+                vat_percent: *vat_percent,
+                net: line.net,
+                vat: line.vat,
+                gross: line.gross,
+            }),
         }
     }
     // Highest rate first — the order German invoices use.
-    totals.sort_by_key(|(rate, _)| std::cmp::Reverse(*rate));
+    totals.sort_by_key(|group| std::cmp::Reverse(group.vat_percent));
     totals
-        .into_iter()
-        .map(|(vat_percent, net)| {
-            let split = add_vat(net, vat_percent);
-            VatGroup {
-                vat_percent,
-                gross: split.gross,
-                net: split.net,
-                vat: split.vat,
-            }
-        })
-        .collect()
 }
 
 /// Invoice total — the sum of the group gross amounts.
 pub fn total_gross(groups: &[VatGroup]) -> Decimal {
     groups.iter().map(|group| group.gross).sum()
-}
-
-/// Splits a group's gross across its lines so the printed column adds up exactly.
-///
-/// A private customer reads gross amounts, but gross is derived here, and
-/// `Σ round(net_i × (1 + p))` need not equal the group's gross — three lines of 3,33 € at 19 %
-/// give 3 × 3,96 = 11,88 € against a group gross of 11,89 €. The legacy system this replaces
-/// simply let that show (its GOT 40 line prints 41,05 € per unit and 41,06 € as the total).
-///
-/// Instead the remainder cents are handed out by largest remainder — biggest fractional part
-/// first, ties going to the larger line — so every cent lands on the line that was rounded down
-/// hardest and the column sums to `group_gross` by construction.
-pub fn allocate_gross(
-    nets: &[Decimal],
-    vat_percent: Decimal,
-    group_gross: Decimal,
-) -> Vec<Decimal> {
-    if nets.is_empty() {
-        return Vec::new();
-    }
-
-    let exact: Vec<Decimal> = nets
-        .iter()
-        .map(|net| *net * (Decimal::ONE + vat_percent / hundred()))
-        .collect();
-    let mut allocated: Vec<Decimal> = exact.iter().copied().map(round_money).collect();
-
-    // How many cents the rounded column is short of (or over) the group's gross.
-    let cent = Decimal::ONE / Decimal::from(100);
-    let drift = group_gross - allocated.iter().copied().sum::<Decimal>();
-    let steps = (drift / cent)
-        .round()
-        .to_string()
-        .parse::<i64>()
-        .unwrap_or(0);
-    if steps == 0 {
-        return allocated;
-    }
-
-    // Order by how much each line lost to rounding; the largest loser is corrected first.
-    let mut order: Vec<usize> = (0..allocated.len()).collect();
-    order.sort_by(|left, right| {
-        let residual = |index: usize| exact[index] - allocated[index];
-        residual(*right)
-            .partial_cmp(&residual(*left))
-            .unwrap_or(std::cmp::Ordering::Equal)
-            .then(
-                exact[*right]
-                    .partial_cmp(&exact[*left])
-                    .unwrap_or(std::cmp::Ordering::Equal),
-            )
-    });
-    if steps < 0 {
-        order.reverse();
-    }
-
-    let direction = if steps > 0 { cent } else { -cent };
-    for offset in 0..steps.unsigned_abs() as usize {
-        if let Some(index) = order.get(offset % order.len())
-            && let Some(value) = allocated.get_mut(*index)
-        {
-            *value += direction;
-        }
-    }
-    allocated
 }
 
 // ---------------------------------------------------------------------------
@@ -565,63 +512,35 @@ mod tests {
         assert_eq!(groups[1].vat, dec("7.00"));
     }
 
+    // ⚠ FOR VET REVIEW (SC-005), item MWS-01 in `review.md`.
     #[test]
-    fn vat_summary_is_computed_from_the_group_total_not_per_line() {
-        // Two lines of 0.05 EUR net: per-line VAT would round to 0.01 + 0.01 = 0.02,
-        // the correct answer for the invoice is 19 % of 0.10 = 0.019 → 0.02.
-        let groups = vat_summary(&[(dec("0.05"), dec("19")), (dec("0.05"), dec("19"))]);
-        assert_eq!(groups[0].net, dec("0.10"));
-        assert_eq!(groups[0].vat, dec("0.02"));
-        assert_eq!(groups[0].gross, dec("0.12"));
+    fn vat_is_rounded_per_line_so_the_gross_column_adds_up() {
+        // Three lines of 3,33 EUR net at 19 %. Rounded per line the VAT is 0,63 each, so a line
+        // is 3,96 gross and the three of them come to exactly the group's 11,88. Rounding on the
+        // group total instead would give 19 % of 9,99 = 1,90, a gross of 11,89, and a printed
+        // column a cent short of its own total.
+        let groups = vat_summary(&[
+            (dec("3.33"), dec("19")),
+            (dec("3.33"), dec("19")),
+            (dec("3.33"), dec("19")),
+        ]);
+        assert_eq!(groups[0].net, dec("9.99"));
+        assert_eq!(groups[0].vat, dec("1.89"), "0,63 per line, three times");
+        assert_eq!(groups[0].gross, dec("11.88"));
+
+        let line = add_vat(dec("3.33"), dec("19"));
+        assert_eq!(line.gross, dec("3.96"));
+        assert_eq!(
+            line.gross * dec("3"),
+            groups[0].gross,
+            "the printed column sums to the group's gross by construction",
+        );
     }
 
     #[test]
     fn total_sums_the_group_gross_amounts() {
         let groups = vat_summary(&[(dec("100.00"), dec("19")), (dec("100.00"), dec("7"))]);
         assert_eq!(total_gross(&groups), dec("226.00"));
-    }
-
-    // ⚠ FOR VET REVIEW (SC-005), item MWS-03 in `review.md`.
-    #[test]
-    fn the_printed_gross_column_adds_up_to_the_group_total() {
-        // Three lines of 3.33 EUR net at 19 %: each rounds to 3.96, summing to 11.88, while the
-        // group's gross is 9.99 + 1.90 = 11.89. One cent has to land somewhere.
-        let nets = [dec("3.33"), dec("3.33"), dec("3.33")];
-        let groups = vat_summary(&[
-            (dec("3.33"), dec("19")),
-            (dec("3.33"), dec("19")),
-            (dec("3.33"), dec("19")),
-        ]);
-        assert_eq!(groups[0].gross, dec("11.89"));
-
-        let allocated = allocate_gross(&nets, dec("19"), groups[0].gross);
-        assert_eq!(
-            allocated.iter().copied().sum::<Decimal>(),
-            dec("11.89"),
-            "the column must add up to the invoice total",
-        );
-        assert_eq!(allocated, vec![dec("3.97"), dec("3.96"), dec("3.96")]);
-    }
-
-    #[test]
-    fn allocation_leaves_an_already_exact_column_alone() {
-        let nets = [dec("10.00"), dec("20.00")];
-        let groups = vat_summary(&[(dec("10.00"), dec("19")), (dec("20.00"), dec("19"))]);
-        assert_eq!(
-            allocate_gross(&nets, dec("19"), groups[0].gross),
-            vec![dec("11.90"), dec("23.80")],
-        );
-    }
-
-    #[test]
-    fn allocation_can_also_give_a_cent_back() {
-        // Two lines of 0.03 EUR net: each rounds up to 0.04 (0.0357), summing to 0.08, while the
-        // group gross is 0.06 + 0.01 = 0.07. The over-rounded line gives one cent back.
-        let nets = [dec("0.03"), dec("0.03")];
-        let groups = vat_summary(&[(dec("0.03"), dec("19")), (dec("0.03"), dec("19"))]);
-        assert_eq!(groups[0].gross, dec("0.07"));
-        let allocated = allocate_gross(&nets, dec("19"), groups[0].gross);
-        assert_eq!(allocated.iter().copied().sum::<Decimal>(), dec("0.07"));
     }
 
     // ── AMPreisV (T049) ──────────────────────────────────────────────────────────

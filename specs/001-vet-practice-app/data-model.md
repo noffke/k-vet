@@ -327,8 +327,9 @@ CHECKs:
 - Redesignation is a drug concept: `kind = 'drug_packaging' OR NOT redesignation`.
 
 Line total = `round(price_net × quantity × coalesce(factor,100)/100, 2)`, **net**; VAT is added per
-rate for the invoice VAT summary, and the gross the invoice prints is derived from it. The odd cent
-is allocated across a group's lines so the printed column sums to the group's gross exactly.
+rate for the invoice VAT summary, and the gross the invoice prints is derived from it. VAT is
+rounded per line and summed, so a line's gross is exactly net + VAT and the column sums to the
+group's gross without any amount being adjusted.
 
 ## Invoicing
 

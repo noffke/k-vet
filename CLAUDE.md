@@ -120,8 +120,9 @@ is pure and unit-tested, including path-traversal refusal).
   **Prices are net**, the gross is derived (`add_vat`). This is what the fee schedules compute in,
   and it is why migration `0009` exists: the GOT catalogue's published *net* fees had been imported
   into a column called `gross_price`, so every GOT position was billed ~16 % too low. The invoice
-  still prints gross columns, with the odd cent handed out by `allocate_gross` so the column sums to
-  the VAT group's total — never re-derive a gross amount by multiplying.
+  still prints gross columns: VAT is rounded **per line** and summed (*horizontale Berechnung*, one
+  of the two roundings § 14 UStG practice accepts), so a line's gross is `net + vat` exactly and the
+  column adds up to its VAT group by construction — never re-derive a gross amount by multiplying.
 - `src/domain/stock.rs` — FEFO allocation and the append-only movement ledger. A dispense is a
   *draft* until the invoice is accepted, then *frozen*; corrections are compensating rows that
   reference what they reverse. A movement with a reversal is never deleted. Line quantity counts

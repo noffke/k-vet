@@ -72,6 +72,12 @@ It was the other way round until migration `0009`. Because the GOT catalogue had
 its (net) published fees into a column named `gross_price`, every GOT position was billed roughly
 16 % too low — GOT 16 at 23,62 € where 28,11 € is correct. See `review.md`, item `GOT-01`.
 
-A private customer reads gross amounts, so the invoice prints gross columns. Since gross is derived,
-the odd cent is allocated across a group's lines so the printed column sums to the group's gross
-exactly; never re-derive a gross amount by multiplying a net one.
+A private customer reads gross amounts, so the invoice prints gross columns. To keep that column
+honest, VAT is rounded **per line** and summed — the *horizontale Berechnung*, one of the two
+roundings German practice accepts under § 14 UStG; the other sums the raw amounts and rounds the
+total. Rounding per line makes a line's gross exactly `net + vat`, so the column adds up to the
+group's gross by construction. The price is that a group's VAT is the sum of its lines' VAT rather
+than the rate applied to the group's net, which can differ by a cent on a long invoice — inherent
+to the method and accepted. § 14 Abs. 4 UStG requires the Entgelt per rate (Nr. 7) and the
+Steuerbetrag on it (Nr. 8); it prescribes neither rounding, and it does not require a per-line
+gross at all.

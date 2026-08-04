@@ -301,12 +301,19 @@ Es sind auch Nachkommastellen möglich, z. B. wenn Sie eine Fahrt auf zwei Kundi
 
 ## D · Mehrwertsteuer und Rundung
 
-### MWS-01 · Die Mehrwertsteuer wird **auf** den Nettobetrag gerechnet
+### MWS-01 · Die Mehrwertsteuer wird je Zeile gerechnet und dann addiert
 
-Und zwar einmal je Steuersatz auf die Summe — nicht auf jede Zeile einzeln. Beispiel mit zwei
-Zeilen zu je 0,05 € netto: 19 % auf 0,10 € = **0,02 €**. Zeile für Zeile gerechnet käme
-0,01 € + 0,01 € heraus — dieselbe Zahl, aber bei größeren Rechnungen weicht es ab, und die
-Steuerzusammenstellung muss zur Summe der Zeilen passen.
+Für jede Position wird die Mehrwertsteuer einzeln auf Cent gerundet; die Steuerzusammenstellung
+unten ist die Summe dieser Beträge. Das ist die sogenannte **horizontale Berechnung**. Zulässig
+sind nach § 14 UStG beide üblichen Wege — entweder so, oder erst alle Nettobeträge addieren und
+dann einmal die Steuer darauf rechnen (vertikal).
+
+Wir rechnen horizontal, weil auf Ihrer Rechnung **Bruttobeträge je Zeile** stehen: nur so ist der
+Bruttobetrag einer Zeile exakt „netto + Steuer", und die Spalte ergibt in der Summe genau den
+Rechnungsbetrag.
+
+Der Preis dafür: die Steuer einer Gruppe ist die Summe der Zeilensteuern und kann dadurch um einen
+Cent von „19 % der Nettosumme" abweichen. Das gehört zu dieser Methode dazu und ist anerkannt.
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
@@ -316,26 +323,26 @@ Ab einem halben Cent wird aufgerundet (0,125 € → 0,13 €).
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
-### MWS-03 · Der Cent in der Spalte „Gesamt" — hier ändern wir etwas
+### MWS-03 · Die Spalte „Gesamt" geht auf
 
 Auf Ihrer bisherigen Rechnung **RE-289** steht beim Hausbesuch (GOT 40) als Einzelpreis
 **41,05 €**, als Gesamtbetrag derselben Zeile aber **41,06 €**. Bei GOT 394 genauso: **19,63 €**
-gegen **19,64 €**. Das ist kein Tippfehler, sondern eine Rundungsdifferenz — sie entsteht, weil der
-Bruttobetrag aus dem Nettobetrag errechnet wird.
+gegen **19,64 €**. Das ist kein Tippfehler, sondern eine Rundungsdifferenz.
 
-k-vet verteilt diesen Cent künftig so, dass die **Spalte am Ende exakt aufgeht**. Beispiel: drei
-Positionen zu je 3,33 € netto ergeben je 3,96 € brutto, zusammen 11,88 € — die Rechnungssumme ist
-aber 11,89 €. Der fehlende Cent wird der Position zugeschlagen, die am stärksten abgerundet wurde:
+Bei k-vet tritt sie nicht auf: weil die Steuer je Zeile gerechnet wird (siehe `MWS-01`), ist jeder
+Bruttobetrag exakt „netto + Steuer", und die Spalte ergibt in der Summe genau den Rechnungsbetrag.
+Drei Positionen zu je 3,33 € netto:
 
-| Position | netto  | brutto      |
-| -------- | ------ | ----------- |
-| 1        | 3,33 € | **3,97 €**  |
-| 2        | 3,33 € | 3,96 €      |
-| 3        | 3,33 € | 3,96 €      |
-| Summe    | 9,99 € | **11,89 €** |
+| Position | netto  | MwSt   | brutto      |
+| -------- | ------ | ------ | ----------- |
+| 1        | 3,33 € | 0,63 € | 3,96 €      |
+| 2        | 3,33 € | 0,63 € | 3,96 €      |
+| 3        | 3,33 € | 0,63 € | 3,96 €      |
+| Summe    | 9,99 € | 1,89 € | **11,88 €** |
 
-**Frage:** Ist Ihnen das recht? Der Vorteil: die Rechnung geht immer auf, wenn eine Kundin
-nachrechnet. Der Preisunterschied beträgt nie mehr als ein Cent pro Zeile.
+Kein Betrag wird dabei „passend gemacht" — jede Zeile zeigt genau ihren eigenen Preis.
+
+**Frage:** Ist Ihnen das so recht?
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 

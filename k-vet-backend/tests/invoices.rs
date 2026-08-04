@@ -86,8 +86,10 @@ async fn creating_an_invoice_allocates_a_number_and_renders_a_pdf(pool: PgPool) 
     );
     assert_eq!(invoice["includes_finding"], true);
     assert_eq!(
-        invoice["total_gross"], "31.08",
-        "net 23.62 service + 2.50 subset = 26.12, plus 19 % VAT = 4.96",
+        invoice["total_gross"], "31.09",
+        "VAT per line: 4,49 on 23,62 plus 0,48 on 2,50 = 4,97 on a net of 26,12. Rounding on the
+         group total would give 4,96 and a 31,08 total — a cent under the 28,11 + 2,98 the invoice
+         actually prints.",
     );
     assert!(
         invoice["pdf_attachment_id"].is_i64(),

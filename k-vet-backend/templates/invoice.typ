@@ -2,8 +2,8 @@
 //
 // The document is always German (spec FR-030): every number, date and amount arrives
 // pre-formatted de-DE from the application, so this template only places text. It never
-// computes — in particular it never adds VAT, because the gross amounts it prints have already
-// been reconciled against the VAT summary (see `money::allocate_gross`).
+// computes — in particular it never adds VAT. The gross amounts it prints already reconcile with
+// the VAT summary, because VAT is rounded per line and summed (see `money::vat_summary`).
 //
 // Override it with `[invoice] typst_template = "/path/to/invoice.typ"` in the config.
 // See docs/templates.md for the full data reference.

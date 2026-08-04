@@ -115,9 +115,10 @@ A VAT group (`invoice.vat_groups[]`) has `rate` (e.g. `19 %`), `net`, `vat` and 
 groups rather than recomputing anything: prices are stored **net**, VAT is computed per group, and
 `total` is the authoritative gross amount.
 
-**Never derive a gross amount yourself.** `price` and `total` are not simply `net × 1,19`: the odd
-cent is allocated across a group's lines so the printed column adds up to `gross` exactly
-(`money::allocate_gross`). Multiplying by hand produces a column that is a cent off its own total.
+**Never derive a gross amount yourself.** VAT is rounded per line and summed, so `total` is that
+line's `net + vat` and the column adds up to the group's `gross` exactly. Multiplying a group total
+by hand produces a figure a cent or so off, because the group's VAT is the sum of its lines' VAT
+rather than the rate applied to the group's net.
 
 Empty strings are the "absent" signal throughout — there are no nulls. Guard optional fields:
 

@@ -389,9 +389,12 @@ reflected on the next generated invoice.
 - **FR-030b**: The invoice MUST carry a GiroCode (EPC069-12 version 002) when the practice has an
   IBAN and the currency is EUR, so a customer can pay by scanning it. Where it cannot be produced
   the invoice MUST render without it rather than fail.
-- **FR-030c**: The invoice prints **gross** amounts per line, derived from the stored net. Because
-  gross is derived, the odd cent MUST be allocated across a VAT group's lines so the printed column
-  sums exactly to that group's gross.
+- **FR-030c**: The invoice prints **gross** amounts per line, derived from the stored net. VAT MUST
+  be rounded per line and summed (*horizontale Berechnung*, one of the two roundings § 14 UStG
+  practice accepts), so a line's gross is exactly its net plus its VAT and the printed column sums
+  to the VAT group's gross by construction. No line amount may be adjusted to force that. § 14
+  Abs. 4 UStG requires the Entgelt per rate (Nr. 7) and the Steuerbetrag on it (Nr. 8); a per-line
+  gross is a courtesy to the reader, not a statutory requirement.
 - **FR-031**: Accepting a Created invoice MUST allow selecting one or more of the customer's
   email addresses and emailing the invoice PDF; configured global CC/BCC addresses are
   applied; the sent timestamp is recorded on successful send. A failed or repeated send can be
