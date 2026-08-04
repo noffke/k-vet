@@ -17,6 +17,7 @@ import {
 } from '@/api/generated/endpoints'
 import type { Attachment, Patient } from '@/api/generated/model'
 import { DateInput } from '@/components/DateInput'
+import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -188,6 +189,17 @@ export function PatientDetailPage() {
         </datalist>
         {field('race', t('field.race'))}
         {field('colour', t('field.colour'))}
+        {/* One decimal: NumberInput emits toFixed(decimals), so a second one never reaches the
+            wire — the column is NUMERIC(5,1) and would otherwise round it away silently. */}
+        <NumberInput
+          label={t('field.weight')}
+          value={record.weight_kg ?? null}
+          decimals={1}
+          onChange={(value) => {
+            autoSave.set({ weight_kg: value })
+            void autoSave.flush()
+          }}
+        />
         <DateInput
           label={t('field.dateOfBirth')}
           value={record.date_of_birth ?? null}

@@ -4,6 +4,7 @@ use axum::extract::{Path, Query, State};
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
+use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
@@ -24,6 +25,9 @@ pub struct Patient {
     pub species: Option<String>,
     pub race: Option<String>,
     pub colour: Option<String>,
+    /// Weight in kilograms, one decimal. A single current value: each weighing replaces the
+    /// last, so there is no history.
+    pub weight_kg: Option<Decimal>,
     pub date_of_birth: Option<NaiveDate>,
     pub photo_attachment_id: Option<i64>,
     pub date_of_death: Option<NaiveDate>,
@@ -59,6 +63,8 @@ pub struct PatchPatient {
     pub race: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     pub colour: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub weight_kg: Option<Option<Decimal>>,
     #[serde(default, deserialize_with = "double_option")]
     pub date_of_birth: Option<Option<NaiveDate>>,
     #[serde(default, deserialize_with = "double_option")]
@@ -193,6 +199,18 @@ pub async fn patch(
     Path(id): Path<i64>,
     Json(body): Json<PatchPatient>,
 ) -> AppResult<Json<Patient>> {
+    // The column is NUMERIC(5,1), so Postgres would silently round a second decimal away. The
+    // form never sends one — it rounds as the vet types, like every other number field — so this
+    // guards the API against a client that would otherwise have its value quietly changed.
+    if let Some(Some(weight)) = body.weight_kg {
+        if weight.scale() > 1 {
+            return Err(AppError::field("weight_kg", "value.tooPrecise"));
+        }
+        if weight <= Decimal::ZERO {
+            return Err(AppError::field("weight_kg", "value.mustBePositive"));
+        }
+    }
+
     let mut transaction = state.pool.begin().await?;
 
     let current = sqlx::query!(
@@ -249,10 +267,11 @@ pub async fn patch(
                chip_number         = CASE WHEN $20 THEN $21 ELSE chip_number END,
                eu_passport_number  = CASE WHEN $22 THEN $23 ELSE eu_passport_number END,
                warning_remark      = CASE WHEN $24 THEN $25 ELSE warning_remark END,
-               neutered            = COALESCE($26, neutered),
-               insured             = COALESCE($27, insured),
-               archived            = $28,
-               draft               = $29
+               weight_kg           = CASE WHEN $26 THEN $27 ELSE weight_kg END,
+               neutered            = COALESCE($28, neutered),
+               insured             = COALESCE($29, insured),
+               archived            = $30,
+               draft               = $31
            WHERE id = $1"#,
         id,
         body.customer_id.is_some(),
@@ -279,6 +298,8 @@ pub async fn patch(
         blank_to_null(&body.eu_passport_number),
         body.warning_remark.is_some(),
         blank_to_null(&body.warning_remark),
+        body.weight_kg.is_some(),
+        body.weight_kg.flatten(),
         body.neutered,
         body.insured,
         archived,
@@ -419,7 +440,7 @@ pub async fn patch_file(
 pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Patient> {
     let row = sqlx::query!(
         r#"SELECT patient.id, patient.customer_id, patient.name, patient.sex, patient.species,
-                  patient.race, patient.colour, patient.date_of_birth,
+                  patient.race, patient.colour, patient.weight_kg, patient.date_of_birth,
                   patient.photo_attachment_id, patient.date_of_death, patient.chip_number,
                   patient.eu_passport_number, patient.warning_remark, patient.neutered,
                   patient.insured, patient.archived, patient.draft, patient.created_at,
@@ -465,6 +486,7 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Patient> {
         species: row.species,
         race: row.race,
         colour: row.colour,
+        weight_kg: row.weight_kg,
         date_of_birth: row.date_of_birth,
         photo_attachment_id: row.photo_attachment_id,
         date_of_death: row.date_of_death,

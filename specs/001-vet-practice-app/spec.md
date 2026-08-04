@@ -275,9 +275,13 @@ reflected on the next generated invoice.
   the top of the record when it is opened, and indicated in list views via a warning icon with
   the text as tooltip.
 - **FR-008**: The system MUST manage patients with name, sex, species (Cat/Dog offered as
-  defaults, free text allowed), optional race, colour, date of birth, photo, date of death,
-  chip number, EU vaccination passport number, warning remark, and neutered/insured flags; a
-  set photo is displayed in a circle on top of the record.
+  defaults, free text allowed), optional race, colour, weight in kilograms, date of birth, photo,
+  date of death, chip number, EU vaccination passport number, warning remark, and neutered/insured
+  flags; a set photo is displayed in a circle on top of the record. The weight carries at most one
+  fractional digit: the form rounds to one place as the vet types, as every other number field does,
+  and the API refuses a second decimal outright so a non-UI client cannot have its value quietly
+  changed. It is optional, so it never affects completeness, and is a single current value rather
+  than a per-visit history.
 - **FR-009**: Master data (customers, patients, drugs, packagings, services, suppliers,
   manufacturers, treatment templates) MUST be archived instead of deleted; archived records are
   hidden from search and pickers by default with an option to show them; setting a patient's

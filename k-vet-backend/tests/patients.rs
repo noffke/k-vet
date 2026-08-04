@@ -215,3 +215,84 @@ async fn a_photo_is_referenced_from_the_patient(pool: PgPool) {
         "the circle avatar has a thumbnail"
     );
 }
+
+/// The weight is optional, stored to one decimal, and must never hold a patient in draft.
+#[sqlx::test]
+async fn a_weight_round_trips_and_stays_optional(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let saved = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "weight_kg": "4.2" }),
+        )
+        .await
+        .json();
+    assert_eq!(saved["weight_kg"], "4.2");
+    assert!(
+        !saved["missing_fields"]
+            .as_array()
+            .expect("missing_fields")
+            .iter()
+            .any(|field| field == "weight_kg"),
+        "a weight is optional — it must never hold a patient in draft",
+    );
+    assert_eq!(saved["draft"], false, "the patient stays complete");
+
+    // Cleared again: not weighed is a legitimate state, not an empty string.
+    let cleared = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "weight_kg": null }),
+        )
+        .await
+        .json();
+    assert!(cleared["weight_kg"].is_null());
+    assert_eq!(cleared["draft"], false);
+}
+
+/// A second decimal is refused rather than silently rounded away by `NUMERIC(5,1)`.
+#[sqlx::test]
+async fn a_weight_keeps_at_most_one_decimal(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let rejected = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "weight_kg": "4.25" }),
+        )
+        .await;
+    assert_eq!(
+        rejected.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "4,25 kg must be reported, not quietly recorded as 4,3",
+    );
+
+    let unchanged = app.get(&format!("/api/patients/{patient_id}")).await.json();
+    assert!(unchanged["weight_kg"].is_null(), "nothing was stored");
+}
+
+#[sqlx::test]
+async fn a_weight_must_be_positive(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    for weight in ["0", "-1.5"] {
+        let rejected = app
+            .patch(
+                &format!("/api/patients/{patient_id}"),
+                json!({ "weight_kg": weight }),
+            )
+            .await;
+        assert_eq!(
+            rejected.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{weight} kg is not a weight",
+        );
+    }
+}

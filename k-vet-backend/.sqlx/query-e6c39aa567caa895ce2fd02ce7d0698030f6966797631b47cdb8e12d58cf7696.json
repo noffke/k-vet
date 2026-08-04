@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT patient.id, patient.customer_id, patient.name, patient.sex, patient.species,\n                  patient.race, patient.colour, patient.date_of_birth,\n                  patient.photo_attachment_id, patient.date_of_death, patient.chip_number,\n                  patient.eu_passport_number, patient.warning_remark, patient.neutered,\n                  patient.insured, patient.archived, patient.draft, patient.created_at,\n                  patient.updated_at,\n                  customer.first_name AS \"customer_first_name?\",\n                  customer.last_name AS \"customer_last_name?\"\n           FROM patient\n           LEFT JOIN customer ON customer.id = patient.customer_id\n           WHERE patient.id = $1",
+  "query": "SELECT patient.id, patient.customer_id, patient.name, patient.sex, patient.species,\n                  patient.race, patient.colour, patient.weight_kg, patient.date_of_birth,\n                  patient.photo_attachment_id, patient.date_of_death, patient.chip_number,\n                  patient.eu_passport_number, patient.warning_remark, patient.neutered,\n                  patient.insured, patient.archived, patient.draft, patient.created_at,\n                  patient.updated_at,\n                  customer.first_name AS \"customer_first_name?\",\n                  customer.last_name AS \"customer_last_name?\"\n           FROM patient\n           LEFT JOIN customer ON customer.id = patient.customer_id\n           WHERE patient.id = $1",
   "describe": {
     "columns": [
       {
@@ -82,6 +82,17 @@
       },
       {
         "ordinal": 7,
+        "name": "weight_kg",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "weight_kg"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
         "name": "date_of_birth",
         "type_info": "Date",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "photo_attachment_id",
         "type_info": "Int8",
         "origin": {
@@ -103,7 +114,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "date_of_death",
         "type_info": "Date",
         "origin": {
@@ -114,7 +125,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "chip_number",
         "type_info": "Text",
         "origin": {
@@ -125,7 +136,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "eu_passport_number",
         "type_info": "Text",
         "origin": {
@@ -136,7 +147,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "warning_remark",
         "type_info": "Text",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "neutered",
         "type_info": "Bool",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "insured",
         "type_info": "Bool",
         "origin": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
@@ -180,7 +191,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -191,7 +202,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -202,7 +213,7 @@
         }
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -213,7 +224,7 @@
         }
       },
       {
-        "ordinal": 19,
+        "ordinal": 20,
         "name": "customer_first_name?",
         "type_info": "Text",
         "origin": {
@@ -224,7 +235,7 @@
         }
       },
       {
-        "ordinal": 20,
+        "ordinal": 21,
         "name": "customer_last_name?",
         "type_info": "Text",
         "origin": {
@@ -254,6 +265,7 @@
       true,
       true,
       true,
+      true,
       false,
       false,
       false,
@@ -264,5 +276,5 @@
       true
     ]
   },
-  "hash": "690a66e768fc9ed0c6087f8ea566fd2075490936d4a337fee9b85badc8d9c7fd"
+  "hash": "e6c39aa567caa895ce2fd02ce7d0698030f6966797631b47cdb8e12d58cf7696"
 }

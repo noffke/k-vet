@@ -131,6 +131,7 @@ customer search matches both names.
 | species | text | ★ (UI offers Cat/Dog, free text allowed) |
 | race | text | NULL |
 | colour | text | NULL |
+| weight_kg | numeric(5,1) | NULL — kilograms, one decimal; `CHECK (weight_kg IS NULL OR weight_kg > 0)` |
 | date_of_birth | date | NULL |
 | photo_attachment_id | bigint | FK → attachment, NULL (attachment kind `referenced`) |
 | date_of_death | date | NULL |

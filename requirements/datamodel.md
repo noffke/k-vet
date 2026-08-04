@@ -113,6 +113,10 @@ A template set of Drugs and services for Treatment Items / Invoices
   * Species
   * Race (optional)
   * Colour (optional)
+  * Weight in kg (optional, at most one fractional digit — the form rounds as you type, so 4,25
+    is stored as 4,3). A single **current** value, deliberately not a per-visit history: each
+    weighing replaces the last. If the weight at the time of a treatment is ever needed, it moves
+    onto Treatment and the patient shows the most recent one.
   * Date of Birth (optional)
   * Photo (optional, references an Attachment)
   * Date of Death (optional)

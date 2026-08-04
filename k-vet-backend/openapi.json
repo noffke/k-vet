@@ -5642,6 +5642,12 @@
               "null"
             ]
           },
+          "weight_kg": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
           "date_of_birth": {
             "type": [
               "string",
@@ -6004,6 +6010,13 @@
               "string",
               "null"
             ]
+          },
+          "weight_kg": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Weight in kilograms, one decimal. A single current value: each weighing replaces the\nlast, so there is no history."
           },
           "date_of_birth": {
             "type": [

@@ -28,6 +28,12 @@ export interface Patient {
   race?: string | null;
   /** @nullable */
   colour?: string | null;
+  /**
+     * Weight in kilograms, one decimal. A single current value: each weighing replaces the
+     * last, so there is no history.
+     * @nullable
+     */
+  weight_kg?: string | null;
   /** @nullable */
   date_of_birth?: string | null;
   /** @nullable */

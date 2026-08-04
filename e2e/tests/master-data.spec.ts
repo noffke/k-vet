@@ -81,6 +81,32 @@ test.describe('customers and patients', () => {
     ).toBeVisible()
   })
 
+  test('a weight is stored to one decimal and survives a reload', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    await signIn(page)
+    await page.goto(`/patients/${patientId}`)
+
+    const weight = page.getByLabel('Gewicht (kg)')
+    // The input rounds to one decimal as she types, so a second one never reaches the wire:
+    // 4,25 is stored as 4,3. This is the only place that behaviour is pinned against the real
+    // form rather than asserted about the component in isolation.
+    await weight.fill('4,25')
+    await weight.blur()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await expect(weight).toHaveValue('4,3')
+
+    await page.reload()
+    await expect(page.getByLabel('Gewicht (kg)')).toHaveValue('4,3')
+
+    // Clearing it must not make the patient incomplete — the weight is optional, and an
+    // "Unvollständig" badge here would mean it had crept into the completeness set.
+    await page.getByLabel('Gewicht (kg)').fill('')
+    await page.getByLabel('Gewicht (kg)').blur()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await expect(page.getByText('Unvollständig')).toHaveCount(0)
+  })
+
   test('a date of death archives the patient and hides it from the list', async ({
     page,
     request,

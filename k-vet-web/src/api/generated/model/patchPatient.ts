@@ -20,6 +20,8 @@ export interface PatchPatient {
   /** @nullable */
   colour?: string | null;
   /** @nullable */
+  weight_kg?: string | null;
+  /** @nullable */
   date_of_birth?: string | null;
   /** @nullable */
   photo_attachment_id?: number | null;
