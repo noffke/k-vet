@@ -97,7 +97,123 @@ Practice name, address, e-mail, bank details (IBAN, BIC, bank name), VAT ID, log
 CC/BCC addresses are **not** in this file — the vet edits them in the application under
 *Einstellungen*.
 
-## 4. Build and start
+## 4. The database
+
+**Using the bundled compose file? Skip this section.** The `db` service creates the role, the
+database and the data volume on first start, and the application applies its own migrations. Read
+on only if you point k-vet at a PostgreSQL server you already run.
+
+### What the bundled service does
+
+```yaml
+image: postgres:16-alpine
+environment:
+  POSTGRES_USER: kvet
+  POSTGRES_PASSWORD: ${KVET_DB_PASSWORD:?set KVET_DB_PASSWORD in .env}
+  POSTGRES_DB: kvet
+volumes:
+  - kvet-db-data:/var/lib/postgresql/data
+```
+
+The official image creates role `kvet` as the **owner** of database `kvet`, which is all the
+application needs. The data lives in the named volume `kvet-db-data`, not in the bind mounts of
+section 2 — `docker compose down -v` deletes it, `docker compose down` does not.
+
+### Pointing at your own server
+
+Create a login role and a database it owns. Ownership is the simplest way to give the application
+the rights it needs; the alternative is two explicit grants, below.
+
+```sql
+CREATE ROLE kvet LOGIN PASSWORD 'the-password-from-your-config';
+CREATE DATABASE kvet OWNER kvet ENCODING 'UTF8';
+```
+
+**The encoding must be UTF-8.** Every practice name, patient name and clinical note is German text,
+and the invoice PDF is rendered from what the database returns.
+
+That is the whole setup. Do **not** grant `SUPERUSER`, `CREATEDB` or `CREATEROLE` — none is
+required, as the section below explains.
+
+### If the role cannot own the database
+
+Where the database already exists and belongs to someone else, two grants are enough:
+
+```sql
+GRANT CREATE ON DATABASE kvet TO kvet;   -- for CREATE EXTENSION and CREATE SCHEMA
+\connect kvet
+GRANT ALL ON SCHEMA public TO kvet;      -- for the tables, types, functions and triggers
+```
+
+The second one is easy to miss. Since **PostgreSQL 15** the `public` schema is no longer writable
+by everyone, so a role with only `CONNECT` fails on the very first migration with
+`permission denied for schema public` — even though it can log in perfectly well.
+
+### What the migrations create, and why those rights
+
+| The migrations run | Needs | Where |
+| --- | --- | --- |
+| `CREATE EXTENSION IF NOT EXISTS pg_trgm` | `CREATE` on the **database** | `0001` — trigram indexes behind customer, patient and drug search |
+| `CREATE SCHEMA IF NOT EXISTS tower_sessions` | `CREATE` on the **database** | `0007` — the login session store |
+| tables, enum types, functions, triggers, indexes | `CREATE` on schema **public** | all migrations |
+
+`pg_trgm` is a *trusted* extension from PostgreSQL 13 onwards, which is why installing it needs no
+superuser — only `CREATE` on the database. On PostgreSQL 12 or older it would, but k-vet is
+developed and tested against PostgreSQL 16.
+
+### The connection URL
+
+```toml
+[database]
+url = "postgres://kvet:PASSWORD@db:5432/kvet"
+max_connections = 5
+```
+
+`db` is the compose service name; for an external server use its host name or address. **Percent-encode
+any special character in the password** — `@`, `/`, `:`, `?`, `#` and `%` all mean something in a
+URL, so a password of `p@ss/wort` becomes `p%40ss%2Fwort`. A password that ends up splitting the URL
+usually shows as a host-not-found or database-not-found error rather than an authentication one,
+which sends you looking in the wrong place. Generating the password with `openssl rand -hex 16`, as
+section 3 suggests, avoids the question entirely.
+
+`max_connections = 5` is ample for a single user. It is a *pool* size: the server's own
+`max_connections` must be at least this plus whatever else uses it.
+
+### Migrations apply themselves
+
+The application runs its migrations at every start, so there is no separate step and no `sqlx-cli`
+on the server. A migration that fails aborts start-up rather than leaving the schema half-applied,
+and the error names the migration.
+
+This also means **the database must be reachable before the application starts**. The compose file
+handles that with a health check; against an external server, make sure it is up first.
+
+### Checking it worked
+
+```bash
+psql "postgres://kvet:PASSWORD@localhost:5432/kvet" -c "\dt"        # 22 tables
+psql "postgres://kvet:PASSWORD@localhost:5432/kvet" \
+     -c "select count(*) from _sqlx_migrations;"                   # one row per migration
+psql "postgres://kvet:PASSWORD@localhost:5432/kvet" \
+     -c "select count(*) from service where type = 'got';"          # 931 GOT positions
+```
+
+The GOT fee schedule is imported by a migration, so a fresh database already has all 931 positions.
+
+### Starting over
+
+`--reset-database` **drops the schema and every row in it**, then re-migrates. It is guarded by an
+environment variable so it cannot happen by accident:
+
+```bash
+docker compose -f docker-compose.deploy.yml run --rm \
+  -e KVET_ALLOW_DB_RESET=1 app --reset-database
+```
+
+This is a development and commissioning tool. Once the practice has billed anything, restore from a
+backup instead — see [Backups](#backups).
+
+## 5. Build and start
 
 ```bash
 docker compose -f docker-compose.deploy.yml build      # first build on a Pi: expect 30–60 min
@@ -113,7 +229,7 @@ is no separate migration step.
 
 Logs: `docker compose -f docker-compose.deploy.yml logs -f app`.
 
-## 5. First login
+## 6. First login
 
 Open `base_url` in a browser and sign in with the credentials from `[auth]`. Then, in this order:
 
@@ -173,3 +289,8 @@ Old images can be cleaned up with `docker image prune`.
 Not supported as a deployment. The binary alone works for development —
 `cargo run` in `k-vet-backend/` with `npm run dev` in `k-vet-web/` — but a production install
 needs the built interface on disk and the paths above, which is exactly what the image provides.
+
+A development setup still needs a database, and the rules are the same as in
+[section 4](#4-the-database): a role that owns a UTF-8 database, no superuser. The quickest one is
+`docker compose up -d db` from the repository root, which gives
+`postgres://kvet:kvet@localhost:5432/kvet`.
