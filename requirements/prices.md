@@ -32,6 +32,23 @@ column is named `list_price_net` instead.
 drug, which undercharged a preparation listed at 1,00 € (0,68 € instead of 8,13 €) and overcharged
 one at 100,00 € (27,56 € instead of 11,10 €).
 
+## The Teilmengenzuschlag rests on an analogy, not on the statute
+
+§ 4 AMPreisV governs a *Stoff*, which AMG § 3 defines as a chemical element or compound, a plant,
+animal material or a microorganism — table salt, not a pack of Carprofen. A part-pack taken from a
+finished medicine is a Fertigarzneimittel (AMG § 4 Abs. 1), so § 4 does not literally reach it.
+
+What settles it is practice, not text. The Bundestierärztekammer wrote to the BMG on 2018-12-14
+that "die Preisberechnung für aus Fertigarzneimitteln entnommene Teilmengen erfolgt derzeit **in
+Anlehnung an § 4 AMPreisV** … ein Festzuschlag von 100 Prozent sowie die Umsatzsteuer", while
+stating that the regulation "ist in diesem Punkt **lückenhaft**" and asking for the gap to be
+closed. § 10 Abs. 1's "entsprechend" is what carries the analogy across.
+
+Two consequences. First, do not rewrite this rule from the statute alone — the statute does not
+contain it. Second, § 1 Abs. 3 Nr. 7 exempts Teilmengen dispensed on a *human* prescription from
+the Apotheken price spans entirely, but per the BMWi that exemption does **not** extend to
+tierärztliche Hausapotheken, so a vet stays bound by the maxima.
+
 ## The Teilmengen floor is a deliberate deviation
 
 For a human preparation the whole pack carries the flat 8,10 € while a § 4 Teilmenge carries only a

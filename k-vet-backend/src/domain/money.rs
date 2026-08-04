@@ -335,10 +335,20 @@ pub fn drug_price_original(
     price_from(list_price_net, surcharge, vat_percent)
 }
 
-/// Sales price of a **subset packaging** (§ 4(1)–(2), the Teilmengenzuschlag).
+/// Sales price of a **subset packaging** — the Teilmengenzuschlag, *in Anlehnung an* § 4(1)–(2).
 ///
-/// The basis is the pro-rata listed price of the dispensed quantity — the price of the
-/// usual pack is decisive — and the surcharge is 100 % (a 50 % margin), plus VAT.
+/// The basis is the pro-rata listed price of the dispensed quantity — "der Einkaufspreis der
+/// üblichen Abpackung ist maßgebend" (§ 4 Abs. 2) — and the surcharge is 100 % (a 50 % margin),
+/// plus VAT.
+///
+/// **§ 4 does not literally cover this case.** It speaks of a *Stoff*, which AMG § 3 defines as a
+/// chemical element or compound, a plant, animal material or a microorganism — table salt, not a
+/// pack of Carprofen. A part-pack of a finished medicine is a Fertigarzneimittel (AMG § 4 Abs. 1).
+/// The Bundestierärztekammer put it to the BMG on 2018-12-14 that "die Preisberechnung für aus
+/// Fertigarzneimitteln entnommene Teilmengen erfolgt derzeit in Anlehnung an § 4 AMPreisV", and
+/// that the regulation "ist in diesem Punkt lückenhaft". § 10 Abs. 1's "entsprechend" is what
+/// carries the analogy. So this is settled practice on an acknowledged gap, not a rule read off
+/// the page — worth knowing before anyone rewrites it from the statute alone.
 ///
 /// # The proportional floor
 ///
@@ -347,10 +357,13 @@ pub fn drug_price_original(
 /// at 1,00 EUR sells for 9,13 EUR net, yet 5 ml of it is 1,00 EUR against 4,57 EUR for half the
 /// pack. `policy.subset_proportional_floor` lifts the Teilmenge to that share.
 ///
-/// **That floor exceeds the statutory maximum.** § 10 Abs. 1 permits *höchstens* the § 4 surcharge,
-/// and 4,57 EUR on a pro-rata basis of 0,50 EUR is a 357 % surcharge where § 4 allows 100 %. It is
-/// off by default and switched on per installation in `[pharmacy]`, as a deliberate decision by the
-/// practice — not something this code should do on its own.
+/// **The floor goes beyond the 100 % the analogy allows** — 4,57 EUR on a pro-rata basis of
+/// 0,50 EUR is a 357 % surcharge. How far beyond *the law* is less clear than it looks: the 100 %
+/// itself comes from § 4 by analogy, on a case the Bundestierärztekammer calls "lückenhaft", so
+/// there is no crisp statutory ceiling here to point at. Treat it as a departure from established
+/// practice rather than a proven breach. Off by default and switched on per installation in
+/// `[pharmacy]`, as a deliberate decision by the practice — not something this code should do on
+/// its own.
 ///
 /// The floor applies whatever the rule, which costs one branch less than restricting it to human
 /// preparations; for a veterinary medicine it provably never binds, because the bands stay below

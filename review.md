@@ -186,10 +186,24 @@ Die Spanne wird also mit steigendem Listenpreis kleiner — so ist die Verordnun
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
-### AMP-04 · Teilmengen (§ 4) — Umfüllen kostet mehr
+### AMP-04 · Teilmengen — Umfüllen kostet mehr
 
 Wenn Sie aus einer Originalpackung eine Teilmenge abgeben, gilt ein Zuschlag von **100 %** auf den
 anteiligen Listenpreis.
+
+Wichtig ist, **worauf** der Zuschlag gerechnet wird: auf den anteiligen **Listenpreis**, nicht auf
+den anteiligen Verkaufspreis der ganzen Packung. Der Zuschlag nach § 3 (die Staffel für die ganze
+Packung) und der Teilmengenzuschlag werden also **nicht nacheinander** angewendet. Anders
+gerechnet käme für 10 ml nicht 2,00 €, sondern 2,96 € netto heraus.
+
+Dazu sollten Sie wissen, worauf das beruht: Die AMPreisV regelt den 100-%-Zuschlag in § 4
+ausdrücklich für **Stoffe** — das sind nach § 3 AMG chemische Elemente und Verbindungen, Pflanzen,
+tierisches Material oder Mikroorganismen, also etwa Kochsalz, aber kein fertiges Carprofen-Präparat.
+Für Teilmengen **aus Fertigarzneimitteln** steht es so nicht im Gesetz. Die Bundestierärztekammer
+hat dem Bundesgesundheitsministerium am 14.12.2018 geschrieben, die Preisberechnung dafür erfolge
+„derzeit **in Anlehnung an § 4 AMPreisV**", und die Preisregelung sei „in diesem Punkt
+**lückenhaft**"; sie hat um eine Klarstellung gebeten. Wir rechnen also so, wie es berufsüblich ist
+und wie die Bundestierärztekammer es beschreibt — nicht nach einem eindeutigen Gesetzestext.
 
 Beispiel: 100-ml-Flasche, Listenpreis 10,00 € netto.
 
@@ -203,7 +217,12 @@ Folge daraus: die **ganze Flasche als Teilmenge** abzugeben ist teurer, als die 
 verkaufen (dort gilt in dieser Preisklasse nur 48 %). Das ist gewollt — es ist der Aufwand fürs
 Umfüllen.
 
-**Frage:** Ist der 100-%-Zuschlag für Teilmengen richtig, und ist der Effekt gewollt?
+**Frage:** Ist der 100-%-Zuschlag für Teilmengen richtig, und ist der Effekt gewollt? Falls Ihre
+Kammer inzwischen eine andere Empfehlung hat, sagen Sie bitte Bescheid — die Rechtslage war 2018
+ausdrücklich ungeklärt.
+
+*Fundstelle: `src/domain/money.rs::drug_price_subset`; Stellungnahme der Bundestierärztekammer an
+das BMG vom 14.12.2018*
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 

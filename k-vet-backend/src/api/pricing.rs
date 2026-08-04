@@ -84,7 +84,7 @@ pub async fn preview(
             let rule = if price.net > statutory.net {
                 "Anteiliger Packungspreis (Untergrenze laut Konfiguration, über § 4)".to_owned()
             } else {
-                "AMPreisV § 4 Abs. 1/2 (Teilmengenzuschlag)".to_owned()
+                "Teilmengenzuschlag, in Anlehnung an AMPreisV § 4 Abs. 1/2".to_owned()
             };
             (price, rule)
         }

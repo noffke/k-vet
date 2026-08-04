@@ -186,20 +186,24 @@ minimum = "13.00"
 #        § 4 dagegen nur einen Prozentsatz. Eine 10-ml-Packung mit Listenpreis
 #        1,00 Euro kostet netto 9,13 Euro, 5 ml daraus aber nur 1,00 Euro statt
 #        anteilig 4,57 Euro.
-#        ACHTUNG: Diese Untergrenze überschreitet den gesetzlichen Höchstsatz.
-#        § 10 Abs. 1 AMPreisV erlaubt "höchstens" den Zuschlag nach § 4, also
-#        100 Prozent auf den anteiligen Listenpreis; 4,57 Euro auf eine Basis von
-#        0,50 Euro sind 357 Prozent. Nur einschalten, wenn die Praxis das
-#        bewusst so entschieden hat. Bei Tierarzneimitteln greift die Grenze nie,
+#        ACHTUNG: Die Untergrenze geht über die berufsüblichen 100 Prozent
+#        hinaus — 4,57 Euro auf eine Basis von 0,50 Euro sind 357 Prozent. Wie
+#        weit sie über das *Gesetz* hinausgeht, ist weniger eindeutig: die
+#        100 Prozent stammen aus § 4 nur in Anlehnung, und die
+#        Bundestierärztekammer nennt die Preisregelung für Teilmengen aus
+#        Fertigarzneimitteln selbst "lückenhaft". Nur einschalten, wenn die
+#        Praxis das bewusst so entschieden hat. Bei Tierarzneimitteln greift die Grenze nie,
 #        weil die Staffel des § 3 Abs. 3/4 unter 100 Prozent bleibt.
 # en-US: Never price a Teilmenge below its share of the whole package.
 #        Why: for a human preparation the whole package carries the flat 8.10 EUR
 #        of § 3 Abs. 1 Satz 2 AMPreisV, while a § 4 Teilmenge carries only a
 #        percentage. A 10 ml package listed at 1.00 EUR sells for 9.13 EUR net,
 #        yet 5 ml of it costs 1.00 EUR instead of the proportional 4.57 EUR.
-#        CAUTION: this floor exceeds the statutory maximum. § 10 Abs. 1 AMPreisV
-#        permits "at most" the § 4 surcharge of 100 percent on the pro-rata
-#        listed price; 4.57 EUR on a basis of 0.50 EUR is 357 percent. Only turn
-#        it on where the practice has deliberately decided to. It never bites on
+#        CAUTION: the floor goes beyond the 100 percent that established
+#        practice allows — 4.57 EUR on a basis of 0.50 EUR is 357 percent. How
+#        far beyond the *law* is less clear: the 100 percent itself comes from
+#        § 4 only by analogy, and the Bundestierärztekammer calls the pricing
+#        rule for Teilmengen from Fertigarzneimitteln "lückenhaft". Only turn it
+#        on where the practice has deliberately decided to. It never bites on
 #        veterinary medicines, whose § 3 Abs. 3/4 bands stay below 100 percent.
 subset_never_below_proportional = false
