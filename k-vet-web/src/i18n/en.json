@@ -10,6 +10,7 @@
     "customers": "Customers",
     "dashboard": "Dashboard",
     "invoices": "Invoices",
+    "masterData": "Master data",
     "patients": "Patients",
     "pharmacy": "Pharmacy",
     "services": "Services",
@@ -273,6 +274,13 @@
     "items": "Lines",
     "new": "New template",
     "title": "Treatment templates"
+  },
+  "masterData": {
+    "manufacturers": "Manufacturers",
+    "newManufacturer": "New manufacturer",
+    "newSupplier": "New supplier",
+    "suppliers": "Suppliers",
+    "title": "Master data"
   },
   "dashboard": {
     "expiringLots": "Lots expiring soon",

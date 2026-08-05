@@ -10,6 +10,7 @@
     "customers": "Kunden",
     "dashboard": "Übersicht",
     "invoices": "Rechnungen",
+    "masterData": "Stammdaten",
     "patients": "Patienten",
     "pharmacy": "Apotheke",
     "services": "Leistungen",
@@ -273,6 +274,13 @@
     "items": "Positionen",
     "new": "Neue Behandlungsgruppe",
     "title": "Behandlungsgruppen"
+  },
+  "masterData": {
+    "manufacturers": "Hersteller",
+    "newManufacturer": "Neuer Hersteller",
+    "newSupplier": "Neuer Lieferant",
+    "suppliers": "Lieferanten",
+    "title": "Stammdaten"
   },
   "dashboard": {
     "expiringLots": "Chargen mit nahem Verfall",

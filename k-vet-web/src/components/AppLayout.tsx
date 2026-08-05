@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
+  Building2,
   CalendarDays,
   FileText,
   LayoutDashboard,
@@ -38,6 +39,7 @@ const NAV: NavItem[] = [
   { to: '/pharmacy', labelKey: 'nav.pharmacy', icon: Package, onTabBar: true },
   { to: '/services', labelKey: 'nav.services', icon: Stethoscope },
   { to: '/templates', labelKey: 'nav.templates', icon: FileText },
+  { to: '/masterdata', labelKey: 'nav.masterData', icon: Building2 },
   { to: '/invoices', labelKey: 'nav.invoices', icon: ReceiptText, onTabBar: true },
   { to: '/settings', labelKey: 'nav.settings', icon: Settings },
 ]

@@ -14,6 +14,11 @@ import { CustomerDetailPage } from '@/features/customers/CustomerDetailPage'
 import { CustomersPage } from '@/features/customers/CustomersPage'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import { InvoicesPage } from '@/features/invoices/InvoicesPage'
+import {
+  ManufacturerDetailPage,
+  SupplierDetailPage,
+} from '@/features/masterdata/AddressBookDetailPage'
+import { MasterDataPage } from '@/features/masterdata/MasterDataPage'
 import { PatientDetailPage } from '@/features/patients/PatientDetailPage'
 import { PatientsPage } from '@/features/patients/PatientsPage'
 import { DrugDetailPage } from '@/features/pharmacy/DrugDetailPage'
@@ -123,6 +128,24 @@ const lotDetailRoute = createRoute({
   component: LotDetailPage,
 })
 
+const masterDataRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/masterdata',
+  component: MasterDataPage,
+})
+
+const manufacturerDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/masterdata/manufacturers/$id',
+  component: ManufacturerDetailPage,
+})
+
+const supplierDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/masterdata/suppliers/$id',
+  component: SupplierDetailPage,
+})
+
 const servicesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/services',
@@ -168,6 +191,9 @@ const routeTree = rootRoute.addChildren([
     pharmacyRoute,
     drugDetailRoute,
     lotDetailRoute,
+    masterDataRoute,
+    manufacturerDetailRoute,
+    supplierDetailRoute,
     servicesRoute,
     serviceDetailRoute,
     templatesRoute,
