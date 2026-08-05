@@ -195,6 +195,7 @@ export function PatientDetailPage() {
           label={t('field.weight')}
           value={record.weight_kg ?? null}
           decimals={1}
+          unit="kg"
           onChange={(value) => {
             autoSave.set({ weight_kg: value })
             void autoSave.flush()

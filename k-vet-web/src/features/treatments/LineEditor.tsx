@@ -45,7 +45,7 @@ interface LineEditorProps {
  */
 export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
   const { t } = useTranslation()
-  const { money, quantity: formatQuantity, percent } = useLocaleFormat()
+  const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
   const client = useQueryClient()
   const [templateOpen, setTemplateOpen] = useState(false)
 
@@ -149,6 +149,7 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
               <NumberInput
                 label={t('field.priceNet')}
                 value={item.price_net}
+                unit={currencySymbol}
                 hint={`${t('field.priceGross')}: ${money(item.price_gross)}`}
                 disabled={readOnly}
                 onChange={(value) =>
@@ -160,6 +161,7 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                   label={t('field.factor')}
                   value={item.factor ?? null}
                   decimals={3}
+                  unit="%"
                   disabled={readOnly}
                   onChange={(value) =>
                     value && patchItem.mutate({ id: item.id, data: { factor: value } })
@@ -171,6 +173,7 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                   <NumberInput
                     label={t('field.km')}
                     value={item.km ?? null}
+                    unit="km"
                     disabled={readOnly}
                     hint={t('treatments.kmHint')}
                     onChange={(value) =>

@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/components/ui/field'
 import { formatNumber } from '@/lib/format'
@@ -13,6 +13,11 @@ export interface NumberInputProps {
   onChange: (value: string | null) => void
   /** Decimals used for the wire value — money and quantities use 2, factors 3. */
   decimals?: number
+  /**
+   * Unit shown inside the field, after the value ("€", "%"). It is decoration, not part
+   * of what is typed or stored — the field still holds a bare number.
+   */
+  unit?: string | undefined
   /** Server-side field error to display. */
   error?: string | undefined
   hint?: string | undefined
@@ -36,6 +41,7 @@ export function NumberInput({
   value,
   onChange,
   decimals = 2,
+  unit,
   error,
   hint,
   placeholder,
@@ -46,6 +52,7 @@ export function NumberInput({
 }: NumberInputProps) {
   const { t } = useTranslation()
   const { locale, parseNumber } = useLocaleFormat()
+  const unitId = useId()
   const [text, setText] = useState(() => displayValue(value, locale))
   const [focused, setFocused] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
@@ -76,35 +83,53 @@ export function NumberInput({
   return (
     <Field label={label} error={shown} hint={hint} className={wrapperClassName}>
       {(id) => (
-        <input
-          id={id}
-          // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.
-          type="text"
-          inputMode="decimal"
-          autoComplete="off"
-          value={text}
-          placeholder={placeholder}
-          disabled={disabled}
-          aria-invalid={shown ? true : undefined}
-          onFocus={() => {
-            setFocused(true)
-            setText(editValue(value, locale))
-          }}
-          onBlur={() => {
-            setFocused(false)
-            setText(displayValue(value, locale))
-            setLocalError(null)
-            onBlur?.()
-          }}
-          onChange={(event) => handleChange(event.target.value)}
-          className={cn(
-            'numeric w-full rounded-control border border-line-strong bg-surface px-3 py-2',
-            'text-right text-ink min-h-11 sm:min-h-9 placeholder:text-ink-faint',
-            'disabled:bg-sunken disabled:text-ink-faint',
-            shown && 'border-danger bg-danger/5',
-            className,
-          )}
-        />
+        <div className="relative">
+          <input
+            id={id}
+            // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.
+            type="text"
+            inputMode="decimal"
+            autoComplete="off"
+            value={text}
+            placeholder={placeholder}
+            disabled={disabled}
+            aria-invalid={shown ? true : undefined}
+            aria-describedby={unit ? unitId : undefined}
+            // Room for the unit: its own inset, its width in digit widths, and a gap.
+            style={unit ? { paddingInlineEnd: `calc(1.25rem + ${unit.length}ch)` } : undefined}
+            onFocus={() => {
+              setFocused(true)
+              setText(editValue(value, locale))
+            }}
+            onBlur={() => {
+              setFocused(false)
+              setText(displayValue(value, locale))
+              setLocalError(null)
+              onBlur?.()
+            }}
+            onChange={(event) => handleChange(event.target.value)}
+            className={cn(
+              'numeric w-full rounded-control border border-line-strong bg-surface px-3 py-2',
+              'text-right text-ink min-h-11 sm:min-h-9 placeholder:text-ink-faint',
+              'disabled:bg-sunken disabled:text-ink-faint',
+              shown && 'border-danger bg-danger/5',
+              className,
+            )}
+          />
+          {unit ? (
+            <span
+              id={unitId}
+              // Decoration only: clicks fall through to the input, and the value stays a
+              // bare number. Screen readers get it as the field's description.
+              className={cn(
+                'numeric pointer-events-none absolute inset-y-0 right-3 flex items-center',
+                disabled ? 'text-ink-faint' : 'text-ink-soft',
+              )}
+            >
+              {unit}
+            </span>
+          ) : null}
+        </div>
       )}
     </Field>
   )

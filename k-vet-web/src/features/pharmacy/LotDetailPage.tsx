@@ -211,6 +211,7 @@ export function LotDetailPage() {
           <NumberInput
             label={t('pharmacy.remaining')}
             value={newRemaining}
+            unit={record.unit ?? undefined}
             error={correct.isError ? t('value.mustNotBeZero') : undefined}
             onChange={setNewRemaining}
           />

@@ -71,6 +71,15 @@ export function formatMoney(
 }
 
 /**
+ * The currency's own symbol ("€"), for labelling an input that holds a bare amount.
+ * Taken from the same formatter as `formatMoney`, so both follow the currency in step.
+ */
+export function currencySymbol(locale: Locale, currency = 'EUR'): string {
+  const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0)
+  return parts.find((part) => part.type === 'currency')?.value ?? currency
+}
+
+/**
  * Percentages as stored (e.g. "19.000" → "19 %"). The separator is a non-breaking space,
  * the same one Intl puts before the currency sign, so a narrow column wraps the whole
  * value instead of stranding the "%" on its own line. `parseNumber` strips it again.

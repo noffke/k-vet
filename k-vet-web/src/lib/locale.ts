@@ -1,5 +1,6 @@
 import { useTranslation } from 'react-i18next'
 import {
+  currencySymbol,
   formatDate,
   formatDateTime,
   formatMoney,
@@ -29,6 +30,8 @@ export function useLocaleFormat() {
 
   return {
     locale,
+    /** The currency sign alone — for a field that holds the amount without it. */
+    currencySymbol: currencySymbol(locale),
     number: (value: string | number | null | undefined, options?: Intl.NumberFormatOptions) =>
       formatNumber(value, locale, options),
     quantity: (value: string | number | null | undefined) => formatQuantity(value, locale),

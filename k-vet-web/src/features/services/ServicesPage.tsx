@@ -151,7 +151,7 @@ export function ServicesPage() {
  */
 function ServiceDialog({ service, onClose }: { service: Service; onClose: () => void }) {
   const { t } = useTranslation()
-  const { money } = useLocaleFormat()
+  const { money, currencySymbol } = useLocaleFormat()
   const client = useQueryClient()
   const [current, setCurrent] = useState(service)
   const patchService = usePatchService({
@@ -202,6 +202,7 @@ function ServiceDialog({ service, onClose }: { service: Service; onClose: () => 
           label={t('field.factor')}
           value={current.factor ?? null}
           decimals={3}
+          unit="%"
           onChange={(value) => value && patch({ factor: value })}
         />
         <SelectField
@@ -218,6 +219,7 @@ function ServiceDialog({ service, onClose }: { service: Service; onClose: () => 
         <NumberInput
           label={t('field.priceNet')}
           value={current.net_price ?? null}
+          unit={currencySymbol}
           hint={
             current.gross_price
               ? `${t('field.priceGross')}: ${money(current.gross_price)}`

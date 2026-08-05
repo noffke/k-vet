@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import {
+  currencySymbol,
   formatDate,
   formatMoney,
   formatPercent,
@@ -25,6 +26,11 @@ describe('formatting in de-DE', () => {
     // A non-breaking space, so a narrow table column never wraps the "%" onto its own line.
     expect(formatPercent('19.000', 'de-DE')).toBe('19\u00a0%')
     expect(formatPercent('19.000', 'de-DE')).not.toContain(' ')
+  })
+
+  it('gives the currency sign on its own, for fields holding a bare amount', () => {
+    expect(currencySymbol('de-DE')).toBe('€')
+    expect(currencySymbol('de-DE', 'CHF')).toBe('CHF')
   })
 
   it('formats dates as dd.MM.yyyy without shifting the day', () => {

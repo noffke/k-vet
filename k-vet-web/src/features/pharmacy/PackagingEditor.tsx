@@ -29,7 +29,7 @@ interface PackagingEditorProps {
  */
 export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditorProps) {
   const { t } = useTranslation()
-  const { money, quantity: formatQuantity } = useLocaleFormat()
+  const { money, quantity: formatQuantity, currencySymbol } = useLocaleFormat()
   const client = useQueryClient()
 
   const refresh = async () => {
@@ -100,14 +100,18 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     patch({ unit: event.target.value || null })
                   }
                 />
+                {/* The packaging's own unit: this quantity is in base units (100 ml), unlike a
+                    line quantity, which counts whole packagings. */}
                 <NumberInput
                   label={t('field.quantity')}
                   value={packaging.quantity ?? null}
+                  unit={packaging.unit ?? undefined}
                   onChange={(value) => value && patch({ quantity: value })}
                 />
                 <NumberInput
                   label={t('field.listPrice')}
                   value={packaging.list_price_net ?? null}
+                  unit={currencySymbol}
                   disabled={!isOriginal}
                   hint={isOriginal ? t('field.listPriceHint') : t('pharmacy.subsetPriceDerived')}
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
@@ -117,6 +121,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                 <NumberInput
                   label={t('field.salesPriceNet')}
                   value={packaging.sales_price_net ?? null}
+                  unit={currencySymbol}
                   hint={
                     packaging.sales_price_gross
                       ? `${t('field.salesPriceGross')}: ${money(packaging.sales_price_gross)}`

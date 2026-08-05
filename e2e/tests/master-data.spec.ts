@@ -87,7 +87,7 @@ test.describe('customers and patients', () => {
     await signIn(page)
     await page.goto(`/patients/${patientId}`)
 
-    const weight = page.getByLabel('Gewicht (kg)')
+    const weight = page.getByLabel('Gewicht')
     // The input rounds to one decimal as she types, so a second one never reaches the wire:
     // 4,25 is stored as 4,3. This is the only place that behaviour is pinned against the real
     // form rather than asserted about the component in isolation.
@@ -95,14 +95,16 @@ test.describe('customers and patients', () => {
     await weight.blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
     await expect(weight).toHaveValue('4,3')
+    // The unit sits beside the value, not in the label, and stays out of the value.
+    await expect(weight).toHaveAccessibleDescription('kg')
 
     await page.reload()
-    await expect(page.getByLabel('Gewicht (kg)')).toHaveValue('4,3')
+    await expect(page.getByLabel('Gewicht')).toHaveValue('4,3')
 
     // Clearing it must not make the patient incomplete — the weight is optional, and an
     // "Unvollständig" badge here would mean it had crept into the completeness set.
-    await page.getByLabel('Gewicht (kg)').fill('')
-    await page.getByLabel('Gewicht (kg)').blur()
+    await page.getByLabel('Gewicht').fill('')
+    await page.getByLabel('Gewicht').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
     await expect(page.getByText('Unvollständig')).toHaveCount(0)
   })

@@ -8,15 +8,18 @@ import i18n from '@/lib/i18n'
 function Harness({
   onChange,
   initial,
+  unit,
 }: {
   onChange: (value: string | null) => void
   initial?: string
+  unit?: string
 }) {
   const [value, setValue] = useState<string | null>(initial ?? null)
   return (
     <NumberInput
       label="Preis"
       value={value}
+      unit={unit}
       onChange={(next) => {
         setValue(next)
         onChange(next)
@@ -60,6 +63,22 @@ describe('NumberInput', () => {
     expect(await screen.findByRole('alert')).toHaveTextContent('Keine gültige Zahl')
     // `clear` legitimately reports an empty field; "abc" must not be propagated.
     expect(onChange).toHaveBeenLastCalledWith(null)
+  })
+
+  it('shows a unit beside the value without putting it into the value', async () => {
+    const onChange = vi.fn()
+    render(<Harness onChange={onChange} initial="20.54" unit="€" />)
+    const input = screen.getByLabelText<HTMLInputElement>('Preis')
+
+    expect(screen.getByText('€')).toBeInTheDocument()
+    expect(input.value).toBe('20,54')
+    expect(input).toHaveAccessibleDescription('€')
+
+    await userEvent.clear(input)
+    await userEvent.type(input, '30')
+
+    // The unit is decoration; what the field stores stays a bare number.
+    expect(onChange).toHaveBeenLastCalledWith('30.00')
   })
 
   it('renders the stored value grouped for the active locale and reformats on blur', async () => {
