@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
   getGetTreatmentQueryKey,
@@ -8,6 +8,7 @@ import {
   usePatchTreatment,
 } from '@/api/generated/endpoints'
 import type { Treatment } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TextAreaField } from '@/components/ui/field'
@@ -52,14 +53,12 @@ export function TreatmentPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow={
-          <Link
+        back={
+          <BackLink
             to="/appointments/$id"
             params={{ id: String(record.appointment_id) }}
-            className="hover:underline"
-          >
-            {dateTime(record.starts_at) || t('appointments.title')}
-          </Link>
+            label={dateTime(record.starts_at) || t('appointments.title')}
+          />
         }
         title={record.patients.map((patient) => patient.name).join(', ') || t('treatments.title')}
         actions={<SaveIndicator state={autoSave.state} error={autoSave.error} />}

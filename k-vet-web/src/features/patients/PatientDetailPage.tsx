@@ -16,6 +16,7 @@ import {
   useUnarchivePatient,
 } from '@/api/generated/endpoints'
 import type { Attachment, Patient } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
@@ -87,6 +88,8 @@ export function PatientDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
+        back={<BackLink to="/patients" label={t('patients.title')} />}
+        // The eyebrow stays the owning customer — the back link already names the list.
         eyebrow={
           record.customer_id ? (
             <Link

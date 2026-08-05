@@ -123,6 +123,7 @@
   },
   "action": {
     "add": "Hinzufügen",
+    "back": "Zurück",
     "cancel": "Abbrechen",
     "close": "Schließen",
     "closeDialog": "Dialog schließen",

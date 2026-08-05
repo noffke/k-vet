@@ -17,6 +17,7 @@ import {
   useUnarchiveCustomer,
 } from '@/api/generated/endpoints'
 import type { Customer, EmailType, Salutation } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -89,7 +90,7 @@ export function CustomerDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow={t('customers.title')}
+        back={<BackLink to="/customers" label={t('customers.title')} />}
         title={
           [record.first_name, record.last_name].filter(Boolean).join(' ') || t('customers.new')
         }

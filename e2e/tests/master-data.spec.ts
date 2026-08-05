@@ -109,6 +109,22 @@ test.describe('customers and patients', () => {
     await expect(page.getByText('Unvollständig')).toHaveCount(0)
   })
 
+  test('a detail page can be left the way it was entered', async ({ page, request }) => {
+    const { customerId, lastName } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId, 'Rufus')
+    await signIn(page)
+    await page.goto(`/patients/${patientId}`)
+
+    // The back link names the list it returns to; the eyebrow keeps the owning customer,
+    // which is a different destination and must survive alongside it.
+    await expect(page.getByRole('link', { name: 'Zurück: Patienten' })).toBeVisible()
+    await expect(page.getByRole('link', { name: new RegExp(lastName) })).toBeVisible()
+
+    await page.getByRole('link', { name: 'Zurück: Patienten' }).click()
+    await expect(page).toHaveURL(/\/patients$/)
+    await expect(page.getByPlaceholder('Suchen …')).toBeVisible()
+  })
+
   test('a date of death archives the patient and hides it from the list', async ({
     page,
     request,

@@ -16,6 +16,7 @@ import {
   usePatchAppointment,
 } from '@/api/generated/endpoints'
 import type { Appointment, PriceMode } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge } from '@/components/RecordBadges'
@@ -117,7 +118,7 @@ export function AppointmentDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow={t('appointments.title')}
+        back={<BackLink to="/appointments" label={t('appointments.title')} />}
         title={record.starts_at ? formatDate(record.starts_at) : t('appointments.new')}
         actions={
           <>

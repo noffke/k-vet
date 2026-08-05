@@ -29,6 +29,7 @@ import {
   usePatchTemplateItem,
 } from '@/api/generated/endpoints'
 import type { MoveDirection, PickerItem, Template } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
@@ -173,7 +174,7 @@ export function TemplateDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow={t('templates.title')}
+        back={<BackLink to="/templates" label={t('templates.title')} />}
         title={record.name ?? t('templates.new')}
         actions={
           <>

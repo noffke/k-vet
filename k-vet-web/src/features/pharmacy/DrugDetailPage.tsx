@@ -15,6 +15,7 @@ import {
   useUnarchiveDrug,
 } from '@/api/generated/endpoints'
 import type { Drug } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -78,7 +79,7 @@ export function DrugDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow={t('pharmacy.title')}
+        back={<BackLink to="/pharmacy" label={t('pharmacy.title')} />}
         title={record.name ?? t('pharmacy.newDrug')}
         actions={
           <>

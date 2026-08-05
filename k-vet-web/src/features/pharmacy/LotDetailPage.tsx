@@ -11,6 +11,7 @@ import {
   useGetLot,
   useListCorrectionReasons,
 } from '@/api/generated/endpoints'
+import { BackLink } from '@/components/BackLink'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
@@ -64,14 +65,12 @@ export function LotDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        eyebrow={
-          <Link
+        back={
+          <BackLink
             to="/pharmacy/$id"
             params={{ id: String(record.drug_id) }}
-            className="hover:underline"
-          >
-            {record.drug_name ?? t('pharmacy.title')}
-          </Link>
+            label={record.drug_name ?? t('pharmacy.title')}
+          />
         }
         title={record.batch_number ?? `${t('pharmacy.lots')} ${record.id}`}
         actions={
