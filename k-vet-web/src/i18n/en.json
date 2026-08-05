@@ -185,13 +185,13 @@
   },
   "treatments": {
     "addItem": "Add line",
-    "applyTemplate": "Apply template",
     "files": "Files",
     "items": "Lines",
     "kmHint": "One-way distance; billed per double kilometre.",
     "lotSelection": "Lot selection",
     "lots": "Lots",
-    "pickerPlaceholder": "Search a drug or service …",
+    "pickerItemsOnly": "Search drug or service …",
+    "pickerPlaceholder": "Search drug, service or group …",
     "redesignation": "Redesignation",
     "redesignationHint": "Dispensed outside the approval — recorded on this line, no effect on the price.",
     "shortfallWarning": "Stock is not sufficient — the dispense is recorded anyway.",
@@ -273,6 +273,7 @@
     "travelExpensesHint": "The price is computed from the kilometres driven (GOT § 10)."
   },
   "templates": {
+    "itemCount": "{{count}} pos.",
     "items": "Lines",
     "new": "New template",
     "title": "Treatment templates"

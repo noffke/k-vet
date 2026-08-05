@@ -4,12 +4,10 @@ import {
   ChevronsDown,
   ChevronsUp,
   ChevronUp,
-  FileText,
   Pill,
   Stethoscope,
   Trash2,
 } from 'lucide-react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetTreatmentQueryKey,
@@ -17,7 +15,6 @@ import {
   useApplyTemplate,
   useCreateTreatmentItem,
   useDeleteTreatmentItem,
-  useListTemplates,
   useMoveTreatmentItem,
   usePatchTreatmentItem,
 } from '@/api/generated/endpoints'
@@ -25,7 +22,6 @@ import type { MoveDirection, PickerItem, Treatment, TreatmentItem } from '@/api/
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
@@ -47,7 +43,6 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
   const { t } = useTranslation()
   const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
   const client = useQueryClient()
-  const [templateOpen, setTemplateOpen] = useState(false)
 
   const invalidate = async () => {
     await client.invalidateQueries({ queryKey: getListTreatmentItemsQueryKey(treatment.id) })
@@ -59,15 +54,7 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
   const patchItem = usePatchTreatmentItem({ mutation })
   const moveItem = useMoveTreatmentItem({ mutation })
   const deleteItem = useDeleteTreatmentItem({ mutation })
-  const templates = useListTemplates(undefined, { query: { enabled: templateOpen } })
-  const applyTemplate = useApplyTemplate({
-    mutation: {
-      onSuccess: async () => {
-        setTemplateOpen(false)
-        await invalidate()
-      },
-    },
-  })
+  const applyTemplate = useApplyTemplate({ mutation })
 
   const pick = (item: PickerItem) => {
     addItem.mutate({
@@ -92,15 +79,15 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
       </div>
 
       {readOnly ? null : (
-        <>
-          <div className="mt-3">
-            <ItemPicker onPick={pick} disabled={addItem.isPending} />
-          </div>
-          <Button size="small" className="mt-2" onClick={() => setTemplateOpen(true)}>
-            <FileText className="size-4" />
-            {t('treatments.applyTemplate')}
-          </Button>
-        </>
+        <div className="mt-3">
+          <ItemPicker
+            onPick={pick}
+            onPickTemplate={(template) =>
+              applyTemplate.mutate({ id: treatment.id, data: { template_id: template.id } })
+            }
+            disabled={addItem.isPending}
+          />
+        </div>
       )}
 
       <ul className="mt-3 flex flex-col gap-2">
@@ -307,41 +294,6 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
           </li>
         ) : null}
       </ul>
-
-      <Dialog
-        open={templateOpen}
-        onOpenChange={setTemplateOpen}
-        title={t('treatments.applyTemplate')}
-        footer={<Button onClick={() => setTemplateOpen(false)}>{t('action.cancel')}</Button>}
-      >
-        <ul className="flex flex-col gap-2">
-          {(templates.data ?? [])
-            .filter((template) => !template.draft)
-            .map((template) => (
-              <li key={template.id}>
-                <button
-                  type="button"
-                  disabled={applyTemplate.isPending}
-                  onClick={() =>
-                    applyTemplate.mutate({
-                      id: treatment.id,
-                      data: { template_id: template.id },
-                    })
-                  }
-                  className="w-full rounded-card border border-line bg-surface px-3 py-2.5 text-left hover:bg-cream-soft"
-                >
-                  <span className="font-medium text-ink">{template.name}</span>
-                  <span className="ml-2 text-sm text-ink-soft">
-                    {template.item_count} {t('templates.items')}
-                  </span>
-                </button>
-              </li>
-            ))}
-          {(templates.data ?? []).filter((template) => !template.draft).length === 0 ? (
-            <li className="text-sm text-ink-faint">{t('list.empty')}</li>
-          ) : null}
-        </ul>
-      </Dialog>
     </section>
   )
 }

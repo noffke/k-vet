@@ -137,7 +137,7 @@ test.describe('pharmacy', () => {
     await page.goto(`/treatments/${treatmentId}`)
 
     // Three 10 ml subsets = 30 ml: 20 from CH-A, 10 from CH-B.
-    await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drugName)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
     await page.getByRole('option', { name: /· 10 ml/ }).first().click()
     await page.getByLabel('Menge').first().fill('3')
     await expect(page.getByText(/CH-A/).first()).toBeVisible()

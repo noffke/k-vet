@@ -185,13 +185,13 @@
   },
   "treatments": {
     "addItem": "Position hinzufügen",
-    "applyTemplate": "Behandlungsgruppe anwenden",
     "files": "Dateien",
     "items": "Positionen",
     "kmHint": "Einfache Strecke; abgerechnet wird je Doppelkilometer.",
     "lotSelection": "Chargenauswahl",
     "lots": "Chargen",
-    "pickerPlaceholder": "Medikament oder Leistung suchen …",
+    "pickerItemsOnly": "Medikament oder Leistung suchen …",
+    "pickerPlaceholder": "Medikament, Leistung oder Gruppe suchen …",
     "redesignation": "Umwidmung",
     "redesignationHint": "Abgabe außerhalb der Zulassung — wird auf dieser Zeile dokumentiert, ändert den Preis nicht.",
     "shortfallWarning": "Bestand reicht nicht aus — Abgabe wird trotzdem gebucht.",
@@ -273,6 +273,7 @@
     "travelExpensesHint": "Der Preis wird aus den gefahrenen Kilometern berechnet (GOT § 10)."
   },
   "templates": {
+    "itemCount": "{{count}} Pos.",
     "items": "Positionen",
     "new": "Neue Behandlungsgruppe",
     "title": "Behandlungsgruppen"

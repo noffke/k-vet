@@ -45,7 +45,7 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
   // ── Two lines from the picker: a stocked drug and a service ──────────────────
-  const picker = page.getByPlaceholder('Medikament oder Leistung suchen …')
+  const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
   await picker.fill(drugName)
   await page.getByRole('option', { name: /· 10 ml/ }).first().click()
   await picker.fill(serviceName)

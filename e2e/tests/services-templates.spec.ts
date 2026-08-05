@@ -56,7 +56,7 @@ test.describe('services and templates', () => {
 
     // On a treatment the line asks for the distance and prices itself (GOT § 10).
     await page.goto(`/treatments/${treatmentId}`)
-    await page.getByPlaceholder('Medikament oder Leistung suchen …').fill('Wegegeld')
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Wegegeld')
     await page.getByRole('option', { name: /Wegegeld/ }).first().click()
 
     await page.getByLabel('Kilometer').fill('12')
@@ -94,8 +94,13 @@ test.describe('services and templates', () => {
 
     // Applying it appends both lines to the treatment, drug first.
     await page.goto(`/treatments/${treatmentId}`)
-    await page.getByRole('button', { name: 'Behandlungsgruppe anwenden' }).click()
-    await page.getByRole('button', { name: new RegExp(templateName) }).click()
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(templateName)
+    // Groups are searched with the positions but listed apart: they insert several lines
+    // and have no single price to be ranked next to one.
+    await expect(
+      page.locator('[cmdk-group-heading]', { hasText: 'Behandlungsgruppen' }),
+    ).toBeVisible()
+    await page.getByRole('option', { name: new RegExp(templateName) }).first().click()
 
     await expect(page.getByLabel('Name').first()).toHaveValue(new RegExp(drugName))
     // The 10 ml subset of a 100 ml bottle bought for 10.00 net: § 4 basis 1.00, +100 % = 2.00
@@ -114,7 +119,7 @@ test.describe('treatment lines', () => {
 
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
-    await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drug.drugName)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
     await page.getByRole('option', { name: /· 10 ml/ }).first().click()
 
     // The price before and after must be identical: an Umwidmung documents, it does not price.
