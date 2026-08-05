@@ -120,6 +120,10 @@ test.describe('customers and patients', () => {
     await expect(page.getByRole('link', { name: 'Zurück: Patienten' })).toBeVisible()
     await expect(page.getByRole('link', { name: new RegExp(lastName) })).toBeVisible()
 
+    // The header buttons shrink to their icon on a phone. Their names have to survive it,
+    // or the phone viewport — a first-class target — gets unlabelled buttons.
+    await expect(page.getByRole('button', { name: 'Archivieren', exact: true })).toBeVisible()
+
     await page.getByRole('link', { name: 'Zurück: Patienten' }).click()
     await expect(page).toHaveURL(/\/patients$/)
     await expect(page.getByPlaceholder('Suchen …')).toBeVisible()

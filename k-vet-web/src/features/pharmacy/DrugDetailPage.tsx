@@ -87,12 +87,12 @@ export function DrugDetailPage() {
             {record.archived ? (
               <Button onClick={() => unarchive.mutate({ id: drugId }, { onSuccess: store })}>
                 <ArchiveRestore className="size-4" />
-                <span className="hidden sm:inline">{t('record.unarchive')}</span>
+                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
               </Button>
             ) : (
               <Button onClick={() => archive.mutate({ id: drugId }, { onSuccess: store })}>
                 <Archive className="size-4" />
-                <span className="hidden sm:inline">{t('record.archive')}</span>
+                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
               </Button>
             )}
           </>

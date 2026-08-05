@@ -188,7 +188,7 @@ export function TemplateDetailPage() {
               }
             >
               <Archive className="size-4" />
-              <span className="hidden sm:inline">{t('record.archive')}</span>
+              <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
             </Button>
           </>
         }

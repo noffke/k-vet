@@ -133,7 +133,7 @@ export function AppointmentDetailPage() {
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
             <Button onClick={() => setDuplicateOpen(true)}>
               <Copy className="size-4" />
-              <span className="hidden sm:inline">{t('action.duplicate')}</span>
+              <span className="sr-only sm:not-sr-only">{t('action.duplicate')}</span>
             </Button>
             <Button
               variant="danger"
@@ -141,7 +141,7 @@ export function AppointmentDetailPage() {
               disabled={removeAppointment.isPending}
             >
               <Trash2 className="size-4" />
-              <span className="hidden sm:inline">{t('action.delete')}</span>
+              <span className="sr-only sm:not-sr-only">{t('action.delete')}</span>
             </Button>
           </>
         }

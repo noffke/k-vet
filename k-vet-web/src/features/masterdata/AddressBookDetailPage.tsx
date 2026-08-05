@@ -114,20 +114,14 @@ function AddressBookDetail({
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
             {record.archived ? (
-              <Button
-                aria-label={t('record.unarchive')}
-                onClick={() => unarchive.mutate({ id: entryId }, { onSuccess: store })}
-              >
+              <Button onClick={() => unarchive.mutate({ id: entryId }, { onSuccess: store })}>
                 <ArchiveRestore className="size-4" />
-                <span className="hidden sm:inline">{t('record.unarchive')}</span>
+                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
               </Button>
             ) : (
-              <Button
-                aria-label={t('record.archive')}
-                onClick={() => archive.mutate({ id: entryId }, { onSuccess: store })}
-              >
+              <Button onClick={() => archive.mutate({ id: entryId }, { onSuccess: store })}>
                 <Archive className="size-4" />
-                <span className="hidden sm:inline">{t('record.archive')}</span>
+                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
               </Button>
             )}
           </>

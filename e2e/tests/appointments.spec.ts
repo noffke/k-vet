@@ -17,6 +17,10 @@ test.describe('appointments', () => {
     await date.blur()
     await expect(date).toHaveValue('05.08.2026')
 
+    // Icon-only on a phone, but still named.
+    await expect(page.getByRole('button', { name: 'Duplizieren', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Löschen', exact: true })).toBeVisible()
+
     // Still incomplete: a Termin needs a time, and none was invented for it.
     await expect(page.getByText('Unvollständig', { exact: true })).toBeVisible()
 
