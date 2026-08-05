@@ -21,8 +21,10 @@ describe('formatting in de-DE', () => {
     expect(formatQuantity('100.00', 'de-DE')).toBe('100')
   })
 
-  it('formats percentages as stored', () => {
-    expect(formatPercent('19.000', 'de-DE')).toBe('19 %')
+  it('formats percentages as stored, kept on one line', () => {
+    // A non-breaking space, so a narrow table column never wraps the "%" onto its own line.
+    expect(formatPercent('19.000', 'de-DE')).toBe('19\u00a0%')
+    expect(formatPercent('19.000', 'de-DE')).not.toContain(' ')
   })
 
   it('formats dates as dd.MM.yyyy without shifting the day', () => {

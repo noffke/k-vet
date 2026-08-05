@@ -70,11 +70,15 @@ export function formatMoney(
   })
 }
 
-/** Percentages as stored (e.g. "19.000" → "19 %"). */
+/**
+ * Percentages as stored (e.g. "19.000" → "19 %"). The separator is a non-breaking space,
+ * the same one Intl puts before the currency sign, so a narrow column wraps the whole
+ * value instead of stranding the "%" on its own line. `parseNumber` strips it again.
+ */
 export function formatPercent(value: string | number | null | undefined, locale: Locale): string {
   const parsed = toNumber(value)
   if (parsed === null) return ''
-  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(parsed)} %`
+  return `${new Intl.NumberFormat(locale, { maximumFractionDigits: 3 }).format(parsed)}\u00a0%`
 }
 
 /**
