@@ -91,6 +91,21 @@ describe('parsing dates', () => {
     expect(parseDate('5/4/2026', 'en-US')).toBe('2026-05-04')
   })
 
+  it('expands a short date, two-digit year and all', () => {
+    // What the vet actually types on a phone: no padding, no century.
+    expect(parseDate('5.8.26', 'de-DE')).toBe('2026-08-05')
+    expect(parseDate('5/8/26', 'en-US')).toBe('2026-05-08')
+  })
+
+  it('reads a two-digit year from 70 as the last century', () => {
+    // The usual split, so a date of birth in the 1900s is reachable at all.
+    expect(parseDate('4.5.69', 'de-DE')).toBe('2069-05-04')
+    expect(parseDate('4.5.70', 'de-DE')).toBe('1970-05-04')
+    expect(parseDate('4.5.98', 'de-DE')).toBe('1998-05-04')
+    // A written-out year is taken as it stands.
+    expect(parseDate('4.5.1998', 'de-DE')).toBe('1998-05-04')
+  })
+
   it('accepts ISO input in both locales', () => {
     expect(parseDate('2026-05-04', 'de-DE')).toBe('2026-05-04')
     expect(parseDate('2026-05-04', 'en-US')).toBe('2026-05-04')

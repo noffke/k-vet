@@ -28,9 +28,9 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByRole('button', { name: 'Neuer Termin' }).click()
   const today = new Date()
   const pad = (value: number) => String(value).padStart(2, '0')
-  await page
-    .getByLabel('Datum')
-    .fill(`${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`)
+  const todayText = `${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`
+  // The date field opens on today, so the vet only types the time.
+  await expect(page.getByLabel('Datum')).toHaveValue(todayText)
   await page.getByLabel('Uhrzeit').fill('09:30')
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
 

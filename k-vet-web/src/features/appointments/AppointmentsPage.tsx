@@ -16,8 +16,9 @@ import { Button } from '@/components/ui/button'
 import { useLocaleFormat } from '@/lib/locale'
 
 /**
- * The practice's day list. "New appointment" creates the record immediately (today's
- * date, time still open) and opens it — there is no create form to abandon.
+ * The practice's day list. "New appointment" creates the record immediately and opens it —
+ * there is no create form to abandon. It arrives empty; the detail page offers today's date
+ * and waits for a time, which is what makes the appointment complete.
  */
 export function AppointmentsPage() {
   const { t } = useTranslation()

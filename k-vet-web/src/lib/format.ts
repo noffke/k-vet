@@ -186,8 +186,16 @@ export function parseDate(input: string, locale: Locale): string | null {
   const [first = 0, second = 0, third = 0] = numbers
   const { day, month } =
     locale === 'en-US' ? { month: first, day: second } : { day: first, month: second }
-  const year = third < 100 ? 2000 + third : third
-  return isoDate(year, month, day)
+  return isoDate(expandYear(third), month, day)
+}
+
+/**
+ * Two typed digits become a year. Appointments are in the near future and dates of birth
+ * in the past, so the split is the usual one: 70 and above reads as the last century.
+ */
+function expandYear(year: number): number {
+  if (year >= 100) return year
+  return year >= 70 ? 1900 + year : 2000 + year
 }
 
 function isoDate(year: number, month: number, day: number): string | null {

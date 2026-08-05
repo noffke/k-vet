@@ -46,6 +46,8 @@ export function AppointmentDetailPage() {
   const treatments = useListTreatments(appointmentId)
   const patchAppointment = usePatchAppointment()
   const [duplicateOpen, setDuplicateOpen] = useState(false)
+  // A typed date has nowhere to go until a time exists — a timestamp needs both halves.
+  const [typedDate, setTypedDate] = useState<string | null>(null)
 
   const autoSave = useAutoSave<Appointment>({
     save: (patch) =>
@@ -94,15 +96,20 @@ export function AppointmentDetailPage() {
 
   const record = appointment.data
   const startsAt = record.starts_at ? new Date(record.starts_at) : null
-  const isoDate = startsAt ? localIsoDate(startsAt) : null
+  const storedDate = startsAt ? localIsoDate(startsAt) : null
   const isoTime = startsAt ? localTime(startsAt) : ''
+  // Every Termin has a date; a new one opens on today and the vet corrects it (FR-025).
+  const isoDate = typedDate ?? storedDate ?? todayIso()
 
   /** Combines the typed date and time into the ISO timestamp the API stores. */
   const writeStartsAt = (nextDate: string | null, nextTime: string) => {
-    const day = nextDate ?? isoDate ?? todayIso()
+    // Clearing the date field does not clear the day: fall back to what is stored.
+    const day = nextDate ?? storedDate ?? todayIso()
+    setTypedDate(day)
     if (!nextTime) {
-      // Without a time the appointment stays incomplete — do not invent one.
-      autoSave.set({ starts_at: null })
+      // Without a time the appointment stays incomplete — do not invent one. The date
+      // waits in `typedDate` until the time arrives instead of being thrown away.
+      if (record.starts_at) autoSave.set({ starts_at: null })
       return
     }
     const [hours = '0', minutes = '0'] = nextTime.split(':')
@@ -119,7 +126,7 @@ export function AppointmentDetailPage() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         back={<BackLink to="/appointments" label={t('appointments.title')} />}
-        title={record.starts_at ? formatDate(record.starts_at) : t('appointments.new')}
+        title={storedDate ? formatDate(storedDate) : t('appointments.new')}
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
