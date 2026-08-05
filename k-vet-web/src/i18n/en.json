@@ -150,7 +150,8 @@
     "mustBePositive": "Must be greater than 0",
     "mustNotBeZero": "Must not be 0",
     "notADate": "Not a valid date",
-    "notANumber": "Not a valid number"
+    "notANumber": "Not a valid number",
+    "notATime": "Not a valid time"
   },
   "list": {
     "empty": "Nothing here yet",

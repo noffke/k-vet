@@ -21,9 +21,10 @@ import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
+import { TimeInput } from '@/components/TimeInput'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
-import { Field, TextAreaField } from '@/components/ui/field'
+import { TextAreaField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
 import { todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
@@ -161,18 +162,12 @@ export function AppointmentDetailPage() {
           onChange={(next) => writeStartsAt(next, isoTime)}
           error={autoSave.fieldErrors.starts_at ? t('field.required') : undefined}
         />
-        <Field label={t('field.time')} error={undefined}>
-          {(fieldId) => (
-            <input
-              id={fieldId}
-              type="time"
-              value={isoTime}
-              onChange={(event) => writeStartsAt(isoDate, event.target.value)}
-              onBlur={() => void autoSave.flush()}
-              className="numeric w-full rounded-control border border-line-strong bg-surface px-3 py-2 min-h-11 sm:min-h-9"
-            />
-          )}
-        </Field>
+        <TimeInput
+          label={t('field.time')}
+          value={isoTime}
+          onChange={(next) => writeStartsAt(isoDate, next)}
+          onBlur={() => void autoSave.flush()}
+        />
         <TextAreaField
           label={t('field.note')}
           defaultValue={record.note ?? ''}

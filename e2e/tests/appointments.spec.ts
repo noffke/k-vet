@@ -21,7 +21,11 @@ test.describe('appointments', () => {
     await expect(page.getByText('Unvollständig', { exact: true })).toBeVisible()
 
     // The time arrives second, and the date typed first is the one that is stored.
-    await page.getByLabel('Uhrzeit').fill('15:00')
+    // Typed as digits only: the field is ours now, not the browser's 12-hour control.
+    const time = page.getByLabel('Uhrzeit')
+    await time.fill('1500')
+    await time.blur()
+    await expect(time).toHaveValue('15:00')
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
     await expect(page.getByText('Unvollständig', { exact: true })).toHaveCount(0)
 
@@ -29,5 +33,30 @@ test.describe('appointments', () => {
     await expect(page.getByLabel('Datum')).toHaveValue('05.08.2026')
     await expect(page.getByLabel('Uhrzeit')).toHaveValue('15:00')
     await expect(page.getByRole('heading', { name: '05.08.2026' })).toBeVisible()
+  })
+})
+
+/**
+ * The browser's locale, not the app's. `<input type="time">` rendered in this one — an
+ * en-US browser turned the German screen's Uhrzeit into a 12-hour AM/PM control that would
+ * not take 15:00 — which is why the field is no longer native.
+ */
+test.describe('appointments on an en-US browser', () => {
+  test.use({ locale: 'en-US' })
+
+  test('the time is still German', async ({ page }) => {
+    await signIn(page)
+    await navigate(page, 'Termine')
+    await page.getByRole('button', { name: 'Neuer Termin' }).click()
+
+    const time = page.getByLabel('Uhrzeit')
+    // A native time control's DOM value is `HH:mm` whatever it displays, so that alone
+    // proves nothing. These two do: it is not the native control, and it takes an input
+    // the native control rejects outright.
+    await expect(time).toHaveAttribute('type', 'text')
+    await time.fill('1500')
+    await time.blur()
+    await expect(time).toHaveValue('15:00')
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
   })
 })

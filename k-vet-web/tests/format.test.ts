@@ -5,9 +5,11 @@ import {
   formatMoney,
   formatPercent,
   formatQuantity,
+  formatTimeOfDay,
   parseDate,
   parseNumber,
   parseNumberToWire,
+  parseTime,
   toWire,
 } from '@/lib/format'
 
@@ -46,6 +48,39 @@ describe('formatting in en-US', () => {
 
   it('formats dates as M/d/yyyy', () => {
     expect(formatDate('2026-05-04', 'en-US')).toBe('05/04/2026')
+  })
+})
+
+describe('times of day', () => {
+  it('shows a time in the locale it is read in', () => {
+    expect(formatTimeOfDay('15:00', 'de-DE')).toBe('15:00')
+    expect(formatTimeOfDay('15:00', 'en-US')).toBe('03:00 PM')
+    expect(formatTimeOfDay('', 'de-DE')).toBe('')
+  })
+
+  it('takes every shape the time is typed in', () => {
+    // The native control this replaced accepted only its own browser-locale format.
+    expect(parseTime('15:00')).toBe('15:00')
+    expect(parseTime('15.00')).toBe('15:00')
+    expect(parseTime('1500')).toBe('15:00')
+    expect(parseTime('15')).toBe('15:00')
+    expect(parseTime('9:5')).toBe('09:05')
+    expect(parseTime('930')).toBe('09:30')
+  })
+
+  it('understands am and pm, so an en-US habit still types cleanly', () => {
+    expect(parseTime('3pm')).toBe('15:00')
+    expect(parseTime('03:00 PM')).toBe('15:00')
+    expect(parseTime('12:30 am')).toBe('00:30')
+    expect(parseTime('12:30 pm')).toBe('12:30')
+  })
+
+  it('refuses an impossible time', () => {
+    expect(parseTime('25:00')).toBeNull()
+    expect(parseTime('12:61')).toBeNull()
+    expect(parseTime('13pm')).toBeNull()
+    expect(parseTime('Mittag')).toBeNull()
+    expect(parseTime('')).toBeNull()
   })
 })
 

@@ -169,6 +169,60 @@ export function formatTime(iso: string | null | undefined, locale: Locale): stri
 }
 
 /**
+ * `HH:mm` → the locale's time of day: "15:00" in de-DE, "03:00 PM" in en-US.
+ *
+ * Unlike `formatTime` this takes a time on its own, with no date and no timezone to shift
+ * it — what a time field holds while it is being edited.
+ */
+export function formatTimeOfDay(value: string | null | undefined, locale: Locale): string {
+  if (!value) return ''
+  const [hours, minutes] = value.split(':').map(Number)
+  if (!Number.isInteger(hours) || !Number.isInteger(minutes)) return ''
+  return new Intl.DateTimeFormat(locale, {
+    hour: '2-digit',
+    minute: '2-digit',
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(2000, 0, 1, hours, minutes)))
+}
+
+/**
+ * Parses a typed time into `HH:mm`, the 24-hour form the rest of the app stores.
+ *
+ * Deliberately forgiving, because this is typed between two other fields: `15:00`, `15.00`,
+ * `1500` and `15` all mean three in the afternoon, and `3pm` / `03:00 PM` are accepted too
+ * so that the en-US habit works without switching the whole app.
+ */
+export function parseTime(input: string): string | null {
+  const trimmed = input.trim().toLowerCase()
+  if (trimmed === '') return null
+
+  const suffix = /(a|p)\.?m\.?$/.exec(trimmed)
+  const digits = trimmed.replace(/(a|p)\.?m\.?$/, '').trim()
+
+  // `1500` and `930` are the keypad forms; everything else separates hour from minute.
+  const compact = /^\d{3,4}$/.exec(digits)
+  const parts = compact
+    ? [digits.slice(0, digits.length - 2), digits.slice(-2)]
+    : digits.split(/[:.\s]+/).filter((part) => part !== '')
+  if (parts.length > 2) return null
+
+  const [rawHours = '', rawMinutes = '0'] = parts
+  if (!/^\d{1,2}$/.test(rawHours) || !/^\d{1,2}$/.test(rawMinutes)) return null
+  let hours = Number(rawHours)
+  const minutes = Number(rawMinutes)
+
+  if (suffix) {
+    if (hours < 1 || hours > 12) return null
+    if (suffix[1] === 'p') hours = hours === 12 ? 12 : hours + 12
+    else if (hours === 12) hours = 0
+  }
+  if (hours > 23 || minutes > 59) return null
+
+  const pad = (value: number) => String(value).padStart(2, '0')
+  return `${pad(hours)}:${pad(minutes)}`
+}
+
+/**
  * Parses a typed date in the active locale into an ISO date.
  * Accepts `dd.MM.yyyy` (de-DE), `M/d/yyyy` (en-US) and ISO input in both.
  */
