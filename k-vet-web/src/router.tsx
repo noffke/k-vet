@@ -19,7 +19,7 @@ import { PatientsPage } from '@/features/patients/PatientsPage'
 import { DrugDetailPage } from '@/features/pharmacy/DrugDetailPage'
 import { LotDetailPage } from '@/features/pharmacy/LotDetailPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
-import { ServicesPage } from '@/features/services/ServicesPage'
+import { ServiceDetailPage, ServicesPage } from '@/features/services/ServicesPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { NotFoundPage } from '@/features/shell/NotFoundPage'
 import { TemplateDetailPage, TemplatesPage } from '@/features/templates/TemplatesPage'
@@ -129,6 +129,12 @@ const servicesRoute = createRoute({
   component: ServicesPage,
 })
 
+const serviceDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/services/$id',
+  component: ServiceDetailPage,
+})
+
 const templatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/templates',
@@ -163,6 +169,7 @@ const routeTree = rootRoute.addChildren([
     drugDetailRoute,
     lotDetailRoute,
     servicesRoute,
+    serviceDetailRoute,
     templatesRoute,
     templateDetailRoute,
     treatmentRoute,

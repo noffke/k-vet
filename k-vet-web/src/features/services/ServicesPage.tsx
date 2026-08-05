@@ -1,21 +1,28 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { EyeOff, Plus, Route } from 'lucide-react'
+import { useNavigate, useParams } from '@tanstack/react-router'
+import { Archive, ArchiveRestore, EyeOff, Plus, Route } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  getGetServiceQueryKey,
   getListServicesQueryKey,
+  useArchiveService,
   useCreateService,
+  useGetService,
   useListServices,
   usePatchService,
+  useUnarchiveService,
 } from '@/api/generated/endpoints'
 import type { Service } from '@/api/generated/model'
+import { BackLink } from '@/components/BackLink'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
+import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, SelectField, TextField } from '@/components/ui/field'
+import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 
 /**
@@ -26,21 +33,26 @@ import { useLocaleFormat } from '@/lib/locale'
  */
 export function ServicesPage() {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const client = useQueryClient()
   const { money, percent } = useLocaleFormat()
   const [search, setSearch] = useState('')
   const [showHidden, setShowHidden] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
-  const [editing, setEditing] = useState<Service | null>(null)
 
   const services = useListServices({
     q: search || undefined,
     hidden: showHidden || undefined,
     archived: showArchived || undefined,
   })
-  const refresh = () => client.invalidateQueries({ queryKey: getListServicesQueryKey() })
+  const open = (id: number) => navigate({ to: '/services/$id', params: { id: String(id) } })
   const createService = useCreateService({
-    mutation: { onSuccess: (service) => setEditing(service) },
+    mutation: {
+      onSuccess: async (service) => {
+        await client.invalidateQueries({ queryKey: getListServicesQueryKey() })
+        await open(service.id)
+      },
+    },
   })
 
   const columns: DataListColumn<Service>[] = [
@@ -129,86 +141,115 @@ export function ServicesPage() {
             <ArchivedBadge archived={row.archived} />
           </>
         )}
-        onRowClick={(row) => setEditing(row)}
+        onRowClick={(row) => void open(row.id)}
       />
-
-      {editing ? (
-        <ServiceDialog
-          service={editing}
-          onClose={() => {
-            setEditing(null)
-            void refresh()
-          }}
-        />
-      ) : null}
     </div>
   )
 }
 
 /**
- * Editing a service is a small, focused job, so it happens in a dialog rather than on its
- * own page — the vet stays in the list they were searching.
+ * One service. A GOT position may be renamed and repriced like any other — the practice
+ * owns its copy of the schedule — but its number and factor stay mandatory (FR-021).
  */
-function ServiceDialog({ service, onClose }: { service: Service; onClose: () => void }) {
+export function ServiceDetailPage() {
   const { t } = useTranslation()
-  const { money, currencySymbol } = useLocaleFormat()
+  const { id } = useParams({ from: '/app/services/$id' })
+  const serviceId = Number(id)
   const client = useQueryClient()
-  const [current, setCurrent] = useState(service)
-  const patchService = usePatchService({
-    mutation: {
-      onSuccess: (updated) => {
-        setCurrent(updated)
-        void client.invalidateQueries({ queryKey: getListServicesQueryKey() })
-      },
-    },
-  })
-  const patch = (data: Parameters<typeof patchService.mutate>[0]['data']) =>
-    patchService.mutate({ id: service.id, data })
+  const { money, currencySymbol } = useLocaleFormat()
 
-  const isGot = current.type === 'got'
+  const service = useGetService(serviceId)
+  const patchService = usePatchService()
+  const archive = useArchiveService()
+  const unarchive = useUnarchiveService()
+
+  const store = (updated: Service) => {
+    client.setQueryData(getGetServiceQueryKey(serviceId), updated)
+    void client.invalidateQueries({ queryKey: getListServicesQueryKey() })
+  }
+
+  const autoSave = useAutoSave<Service>({
+    save: (patch) =>
+      patchService.mutateAsync({
+        id: serviceId,
+        data: patch as Parameters<typeof patchService.mutateAsync>[0]['data'],
+      }),
+    onSaved: store,
+  })
+
+  if (service.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
+  if (!service.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
+  const record = service.data
+  const isGot = record.type === 'got'
+  const errorFor = (field: string) =>
+    autoSave.fieldErrors[field] ? t(autoSave.fieldErrors[field] ?? '') : undefined
 
   return (
-    <Dialog
-      open
-      onOpenChange={(open) => !open && onClose()}
-      title={isGot ? `${t('services.got')} ${current.got_number ?? ''}` : t('services.new')}
-      description={isGot ? t('services.gotHint') : undefined}
-      footer={
-        <Button variant="primary" onClick={onClose}>
-          {t('action.close')}
-        </Button>
-      }
-    >
-      <div className="grid gap-3 sm:grid-cols-2">
+    <div className="mx-auto max-w-3xl">
+      <PageHeader
+        back={<BackLink to="/services" label={t('services.title')} />}
+        eyebrow={isGot ? `${t('services.got')} ${record.got_number ?? ''}` : undefined}
+        title={record.name ?? t('services.new')}
+        actions={
+          <>
+            <SaveIndicator state={autoSave.state} error={autoSave.error} />
+            {record.archived ? (
+              <Button onClick={() => unarchive.mutate({ id: serviceId }, { onSuccess: store })}>
+                <ArchiveRestore className="size-4" />
+                <span className="hidden sm:inline">{t('record.unarchive')}</span>
+              </Button>
+            ) : (
+              <Button onClick={() => archive.mutate({ id: serviceId }, { onSuccess: store })}>
+                <Archive className="size-4" />
+                <span className="hidden sm:inline">{t('record.archive')}</span>
+              </Button>
+            )}
+          </>
+        }
+      >
+        <span className="flex gap-1">
+          <IncompleteBadge missing={record.missing_fields} />
+          <ArchivedBadge archived={record.archived} />
+        </span>
+      </PageHeader>
+
+      {isGot ? <p className="mt-3 text-xs text-ink-faint">{t('services.gotHint')}</p> : null}
+
+      <section className="mt-5 grid gap-4 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
         <TextField
           label={t('field.name')}
-          defaultValue={current.name ?? ''}
+          defaultValue={record.name ?? ''}
           wrapperClassName="sm:col-span-2"
-          onBlur={(event) =>
-            event.target.value !== (current.name ?? '') && patch({ name: event.target.value })
-          }
+          error={errorFor('name')}
+          onChange={(event) => autoSave.set({ name: event.target.value || null })}
+          onBlur={() => void autoSave.flush()}
         />
         {isGot ? (
           <TextField
             label={t('field.gotNumber')}
-            defaultValue={current.got_number ?? ''}
-            onBlur={(event) =>
-              event.target.value !== (current.got_number ?? '') &&
-              patch({ got_number: event.target.value })
-            }
+            defaultValue={record.got_number ?? ''}
+            error={errorFor('got_number')}
+            onChange={(event) => autoSave.set({ got_number: event.target.value || null })}
+            onBlur={() => void autoSave.flush()}
           />
         ) : null}
         <NumberInput
           label={t('field.factor')}
-          value={current.factor ?? null}
+          value={record.factor ?? null}
           decimals={3}
           unit="%"
-          onChange={(value) => value && patch({ factor: value })}
+          error={errorFor('factor')}
+          onChange={(value) => autoSave.set({ factor: value })}
+          onBlur={() => void autoSave.flush()}
         />
         <SelectField
           label={t('field.vat')}
-          defaultValue={current.vat_percent ?? ''}
-          onChange={(event) => patch({ vat_percent: event.target.value || null })}
+          defaultValue={record.vat_percent ?? ''}
+          error={errorFor('vat_percent')}
+          onChange={(event) => {
+            autoSave.set({ vat_percent: event.target.value || null })
+            void autoSave.flush()
+          }}
         >
           <option value="">—</option>
           <option value="19.000">19 %</option>
@@ -218,34 +259,38 @@ function ServiceDialog({ service, onClose }: { service: Service; onClose: () => 
             it is what the customer will be billed. */}
         <NumberInput
           label={t('field.priceNet')}
-          value={current.net_price ?? null}
+          value={record.net_price ?? null}
           unit={currencySymbol}
+          error={errorFor('net_price')}
           hint={
-            current.gross_price
-              ? `${t('field.priceGross')}: ${money(current.gross_price)}`
+            record.gross_price
+              ? `${t('field.priceGross')}: ${money(record.gross_price)}`
               : undefined
           }
-          onChange={(value) => value && patch({ net_price: value })}
+          onChange={(value) => autoSave.set({ net_price: value })}
+          onBlur={() => void autoSave.flush()}
         />
 
         <div className="flex flex-col gap-1 sm:col-span-2">
           <CheckboxField
             label={t('services.travelExpenses')}
-            defaultChecked={current.travel_expenses}
-            onChange={(event) => patch({ travel_expenses: event.target.checked })}
+            defaultChecked={record.travel_expenses}
+            onChange={(event) => {
+              autoSave.set({ travel_expenses: event.target.checked })
+              void autoSave.flush()
+            }}
           />
           <p className="text-xs text-ink-faint">{t('services.travelExpensesHint')}</p>
           <CheckboxField
             label={t('services.hidden')}
-            defaultChecked={current.hidden}
-            onChange={(event) => patch({ hidden: event.target.checked })}
+            defaultChecked={record.hidden}
+            onChange={(event) => {
+              autoSave.set({ hidden: event.target.checked })
+              void autoSave.flush()
+            }}
           />
         </div>
-
-        <span className="sm:col-span-2">
-          <IncompleteBadge missing={current.missing_fields} />
-        </span>
-      </div>
-    </Dialog>
+      </section>
+    </div>
   )
 }

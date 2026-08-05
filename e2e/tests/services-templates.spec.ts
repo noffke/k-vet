@@ -37,11 +37,22 @@ test.describe('services and templates', () => {
     await navigate(page, 'Leistungen')
     await page.getByRole('button', { name: 'Neue Leistung' }).click()
 
+    // A service is edited on its own page, like every other record.
+    await expect(page).toHaveURL(/\/services\/\d+$/)
     await page.getByLabel('Name').fill('Wegegeld Hausbesuch')
     await page.getByLabel('USt.').selectOption('19.000')
     await page.getByLabel('Preis (netto)').fill('13,00')
     await page.getByLabel('Wegegeld').check()
-    await page.getByRole('button', { name: 'Schließen', exact: true }).click()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+
+    // The back link returns to the list, which now carries the new position.
+    await page.getByRole('link', { name: 'Zurück: Leistungen' }).click()
+    await expect(page).toHaveURL(/\/services$/)
+    // The list opens on the GOT catalogue, so find the new position the way the vet would.
+    await page.getByPlaceholder('GOT-Nummer oder Bezeichnung suchen …').fill('Wegegeld Haus')
+    await expect(
+      page.getByText('Wegegeld Hausbesuch').filter({ visible: true }).first(),
+    ).toBeVisible()
 
     // On a treatment the line asks for the distance and prices itself (GOT § 10).
     await page.goto(`/treatments/${treatmentId}`)
