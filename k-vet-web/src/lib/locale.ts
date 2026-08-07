@@ -33,6 +33,8 @@ export function useLocaleFormat() {
 
   return {
     locale,
+    /** ISO 4217 code, for the few places that need the currency itself. */
+    currency,
     /** The currency sign alone — for a field that holds the amount without it. */
     currencySymbol: currencySymbol(locale, currency),
     number: (value: string | number | null | undefined, options?: Intl.NumberFormatOptions) =>

@@ -257,6 +257,7 @@ export function ServiceDetailPage() {
           label={t('field.priceNet')}
           value={record.net_price ?? null}
           unit={currencySymbol}
+          money
           error={errorFor('net_price')}
           hint={
             record.gross_price

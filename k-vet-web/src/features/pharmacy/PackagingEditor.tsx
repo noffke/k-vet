@@ -112,6 +112,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   label={t('field.listPrice')}
                   value={packaging.list_price_net ?? null}
                   unit={currencySymbol}
+                  money
                   disabled={!isOriginal}
                   hint={isOriginal ? t('field.listPriceHint') : t('pharmacy.subsetPriceDerived')}
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
@@ -122,6 +123,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   label={t('field.salesPriceNet')}
                   value={packaging.sales_price_net ?? null}
                   unit={currencySymbol}
+                  money
                   hint={
                     packaging.sales_price_gross
                       ? `${t('field.salesPriceGross')}: ${money(packaging.sales_price_gross)}`

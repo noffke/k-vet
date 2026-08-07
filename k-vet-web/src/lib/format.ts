@@ -62,12 +62,8 @@ export function formatMoney(
   locale: Locale,
   currency = 'EUR',
 ): string {
-  return formatNumber(value, locale, {
-    style: 'currency',
-    currency,
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  })
+  // No explicit digits: `style: 'currency'` already uses the currency's minor units.
+  return formatNumber(value, locale, { style: 'currency', currency })
 }
 
 /**
@@ -77,6 +73,16 @@ export function formatMoney(
 export function currencySymbol(locale: Locale, currency = 'EUR'): string {
   const parts = new Intl.NumberFormat(locale, { style: 'currency', currency }).formatToParts(0)
   return parts.find((part) => part.type === 'currency')?.value ?? currency
+}
+
+/**
+ * The currency's minor units: 2 for the euro, 0 for the yen. A money field shows exactly
+ * this many decimals, always — `14,8 €` is not a price.
+ */
+export function currencyDecimals(locale: Locale, currency = 'EUR'): number {
+  const resolved = new Intl.NumberFormat(locale, { style: 'currency', currency }).resolvedOptions()
+  // Every currency resolves to a digit count; the type allows for formatters that do not.
+  return resolved.maximumFractionDigits ?? 2
 }
 
 /**

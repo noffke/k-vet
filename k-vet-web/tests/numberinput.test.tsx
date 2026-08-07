@@ -20,10 +20,12 @@ function Harness({
   onChange,
   initial,
   unit,
+  money,
 }: {
   onChange: (value: string | null) => void
   initial?: string
   unit?: string
+  money?: boolean
 }) {
   const [value, setValue] = useState<string | null>(initial ?? null)
   return (
@@ -31,6 +33,7 @@ function Harness({
       label="Preis"
       value={value}
       unit={unit}
+      money={money}
       onChange={(next) => {
         setValue(next)
         onChange(next)
@@ -92,6 +95,23 @@ describe('NumberInput', () => {
 
     // The unit is decoration; what the field stores stays a bare number.
     expect(onChange).toHaveBeenLastCalledWith('30.00')
+  })
+
+  it('keeps the minor units on money, editing included', async () => {
+    // A price is never "14,8": the currency decides how many decimals it has.
+    renderHarness(<Harness onChange={() => {}} initial="14.80" money />)
+    const input = screen.getByLabelText<HTMLInputElement>('Preis')
+
+    expect(input.value).toBe('14,80')
+    await userEvent.click(input)
+    expect(input.value).toBe('14,80')
+    await userEvent.tab()
+    expect(input.value).toBe('14,80')
+  })
+
+  it('leaves a quantity its short form', async () => {
+    renderHarness(<Harness onChange={() => {}} initial="1.50" />)
+    expect(screen.getByLabelText<HTMLInputElement>('Preis').value).toBe('1,5')
   })
 
   it('renders the stored value grouped for the active locale and reformats on blur', async () => {

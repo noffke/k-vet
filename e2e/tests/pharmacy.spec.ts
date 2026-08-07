@@ -31,15 +31,15 @@ test.describe('pharmacy', () => {
     await page.getByLabel('Lieferant').selectOption({ index: 1 })
 
     // § 3(3) band 8.68–12.14 → 48 %: 10.00 + 4.80 = 14.80 net (17,61 € gross).
-    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,8')
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,80')
 
     // A 10 ml subset takes its price from § 4: basis 1.00 → 2.00 net → 2.38 gross.
     await page.getByRole('button', { name: 'Teilmenge' }).click()
     const subsetUnit = page.getByLabel('Einheit').last()
     await subsetUnit.fill('ml')
     await page.getByLabel('Menge').last().fill('10')
-    await expect(page.getByLabel('Verkaufspreis (netto)').last()).toHaveValue('2')
-    await expect(page.getByLabel('Listenpreis (netto)').last()).toHaveValue('1')
+    await expect(page.getByLabel('Verkaufspreis (netto)').last()).toHaveValue('2,00')
+    await expect(page.getByLabel('Listenpreis (netto)').last()).toHaveValue('1,00')
   })
 
   test('marking a drug as a Humanpräparat switches the AMPreisV rule', async ({
@@ -62,17 +62,17 @@ test.describe('pharmacy', () => {
     await page.getByLabel('Lieferant').selectOption({ index: 1 })
 
     // The veterinary bands of § 3 Abs. 3: 48 % of 10,00 € → 14,80 € net.
-    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,8')
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,80')
 
     // § 3 Abs. 1 Satz 2 instead: 3 % + 8,10 € → 18,40 € net. The checkbox label also proves the
     // i18n key resolves — a missing one would render as `pharmacy.flags.humanDrug`.
     await page.getByLabel('Humanpräparat').check()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
-    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('18,4')
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('18,40')
 
     // And back again, so the flag is not a one-way door.
     await page.getByLabel('Humanpräparat').uncheck()
-    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,8')
+    await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,80')
   })
 
   test('a delivery becomes a lot whose stock is derived', async ({ page, request }) => {

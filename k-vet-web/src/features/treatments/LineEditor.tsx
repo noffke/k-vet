@@ -137,6 +137,7 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                 label={t('field.priceNet')}
                 value={item.price_net}
                 unit={currencySymbol}
+                money
                 hint={`${t('field.priceGross')}: ${money(item.price_gross)}`}
                 disabled={readOnly}
                 onChange={(value) =>

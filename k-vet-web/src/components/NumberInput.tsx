@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/components/ui/field'
-import { formatNumber } from '@/lib/format'
+import { currencyDecimals, formatNumber } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
 
@@ -13,6 +13,11 @@ export interface NumberInputProps {
   onChange: (value: string | null) => void
   /** Decimals used for the wire value — money and quantities use 2, factors 3. */
   decimals?: number
+  /**
+   * An amount of money. It is then always shown with the currency's minor units — `14,80`,
+   * never `14,8` — where a quantity drops its trailing zeros.
+   */
+  money?: boolean
   /**
    * Unit shown inside the field, after the value ("€", "%"). It is decoration, not part
    * of what is typed or stored — the field still holds a bare number.
@@ -40,7 +45,8 @@ export function NumberInput({
   label,
   value,
   onChange,
-  decimals = 2,
+  decimals,
+  money,
   unit,
   error,
   hint,
@@ -51,16 +57,18 @@ export function NumberInput({
   onBlur,
 }: NumberInputProps) {
   const { t } = useTranslation()
-  const { locale, parseNumber } = useLocaleFormat()
+  const { locale, currency, parseNumber } = useLocaleFormat()
   const unitId = useId()
-  const [text, setText] = useState(() => displayValue(value, locale))
+  const fixed = money ? currencyDecimals(locale, currency) : null
+  const wireDecimals = decimals ?? fixed ?? 2
+  const [text, setText] = useState(() => displayValue(value, locale, fixed))
   const [focused, setFocused] = useState(false)
   const [localError, setLocalError] = useState<string | null>(null)
 
   // Re-render on external changes (server response, locale switch) unless being edited.
   useEffect(() => {
-    if (!focused) setText(displayValue(value, locale))
-  }, [value, locale, focused])
+    if (!focused) setText(displayValue(value, locale, fixed))
+  }, [value, locale, fixed, focused])
 
   const handleChange = (raw: string) => {
     setText(raw)
@@ -75,7 +83,7 @@ export function NumberInput({
       return
     }
     setLocalError(null)
-    onChange(parsed.toFixed(decimals))
+    onChange(parsed.toFixed(wireDecimals))
   }
 
   const shown = localError ?? error
@@ -99,11 +107,11 @@ export function NumberInput({
             style={unit ? { paddingInlineEnd: `calc(1.25rem + ${unit.length}ch)` } : undefined}
             onFocus={() => {
               setFocused(true)
-              setText(editValue(value, locale))
+              setText(editValue(value, locale, fixed))
             }}
             onBlur={() => {
               setFocused(false)
-              setText(displayValue(value, locale))
+              setText(displayValue(value, locale, fixed))
               setLocalError(null)
               onBlur?.()
             }}
@@ -135,14 +143,29 @@ export function NumberInput({
   )
 }
 
+/** How many decimals to render: a money field pins them, anything else drops the zeros. */
+function digits(fixed: number | null): Intl.NumberFormatOptions {
+  return fixed === null
+    ? { maximumFractionDigits: 3 }
+    : { minimumFractionDigits: fixed, maximumFractionDigits: fixed }
+}
+
 /** Read-only rendering: grouped and locale-formatted. */
-function displayValue(value: string | null | undefined, locale: 'de-DE' | 'en-US'): string {
+function displayValue(
+  value: string | null | undefined,
+  locale: 'de-DE' | 'en-US',
+  fixed: number | null,
+): string {
   if (value === null || value === undefined || value === '') return ''
-  return formatNumber(value, locale, { maximumFractionDigits: 3 })
+  return formatNumber(value, locale, digits(fixed))
 }
 
 /** Editing rendering: no group separators, but the locale's decimal separator. */
-function editValue(value: string | null | undefined, locale: 'de-DE' | 'en-US'): string {
+function editValue(
+  value: string | null | undefined,
+  locale: 'de-DE' | 'en-US',
+  fixed: number | null,
+): string {
   if (value === null || value === undefined || value === '') return ''
-  return formatNumber(value, locale, { maximumFractionDigits: 3, useGrouping: false })
+  return formatNumber(value, locale, { ...digits(fixed), useGrouping: false })
 }

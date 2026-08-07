@@ -61,10 +61,10 @@ test.describe('services and templates', () => {
 
     await page.getByLabel('Kilometer').fill('12')
     // 12 km × 3.50 € net = 42.00 € net (GOT quotes the Wegegeld net).
-    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('42')
+    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('42,00')
 
     await page.getByLabel('Faktor (Verkehrsverhältnisse)').fill('2')
-    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('84')
+    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('84,00')
   })
 
   test('a template applies its lines in order with current prices', async ({ page, request }) => {
@@ -105,7 +105,7 @@ test.describe('services and templates', () => {
     await expect(page.getByLabel('Name').first()).toHaveValue(new RegExp(drugName))
     // The 10 ml subset of a 100 ml bottle bought for 10.00 net: § 4 basis 1.00, +100 % = 2.00
     // net — pinned at apply time. The customer pays 2,38 € once VAT is added.
-    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('2')
+    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('2,00')
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
 })
