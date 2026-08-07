@@ -11,7 +11,8 @@ export interface OperatorConfig {
   currency: string;
   /**
      * The VAT rates a position may carry, in the order the operator listed them; the first
-     * is what a new record starts on.
+     * is what a new record starts on. Scaled like the `vat_percent` columns, so a rate can
+     * be compared with a stored one as the string it is on the wire.
      */
   vat_rates: string[];
   /** ISO 3166-1 alpha-2, filled into a country field that has none. */

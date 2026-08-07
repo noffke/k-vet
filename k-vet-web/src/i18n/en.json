@@ -230,10 +230,13 @@
   },
   "pharmacy": {
     "approvalNumber": "Approval number",
+    "arrivalShort": "In",
+    "batchShort": "Batch",
     "computedPerAmpreisv": "Computed per AMPreisV",
     "correction": "Correction",
     "correctionHint": "Enter the counted stock — the difference is booked.",
     "drugs": "Drugs",
+    "expiryShort": "Expires",
     "flags": {
       "humanDrug": "Human preparation",
       "narcotic": "Narcotic",
@@ -249,6 +252,8 @@
     "movements": "Movements",
     "newDrug": "New drug",
     "original": "Original packaging",
+    "packageCount": "{{count}} packages of {{size}}",
+    "packageCountOnly": "{{count}} packages",
     "packagings": "Packagings",
     "priceOverride": "Price overridden manually",
     "remaining": "Remaining",

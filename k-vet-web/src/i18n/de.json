@@ -230,10 +230,13 @@
   },
   "pharmacy": {
     "approvalNumber": "Zulassungsnummer",
+    "arrivalShort": "Eingang",
+    "batchShort": "Ch.-B.",
     "computedPerAmpreisv": "Berechnet nach AMPreisV",
     "correction": "Korrektur",
     "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht.",
     "drugs": "Medikamente",
+    "expiryShort": "Verfall",
     "flags": {
       "humanDrug": "Humanpräparat",
       "narcotic": "BTM",
@@ -249,6 +252,8 @@
     "movements": "Bewegungen",
     "newDrug": "Neues Medikament",
     "original": "Originalpackung",
+    "packageCount": "{{count}} Packungen à {{size}}",
+    "packageCountOnly": "{{count}} Packungen",
     "packagings": "Packungen",
     "priceOverride": "Preis manuell überschrieben",
     "remaining": "Restbestand",

@@ -232,7 +232,7 @@ export const SessionInfoResponse = zod.object({
 
 export const GetConfigResponse = zod.object({
   "currency": zod.string().describe('ISO 4217, used for every amount the app formats.'),
-  "vat_rates": zod.array(zod.string()).describe('The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on.'),
+  "vat_rates": zod.array(zod.string()).describe('The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on. Scaled like the `vat_percent` columns, so a rate can\nbe compared with a stored one as the string it is on the wire.'),
   "default_country": zod.string().describe('ISO 3166-1 alpha-2, filled into a country field that has none.')
 })
 
@@ -1069,6 +1069,7 @@ export const ListLotsResponseItem = zod.object({
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
+  "packaging_quantity": zod.string().nullish().describe('The packaging\'s size at the time of reading — what one package holds. The lot row\nsays \"2 Packungen à 100 ml\", which needs the size as well as the count.'),
   "initial_quantity": zod.string().describe('Snapshot of `packages × packaging quantity` at intake (FR-015).'),
   "batch_number": zod.string().nullish(),
   "expiration_date": zod.iso.date().nullish(),
@@ -1090,6 +1091,7 @@ export const GetLotResponse = zod.object({
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
+  "packaging_quantity": zod.string().nullish().describe('The packaging\'s size at the time of reading — what one package holds. The lot row\nsays \"2 Packungen à 100 ml\", which needs the size as well as the count.'),
   "initial_quantity": zod.string().describe('Snapshot of `packages × packaging quantity` at intake (FR-015).'),
   "batch_number": zod.string().nullish(),
   "expiration_date": zod.iso.date().nullish(),
@@ -1133,6 +1135,7 @@ export const CreateCorrectionResponse = zod.object({
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
+  "packaging_quantity": zod.string().nullish().describe('The packaging\'s size at the time of reading — what one package holds. The lot row\nsays \"2 Packungen à 100 ml\", which needs the size as well as the count.'),
   "initial_quantity": zod.string().describe('Snapshot of `packages × packaging quantity` at intake (FR-015).'),
   "batch_number": zod.string().nullish(),
   "expiration_date": zod.iso.date().nullish(),
@@ -1337,6 +1340,7 @@ export const CreateStockIntakeResponse = zod.object({
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
+  "packaging_quantity": zod.string().nullish().describe('The packaging\'s size at the time of reading — what one package holds. The lot row\nsays \"2 Packungen à 100 ml\", which needs the size as well as the count.'),
   "initial_quantity": zod.string().describe('Snapshot of `packages × packaging quantity` at intake (FR-015).'),
   "batch_number": zod.string().nullish(),
   "expiration_date": zod.iso.date().nullish(),

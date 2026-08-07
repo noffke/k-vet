@@ -16,6 +16,12 @@ export interface Lot {
   unit?: string | null;
   arrival_date: string;
   packages_received: number;
+  /**
+     * The packaging's size at the time of reading — what one package holds. The lot row
+     * says "2 Packungen à 100 ml", which needs the size as well as the count.
+     * @nullable
+     */
+  packaging_quantity?: string | null;
   /** Snapshot of `packages × packaging quantity` at intake (FR-015). */
   initial_quantity: string;
   /** @nullable */

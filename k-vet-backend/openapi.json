@@ -4991,6 +4991,13 @@
             "type": "integer",
             "format": "int32"
           },
+          "packaging_quantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The packaging's size at the time of reading — what one package holds. The lot row\nsays \"2 Packungen à 100 ml\", which needs the size as well as the count."
+          },
           "initial_quantity": {
             "type": "string",
             "description": "Snapshot of `packages × packaging quantity` at intake (FR-015)."
@@ -5204,7 +5211,7 @@
             "items": {
               "type": "string"
             },
-            "description": "The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on."
+            "description": "The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on. Scaled like the `vat_percent` columns, so a rate can\nbe compared with a stored one as the string it is on the wire."
           },
           "default_country": {
             "type": "string",

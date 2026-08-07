@@ -92,25 +92,34 @@ export function StockPanel({ drug, original }: StockPanelProps) {
               onClick={() => void navigate({ to: '/lots/$id', params: { id: String(lot.id) } })}
               className="w-full rounded-card border border-line bg-surface px-3 py-2.5 text-left hover:bg-cream-soft"
             >
+              {/* What arrived, not what it adds up to: the vet ordered packages. The
+                  expiry sits opposite, because that is what decides which lot is used. */}
               <span className="flex flex-wrap items-center justify-between gap-2">
-                <span className="font-medium text-ink">
-                  {lot.batch_number ?? `${t('pharmacy.lots')} ${lot.id}`}
-                </span>
-                <span className="numeric text-sm">
-                  {formatQuantity(lot.remaining)} {lot.unit ?? ''}
-                </span>
-              </span>
-              <span className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-faint">
-                <span>
-                  {t('field.arrivalDate')}: {date(lot.arrival_date)}
+                <span className="numeric font-medium text-ink">
+                  {lot.packaging_quantity
+                    ? t('pharmacy.packageCount', {
+                        count: lot.packages_received,
+                        size: `${formatQuantity(lot.packaging_quantity)} ${lot.unit ?? ''}`.trim(),
+                      })
+                    : t('pharmacy.packageCountOnly', { count: lot.packages_received })}
                 </span>
                 {lot.expiration_date ? (
-                  <span>
-                    {t('field.expirationDate')}: {date(lot.expiration_date)}
+                  <span className="numeric text-sm">
+                    {t('pharmacy.expiryShort')} {date(lot.expiration_date)}
+                  </span>
+                ) : null}
+              </span>
+              <span className="mt-0.5 flex flex-wrap gap-3 text-xs text-ink-faint">
+                {lot.batch_number ? (
+                  <span className="numeric">
+                    {t('pharmacy.batchShort')} {lot.batch_number}
                   </span>
                 ) : null}
                 <span className="numeric">
-                  {t('pharmacy.intake')}: {formatQuantity(lot.initial_quantity)}
+                  {t('pharmacy.arrivalShort')} {date(lot.arrival_date)}
+                </span>
+                <span className="numeric">
+                  {t('pharmacy.remaining')}: {formatQuantity(lot.remaining)} {lot.unit ?? ''}
                 </span>
               </span>
             </button>

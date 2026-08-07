@@ -25,6 +25,9 @@ pub struct Lot {
     pub unit: Option<String>,
     pub arrival_date: NaiveDate,
     pub packages_received: i32,
+    /// The packaging's size at the time of reading — what one package holds. The lot row
+    /// says "2 Packungen à 100 ml", which needs the size as well as the count.
+    pub packaging_quantity: Option<Decimal>,
     /// Snapshot of `packages × packaging quantity` at intake (FR-015).
     pub initial_quantity: Decimal,
     pub batch_number: Option<String>,
@@ -328,7 +331,8 @@ async fn load_lot(pool: &sqlx::PgPool, id: i64) -> AppResult<Lot> {
     let row = sqlx::query!(
         r#"SELECT lot.id, lot.packaging_id, lot.arrival_date, lot.packages_received,
                   lot.initial_quantity, lot.batch_number, lot.expiration_date, lot.created_at,
-                  packaging.drug_id, packaging.unit, drug.name AS "drug_name?",
+                  packaging.drug_id, packaging.unit, packaging.quantity AS "packaging_quantity?",
+                  drug.name AS "drug_name?",
                   remaining.remaining AS "remaining?"
            FROM drug_stock_lot lot
            JOIN drug_packaging packaging ON packaging.id = lot.packaging_id
@@ -349,6 +353,7 @@ async fn load_lot(pool: &sqlx::PgPool, id: i64) -> AppResult<Lot> {
         unit: row.unit,
         arrival_date: row.arrival_date,
         packages_received: row.packages_received,
+        packaging_quantity: row.packaging_quantity,
         initial_quantity: row.initial_quantity,
         batch_number: row.batch_number,
         expiration_date: row.expiration_date,
