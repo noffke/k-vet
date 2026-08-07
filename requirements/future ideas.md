@@ -13,6 +13,7 @@
 * vaccination reminders
 * target invoice calculation: set desired end price and then calculate the factor to get close to the end price
 * price information: allow to build a non-persistent list of drugs and services to answer the customer the "what would it cost me" question
+* delayed invoice email sending: enter date and time and invoice email will be sent when scheduled 
 * list prices from Barsoi (barsoiliste.de). Researched 2026-08-03: there is an XML "Preisliste zum
   Einlesen in Verwaltungs- und Bestellsysteme", 12 € per month plus VAT, carrying
   "Medikamentennamen, Hersteller, Handelsformen, Einkaufs- und Verkaufspreise" with the prices
