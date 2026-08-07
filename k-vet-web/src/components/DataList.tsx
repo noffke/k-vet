@@ -13,6 +13,12 @@ export interface DataListColumn<T> {
   primary?: boolean
   /** Dropped from the phone layout to keep cards scannable. */
   desktopOnly?: boolean
+  /**
+   * Width for the desktop column, as a utility class (`w-2/3`). Each table otherwise sizes
+   * its columns to its own content, so two lists on one page — Hersteller and Lieferanten —
+   * end up with their columns in different places. Give both the same widths to line up.
+   */
+  width?: string
 }
 
 export interface DataListProps<T> {
@@ -110,6 +116,7 @@ export function DataList<T>({
                     className={cn(
                       'eyebrow border-b border-line bg-sunken px-3 py-2 text-left',
                       column?.numeric && 'text-right',
+                      column?.width,
                     )}
                   >
                     {flexRender(header.column.columnDef.header, header.getContext())}

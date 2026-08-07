@@ -129,9 +129,16 @@ function AddressBookSection({
 }) {
   const { t } = useTranslation()
 
+  // Both address books share these widths so their columns line up down the page.
   const columns: DataListColumn<AddressBookEntry>[] = [
-    { id: 'name', header: t('field.name'), primary: true, cell: (row) => row.name ?? '—' },
-    { id: 'city', header: t('field.city'), cell: (row) => row.addr_city ?? '' },
+    {
+      id: 'name',
+      header: t('field.name'),
+      primary: true,
+      width: 'w-2/3',
+      cell: (row) => row.name ?? '—',
+    },
+    { id: 'city', header: t('field.city'), width: 'w-1/3', cell: (row) => row.addr_city ?? '' },
   ]
 
   return (

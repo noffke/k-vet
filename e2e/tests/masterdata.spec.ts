@@ -34,6 +34,35 @@ test.describe('master data', () => {
     await expect(page.getByLabel('Hersteller')).toContainText(name)
   })
 
+  test('both address books line their columns up', async ({ page }, testInfo) => {
+    // Cards on a phone, so there is nothing to align there.
+    test.skip(testInfo.project.name !== 'desktop', 'desktop layout only')
+    const long = `Boehringer-${Date.now().toString().slice(-6)}`
+    await signIn(page)
+    await navigate(page, 'Stammdaten')
+
+    // Names and places of different lengths: each table would otherwise size its own
+    // columns to its own content and the two Ort columns would start at different places.
+    await page.getByRole('button', { name: 'Neuer Hersteller' }).click()
+    await page.getByLabel('Name').fill(long)
+    await page.getByLabel('Ort').fill('Ingelheim am Rhein')
+    await page.getByLabel('Ort').blur()
+    await page.getByRole('link', { name: 'Zurück: Stammdaten' }).click()
+
+    await page.getByRole('button', { name: 'Neuer Lieferant' }).click()
+    await page.getByLabel('Name').fill('Kurz')
+    await page.getByLabel('Ort').fill('Ulm')
+    await page.getByLabel('Ort').blur()
+    await page.getByRole('link', { name: 'Zurück: Stammdaten' }).click()
+    await expect(page.getByText('Ulm').filter({ visible: true }).first()).toBeVisible()
+
+    const lefts = await page
+      .getByRole('columnheader', { name: 'Ort' })
+      .evaluateAll((headers) => headers.map((header) => header.getBoundingClientRect().left))
+    expect(lefts).toHaveLength(2)
+    expect(lefts[0]).toBe(lefts[1])
+  })
+
   test('a supplier can be archived and comes back when asked for', async ({ page }) => {
     const name = `Depot-${Date.now().toString().slice(-6)}`
     await signIn(page)
