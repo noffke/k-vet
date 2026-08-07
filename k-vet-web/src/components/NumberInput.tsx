@@ -1,7 +1,7 @@
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/components/ui/field'
-import { currencyDecimals, formatNumber } from '@/lib/format'
+import { currencyDecimals, formatNumber, localiseSeparators } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
 
@@ -70,7 +70,9 @@ export function NumberInput({
     if (!focused) setText(displayValue(value, locale, fixed))
   }, [value, locale, fixed, focused])
 
-  const handleChange = (raw: string) => {
+  const handleChange = (input: string) => {
+    // A keypad types a dot wherever it is sold; the field shows the locale's separator.
+    const raw = localiseSeparators(input, locale)
     setText(raw)
     if (raw.trim() === '') {
       setLocalError(null)

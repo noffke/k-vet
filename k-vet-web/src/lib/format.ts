@@ -97,14 +97,31 @@ export function formatPercent(value: string | number | null | undefined, locale:
 }
 
 /**
- * Parses user input in the active locale. Accepts the locale's decimal separator and
- * ignores group separators and spaces. Returns `null` for anything that is not a number.
+ * Rewrites the other locale's decimal separator as this one's.
+ *
+ * A numeric keypad emits a dot wherever it is sold, so a German vet typing `10.3` means ten
+ * point three, not one hundred and three — and every field here is a price, a weight or a
+ * quantity, none of which are typed with a thousands separator. A separator that *can* only be
+ * a group separator is left alone: one that sits beside an explicit decimal comma
+ * (`1.234,56`), or several of them (`1.234.567`).
+ */
+export function localiseSeparators(input: string, locale: Locale): string {
+  const { group, decimal } = separators(locale)
+  if (input.includes(decimal)) return input
+  const parts = input.split(group)
+  return parts.length === 2 ? parts.join(decimal) : input
+}
+
+/**
+ * Parses user input in the active locale. Accepts the locale's decimal separator, reads the
+ * other locale's as a decimal separator where it cannot be a group separator, and ignores
+ * group separators and spaces. Returns `null` for anything that is not a number.
  */
 export function parseNumber(input: string, locale: Locale): number | null {
   const trimmed = input.trim()
   if (trimmed === '') return null
   const { group, decimal } = separators(locale)
-  let normalized = trimmed
+  let normalized = localiseSeparators(trimmed, locale)
     .replaceAll(group, '')
     .replaceAll(' ', '')
     .replaceAll(' ', '')

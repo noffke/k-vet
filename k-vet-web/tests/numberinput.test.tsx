@@ -68,6 +68,17 @@ describe('NumberInput', () => {
     expect(onChange).toHaveBeenLastCalledWith('12.50')
   })
 
+  it('turns a typed dot into the locale separator as it is typed', async () => {
+    const onChange = vi.fn()
+    renderHarness(<Harness onChange={onChange} />)
+    const input = screen.getByLabelText<HTMLInputElement>('Preis')
+
+    await userEvent.type(input, '10.3')
+
+    expect(input.value).toBe('10,3')
+    expect(onChange).toHaveBeenLastCalledWith('10.30')
+  })
+
   it('shows an error for text that is not a number and keeps the stored value', async () => {
     const onChange = vi.fn()
     renderHarness(<Harness onChange={onChange} initial="10.00" />)

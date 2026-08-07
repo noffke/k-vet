@@ -103,9 +103,21 @@ describe('parsing numbers', () => {
     expect(parseNumber('-', 'de-DE')).toBeNull()
   })
 
-  it('treats a US decimal point in de-DE as a group separator', () => {
-    // "1.500" is one thousand five hundred to a German user.
-    expect(parseNumber('1.500', 'de-DE')).toBe(1500)
+  it('reads a lone foreign separator as the decimal one', () => {
+    // The keypad types a dot. Nobody types a thousands separator into a weight or a price,
+    // so "10.3" is ten point three — it used to parse as 103, silently.
+    expect(parseNumber('10.3', 'de-DE')).toBe(10.3)
+    expect(parseNumber('0.5', 'de-DE')).toBe(0.5)
+    expect(parseNumber('1.500', 'de-DE')).toBe(1.5)
+    // And the mirror image, for a comma typed on a US layout.
+    expect(parseNumber('10,3', 'en-US')).toBe(10.3)
+  })
+
+  it('still reads a separator that can only be a group separator', () => {
+    // Beside an explicit decimal comma, or several of them: not a decimal point.
+    expect(parseNumber('1.234,56', 'de-DE')).toBe(1234.56)
+    expect(parseNumber('1.234.567', 'de-DE')).toBe(1234567)
+    expect(parseNumber('1,234.56', 'en-US')).toBe(1234.56)
   })
 
   it('produces dot-decimal wire values from either locale', () => {
