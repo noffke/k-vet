@@ -230,6 +230,13 @@ export const SessionInfoResponse = zod.object({
 })
 
 
+export const GetConfigResponse = zod.object({
+  "currency": zod.string().describe('ISO 4217, used for every amount the app formats.'),
+  "vat_rates": zod.array(zod.string()).describe('The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on.'),
+  "default_country": zod.string().describe('ISO 3166-1 alpha-2, filled into a country field that has none.')
+})
+
+
 export const DeleteCustomerEmailParams = zod.object({
   "id": zod.int()
 })

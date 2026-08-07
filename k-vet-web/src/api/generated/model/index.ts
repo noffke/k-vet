@@ -54,6 +54,7 @@ export * from './moveDirection';
 export * from './movement';
 export * from './movementKind';
 export * from './moveRequest';
+export * from './operatorConfig';
 export * from './packaging';
 export * from './packagingKind';
 export * from './patchAddressBookEntry';

@@ -7,6 +7,7 @@ import {
   getListCustomersQueryKey,
   useCreateCustomer,
   useListCustomers,
+  usePatchCustomer,
 } from '@/api/generated/endpoints'
 import type { Customer } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
@@ -14,6 +15,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge, WarningIcon } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { useOperatorConfig } from '@/lib/config'
 
 /** The customer index: search, warning indicators, archived on request (FR-009). */
 export function CustomersPage() {
@@ -27,9 +29,16 @@ export function CustomersPage() {
     q: search || undefined,
     archived: showArchived || undefined,
   })
+  const { default_country } = useOperatorConfig()
+  const patchCustomer = usePatchCustomer()
   const createCustomer = useCreateCustomer({
     mutation: {
       onSuccess: async (customer) => {
+        // The practice's own country, so what is stored is what an invoice would print.
+        await patchCustomer.mutateAsync({
+          id: customer.id,
+          data: { home_country: default_country },
+        })
         await client.invalidateQueries({ queryKey: getListCustomersQueryKey() })
         await navigate({ to: '/customers/$id', params: { id: String(customer.id) } })
       },

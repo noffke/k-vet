@@ -21,7 +21,8 @@ import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
-import { CheckboxField, SelectField, TextField } from '@/components/ui/field'
+import { CheckboxField, TextField } from '@/components/ui/field'
+import { VatSelect } from '@/components/VatSelect'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 
@@ -242,19 +243,14 @@ export function ServiceDetailPage() {
           onChange={(value) => autoSave.set({ factor: value })}
           onBlur={() => void autoSave.flush()}
         />
-        <SelectField
-          label={t('field.vat')}
-          defaultValue={record.vat_percent ?? ''}
+        <VatSelect
+          value={record.vat_percent}
           error={errorFor('vat_percent')}
-          onChange={(event) => {
-            autoSave.set({ vat_percent: event.target.value || null })
+          onChange={(value) => {
+            autoSave.set({ vat_percent: value })
             void autoSave.flush()
           }}
-        >
-          <option value="">—</option>
-          <option value="19.000">19 %</option>
-          <option value="7.000">7 %</option>
-        </SelectField>
+        />
         {/* The GOT publishes net fees, so that is the figure edited here; the gross beneath
             it is what the customer will be billed. */}
         <NumberInput

@@ -1,9 +1,20 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { NumberInput } from '@/components/NumberInput'
 import i18n from '@/lib/i18n'
+
+/**
+ * Money is formatted in the operator's configured currency, so anything that formats needs a
+ * query client. Nothing is fetched here — the hook falls back while the request is pending.
+ */
+function withQuery(ui: ReactNode) {
+  const client = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+  return <QueryClientProvider client={client}>{ui}</QueryClientProvider>
+}
 
 function Harness({
   onChange,
@@ -28,6 +39,8 @@ function Harness({
   )
 }
 
+const renderHarness = (ui: ReactNode) => render(withQuery(ui))
+
 describe('NumberInput', () => {
   beforeEach(async () => {
     await i18n.changeLanguage('de-DE')
@@ -35,7 +48,7 @@ describe('NumberInput', () => {
 
   it('accepts a decimal comma in de-DE and emits a dot-decimal wire value', async () => {
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} />)
+    renderHarness(<Harness onChange={onChange} />)
 
     await userEvent.type(screen.getByLabelText('Preis'), '12,5')
 
@@ -45,7 +58,7 @@ describe('NumberInput', () => {
   it('accepts a decimal point in en-US', async () => {
     await i18n.changeLanguage('en-US')
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} />)
+    renderHarness(<Harness onChange={onChange} />)
 
     await userEvent.type(screen.getByLabelText('Preis'), '12.5')
 
@@ -54,7 +67,7 @@ describe('NumberInput', () => {
 
   it('shows an error for text that is not a number and keeps the stored value', async () => {
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} initial="10.00" />)
+    renderHarness(<Harness onChange={onChange} initial="10.00" />)
     const input = screen.getByLabelText('Preis')
 
     await userEvent.clear(input)
@@ -67,7 +80,7 @@ describe('NumberInput', () => {
 
   it('shows a unit beside the value without putting it into the value', async () => {
     const onChange = vi.fn()
-    render(<Harness onChange={onChange} initial="20.54" unit="€" />)
+    renderHarness(<Harness onChange={onChange} initial="20.54" unit="€" />)
     const input = screen.getByLabelText<HTMLInputElement>('Preis')
 
     expect(screen.getByText('€')).toBeInTheDocument()
@@ -82,7 +95,7 @@ describe('NumberInput', () => {
   })
 
   it('renders the stored value grouped for the active locale and reformats on blur', async () => {
-    render(<Harness onChange={() => {}} initial="1234.50" />)
+    renderHarness(<Harness onChange={() => {}} initial="1234.50" />)
     const input = screen.getByLabelText<HTMLInputElement>('Preis')
 
     expect(input.value).toBe('1.234,5')

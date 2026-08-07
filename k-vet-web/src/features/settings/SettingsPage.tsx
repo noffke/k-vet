@@ -10,6 +10,7 @@ import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { TextAreaField, TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
+import { useOperatorConfig } from '@/lib/config'
 
 /** Textarea text (one address per line) → the array the API stores. */
 const parseEmails = (value: string): string[] =>
@@ -28,6 +29,7 @@ export function SettingsPage() {
   const client = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
 
+  const { default_country } = useOperatorConfig()
   const settings = useGetSettings()
   const patchSettings = usePatchSettings()
 
@@ -96,9 +98,11 @@ export function SettingsPage() {
               onChange={(event) => autoSave.set({ practice_city: event.target.value })}
               onBlur={() => void autoSave.flush()}
             />
+            {/* An empty country field opens on the operator's configured one, so what is
+                stored is always what will be printed. */}
             <TextField
               label={t('settings.country')}
-              defaultValue={record.practice_country ?? ''}
+              defaultValue={record.practice_country ?? default_country}
               error={errorFor('practice_country')}
               onChange={(event) =>
                 autoSave.set({ practice_country: event.target.value.toUpperCase() || null })

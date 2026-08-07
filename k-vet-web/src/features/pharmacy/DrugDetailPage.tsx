@@ -21,6 +21,7 @@ import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { CheckboxField, SelectField, TextField } from '@/components/ui/field'
+import { VatSelect } from '@/components/VatSelect'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
 import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
@@ -131,18 +132,13 @@ export function DrugDetailPage() {
 
         {/* The VAT choices come from the operator's configuration; the rate is pinned per
             drug and again per invoice line. */}
-        <SelectField
-          label={t('field.vat')}
-          defaultValue={record.vat_percent ?? ''}
-          onChange={(event) => {
-            autoSave.set({ vat_percent: event.target.value || null })
+        <VatSelect
+          value={record.vat_percent}
+          onChange={(value) => {
+            autoSave.set({ vat_percent: value })
             void autoSave.flush()
           }}
-        >
-          <option value="">—</option>
-          <option value="19.000">19 %</option>
-          <option value="7.000">7 %</option>
-        </SelectField>
+        />
         <TextField
           label={t('pharmacy.approvalNumber')}
           defaultValue={record.approval_number ?? ''}

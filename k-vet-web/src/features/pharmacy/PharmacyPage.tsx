@@ -3,13 +3,19 @@ import { useNavigate } from '@tanstack/react-router'
 import { Plus, Snowflake, Syringe } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { getListDrugsQueryKey, useCreateDrug, useListDrugs } from '@/api/generated/endpoints'
+import {
+  getListDrugsQueryKey,
+  useCreateDrug,
+  useListDrugs,
+  usePatchDrug,
+} from '@/api/generated/endpoints'
 import type { Drug } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 
 /** The drug cabinet: what the practice stocks, and how much of it is left. */
@@ -22,9 +28,17 @@ export function PharmacyPage() {
   const [showArchived, setShowArchived] = useState(false)
 
   const drugs = useListDrugs({ q: search || undefined, archived: showArchived || undefined })
+  const { vat_rates } = useOperatorConfig()
+  const patchDrug = usePatchDrug()
   const createDrug = useCreateDrug({
     mutation: {
       onSuccess: async (drug) => {
+        // Almost every drug is billed at the standard rate, so the new record starts there
+        // instead of on "—" (the operator's first configured rate).
+        const standardRate = vat_rates[0]
+        if (standardRate) {
+          await patchDrug.mutateAsync({ id: drug.id, data: { vat_percent: standardRate } })
+        }
         await client.invalidateQueries({ queryKey: getListDrugsQueryKey() })
         await navigate({ to: '/pharmacy/$id', params: { id: String(drug.id) } })
       },

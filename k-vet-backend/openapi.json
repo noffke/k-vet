@@ -488,6 +488,26 @@
         }
       }
     },
+    "/api/config": {
+      "get": {
+        "tags": [
+          "settings"
+        ],
+        "operationId": "getConfig",
+        "responses": {
+          "200": {
+            "description": "Operator configuration",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/OperatorConfig"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/customer-emails/{id}": {
       "delete": {
         "tags": [
@@ -5166,6 +5186,31 @@
           "dispense",
           "correction"
         ]
+      },
+      "OperatorConfig": {
+        "type": "object",
+        "required": [
+          "currency",
+          "vat_rates",
+          "default_country"
+        ],
+        "properties": {
+          "currency": {
+            "type": "string",
+            "description": "ISO 4217, used for every amount the app formats."
+          },
+          "vat_rates": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on."
+          },
+          "default_country": {
+            "type": "string",
+            "description": "ISO 3166-1 alpha-2, filled into a country field that has none."
+          }
+        }
       },
       "Packaging": {
         "type": "object",

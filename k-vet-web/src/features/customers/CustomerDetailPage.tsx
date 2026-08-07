@@ -25,6 +25,7 @@ import { Button } from '@/components/ui/button'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/field'
 import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
+import { useOperatorConfig } from '@/lib/config'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
 const EMAIL_TYPES: EmailType[] = ['private', 'work', 'other']
@@ -40,6 +41,7 @@ export function CustomerDetailPage() {
   const client = useQueryClient()
   const navigate = useNavigate()
 
+  const { default_country } = useOperatorConfig()
   const customer = useGetCustomer(customerId)
   const patients = useListPatients({ customer_id: customerId })
   const patchCustomer = usePatchCustomer()
@@ -75,11 +77,11 @@ export function CustomerDetailPage() {
   const field = (
     key: keyof Customer & string,
     label: string,
-    options: { className?: string } = {},
+    options: { className?: string; fallback?: string } = {},
   ) => (
     <TextField
       label={label}
-      defaultValue={(record[key] as string | null) ?? ''}
+      defaultValue={(record[key] as string | null) ?? options.fallback ?? ''}
       error={autoSave.fieldErrors[key] ? t(autoSave.fieldErrors[key] ?? '') : undefined}
       wrapperClassName={options.className}
       onChange={(event) => autoSave.set({ [key]: event.target.value || null } as Partial<Customer>)}
@@ -169,7 +171,7 @@ export function CustomerDetailPage() {
             {field('home_street', t('field.street'), { className: 'sm:col-span-4' })}
             {field('home_zip', t('field.zip'))}
             {field('home_city', t('field.city'), { className: 'sm:col-span-2' })}
-            {field('home_country', t('field.country'))}
+            {field('home_country', t('field.country'), { fallback: default_country })}
           </div>
         </fieldset>
 
@@ -216,7 +218,7 @@ export function CustomerDetailPage() {
               {field('invoice_street', t('field.street'), { className: 'sm:col-span-4' })}
               {field('invoice_zip', t('field.zip'))}
               {field('invoice_city', t('field.city'), { className: 'sm:col-span-2' })}
-              {field('invoice_country', t('field.country'))}
+              {field('invoice_country', t('field.country'), { fallback: default_country })}
             </div>
           </fieldset>
         ) : (

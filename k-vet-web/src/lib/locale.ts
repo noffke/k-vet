@@ -1,4 +1,5 @@
 import { useTranslation } from 'react-i18next'
+import { useOperatorConfig } from '@/lib/config'
 import {
   currencySymbol,
   formatDate,
@@ -27,15 +28,17 @@ export function useLocaleFormat() {
   const locale: Locale = (['de-DE', 'en-US'] as string[]).includes(i18n.language)
     ? (i18n.language as Locale)
     : currentLocale()
+  // The operator's currency, not a hardcoded euro: the practice could be billed in CHF.
+  const { currency } = useOperatorConfig()
 
   return {
     locale,
     /** The currency sign alone — for a field that holds the amount without it. */
-    currencySymbol: currencySymbol(locale),
+    currencySymbol: currencySymbol(locale, currency),
     number: (value: string | number | null | undefined, options?: Intl.NumberFormatOptions) =>
       formatNumber(value, locale, options),
     quantity: (value: string | number | null | undefined) => formatQuantity(value, locale),
-    money: (value: string | number | null | undefined) => formatMoney(value, locale),
+    money: (value: string | number | null | undefined) => formatMoney(value, locale, currency),
     percent: (value: string | number | null | undefined) => formatPercent(value, locale),
     date: (value: string | null | undefined) => formatDate(value, locale),
     dateTime: (value: string | null | undefined) => formatDateTime(value, locale),

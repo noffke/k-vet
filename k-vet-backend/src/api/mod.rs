@@ -7,6 +7,7 @@ use crate::AppState;
 pub mod appointments;
 pub mod attachments;
 pub mod common;
+pub mod config;
 pub mod customers;
 pub mod dashboard;
 pub mod drugs;
@@ -28,6 +29,7 @@ pub fn protected_routes() -> Router<AppState> {
     Router::new()
         .merge(appointments::routes())
         .merge(attachments::routes())
+        .merge(config::routes())
         .merge(customers::routes())
         .merge(dashboard::routes())
         .merge(drugs::routes())
