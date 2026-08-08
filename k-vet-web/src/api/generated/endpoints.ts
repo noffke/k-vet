@@ -55,6 +55,7 @@ import type {
   ListLotsParams,
   ListManufacturersParams,
   ListPatientsParams,
+  ListRacesParams,
   ListServicesParams,
   ListSuppliersParams,
   ListTemplatesParams,
@@ -4478,6 +4479,108 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getCreatePatientMutationOptions(options), queryClient);
     }
+
+export const getListRacesUrl = (params?: ListRacesParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/patients/races?${stringifiedParams}` : `/api/patients/races`
+}
+
+export const listRaces = async (params?: ListRacesParams, options?: Parameters<typeof apiFetch>[1]): Promise<string[]> => {
+
+  return apiFetch<string[]>(getListRacesUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRacesQueryKey = (params?: ListRacesParams,) => {
+    return [
+    `/api/patients/races`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListRacesQueryOptions = <TData = Awaited<ReturnType<typeof listRaces>>, TError = unknown>(params?: ListRacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRaces>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRacesQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listRaces>>> = ({ signal }) => listRaces(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listRaces>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListRacesQueryResult = NonNullable<Awaited<ReturnType<typeof listRaces>>>
+export type ListRacesQueryError = unknown
+
+
+export function useListRaces<TData = Awaited<ReturnType<typeof listRaces>>, TError = unknown>(
+ params: undefined |  ListRacesParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRaces>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRaces>>,
+          TError,
+          Awaited<ReturnType<typeof listRaces>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRaces<TData = Awaited<ReturnType<typeof listRaces>>, TError = unknown>(
+ params?: ListRacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRaces>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listRaces>>,
+          TError,
+          Awaited<ReturnType<typeof listRaces>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListRaces<TData = Awaited<ReturnType<typeof listRaces>>, TError = unknown>(
+ params?: ListRacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRaces>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListRaces<TData = Awaited<ReturnType<typeof listRaces>>, TError = unknown>(
+ params?: ListRacesParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listRaces>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListRacesQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getGetPatientUrl = (id: number,) => {
 

@@ -2060,6 +2060,40 @@
         }
       }
     },
+    "/api/patients/races": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "listRaces",
+        "parameters": [
+          {
+            "name": "species",
+            "in": "query",
+            "description": "Only the races recorded for this Tierart; absent means all of them.",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Races already recorded, alphabetical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/patients/{id}": {
       "get": {
         "tags": [

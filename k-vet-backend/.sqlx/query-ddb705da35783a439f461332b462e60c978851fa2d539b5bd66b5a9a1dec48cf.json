@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT race FROM patient\n          WHERE race IS NOT NULL AND race <> ''\n            AND ($1::text IS NULL OR lower(species) = lower($1))\n          ORDER BY race",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "race",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "race"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "ddb705da35783a439f461332b462e60c978851fa2d539b5bd66b5a9a1dec48cf"
+}

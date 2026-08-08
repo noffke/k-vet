@@ -12,6 +12,7 @@ import {
   useArchivePatient,
   useGetPatient,
   useListPatientFiles,
+  useListRaces,
   usePatchPatient,
   useUnarchivePatient,
 } from '@/api/generated/endpoints'
@@ -45,6 +46,7 @@ export function PatientDetailPage() {
 
   const patient = useGetPatient(patientId)
   const files = useListPatientFiles(patientId)
+  const races = useListRaces({ species: patient.data?.species ?? undefined })
   const patchPatient = usePatchPatient()
   const archive = useArchivePatient()
   const unarchive = useUnarchivePatient()
@@ -190,7 +192,21 @@ export function PatientDetailPage() {
           <option value={t('species.cat')} />
           <option value={t('species.dog')} />
         </datalist>
-        {field('race', t('field.race'))}
+        {/* The breeds the practice has already seen for this Tierart — a dog's are no help
+            while entering a rabbit — plus free text for the first of a kind. */}
+        <TextField
+          label={t('field.race')}
+          list="race-options"
+          defaultValue={record.race ?? ''}
+          error={autoSave.fieldErrors.race ? t(autoSave.fieldErrors.race ?? '') : undefined}
+          onChange={(event) => autoSave.set({ race: event.target.value || null })}
+          onBlur={() => void autoSave.flush()}
+        />
+        <datalist id="race-options">
+          {(races.data ?? []).map((race) => (
+            <option key={race} value={race} />
+          ))}
+        </datalist>
         {field('colour', t('field.colour'))}
         {/* One decimal: NumberInput emits toFixed(decimals), so a second one never reaches the
             wire — the column is NUMERIC(5,1) and would otherwise round it away silently. */}

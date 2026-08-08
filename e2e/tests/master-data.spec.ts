@@ -129,6 +129,44 @@ test.describe('customers and patients', () => {
     await expect(page.getByPlaceholder('Suchen …')).toBeVisible()
   })
 
+  test('the Rasse field suggests what the practice already sees', async ({ page, request }) => {
+    const race = `Havaneser-${Date.now().toString().slice(-6)}`
+    const { customerId } = await seedCustomer(request)
+    const first = await seedPatient(request, customerId, 'Eddie')
+    const second = await seedPatient(request, customerId, 'Bella')
+    await signIn(page)
+
+    // Record the breed once …
+    await page.goto(`/patients/${first}`)
+    await page.getByLabel('Tierart').fill('Hund')
+    await page.getByLabel('Rasse').fill(race)
+    await page.getByLabel('Rasse').blur()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+
+    // … and the next dog is offered it.
+    // The fixture already records "Hund", so nothing is saved here — the suggestions are
+    // fetched for the species the record holds.
+    await page.goto(`/patients/${second}`)
+    await expect
+      .poll(async () =>
+        page
+          .locator('#race-options option')
+          .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('value'))),
+      )
+      .toContain(race)
+
+    // A rabbit is not offered a dog's breeds.
+    await page.getByLabel('Tierart').fill('Kaninchen')
+    await page.getByLabel('Tierart').blur()
+    await expect
+      .poll(async () =>
+        page
+          .locator('#race-options option')
+          .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('value'))),
+      )
+      .not.toContain(race)
+  })
+
   test('a date of death archives the patient and hides it from the list', async ({
     page,
     request,

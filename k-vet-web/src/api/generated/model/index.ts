@@ -43,6 +43,7 @@ export * from './listInvoicesParams';
 export * from './listLotsParams';
 export * from './listManufacturersParams';
 export * from './listPatientsParams';
+export * from './listRacesParams';
 export * from './listServicesParams';
 export * from './listSuppliersParams';
 export * from './listTemplatesParams';

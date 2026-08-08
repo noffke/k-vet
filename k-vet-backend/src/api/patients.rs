@@ -503,8 +503,46 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Patient> {
     })
 }
 
+#[derive(Debug, Default, Deserialize, utoipa::IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct RaceFilter {
+    /// Only the races recorded for this Tierart; absent means all of them.
+    pub species: Option<String>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/patients/races",
+    operation_id = "listRaces",
+    tag = "patients",
+    params(RaceFilter),
+    responses((status = 200, description = "Races already recorded, alphabetical", body = Vec<String>))
+)]
+pub async fn races(
+    State(state): State<AppState>,
+    Query(filter): Query<RaceFilter>,
+) -> AppResult<Json<Vec<String>>> {
+    // An editable select of what the practice has already seen. Scoped by Tierart, because
+    // the breeds of a dog are no help while entering a rabbit.
+    let species = filter
+        .species
+        .map(|value| value.trim().to_owned())
+        .filter(|value| !value.is_empty());
+    let races = sqlx::query_scalar!(
+        "SELECT DISTINCT race FROM patient
+          WHERE race IS NOT NULL AND race <> ''
+            AND ($1::text IS NULL OR lower(species) = lower($1))
+          ORDER BY race",
+        species,
+    )
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(Json(races.into_iter().flatten().collect()))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/patients/races", get(races))
         .route("/patients", get(list).post(create))
         .route("/patients/{id}", get(detail).patch(patch))
         .route("/patients/{id}/archive", post(archive))

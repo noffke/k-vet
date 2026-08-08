@@ -1441,6 +1441,14 @@ export const CreatePatientResponse = zod.object({
 })
 
 
+export const ListRacesQueryParams = zod.object({
+  "species": zod.string().optional().describe('Only the races recorded for this Tierart; absent means all of them.')
+})
+
+export const ListRacesResponseItem = zod.string()
+export const ListRacesResponse = zod.array(ListRacesResponseItem)
+
+
 export const GetPatientParams = zod.object({
   "id": zod.int()
 })
