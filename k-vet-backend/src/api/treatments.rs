@@ -36,6 +36,9 @@ pub struct Treatment {
     pub invoice: Option<TreatmentInvoice>,
     /// `true` once the invoice is accepted: lines and stock movements are frozen.
     pub frozen: bool,
+    /// The treatment changed after its invoice PDF was rendered, so the document on file no
+    /// longer shows what is billed. The PDF is only ever written when an invoice is created.
+    pub pdf_stale: bool,
     pub total_gross: Decimal,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
@@ -612,6 +615,21 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
     };
     let frozen = stock::treatment_is_frozen(&mut *connection, id).await?;
 
+    // The PDF is a file with a timestamp; the treatment carries one too, kept current by the
+    // triggers on its lines and its patients. Anything newer than the file is not in it.
+    let pdf_rendered_at = sqlx::query_scalar!(
+        "SELECT attachment.created_at
+           FROM invoice
+           JOIN attachment ON attachment.id = invoice.pdf_attachment_id
+          WHERE invoice.treatment_id = $1 AND invoice.status <> 'cancelled'
+          ORDER BY invoice.id DESC
+          LIMIT 1",
+        id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?;
+    let pdf_stale = pdf_rendered_at.is_some_and(|rendered| row.updated_at > rendered);
+
     Ok(Treatment {
         id: row.id,
         appointment_id: row.appointment_id,
@@ -631,6 +649,7 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
         customer_emails,
         invoice,
         frozen,
+        pdf_stale,
         total_gross: money::total_gross(&groups),
         created_at: row.created_at,
         updated_at: row.updated_at,

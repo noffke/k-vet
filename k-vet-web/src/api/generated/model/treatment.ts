@@ -28,6 +28,11 @@ export interface Treatment {
   invoice?: null | TreatmentInvoice;
   /** `true` once the invoice is accepted: lines and stock movements are frozen. */
   frozen: boolean;
+  /**
+     * The treatment changed after its invoice PDF was rendered, so the document on file no
+     * longer shows what is billed. The PDF is only ever written when an invoice is created.
+     */
+  pdf_stale: boolean;
   total_gross: string;
   created_at: string;
   updated_at: string;

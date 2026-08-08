@@ -6807,6 +6807,7 @@
           "patients",
           "customer_emails",
           "frozen",
+          "pdf_stale",
           "total_gross",
           "created_at",
           "updated_at"
@@ -6874,6 +6875,10 @@
           "frozen": {
             "type": "boolean",
             "description": "`true` once the invoice is accepted: lines and stock movements are frozen."
+          },
+          "pdf_stale": {
+            "type": "boolean",
+            "description": "The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created."
           },
           "total_gross": {
             "type": "string"

@@ -215,6 +215,7 @@
     "nothingPending": "Nothing pending — all handed over",
     "number": "Invoice number",
     "pdf": "PDF",
+    "pdfStale": "The positions changed after the PDF was made — create the invoice again.",
     "pending": "Not yet submitted to bookkeeping",
     "recipients": "Recipients",
     "searchPlaceholder": "Search invoice number or customer …",

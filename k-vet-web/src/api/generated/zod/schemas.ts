@@ -132,6 +132,7 @@ export const ListTreatmentsResponseItem = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -169,6 +170,7 @@ export const CreateTreatmentResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -2348,6 +2350,7 @@ export const GetTreatmentResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -2390,6 +2393,7 @@ export const PatchTreatmentResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -2465,6 +2469,7 @@ export const DuplicateTreatmentResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -2614,6 +2619,7 @@ export const AddTreatmentPatientResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -2645,6 +2651,7 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})

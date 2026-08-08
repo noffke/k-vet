@@ -215,6 +215,7 @@
     "nothingPending": "Nichts offen — alles übergeben",
     "number": "Rechnungsnummer",
     "pdf": "PDF",
+    "pdfStale": "Die Positionen haben sich geändert, seit das PDF erstellt wurde — Rechnung neu erstellen.",
     "pending": "Noch nicht an die Buchhaltung übergeben",
     "recipients": "Empfänger",
     "searchPlaceholder": "Rechnungsnummer oder Kunde suchen …",

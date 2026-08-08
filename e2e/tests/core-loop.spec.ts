@@ -86,6 +86,19 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   expect(pdf.status()).toBe(200)
   expect(pdf.headers()['content-type']).toBe('application/pdf')
 
+  // Changing a line after the PDF exists says so, and stops saying so once it is remade.
+  await expect(page.getByText(/PDF erstellt wurde/)).toHaveCount(0)
+  // Renaming a line is enough — the trigger fires on any write, and this one moves neither
+  // the stock nor the total, which the rest of this test still asserts.
+  await page.getByLabel('Name').first().fill('Impfstoff, umbenannt')
+  await page.getByLabel('Name').first().blur()
+  await expect(page.getByText(/PDF erstellt wurde/)).toBeVisible()
+  await page.getByRole('button', { name: 'Rechnung aktualisieren' }).click()
+  const remadeTab = page.context().waitForEvent('page')
+  await page.getByRole('button', { name: 'Rechnung aktualisieren' }).last().click()
+  await (await remadeTab).close()
+  await expect(page.getByText(/PDF erstellt wurde/)).toHaveCount(0)
+
   // ── Accept it, with the customer's address as recipient ─────────────────────
   await page.getByRole('button', { name: 'Rechnung freigeben' }).click()
   await expect(page.getByLabel('erika@example.com')).toBeChecked()

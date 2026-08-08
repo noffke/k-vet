@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT attachment.created_at\n           FROM invoice\n           JOIN attachment ON attachment.id = invoice.pdf_attachment_id\n          WHERE invoice.treatment_id = $1 AND invoice.status <> 'cancelled'\n          ORDER BY invoice.id DESC\n          LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "attachment",
+            "name": "created_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b41b97e2aa5cc880a0d27366fbe22fcaee400be4290bdff07722021519aae57d"
+}
