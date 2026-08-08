@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Ban, FileText, Mail, ReceiptText } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetInvoiceQueryKey,
@@ -39,6 +39,9 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
   const [note, setNote] = useState('')
   const [recipients, setRecipients] = useState<string[]>([])
   const [extraRecipient, setExtraRecipient] = useState('')
+  // Opened empty on the click and pointed at the PDF when it exists: a tab opened from an
+  // awaited mutation is a popup, and every browser blocks that.
+  const pdfTab = useRef<Window | null>(null)
 
   const invoiceId = treatment.invoice?.id
   const invoice = useGetInvoice(invoiceId ?? 0, { query: { enabled: Boolean(invoiceId) } })
@@ -52,9 +55,17 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
 
   const createInvoice = useCreateInvoice({
     mutation: {
-      onSuccess: async () => {
+      onSuccess: async (created) => {
         setCreateOpen(false)
+        if (pdfTab.current && !pdfTab.current.closed) {
+          pdfTab.current.location.href = getInvoicePdfUrl(created.id)
+        }
+        pdfTab.current = null
         await refresh()
+      },
+      onError: () => {
+        pdfTab.current?.close()
+        pdfTab.current = null
       },
     },
   })
@@ -83,7 +94,8 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
   const live = treatment.invoice && !isCancelled ? treatment.invoice : null
 
   const openCreateDialog = () => {
-    setIncludesFinding(invoice.data?.includes_finding ?? false)
+    // A new invoice lists the finding; an existing one opens with what it was created with.
+    setIncludesFinding(invoice.data?.includes_finding ?? true)
     setNote(invoice.data?.note ?? '')
     setCreateOpen(true)
   }
@@ -180,12 +192,13 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
             <Button
               variant="primary"
               disabled={createInvoice.isPending}
-              onClick={() =>
+              onClick={() => {
+                pdfTab.current = window.open('', '_blank')
                 createInvoice.mutate({
                   id: treatment.id,
                   data: { includes_finding: includesFinding, note: note || null },
                 })
-              }
+              }}
             >
               {live ? t('invoices.update') : t('invoices.create')}
             </Button>

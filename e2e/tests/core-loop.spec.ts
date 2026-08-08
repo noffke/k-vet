@@ -59,8 +59,19 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
 
   // ── Invoice with the finding printed ────────────────────────────────────────
   await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
-  await page.getByLabel('Befund aufführen').check()
+  // The Befund is listed by default now, so the box is already ticked.
+  await expect(page.getByLabel('Befund aufführen')).toBeChecked()
+  // And the PDF opens by itself, in a tab held open from the click. Headless Chromium has no
+  // PDF viewer and turns the navigation into a download, so the tab's own URL stays
+  // about:blank — what proves it is the request the tab makes.
+  const openedTab = page.context().waitForEvent('page')
+  const pdfRequest = page.context().waitForEvent('request', {
+    predicate: (request) => /\/api\/invoices\/\d+\/pdf$/.test(request.url()),
+  })
   await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
+  const pdfTab = await openedTab
+  await pdfRequest
+  await pdfTab.close()
 
   // The panel shows the number and the status in one line, so read the number out of it.
   const panelText = await page.getByText(/\d{4}-\d{4}/).first().innerText()
