@@ -1,22 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { useParams } from '@tanstack/react-router'
+import { Link, useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import {
-  getGetTreatmentQueryKey,
-  useGetTreatment,
-  useListTreatmentItems,
-  usePatchTreatment,
-} from '@/api/generated/endpoints'
-import type { Treatment } from '@/api/generated/model'
+import { useGetTreatment, useListTreatmentItems } from '@/api/generated/endpoints'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
-import { SaveIndicator } from '@/components/SaveIndicator'
-import { TextAreaField } from '@/components/ui/field'
 import { WarningBanner } from '@/components/WarningBanner'
 import { InvoicePanel } from '@/features/treatments/InvoicePanel'
 import { LineEditor } from '@/features/treatments/LineEditor'
 import { PatientAttach } from '@/features/treatments/PatientAttach'
-import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 
 /**
@@ -28,21 +18,10 @@ export function TreatmentPage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/treatments/$id' })
   const treatmentId = Number(id)
-  const client = useQueryClient()
   const { dateTime } = useLocaleFormat()
 
   const treatment = useGetTreatment(treatmentId)
   const items = useListTreatmentItems(treatmentId)
-  const patchTreatment = usePatchTreatment()
-
-  const autoSave = useAutoSave<Treatment>({
-    save: (patch) =>
-      patchTreatment.mutateAsync({
-        id: treatmentId,
-        data: patch as Parameters<typeof patchTreatment.mutateAsync>[0]['data'],
-      }),
-    onSaved: (updated) => client.setQueryData(getGetTreatmentQueryKey(treatmentId), updated),
-  })
 
   if (treatment.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!treatment.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
@@ -61,7 +40,7 @@ export function TreatmentPage() {
           />
         }
         title={record.patients.map((patient) => patient.name).join(', ') || t('treatments.title')}
-        actions={<SaveIndicator state={autoSave.state} error={autoSave.error} />}
+        actions={<span className="text-sm text-ink-faint">{t('save.hint')}</span>}
       />
 
       {warnings.map((patient) => (
@@ -73,24 +52,26 @@ export function TreatmentPage() {
         />
       ))}
 
-      <section className="mt-5 flex flex-col gap-4 rounded-card border border-line bg-surface p-4">
-        <TextAreaField
-          label={t('field.treatmentReason')}
-          defaultValue={record.treatment_reason ?? ''}
-          disabled={record.frozen}
-          onChange={(event) => autoSave.set({ treatment_reason: event.target.value || null })}
-          onBlur={() => void autoSave.flush()}
-        />
-        <TextAreaField
-          label={t('field.finding')}
-          defaultValue={record.finding ?? ''}
-          disabled={record.frozen}
-          onChange={(event) => autoSave.set({ finding: event.target.value || null })}
-          onBlur={() => void autoSave.flush()}
-        />
-      </section>
-
       <PatientAttach treatment={record} />
+
+      {/* Why each animal was seen and what was found is its own record — two animals brought
+          in together are rarely brought in for the same thing. */}
+      <ul className="mt-3 flex flex-col gap-2">
+        {record.patients.map((patient) => (
+          <li key={patient.id}>
+            <Link
+              to="/patient-treatments/$id"
+              params={{ id: String(patient.id) }}
+              className="block rounded-card border border-line bg-surface px-3 py-2.5 hover:bg-cream-soft"
+            >
+              <span className="font-medium text-ink">{patient.name}</span>
+              <span className="ml-2 text-sm text-ink-soft">
+                {patient.treatment_reason ?? t('treatments.noReason')}
+              </span>
+            </Link>
+          </li>
+        ))}
+      </ul>
 
       <LineEditor treatment={record} items={items.data ?? []} readOnly={record.frozen} />
 

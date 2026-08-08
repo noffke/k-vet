@@ -15,8 +15,12 @@ export interface PatchTreatmentItem {
   name?: string | null;
   /** @nullable */
   factor?: string | null;
-  /** @nullable */
-  patient_id?: number | null;
+  /**
+     * Moves the line to another animal, or out of all of them. It lands at the end of the
+     * target's order; its dispensed lots follow, because they hang off the line.
+     * @nullable
+     */
+  patient_treatment_id?: number | null;
   /** @nullable */
   km?: string | null;
   /** @nullable */

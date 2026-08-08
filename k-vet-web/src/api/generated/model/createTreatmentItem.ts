@@ -20,10 +20,10 @@ export interface CreateTreatmentItem {
      */
   service_id?: number | null;
   /**
-     * Defaults to the treatment's only patient when there is exactly one.
+     * Defaults to the treatment's only Patientenbehandlung when there is exactly one.
      * @nullable
      */
-  patient_id?: number | null;
+  patient_treatment_id?: number | null;
   quantity?: string;
   /**
      * Travel-expense lines: kilometres driven (one way).

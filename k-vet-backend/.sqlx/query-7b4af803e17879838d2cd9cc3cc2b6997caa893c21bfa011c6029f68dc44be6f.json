@@ -1,0 +1,194 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, record.patient_id AS \"patient_id?\",\n                  item.name, item.quantity, item.unit, item.factor, item.got_number,\n                  item.price_net, item.vat_percent, item.km, item.km_multiplier,\n                  item.redesignation\n           FROM treatment_item item\n           LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind: TreatmentItemKind",
+        "type_info": {
+          "Custom": {
+            "name": "treatment_item_kind",
+            "kind": {
+              "Enum": [
+                "drug_packaging",
+                "service"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "drug_packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "drug_packaging_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "service_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "service_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "patient_id?",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "patient_id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "factor",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "factor"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "got_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "got_number"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "km",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "km"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "km_multiplier",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "km_multiplier"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "redesignation",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "redesignation"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      false
+    ]
+  },
+  "hash": "7b4af803e17879838d2cd9cc3cc2b6997caa893c21bfa011c6029f68dc44be6f"
+}

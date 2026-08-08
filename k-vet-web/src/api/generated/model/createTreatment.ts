@@ -7,10 +7,9 @@
  */
 
 export interface CreateTreatment {
-  /** @nullable */
-  treatment_reason?: string | null;
-  /** @nullable */
-  finding?: string | null;
-  /** Patients to attach right away; all must belong to one customer. */
+  /**
+     * Patients to attach right away; all must belong to one customer. Each gets its own
+     * Patientenbehandlung.
+     */
   patient_ids?: number[];
 }

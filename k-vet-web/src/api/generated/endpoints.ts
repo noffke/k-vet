@@ -74,14 +74,15 @@ import type {
   PatchPackaging,
   PatchPatient,
   PatchPatientFile,
+  PatchPatientTreatment,
   PatchService,
   PatchSettings,
   PatchTemplate,
   PatchTemplateItem,
-  PatchTreatment,
   PatchTreatmentItem,
   Patient,
   PatientFile,
+  PatientTreatment,
   PickerItem,
   PickerItemsParams,
   PricePreview,
@@ -4313,6 +4314,262 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getPatchPatientFileMutationOptions(options), queryClient);
     }
 
+export const getGetPatientTreatmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/patient-treatments/${id}`
+}
+
+export const getPatientTreatment = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<PatientTreatment> => {
+
+  return apiFetch<PatientTreatment>(getGetPatientTreatmentUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPatientTreatmentQueryKey = (id: number,) => {
+    return [
+    `/api/patient-treatments/${id}`
+    ] as const;
+    }
+
+
+export const getGetPatientTreatmentQueryOptions = <TData = Awaited<ReturnType<typeof getPatientTreatment>>, TError = void>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPatientTreatment>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPatientTreatmentQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPatientTreatment>>> = ({ signal }) => getPatientTreatment(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPatientTreatment>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPatientTreatmentQueryResult = NonNullable<Awaited<ReturnType<typeof getPatientTreatment>>>
+export type GetPatientTreatmentQueryError = void
+
+
+export function useGetPatientTreatment<TData = Awaited<ReturnType<typeof getPatientTreatment>>, TError = void>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPatientTreatment>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPatientTreatment>>,
+          TError,
+          Awaited<ReturnType<typeof getPatientTreatment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPatientTreatment<TData = Awaited<ReturnType<typeof getPatientTreatment>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPatientTreatment>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPatientTreatment>>,
+          TError,
+          Awaited<ReturnType<typeof getPatientTreatment>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPatientTreatment<TData = Awaited<ReturnType<typeof getPatientTreatment>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPatientTreatment>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetPatientTreatment<TData = Awaited<ReturnType<typeof getPatientTreatment>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPatientTreatment>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPatientTreatmentQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPatchPatientTreatmentUrl = (id: number,) => {
+
+
+
+
+  return `/api/patient-treatments/${id}`
+}
+
+export const patchPatientTreatment = async (id: number,
+    patchPatientTreatment: PatchPatientTreatment, options?: Parameters<typeof apiFetch>[1]): Promise<PatientTreatment> => {
+
+  return apiFetch<PatientTreatment>(getPatchPatientTreatmentUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(patchPatientTreatment)
+  }
+);}
+
+
+
+
+
+export const getPatchPatientTreatmentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchPatientTreatment>>, TError,{id: number;data: PatchPatientTreatment}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchPatientTreatment>>, TError,{id: number;data: PatchPatientTreatment}, TContext> => {
+
+const mutationKey = ['patchPatientTreatment'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchPatientTreatment>>, {id: number;data: PatchPatientTreatment}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchPatientTreatment(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchPatientTreatmentMutationResult = NonNullable<Awaited<ReturnType<typeof patchPatientTreatment>>>
+    export type PatchPatientTreatmentMutationBody = PatchPatientTreatment
+    export type PatchPatientTreatmentMutationError = void
+
+    export const usePatchPatientTreatment = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchPatientTreatment>>, TError,{id: number;data: PatchPatientTreatment}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchPatientTreatment>>,
+        TError,
+        {id: number;data: PatchPatientTreatment},
+        TContext
+      > => {
+      return useMutation(getPatchPatientTreatmentMutationOptions(options), queryClient);
+    }
+
+export const getListPatientTreatmentFilesUrl = (id: number,) => {
+
+
+
+
+  return `/api/patient-treatments/${id}/files`
+}
+
+export const listPatientTreatmentFiles = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<PatientFile[]> => {
+
+  return apiFetch<PatientFile[]>(getListPatientTreatmentFilesUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPatientTreatmentFilesQueryKey = (id: number,) => {
+    return [
+    `/api/patient-treatments/${id}/files`
+    ] as const;
+    }
+
+
+export const getListPatientTreatmentFilesQueryOptions = <TData = Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError = unknown>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPatientTreatmentFilesQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPatientTreatmentFiles>>> = ({ signal }) => listPatientTreatmentFiles(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPatientTreatmentFilesQueryResult = NonNullable<Awaited<ReturnType<typeof listPatientTreatmentFiles>>>
+export type ListPatientTreatmentFilesQueryError = unknown
+
+
+export function useListPatientTreatmentFiles<TData = Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError = unknown>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPatientTreatmentFiles>>,
+          TError,
+          Awaited<ReturnType<typeof listPatientTreatmentFiles>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPatientTreatmentFiles<TData = Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPatientTreatmentFiles>>,
+          TError,
+          Awaited<ReturnType<typeof listPatientTreatmentFiles>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPatientTreatmentFiles<TData = Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListPatientTreatmentFiles<TData = Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentFiles>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPatientTreatmentFilesQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getListPatientsUrl = (params?: ListPatientsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -7638,72 +7895,6 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDeleteTreatmentMutationOptions(options), queryClient);
-    }
-
-export const getPatchTreatmentUrl = (id: number,) => {
-
-
-
-
-  return `/api/treatments/${id}`
-}
-
-export const patchTreatment = async (id: number,
-    patchTreatment: PatchTreatment, options?: Parameters<typeof apiFetch>[1]): Promise<Treatment> => {
-
-  return apiFetch<Treatment>(getPatchTreatmentUrl(id),
-  {
-    ...options,
-    method: 'PATCH',
-    headers: { 'Content-Type': 'application/json', ...options?.headers },
-    body: JSON.stringify(patchTreatment)
-  }
-);}
-
-
-
-
-
-export const getPatchTreatmentMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchTreatment>>, TError,{id: number;data: PatchTreatment}, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof patchTreatment>>, TError,{id: number;data: PatchTreatment}, TContext> => {
-
-const mutationKey = ['patchTreatment'];
-const {mutation: mutationOptions, request: requestOptions} = options ?
-      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
-      options
-      : {...options, mutation: {...options.mutation, mutationKey}}
-      : {mutation: { mutationKey, }, request: undefined};
-
-
-
-
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchTreatment>>, {id: number;data: PatchTreatment}> = (props) => {
-          const {id,data} = props ?? {};
-
-          return  patchTreatment(id,data,requestOptions)
-        }
-
-
-
-
-
-
-  return  { mutationFn, ...mutationOptions }}
-
-    export type PatchTreatmentMutationResult = NonNullable<Awaited<ReturnType<typeof patchTreatment>>>
-    export type PatchTreatmentMutationBody = PatchTreatment
-    export type PatchTreatmentMutationError = void
-
-    export const usePatchTreatment = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchTreatment>>, TError,{id: number;data: PatchTreatment}, TContext>, request?: SecondParameter<typeof apiFetch>}
- , queryClient?: QueryClient): UseMutationResult<
-        Awaited<ReturnType<typeof patchTreatment>>,
-        TError,
-        {id: number;data: PatchTreatment},
-        TContext
-      > => {
-      return useMutation(getPatchTreatmentMutationOptions(options), queryClient);
     }
 
 export const getApplyTemplateUrl = (id: number,) => {

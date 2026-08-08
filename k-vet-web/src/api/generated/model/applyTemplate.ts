@@ -8,4 +8,10 @@
 
 export interface ApplyTemplate {
   template_id: number;
+  /**
+     * The animal the group's lines are for. Absent means the treatment's only animal, and
+     * with several it means none of them — which its drug lines will refuse.
+     * @nullable
+     */
+  patient_treatment_id?: number | null;
 }

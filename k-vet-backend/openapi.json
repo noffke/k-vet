@@ -329,7 +329,7 @@
         ],
         "operationId": "uploadAttachment",
         "requestBody": {
-          "description": "multipart/form-data with a `file` part plus optional `kind`, `patient_id`, `treatment_id`, `reference_date` and `note` parts",
+          "description": "multipart/form-data with a `file` part plus optional `kind`, `patient_id`, `patient_treatment_id`, `reference_date` and `note` parts",
           "content": {
             "multipart/form-data": {
               "schema": {
@@ -1961,6 +1961,116 @@
         }
       }
     },
+    "/api/patient-treatments/{id}": {
+      "get": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "getPatientTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientTreatment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "patchPatientTreatment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchPatientTreatment"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PatientTreatment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/patient-treatments/{id}/files": {
+      "get": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "listPatientTreatmentFiles",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PatientFile"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/patients": {
       "get": {
         "tags": [
@@ -3544,51 +3654,6 @@
             "description": ""
           }
         }
-      },
-      "patch": {
-        "tags": [
-          "treatments"
-        ],
-        "operationId": "patchTreatment",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PatchTreatment"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Treatment"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": ""
-          },
-          "409": {
-            "description": ""
-          }
-        }
       }
     },
     "/api/treatments/{id}/apply-template": {
@@ -4004,6 +4069,14 @@
           "template_id": {
             "type": "integer",
             "format": "int64"
+          },
+          "patient_treatment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The animal the group's lines are for. Absent means the treatment's only animal, and\nwith several it means none of them — which its drug lines will refuse."
           }
         }
       },
@@ -4103,7 +4176,7 @@
             ],
             "format": "int64"
           },
-          "treatment_id": {
+          "patient_treatment_id": {
             "type": [
               "integer",
               "null"
@@ -4329,25 +4402,13 @@
       "CreateTreatment": {
         "type": "object",
         "properties": {
-          "treatment_reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "finding": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "patient_ids": {
             "type": "array",
             "items": {
               "type": "integer",
               "format": "int64"
             },
-            "description": "Patients to attach right away; all must belong to one customer."
+            "description": "Patients to attach right away; all must belong to one customer. Each gets its own\nPatientenbehandlung."
           }
         }
       },
@@ -4376,13 +4437,13 @@
             "format": "int64",
             "description": "Required for `service` lines."
           },
-          "patient_id": {
+          "patient_treatment_id": {
             "type": [
               "integer",
               "null"
             ],
             "format": "int64",
-            "description": "Defaults to the treatment's only patient when there is exactly one."
+            "description": "Defaults to the treatment's only Patientenbehandlung when there is exactly one."
           },
           "quantity": {
             "type": "string"
@@ -5835,6 +5896,23 @@
           }
         }
       },
+      "PatchPatientTreatment": {
+        "type": "object",
+        "properties": {
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finding": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "PatchService": {
         "type": "object",
         "properties": {
@@ -5994,23 +6072,6 @@
           }
         }
       },
-      "PatchTreatment": {
-        "type": "object",
-        "properties": {
-          "treatment_reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "finding": {
-            "type": [
-              "string",
-              "null"
-            ]
-          }
-        }
-      },
       "PatchTreatmentItem": {
         "type": "object",
         "properties": {
@@ -6038,12 +6099,13 @@
               "null"
             ]
           },
-          "patient_id": {
+          "patient_treatment_id": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "int64"
+            "format": "int64",
+            "description": "Moves the line to another animal, or out of all of them. It lands at the end of the\ntarget's order; its dispensed lots follow, because they hang off the line."
           },
           "km": {
             "type": [
@@ -6244,6 +6306,69 @@
             "type": "boolean"
           },
           "created_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
+      "PatientTreatment": {
+        "type": "object",
+        "required": [
+          "id",
+          "treatment_id",
+          "patient_id",
+          "frozen",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "treatment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "patient_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "patient_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "The visit's date, for the page's heading — the record has no date of its own."
+          },
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finding": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "frozen": {
+            "type": "boolean",
+            "description": "`true` once the treatment's invoice is accepted: the record reads read-only."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
             "type": "string",
             "format": "date-time"
           }
@@ -6828,23 +6953,12 @@
             ],
             "format": "date-time"
           },
-          "treatment_reason": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
-          "finding": {
-            "type": [
-              "string",
-              "null"
-            ]
-          },
           "patients": {
             "type": "array",
             "items": {
               "$ref": "#/components/schemas/TreatmentPatient"
-            }
+            },
+            "description": "One record per animal, each with its own reason, finding and positions."
           },
           "customer_id": {
             "type": [
@@ -6962,12 +7076,13 @@
             ],
             "format": "int64"
           },
-          "patient_id": {
+          "patient_treatment_id": {
             "type": [
               "integer",
               "null"
             ],
-            "format": "int64"
+            "format": "int64",
+            "description": "The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them."
           },
           "name": {
             "type": "string",
@@ -7059,11 +7174,17 @@
       "TreatmentPatient": {
         "type": "object",
         "required": [
+          "id",
           "patient_id",
           "name",
           "customer_id"
         ],
         "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The Patientenbehandlung — what positions and files hang on."
+          },
           "patient_id": {
             "type": "integer",
             "format": "int64"
@@ -7076,6 +7197,18 @@
             "format": "int64"
           },
           "warning_remark": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "finding": {
             "type": [
               "string",
               "null"

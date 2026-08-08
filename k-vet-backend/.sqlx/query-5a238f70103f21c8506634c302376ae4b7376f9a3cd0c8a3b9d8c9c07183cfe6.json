@@ -1,0 +1,100 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT invoice.invoice_number, invoice.invoice_date, invoice.due_date,\n                  invoice.includes_finding,\n                  invoice.note, invoice.treatment_id,\n                  appointment.starts_at\n           FROM invoice\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE invoice.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "invoice_number",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_number"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "invoice_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_date"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "due_date",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "due_date"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "includes_finding",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "includes_finding"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true
+    ]
+  },
+  "hash": "5a238f70103f21c8506634c302376ae4b7376f9a3cd0c8a3b9d8c9c07183cfe6"
+}

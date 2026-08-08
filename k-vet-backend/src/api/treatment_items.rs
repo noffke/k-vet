@@ -30,7 +30,9 @@ pub struct TreatmentItem {
     pub kind: TreatmentItemKind,
     pub drug_packaging_id: Option<i64>,
     pub service_id: Option<i64>,
-    pub patient_id: Option<i64>,
+    /// The Patientenbehandlung this line belongs to, or null for a line that covers the
+    /// visit rather than one animal — the Wegegeld of a house call for two of them.
+    pub patient_treatment_id: Option<i64>,
     /// Copied from the catalog; the vet may override it per line.
     pub name: String,
     pub quantity: Decimal,
@@ -75,8 +77,8 @@ pub struct CreateTreatmentItem {
     pub drug_packaging_id: Option<i64>,
     /// Required for `service` lines.
     pub service_id: Option<i64>,
-    /// Defaults to the treatment's only patient when there is exactly one.
-    pub patient_id: Option<i64>,
+    /// Defaults to the treatment's only Patientenbehandlung when there is exactly one.
+    pub patient_treatment_id: Option<i64>,
     #[serde(default = "one")]
     pub quantity: Decimal,
     /// Travel-expense lines: kilometres driven (one way).
@@ -98,8 +100,11 @@ pub struct PatchTreatmentItem {
     pub price_net: Option<Decimal>,
     pub name: Option<String>,
     pub factor: Option<Decimal>,
+    /// Moves the line to another animal, or out of all of them. It lands at the end of the
+    /// target's order; its dispensed lots follow, because they hang off the line.
     #[serde(default, deserialize_with = "double_option")]
-    pub patient_id: Option<Option<i64>>,
+    #[schema(value_type = Option<i64>)]
+    pub patient_treatment_id: Option<Option<i64>>,
     #[serde(default, deserialize_with = "double_option")]
     pub km: Option<Option<Decimal>>,
     #[serde(default, deserialize_with = "double_option")]
@@ -250,7 +255,7 @@ pub async fn create(
         body.kind,
         reference_id,
         body.quantity,
-        body.patient_id,
+        body.patient_treatment_id,
         body.km,
         body.km_multiplier,
         body.redesignation,
@@ -276,7 +281,7 @@ pub async fn insert_pinned_item(
     kind: TreatmentItemKind,
     reference_id: i64,
     quantity: Decimal,
-    patient_id: Option<i64>,
+    patient_treatment_id: Option<i64>,
     km: Option<Decimal>,
     km_multiplier: Option<Decimal>,
     redesignation: bool,
@@ -292,13 +297,17 @@ pub async fn insert_pinned_item(
         None => catalog_line(transaction, kind, reference_id).await?,
     };
 
-    // A treatment with exactly one patient preselects it (FR-028); drug lines require one.
-    let patient_id = match patient_id {
-        Some(id) => Some(validate_patient(transaction, treatment_id, id).await?),
-        None => sole_patient(transaction, treatment_id).await?,
+    // A treatment with exactly one animal preselects it (FR-028); drug lines require one,
+    // because that is what ties a dispensed batch to the animal that received it.
+    let patient_treatment_id = match patient_treatment_id {
+        Some(id) => Some(validate_record(transaction, treatment_id, id).await?),
+        None => sole_record(transaction, treatment_id).await?,
     };
-    if kind == TreatmentItemKind::DrugPackaging && patient_id.is_none() {
-        return Err(AppError::field("patient_id", "item.patientRequired"));
+    if kind == TreatmentItemKind::DrugPackaging && patient_treatment_id.is_none() {
+        return Err(AppError::field(
+            "patient_treatment_id",
+            "item.patientRequired",
+        ));
     }
 
     // A travel-expense line is priced from the distance per GOT § 10; every other line
@@ -310,13 +319,7 @@ pub async fn insert_pinned_item(
         _ => catalog.price_net,
     };
 
-    let position: i32 = sqlx::query_scalar!(
-        "SELECT COALESCE(MAX(position), 0) + 1 FROM treatment_item WHERE treatment_id = $1",
-        treatment_id,
-    )
-    .fetch_one(&mut **transaction)
-    .await?
-    .unwrap_or(1);
+    let position = next_position(transaction, treatment_id, patient_treatment_id).await?;
 
     let (packaging_id, service_id) = match kind {
         TreatmentItemKind::DrugPackaging => (Some(reference_id), None),
@@ -325,7 +328,7 @@ pub async fn insert_pinned_item(
 
     let item_id: i64 = sqlx::query_scalar!(
         r#"INSERT INTO treatment_item
-               (treatment_id, position, kind, drug_packaging_id, service_id, patient_id,
+               (treatment_id, position, kind, drug_packaging_id, service_id, patient_treatment_id,
                 name, quantity, unit, factor, got_number, price_net, vat_percent,
                 km, km_multiplier, redesignation)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
@@ -335,7 +338,7 @@ pub async fn insert_pinned_item(
         kind as TreatmentItemKind,
         packaging_id,
         service_id,
-        patient_id,
+        patient_treatment_id,
         catalog.name,
         quantity,
         catalog.unit,
@@ -377,7 +380,7 @@ pub async fn patch(
     // travel flag is read separately.
     let current = sqlx::query!(
         r#"SELECT treatment_id, kind AS "kind: TreatmentItemKind", drug_packaging_id, quantity,
-                  patient_id, km, km_multiplier, service_id
+                  patient_treatment_id, position, km, km_multiplier, service_id
            FROM treatment_item WHERE id = $1 FOR UPDATE"#,
         id,
     )
@@ -392,12 +395,31 @@ pub async fn patch(
     {
         return Err(AppError::field("quantity", "value.mustBePositive"));
     }
-    if let Some(Some(patient_id)) = body.patient_id {
-        validate_patient(&mut transaction, current.treatment_id, patient_id).await?;
+    if let Some(Some(record_id)) = body.patient_treatment_id {
+        validate_record(&mut transaction, current.treatment_id, record_id).await?;
     }
-    if current.kind == TreatmentItemKind::DrugPackaging && body.patient_id == Some(None) {
-        return Err(AppError::field("patient_id", "item.patientRequired"));
+    if current.kind == TreatmentItemKind::DrugPackaging && body.patient_treatment_id == Some(None) {
+        return Err(AppError::field(
+            "patient_treatment_id",
+            "item.patientRequired",
+        ));
     }
+
+    // Moving a line to another animal takes it out of one order and puts it at the end of
+    // the other's, so the positions on both sides stay 1..n.
+    let moved_to = match body.patient_treatment_id {
+        Some(target) if target != current.patient_treatment_id => {
+            close_position_gap(
+                &mut transaction,
+                current.treatment_id,
+                current.patient_treatment_id,
+                current.position,
+            )
+            .await?;
+            Some(next_position(&mut transaction, current.treatment_id, target).await?)
+        }
+        _ => None,
+    };
 
     let travel_service = match current.service_id {
         Some(service_id) => sqlx::query_scalar!(
@@ -436,7 +458,8 @@ pub async fn patch(
                price_net   = COALESCE($3, price_net),
                name          = COALESCE($4, name),
                factor        = CASE WHEN $5 THEN $6 ELSE factor END,
-               patient_id    = CASE WHEN $7 THEN $8 ELSE patient_id END,
+               patient_treatment_id = CASE WHEN $7 THEN $8 ELSE patient_treatment_id END,
+               position      = COALESCE($14, position),
                km            = CASE WHEN $9 THEN $10 ELSE km END,
                km_multiplier = CASE WHEN $11 THEN $12 ELSE km_multiplier END,
                redesignation = COALESCE($13, redesignation)
@@ -447,13 +470,14 @@ pub async fn patch(
         body.name,
         body.factor.is_some(),
         body.factor,
-        body.patient_id.is_some(),
-        body.patient_id.flatten(),
+        body.patient_treatment_id.is_some(),
+        body.patient_treatment_id.flatten(),
         body.km.is_some(),
         body.km.flatten(),
         body.km_multiplier.is_some(),
         body.km_multiplier.flatten(),
         body.redesignation,
+        moved_to,
     )
     .execute(&mut *transaction)
     .await?;
@@ -481,7 +505,7 @@ pub async fn patch(
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
     let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        "SELECT treatment_id, position FROM treatment_item WHERE id = $1",
+        "SELECT treatment_id, patient_treatment_id, position FROM treatment_item WHERE id = $1",
         id
     )
     .fetch_optional(&mut *transaction)
@@ -524,7 +548,7 @@ pub async fn move_item(
 ) -> AppResult<Json<Vec<TreatmentItem>>> {
     let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        "SELECT treatment_id, position FROM treatment_item WHERE id = $1",
+        "SELECT treatment_id, patient_treatment_id, position FROM treatment_item WHERE id = $1",
         id
     )
     .fetch_optional(&mut *transaction)
@@ -535,6 +559,7 @@ pub async fn move_item(
     reorder(
         &mut transaction,
         current.treatment_id,
+        current.patient_treatment_id,
         id,
         current.position,
         body.direction,
@@ -550,18 +575,23 @@ pub async fn move_item(
 
 /// Moves a line one step up or down, or to the top or bottom (FR-029).
 ///
-/// The `UNIQUE (treatment_id, position)` index is `DEFERRABLE INITIALLY DEFERRED`, so
-/// positions may collide inside the transaction and are checked once at commit.
+/// Within its own animal: the treatment page shows one group per animal, and the top of a
+/// group is not the top of the invoice. The `UNIQUE (treatment_id, patient_treatment_id,
+/// position)` constraint is `DEFERRABLE INITIALLY DEFERRED`, so positions may collide inside
+/// the transaction and are checked once at commit.
 async fn reorder(
     transaction: &mut Transaction<'_, Postgres>,
     treatment_id: i64,
+    patient_treatment_id: Option<i64>,
     id: i64,
     position: i32,
     direction: MoveDirection,
 ) -> AppResult<()> {
     let max_position: i32 = sqlx::query_scalar!(
-        "SELECT COALESCE(MAX(position), 0) FROM treatment_item WHERE treatment_id = $1",
+        "SELECT COALESCE(MAX(position), 0) FROM treatment_item
+          WHERE treatment_id = $1 AND patient_treatment_id IS NOT DISTINCT FROM $2",
         treatment_id,
+        patient_treatment_id,
     )
     .fetch_one(&mut **transaction)
     .await?
@@ -580,9 +610,11 @@ async fn reorder(
             // Swap with the neighbour.
             sqlx::query!(
                 "UPDATE treatment_item SET position = $1
-                 WHERE treatment_id = $2 AND position = $3",
+                 WHERE treatment_id = $2 AND patient_treatment_id IS NOT DISTINCT FROM $3
+                   AND position = $4",
                 position,
                 treatment_id,
+                patient_treatment_id,
                 target,
             )
             .execute(&mut **transaction)
@@ -601,8 +633,10 @@ async fn reorder(
             }
             sqlx::query!(
                 "UPDATE treatment_item SET position = position + 1
-                 WHERE treatment_id = $1 AND position < $2",
+                 WHERE treatment_id = $1 AND patient_treatment_id IS NOT DISTINCT FROM $2
+                   AND position < $3",
                 treatment_id,
+                patient_treatment_id,
                 position,
             )
             .execute(&mut **transaction)
@@ -617,8 +651,10 @@ async fn reorder(
             }
             sqlx::query!(
                 "UPDATE treatment_item SET position = position - 1
-                 WHERE treatment_id = $1 AND position > $2",
+                 WHERE treatment_id = $1 AND patient_treatment_id IS NOT DISTINCT FROM $2
+                   AND position > $3",
                 treatment_id,
+                patient_treatment_id,
                 position,
             )
             .execute(&mut **transaction)
@@ -704,43 +740,82 @@ pub async fn set_lots(
 }
 
 /// Rejects a patient that does not belong to the treatment.
-async fn validate_patient(
+async fn validate_record(
     connection: &mut PgConnection,
     treatment_id: i64,
-    patient_id: i64,
+    patient_treatment_id: i64,
 ) -> AppResult<i64> {
-    let attached: Option<bool> = sqlx::query_scalar!(
+    let exists: Option<bool> = sqlx::query_scalar!(
         "SELECT EXISTS (
-             SELECT 1 FROM treatment_patient WHERE treatment_id = $1 AND patient_id = $2
+             SELECT 1 FROM patient_treatment WHERE treatment_id = $1 AND id = $2
          )",
         treatment_id,
-        patient_id,
+        patient_treatment_id,
     )
     .fetch_one(&mut *connection)
     .await?;
-    if attached.unwrap_or(false) {
-        Ok(patient_id)
+    if exists.unwrap_or(false) {
+        Ok(patient_treatment_id)
     } else {
-        Err(AppError::field("patient_id", "item.patientNotInTreatment"))
+        Err(AppError::field(
+            "patient_treatment_id",
+            "item.patientNotInTreatment",
+        ))
     }
 }
 
-/// The treatment's patient when it has exactly one.
-async fn sole_patient(connection: &mut PgConnection, treatment_id: i64) -> AppResult<Option<i64>> {
-    let patients = sqlx::query_scalar!(
-        "SELECT patient_id FROM treatment_patient WHERE treatment_id = $1",
+/// The treatment's only animal record, when it has exactly one — what a new line defaults to.
+async fn sole_record(connection: &mut PgConnection, treatment_id: i64) -> AppResult<Option<i64>> {
+    let records = sqlx::query_scalar!(
+        "SELECT id FROM patient_treatment WHERE treatment_id = $1",
         treatment_id,
     )
     .fetch_all(&mut *connection)
     .await?;
-    Ok(if patients.len() == 1 {
-        patients.first().copied()
-    } else {
-        None
+    Ok(match records.as_slice() {
+        [only] => Some(*only),
+        _ => None,
     })
 }
 
-pub async fn load_item(connection: &mut PgConnection, id: i64) -> AppResult<TreatmentItem> {
+/// The next free position within one owner — an animal's record, or the treatment itself.
+async fn next_position(
+    connection: &mut PgConnection,
+    treatment_id: i64,
+    patient_treatment_id: Option<i64>,
+) -> AppResult<i32> {
+    Ok(sqlx::query_scalar!(
+        "SELECT COALESCE(MAX(position), 0) + 1 FROM treatment_item
+          WHERE treatment_id = $1 AND patient_treatment_id IS NOT DISTINCT FROM $2",
+        treatment_id,
+        patient_treatment_id,
+    )
+    .fetch_one(&mut *connection)
+    .await?
+    .unwrap_or(1))
+}
+
+/// Closes the hole a line leaves when it moves to another owner or is deleted.
+async fn close_position_gap(
+    connection: &mut PgConnection,
+    treatment_id: i64,
+    patient_treatment_id: Option<i64>,
+    position: i32,
+) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE treatment_item SET position = position - 1
+          WHERE treatment_id = $1 AND patient_treatment_id IS NOT DISTINCT FROM $2
+            AND position > $3",
+        treatment_id,
+        patient_treatment_id,
+        position,
+    )
+    .execute(&mut *connection)
+    .await?;
+    Ok(())
+}
+
+async fn load_item(connection: &mut PgConnection, id: i64) -> AppResult<TreatmentItem> {
     let treatment_id: i64 =
         sqlx::query_scalar!("SELECT treatment_id FROM treatment_item WHERE id = $1", id)
             .fetch_optional(&mut *connection)
@@ -761,7 +836,7 @@ pub async fn load_items(
     let rows = sqlx::query!(
         r#"SELECT item.id, item.treatment_id, item.position,
                   item.kind AS "kind: TreatmentItemKind", item.drug_packaging_id,
-                  item.service_id, item.patient_id, item.name, item.quantity, item.unit,
+                  item.service_id, item.patient_treatment_id, item.name, item.quantity, item.unit,
                   item.factor, item.got_number, item.price_net, item.vat_percent, item.km,
                   item.redesignation,
                   item.km_multiplier, item.created_at,
@@ -822,7 +897,7 @@ pub async fn load_items(
             kind: row.kind,
             drug_packaging_id: row.drug_packaging_id,
             service_id: row.service_id,
-            patient_id: row.patient_id,
+            patient_treatment_id: row.patient_treatment_id,
             name: row.name,
             quantity: row.quantity,
             unit: row.unit,

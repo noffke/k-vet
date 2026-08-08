@@ -192,13 +192,15 @@
     "kmHint": "One-way distance; billed per double kilometre.",
     "lotSelection": "Lot selection",
     "lots": "Lots",
+    "noReason": "No reason recorded",
     "pickerItemsOnly": "Search drug or service …",
     "pickerPlaceholder": "Search drug, service or group …",
     "redesignation": "Redesignation",
     "redesignationHint": "Dispensed outside the approval — recorded on this line, no effect on the price.",
     "shortfallWarning": "Stock is not sufficient — the dispense is recorded anyway.",
     "title": "Treatment",
-    "total": "Total"
+    "total": "Total",
+    "withoutPatient": "No animal"
   },
   "invoices": {
     "accept": "Accept invoice",

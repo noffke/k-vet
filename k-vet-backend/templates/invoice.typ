@@ -202,7 +202,8 @@ Vielen Dank für Ihr Vertrauen!
 ]
 
 // ── Behandlungsbericht ────────────────────────────────────────────────────────
-#if invoice.treatment_reason != "" or invoice.finding != "" [
+// One block per animal. Animals with neither a reason nor a finding are not in `reports`.
+#if invoice.reports.len() > 0 [
   #v(8mm)
   #if invoice.treatment_heading != "" [
     #text(10pt, weight: "bold")[#invoice.treatment_heading]
@@ -210,9 +211,17 @@ Vielen Dank für Ihr Vertrauen!
   ]
   #set text(9.5pt)
   #set par(leading: 0.65em)
-  #if invoice.treatment_reason != "" [
-    #invoice.treatment_reason
-    #v(2mm)
+  #for report in invoice.reports [
+    #text(weight: "bold")[#report.patient]
+    #if report.description != "" [ #text(fill: muted)[(#report.description)]]
+    #v(1mm)
+    #if report.treatment_reason != "" [
+      *Behandlungsgrund:* #report.treatment_reason
+      #v(1mm)
+    ]
+    #if report.finding != "" [
+      *Befund:* #report.finding
+    ]
+    #v(3mm)
   ]
-  #if invoice.finding != "" [#invoice.finding]
 ]

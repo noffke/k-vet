@@ -1,0 +1,112 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient_treatment.id, patient_treatment.treatment_reason,\n                  patient_treatment.finding,\n                  patient.name, patient.customer_id, patient.species, patient.race,\n                  patient.date_of_birth\n           FROM patient_treatment\n           JOIN patient ON patient.id = patient_treatment.patient_id\n           WHERE patient_treatment.treatment_id = $1\n           ORDER BY patient.name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "treatment_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "treatment_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "finding",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "finding"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "customer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "species",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "species"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "race",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "race"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "date_of_birth",
+        "type_info": "Date",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "date_of_birth"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "468ef24cfbe13c30b3e2b2abcdd04b219ddf560298764264c8437b4224228f13"
+}

@@ -116,14 +116,15 @@ export const ListTreatmentsResponseItem = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
   "patients": zod.array(zod.object({
+  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
   "patient_id": zod.int(),
   "name": zod.string(),
   "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
+  "warning_remark": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
@@ -145,23 +146,22 @@ export const CreateTreatmentParams = zod.object({
 })
 
 export const CreateTreatmentBody = zod.object({
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
-  "patient_ids": zod.array(zod.int()).optional().describe('Patients to attach right away; all must belong to one customer.')
+  "patient_ids": zod.array(zod.int()).optional().describe('Patients to attach right away; all must belong to one customer. Each gets its own\nPatientenbehandlung.')
 })
 
 export const CreateTreatmentResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
   "patients": zod.array(zod.object({
+  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
   "patient_id": zod.int(),
   "name": zod.string(),
   "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
+  "warning_remark": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
@@ -187,7 +187,7 @@ export const UploadAttachmentResponse = zod.object({
   "orig_name": zod.string(),
   "kind": zod.enum(['patient_file', 'treatment_file', 'referenced']).describe('Who owns an attachment: a patient, a treatment, or a referencing record.'),
   "patient_id": zod.int().nullish(),
-  "treatment_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish(),
   "reference_date": zod.iso.date().nullish().describe('Date the document refers to (patient files), independent of the upload time.'),
   "note": zod.string().nullish(),
   "has_thumbnail": zod.boolean(),
@@ -1378,6 +1378,64 @@ export const PatchPatientFileResponse = zod.object({
 }).describe('Files a customer brought along, kept per patient with the date they refer to.')
 
 
+export const GetPatientTreatmentParams = zod.object({
+  "id": zod.int()
+})
+
+export const GetPatientTreatmentResponse = zod.object({
+  "id": zod.int(),
+  "treatment_id": zod.int(),
+  "patient_id": zod.int(),
+  "patient_name": zod.string().nullish(),
+  "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date, for the page\'s heading — the record has no date of its own.'),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish(),
+  "frozen": zod.boolean().describe('`true` once the treatment\'s invoice is accepted: the record reads read-only.'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const PatchPatientTreatmentParams = zod.object({
+  "id": zod.int()
+})
+
+export const PatchPatientTreatmentBody = zod.object({
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})
+
+export const PatchPatientTreatmentResponse = zod.object({
+  "id": zod.int(),
+  "treatment_id": zod.int(),
+  "patient_id": zod.int(),
+  "patient_name": zod.string().nullish(),
+  "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date, for the page\'s heading — the record has no date of its own.'),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish(),
+  "frozen": zod.boolean().describe('`true` once the treatment\'s invoice is accepted: the record reads read-only.'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const ListPatientTreatmentFilesParams = zod.object({
+  "id": zod.int()
+})
+
+export const ListPatientTreatmentFilesResponseItem = zod.object({
+  "id": zod.int(),
+  "orig_name": zod.string(),
+  "mime_type": zod.string(),
+  "size_bytes": zod.int(),
+  "reference_date": zod.iso.date().nullish(),
+  "note": zod.string().nullish(),
+  "has_thumbnail": zod.boolean(),
+  "created_at": zod.iso.datetime({"offset":true})
+}).describe('Files a customer brought along, kept per patient with the date they refer to.')
+export const ListPatientTreatmentFilesResponse = zod.array(ListPatientTreatmentFilesResponseItem)
+
+
 export const ListPatientsQueryParams = zod.object({
   "q": zod.string().optional().describe('Text filter (name, number, …).'),
   "archived": zod.boolean().optional().describe('Include archived records (default: false).'),
@@ -2062,7 +2120,7 @@ export const PatchTreatmentItemBody = zod.object({
   "price_net": zod.string().nullish(),
   "name": zod.string().nullish(),
   "factor": zod.string().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('Moves the line to another animal, or out of all of them. It lands at the end of the\ntarget\'s order; its dispensed lots follow, because they hang off the line.'),
   "km": zod.string().nullish(),
   "km_multiplier": zod.string().nullish(),
   "redesignation": zod.boolean().nullish()
@@ -2075,7 +2133,7 @@ export const PatchTreatmentItemResponse = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
   "quantity": zod.string(),
   "unit": zod.string().nullish(),
@@ -2117,7 +2175,7 @@ export const SetTreatmentItemLotsResponse = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
   "quantity": zod.string(),
   "unit": zod.string().nullish(),
@@ -2157,7 +2215,7 @@ export const MoveTreatmentItemResponseItem = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
   "quantity": zod.string(),
   "unit": zod.string().nullish(),
@@ -2334,14 +2392,15 @@ export const GetTreatmentResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
   "patients": zod.array(zod.object({
+  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
   "patient_id": zod.int(),
   "name": zod.string(),
   "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
+  "warning_remark": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
@@ -2364,48 +2423,13 @@ export const DeleteTreatmentParams = zod.object({
 export const DeleteTreatmentResponse = zod.void()
 
 
-export const PatchTreatmentParams = zod.object({
-  "id": zod.int()
-})
-
-export const PatchTreatmentBody = zod.object({
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
-})
-
-export const PatchTreatmentResponse = zod.object({
-  "id": zod.int(),
-  "appointment_id": zod.int(),
-  "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
-  "patients": zod.array(zod.object({
-  "patient_id": zod.int(),
-  "name": zod.string(),
-  "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
-  "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
-  "id": zod.int(),
-  "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
-  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
-  "total_gross": zod.string(),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
-})
-
-
 export const ApplyTemplateParams = zod.object({
   "id": zod.int()
 })
 
 export const ApplyTemplateBody = zod.object({
-  "template_id": zod.int()
+  "template_id": zod.int(),
+  "patient_treatment_id": zod.int().nullish().describe('The animal the group\'s lines are for. Absent means the treatment\'s only animal, and\nwith several it means none of them — which its drug lines will refuse.')
 })
 
 export const ApplyTemplateResponseItem = zod.object({
@@ -2415,7 +2439,7 @@ export const ApplyTemplateResponseItem = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
   "quantity": zod.string(),
   "unit": zod.string().nullish(),
@@ -2453,14 +2477,15 @@ export const DuplicateTreatmentResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
   "patients": zod.array(zod.object({
+  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
   "patient_id": zod.int(),
   "name": zod.string(),
   "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
+  "warning_remark": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
@@ -2518,7 +2543,7 @@ export const ListTreatmentItemsResponseItem = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
   "quantity": zod.string(),
   "unit": zod.string().nullish(),
@@ -2552,7 +2577,7 @@ export const CreateTreatmentItemBody = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish().describe('Required for `drug_packaging` lines.'),
   "service_id": zod.int().nullish().describe('Required for `service` lines.'),
-  "patient_id": zod.int().nullish().describe('Defaults to the treatment\'s only patient when there is exactly one.'),
+  "patient_treatment_id": zod.int().nullish().describe('Defaults to the treatment\'s only Patientenbehandlung when there is exactly one.'),
   "quantity": zod.string().optional(),
   "km": zod.string().nullish().describe('Travel-expense lines: kilometres driven (one way).'),
   "km_multiplier": zod.string().nullish().describe('Multiplier for adverse travel conditions (1–3).'),
@@ -2566,7 +2591,7 @@ export const CreateTreatmentItemResponse = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "patient_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
   "quantity": zod.string(),
   "unit": zod.string().nullish(),
@@ -2603,14 +2628,15 @@ export const AddTreatmentPatientResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
   "patients": zod.array(zod.object({
+  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
   "patient_id": zod.int(),
   "name": zod.string(),
   "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
+  "warning_remark": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
@@ -2635,14 +2661,15 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
   "patients": zod.array(zod.object({
+  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
   "patient_id": zod.int(),
   "name": zod.string(),
   "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish()
-})),
+  "warning_remark": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish(),
+  "finding": zod.string().nullish()
+})).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({

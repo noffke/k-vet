@@ -1,5 +1,7 @@
 //! Treatments — the medical record of one visit, and the source of every invoice (T031).
 
+use std::collections::HashMap;
+
 use axum::extract::{Path, State};
 use axum::http::StatusCode;
 use axum::routing::{get, post};
@@ -11,7 +13,7 @@ use sqlx::{PgConnection, Postgres, Transaction};
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{DuplicateRequest, PriceMode, double_option};
+use crate::api::common::{DuplicateRequest, PriceMode};
 use crate::api::treatment_items::{self, CatalogLine, TreatmentItem};
 use crate::config::TravelExpenseConfig;
 use crate::domain::enums::{InvoiceStatus, TreatmentItemKind};
@@ -24,8 +26,7 @@ pub struct Treatment {
     pub id: i64,
     pub appointment_id: i64,
     pub starts_at: Option<DateTime<Utc>>,
-    pub treatment_reason: Option<String>,
-    pub finding: Option<String>,
+    /// One record per animal, each with its own reason, finding and positions.
     pub patients: Vec<TreatmentPatient>,
     /// Derived from the patients — the invoice's customer.
     pub customer_id: Option<i64>,
@@ -46,10 +47,14 @@ pub struct Treatment {
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TreatmentPatient {
+    /// The Patientenbehandlung — what positions and files hang on.
+    pub id: i64,
     pub patient_id: i64,
     pub name: String,
     pub customer_id: i64,
     pub warning_remark: Option<String>,
+    pub treatment_reason: Option<String>,
+    pub finding: Option<String>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -61,19 +66,10 @@ pub struct TreatmentInvoice {
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct CreateTreatment {
-    pub treatment_reason: Option<String>,
-    pub finding: Option<String>,
-    /// Patients to attach right away; all must belong to one customer.
+    /// Patients to attach right away; all must belong to one customer. Each gets its own
+    /// Patientenbehandlung.
     #[serde(default)]
     pub patient_ids: Vec<i64>,
-}
-
-#[derive(Debug, Default, Deserialize, ToSchema)]
-pub struct PatchTreatment {
-    #[serde(default, deserialize_with = "double_option")]
-    pub treatment_reason: Option<Option<String>>,
-    #[serde(default, deserialize_with = "double_option")]
-    pub finding: Option<Option<String>>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -84,6 +80,9 @@ pub struct AddPatient {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct ApplyTemplate {
     pub template_id: i64,
+    /// The animal the group's lines are for. Absent means the treatment's only animal, and
+    /// with several it means none of them — which its drug lines will refuse.
+    pub patient_treatment_id: Option<i64>,
 }
 
 #[utoipa::path(
@@ -142,11 +141,8 @@ pub async fn create_for_appointment(
     }
 
     let id: i64 = sqlx::query_scalar!(
-        "INSERT INTO treatment (appointment_id, treatment_reason, finding)
-         VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO treatment (appointment_id) VALUES ($1) RETURNING id",
         appointment_id,
-        body.treatment_reason,
-        body.finding,
     )
     .fetch_one(&mut *transaction)
     .await?;
@@ -172,41 +168,6 @@ pub async fn detail(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> AppResult<Json<Treatment>> {
-    let mut connection = state.pool.acquire().await?;
-    Ok(Json(load(&mut connection, id).await?))
-}
-
-#[utoipa::path(
-    patch,
-    operation_id = "patchTreatment",
-    path = "/api/treatments/{id}",
-    tag = "treatments",
-    params(("id" = i64, Path,)),
-    request_body = PatchTreatment,
-    responses((status = 200, body = Treatment), (status = 404), (status = 409))
-)]
-pub async fn patch(
-    State(state): State<AppState>,
-    Path(id): Path<i64>,
-    Json(body): Json<PatchTreatment>,
-) -> AppResult<Json<Treatment>> {
-    let updated = sqlx::query!(
-        r#"UPDATE treatment SET
-               treatment_reason = CASE WHEN $2 THEN $3 ELSE treatment_reason END,
-               finding          = CASE WHEN $4 THEN $5 ELSE finding END
-           WHERE id = $1"#,
-        id,
-        body.treatment_reason.is_some(),
-        body.treatment_reason.flatten(),
-        body.finding.is_some(),
-        body.finding.flatten(),
-    )
-    .execute(&state.pool)
-    .await?;
-    if updated.rows_affected() == 0 {
-        return Err(AppError::NotFound);
-    }
-
     let mut connection = state.pool.acquire().await?;
     Ok(Json(load(&mut connection, id).await?))
 }
@@ -283,7 +244,9 @@ pub async fn remove_patient(
 
     let attributed: Option<bool> = sqlx::query_scalar!(
         "SELECT EXISTS (
-             SELECT 1 FROM treatment_item WHERE treatment_id = $1 AND patient_id = $2
+             SELECT 1 FROM treatment_item item
+             JOIN patient_treatment record ON record.id = item.patient_treatment_id
+             WHERE record.treatment_id = $1 AND record.patient_id = $2
          )",
         id,
         patient_id,
@@ -297,7 +260,7 @@ pub async fn remove_patient(
     }
 
     sqlx::query!(
-        "DELETE FROM treatment_patient WHERE treatment_id = $1 AND patient_id = $2",
+        "DELETE FROM patient_treatment WHERE treatment_id = $1 AND patient_id = $2",
         id,
         patient_id,
     )
@@ -333,9 +296,9 @@ async fn attach_patient(
 
     let existing = sqlx::query_scalar!(
         "SELECT DISTINCT patient.customer_id
-         FROM treatment_patient
-         JOIN patient ON patient.id = treatment_patient.patient_id
-         WHERE treatment_patient.treatment_id = $1",
+         FROM patient_treatment record
+         JOIN patient ON patient.id = record.patient_id
+         WHERE record.treatment_id = $1",
         treatment_id,
     )
     .fetch_all(&mut **transaction)
@@ -349,7 +312,7 @@ async fn attach_patient(
     }
 
     sqlx::query!(
-        "INSERT INTO treatment_patient (treatment_id, patient_id) VALUES ($1, $2)
+        "INSERT INTO patient_treatment (treatment_id, patient_id) VALUES ($1, $2)
          ON CONFLICT DO NOTHING",
         treatment_id,
         patient_id,
@@ -411,7 +374,7 @@ pub async fn apply_template(
             item.kind,
             reference_id,
             item.quantity,
-            None,
+            body.patient_treatment_id,
             None,
             None,
             false,
@@ -474,38 +437,49 @@ pub async fn copy_treatment(
     price_mode: PriceMode,
     travel: &TravelExpenseConfig,
 ) -> AppResult<i64> {
-    let source = sqlx::query!(
-        "SELECT treatment_reason, finding FROM treatment WHERE id = $1",
+    let exists: Option<bool> = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM treatment WHERE id = $1)",
         source_id
     )
-    .fetch_optional(&mut **transaction)
-    .await?
-    .ok_or(AppError::NotFound)?;
+    .fetch_one(&mut **transaction)
+    .await?;
+    if !exists.unwrap_or(false) {
+        return Err(AppError::NotFound);
+    }
 
     let new_id: i64 = sqlx::query_scalar!(
-        "INSERT INTO treatment (appointment_id, treatment_reason, finding)
-         VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO treatment (appointment_id) VALUES ($1) RETURNING id",
         target_appointment_id,
-        source.treatment_reason,
-        source.finding,
     )
     .fetch_one(&mut **transaction)
     .await?;
 
-    sqlx::query!(
-        "INSERT INTO treatment_patient (treatment_id, patient_id)
-         SELECT $1, patient_id FROM treatment_patient WHERE treatment_id = $2",
+    // Each animal's record is copied with its reason and finding, and the copy's lines have
+    // to point at the copy's records — so the new ids are kept by animal.
+    let copied = sqlx::query!(
+        "INSERT INTO patient_treatment (treatment_id, patient_id, treatment_reason, finding)
+         SELECT $1, patient_id, treatment_reason, finding
+           FROM patient_treatment WHERE treatment_id = $2
+         RETURNING id, patient_id",
         new_id,
         source_id,
     )
-    .execute(&mut **transaction)
+    .fetch_all(&mut **transaction)
     .await?;
+    let records: HashMap<i64, i64> = copied
+        .into_iter()
+        .map(|row| (row.patient_id, row.id))
+        .collect();
 
     let items = sqlx::query!(
-        r#"SELECT kind AS "kind: TreatmentItemKind", drug_packaging_id, service_id, patient_id,
-                  name, quantity, unit, factor, got_number, price_net, vat_percent,
-                  km, km_multiplier, redesignation
-           FROM treatment_item WHERE treatment_id = $1 ORDER BY position"#,
+        r#"SELECT item.kind AS "kind: TreatmentItemKind", item.drug_packaging_id,
+                  item.service_id, record.patient_id AS "patient_id?",
+                  item.name, item.quantity, item.unit, item.factor, item.got_number,
+                  item.price_net, item.vat_percent, item.km, item.km_multiplier,
+                  item.redesignation
+           FROM treatment_item item
+           LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id
+           WHERE item.treatment_id = $1 ORDER BY item.position"#,
         source_id,
     )
     .fetch_all(&mut **transaction)
@@ -537,7 +511,8 @@ pub async fn copy_treatment(
             item.kind,
             reference_id,
             item.quantity,
-            item.patient_id,
+            item.patient_id
+                .and_then(|patient| records.get(&patient).copied()),
             item.km,
             item.km_multiplier,
             item.redesignation,
@@ -552,8 +527,8 @@ pub async fn copy_treatment(
 /// Loads a treatment with its patients, live invoice and total.
 pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment> {
     let row = sqlx::query!(
-        r#"SELECT treatment.id, treatment.appointment_id, treatment.treatment_reason,
-                  treatment.finding, treatment.created_at, treatment.updated_at,
+        r#"SELECT treatment.id, treatment.appointment_id,
+                  treatment.created_at, treatment.updated_at,
                   appointment.starts_at
            FROM treatment
            JOIN appointment ON appointment.id = treatment.appointment_id
@@ -565,10 +540,12 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
     .ok_or(AppError::NotFound)?;
 
     let patients = sqlx::query!(
-        r#"SELECT patient.id, patient.name, patient.customer_id, patient.warning_remark
-           FROM treatment_patient
-           JOIN patient ON patient.id = treatment_patient.patient_id
-           WHERE treatment_patient.treatment_id = $1
+        r#"SELECT record.id, record.treatment_reason, record.finding,
+                  patient.id AS patient_id, patient.name, patient.customer_id,
+                  patient.warning_remark
+           FROM patient_treatment record
+           JOIN patient ON patient.id = record.patient_id
+           WHERE record.treatment_id = $1
            ORDER BY patient.name"#,
         id,
     )
@@ -634,15 +611,16 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
         id: row.id,
         appointment_id: row.appointment_id,
         starts_at: row.starts_at,
-        treatment_reason: row.treatment_reason,
-        finding: row.finding,
         patients: patients
             .into_iter()
             .map(|patient| TreatmentPatient {
-                patient_id: patient.id,
+                id: patient.id,
+                patient_id: patient.patient_id,
                 name: patient.name.unwrap_or_default(),
                 customer_id: patient.customer_id.unwrap_or_default(),
                 warning_remark: patient.warning_remark,
+                treatment_reason: patient.treatment_reason,
+                finding: patient.finding,
             })
             .collect(),
         customer_id,
@@ -658,7 +636,7 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/treatments/{id}", get(detail).patch(patch).delete(delete))
+        .route("/treatments/{id}", get(detail).delete(delete))
         .route("/treatments/{id}/patients", post(add_patient))
         .route(
             "/treatments/{id}/patients/{patient_id}",

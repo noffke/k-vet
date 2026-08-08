@@ -580,23 +580,40 @@ async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
     .expect("helene");
 
     let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
-    let treatment_id = common::seed_treatment(&pool, appointment_id, eddie).await;
-    sqlx::query("INSERT INTO treatment_patient (treatment_id, patient_id) VALUES ($1, $2)")
-        .bind(treatment_id)
-        .bind(helene)
-        .execute(&pool)
-        .await
-        .expect("second patient");
-    sqlx::query(
-        "UPDATE treatment SET treatment_reason = 'Vorstellung zum Verbandswechsel.',
-             finding = 'Allgemeinbefinden: gut. Wunde sauber und trocken.' WHERE id = $1",
+    let (treatment_id, eddies_record) =
+        common::seed_patient_treatment(&pool, appointment_id, eddie).await;
+    let helenes_record: i64 = sqlx::query_scalar(
+        "INSERT INTO patient_treatment (treatment_id, patient_id) VALUES ($1, $2) RETURNING id",
     )
     .bind(treatment_id)
-    .execute(&pool)
+    .bind(helene)
+    .fetch_one(&pool)
     .await
-    .expect("treatment notes");
+    .expect("second patient");
 
-    for (got_number, patient_id) in [("16", eddie), ("251", eddie), ("17", helene)] {
+    // A reason and a finding per animal — the invoice prints one block for each.
+    app.patch(
+        &format!("/api/patient-treatments/{eddies_record}"),
+        json!({
+            "treatment_reason": "Vorstellung zum Verbandswechsel.",
+            "finding": "Allgemeinbefinden: gut. Wunde sauber und trocken.",
+        }),
+    )
+    .await;
+    app.patch(
+        &format!("/api/patient-treatments/{helenes_record}"),
+        json!({
+            "treatment_reason": "Ohrenkontrolle.",
+            "finding": "Otitis externa beidseitig, behandelt.",
+        }),
+    )
+    .await;
+
+    for (got_number, record_id) in [
+        ("16", eddies_record),
+        ("251", eddies_record),
+        ("17", helenes_record),
+    ] {
         let service_id: i64 =
             sqlx::query_scalar("SELECT id FROM service WHERE got_number = $1 AND type = 'got'")
                 .bind(got_number)
@@ -607,7 +624,7 @@ async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "service", "service_id": service_id,
-                "quantity": "1", "patient_id": patient_id,
+                "quantity": "1", "patient_treatment_id": record_id,
             }),
         )
         .await;

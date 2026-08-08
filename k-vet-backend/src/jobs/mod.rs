@@ -94,7 +94,7 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
         "DELETE FROM patient
          WHERE draft AND created_at < $1
            AND customer_id IS NULL AND name IS NULL AND sex IS NULL AND species IS NULL
-           AND NOT EXISTS (SELECT 1 FROM treatment_patient WHERE patient_id = patient.id)
+           AND NOT EXISTS (SELECT 1 FROM patient_treatment WHERE patient_id = patient.id)
            AND NOT EXISTS (SELECT 1 FROM attachment WHERE patient_id = patient.id)",
         cutoff,
     )
@@ -216,7 +216,7 @@ pub async fn sweep_orphan_attachments(pool: &PgPool, files: &AttachmentStore) ->
     let orphans = sqlx::query!(
         "DELETE FROM attachment
          WHERE kind = 'referenced' AND created_at < $1
-           AND patient_id IS NULL AND treatment_id IS NULL
+           AND patient_id IS NULL AND patient_treatment_id IS NULL
            AND NOT EXISTS (SELECT 1 FROM patient WHERE photo_attachment_id = attachment.id)
            AND NOT EXISTS (SELECT 1 FROM invoice WHERE pdf_attachment_id = attachment.id)
            AND NOT EXISTS (

@@ -192,13 +192,15 @@
     "kmHint": "Einfache Strecke; abgerechnet wird je Doppelkilometer.",
     "lotSelection": "Chargenauswahl",
     "lots": "Chargen",
+    "noReason": "Kein Behandlungsgrund",
     "pickerItemsOnly": "Medikament oder Leistung suchen …",
     "pickerPlaceholder": "Medikament, Leistung oder Gruppe suchen …",
     "redesignation": "Umwidmung",
     "redesignationHint": "Abgabe außerhalb der Zulassung — wird auf dieser Zeile dokumentiert, ändert den Preis nicht.",
     "shortfallWarning": "Bestand reicht nicht aus — Abgabe wird trotzdem gebucht.",
     "title": "Behandlung",
-    "total": "Summe"
+    "total": "Summe",
+    "withoutPatient": "Ohne Tier"
   },
   "invoices": {
     "accept": "Rechnung freigeben",

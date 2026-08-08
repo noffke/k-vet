@@ -1,0 +1,131 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT record.id, record.treatment_id, record.patient_id, record.treatment_reason,\n                  record.finding, record.created_at, record.updated_at,\n                  patient.name AS \"patient_name?\",\n                  appointment.starts_at,\n                  EXISTS (\n                      SELECT 1 FROM invoice\n                      WHERE invoice.treatment_id = record.treatment_id\n                        AND invoice.status IN ('accepted', 'submitted')\n                  ) AS \"frozen?\"\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE record.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "patient_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "patient_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "treatment_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "treatment_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "finding",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "finding"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "created_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "patient_name?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "frozen?",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      false,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "0828ecaef4213f5944097219b30f9eef897f8911f6cf09eeb8706d98f8ded4ba"
+}

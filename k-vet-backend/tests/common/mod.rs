@@ -483,21 +483,34 @@ pub async fn seed_appointment(pool: &PgPool, starts_at: DateTime<Utc>) -> i64 {
 }
 
 pub async fn seed_treatment(pool: &PgPool, appointment_id: i64, patient_id: i64) -> i64 {
-    let treatment_id: i64 = sqlx::query_scalar(
-        "INSERT INTO treatment (appointment_id, treatment_reason)
-         VALUES ($1, 'Routinekontrolle') RETURNING id",
+    seed_patient_treatment(pool, appointment_id, patient_id)
+        .await
+        .0
+}
+
+/// A treatment with one animal, returning both ids: the reason and the finding live on the
+/// animal's record, and a line's owner is that record.
+pub async fn seed_patient_treatment(
+    pool: &PgPool,
+    appointment_id: i64,
+    patient_id: i64,
+) -> (i64, i64) {
+    let treatment_id: i64 =
+        sqlx::query_scalar("INSERT INTO treatment (appointment_id) VALUES ($1) RETURNING id")
+            .bind(appointment_id)
+            .fetch_one(pool)
+            .await
+            .expect("seed treatment");
+    let record_id: i64 = sqlx::query_scalar(
+        "INSERT INTO patient_treatment (treatment_id, patient_id, treatment_reason)
+         VALUES ($1, $2, 'Routinekontrolle') RETURNING id",
     )
-    .bind(appointment_id)
+    .bind(treatment_id)
+    .bind(patient_id)
     .fetch_one(pool)
     .await
-    .expect("seed treatment");
-    sqlx::query("INSERT INTO treatment_patient (treatment_id, patient_id) VALUES ($1, $2)")
-        .bind(treatment_id)
-        .bind(patient_id)
-        .execute(pool)
-        .await
-        .expect("seed treatment patient");
-    treatment_id
+    .expect("seed patient treatment");
+    (treatment_id, record_id)
 }
 
 /// Remaining stock of a lot, straight from the `lot_remaining` view.

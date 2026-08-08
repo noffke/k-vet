@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT invoice.id\n           FROM invoice\n           WHERE (invoice.status <> 'cancelled' OR $1)\n             AND (NOT $2 OR invoice.status = 'accepted')\n             AND ($3::text IS NULL\n                  OR invoice.invoice_number ILIKE $3\n                  OR EXISTS (\n                       SELECT 1 FROM patient_treatment\n                       JOIN patient ON patient.id = patient_treatment.patient_id\n                       JOIN customer ON customer.id = patient.customer_id\n                       WHERE patient_treatment.treatment_id = invoice.treatment_id\n                         AND concat_ws(' ', customer.first_name, customer.last_name) ILIKE $3))\n           ORDER BY (invoice.status = 'accepted') DESC, invoice.invoice_date DESC, invoice.id DESC\n           LIMIT $4 OFFSET $5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Bool",
+        "Bool",
+        "Text",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ab2470ae341792489944d69a33459a510743dd875cc6334e8c809a975cd2d416"
+}

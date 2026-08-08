@@ -56,11 +56,11 @@ pub struct InvoiceBlock {
     /// Ready-made salutation, e.g. `Sehr geehrter Herr Mustermann`.
     pub greeting: String,
     pub patients: Vec<String>,
-    pub treatment_reason: String,
     /// e.g. `Behandlung/Konsultation Eddie (Hund – Havaneser) am 28.07.2026`.
     pub treatment_heading: String,
-    /// Only filled when the invoice was created with "includes finding".
-    pub finding: String,
+    /// The clinical report, one block per animal — the reason and, when the invoice was
+    /// created with "includes finding", the finding. Animals with neither are left out.
+    pub reports: Vec<PatientReport>,
     /// Lines grouped per animal, the way the invoice prints them.
     pub patient_groups: Vec<PatientGroup>,
     /// Every line in one flat list, kept so templates written before grouping still work.
@@ -73,6 +73,17 @@ pub struct InvoiceBlock {
     /// it has no use for the bytes behind it.
     #[serde(skip)]
     pub qr_payload: Option<String>,
+}
+
+/// What was treated on one animal, and what was found.
+#[derive(Debug, Serialize)]
+pub struct PatientReport {
+    pub patient: String,
+    /// e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`.
+    pub description: String,
+    pub treatment_reason: String,
+    /// Empty unless the invoice was created with "Befund aufführen".
+    pub finding: String,
 }
 
 /// The billing lines of one animal, under a heading that identifies it.
@@ -574,11 +585,23 @@ mod tests {
                     .to_owned(),
                 greeting: "Sehr geehrte Frau Mustermann".to_owned(),
                 patients: vec!["Bello".to_owned(), "Minka".to_owned()],
-                treatment_reason: "Routinekontrolle".to_owned(),
                 treatment_heading: "Behandlung/Konsultation Bello (Hund – Havaneser), \
                                     Minka (Katze) am 03.05.2026"
                     .to_owned(),
-                finding: "Ohne Befund".to_owned(),
+                reports: vec![
+                    PatientReport {
+                        patient: "Bello".to_owned(),
+                        description: "Hund, Havaneser, Geburtsdatum: 01.01.2021".to_owned(),
+                        treatment_reason: "Routinekontrolle".to_owned(),
+                        finding: "Ohne Befund".to_owned(),
+                    },
+                    PatientReport {
+                        patient: "Minka".to_owned(),
+                        description: "Katze".to_owned(),
+                        treatment_reason: "Impfung".to_owned(),
+                        finding: String::new(),
+                    },
+                ],
                 patient_groups: vec![
                     PatientGroup {
                         patient: "Bello".to_owned(),
@@ -668,9 +691,8 @@ mod tests {
                 sender_line: "Praxis".to_owned(),
                 greeting: "Sehr geehrter Herr Mustermann".to_owned(),
                 patients: Vec::new(),
-                treatment_reason: String::new(),
                 treatment_heading: String::new(),
-                finding: String::new(),
+                reports: Vec::new(),
                 patient_groups: vec![PatientGroup {
                     patient: String::new(),
                     description: String::new(),

@@ -216,7 +216,10 @@ pub async fn detail(
                   invoice.status AS "invoice_status?: InvoiceStatus"
            FROM drug_stock_movement movement
            LEFT JOIN treatment_item item ON item.id = movement.treatment_item_id
-           LEFT JOIN patient ON patient.id = item.patient_id
+           -- The animal a batch went to is the line's owner; the movement has no patient
+           -- of its own, which is why the ownership had to be structural.
+           LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id
+           LEFT JOIN patient ON patient.id = record.patient_id
            LEFT JOIN customer ON customer.id = patient.customer_id
            LEFT JOIN invoice ON invoice.treatment_id = item.treatment_id
                             AND invoice.status <> 'cancelled'

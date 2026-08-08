@@ -1,0 +1,134 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment_id, kind AS \"kind: TreatmentItemKind\", drug_packaging_id, quantity,\n                  patient_treatment_id, position, km, km_multiplier, service_id\n           FROM treatment_item WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind: TreatmentItemKind",
+        "type_info": {
+          "Custom": {
+            "name": "treatment_item_kind",
+            "kind": {
+              "Enum": [
+                "drug_packaging",
+                "service"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "drug_packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "drug_packaging_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "patient_treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "patient_treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "km",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "km"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "km_multiplier",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "km_multiplier"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "service_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "service_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      false,
+      true,
+      false,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "2aaa0e0212c73420b7183b9a2e274043044604afd625094b1eace4cbdf27d7d8"
+}

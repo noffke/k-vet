@@ -30,7 +30,7 @@ pub struct Attachment {
     #[serde(skip_serializing_if = "Option::is_none")]
     pub patient_id: Option<i64>,
     #[serde(skip_serializing_if = "Option::is_none")]
-    pub treatment_id: Option<i64>,
+    pub patient_treatment_id: Option<i64>,
     /// Date the document refers to (patient files), independent of the upload time.
     #[serde(skip_serializing_if = "Option::is_none")]
     pub reference_date: Option<NaiveDate>,
@@ -60,7 +60,7 @@ impl ChunkSource for FieldSource<'_> {
 struct UploadMeta {
     kind: Option<AttachmentKind>,
     patient_id: Option<i64>,
-    treatment_id: Option<i64>,
+    patient_treatment_id: Option<i64>,
     reference_date: Option<NaiveDate>,
     note: Option<String>,
 }
@@ -71,7 +71,7 @@ struct UploadMeta {
     path = "/api/attachments",
     tag = "attachments",
     request_body(content = String, description = "multipart/form-data with a `file` part \
-        plus optional `kind`, `patient_id`, `treatment_id`, `reference_date` and `note` parts",
+        plus optional `kind`, `patient_id`, `patient_treatment_id`, `reference_date` and `note` parts",
         content_type = "multipart/form-data"),
     responses(
         (status = 200, description = "Stored file", body = Attachment),
@@ -129,11 +129,11 @@ pub async fn upload(
     let attachment = sqlx::query_as!(
         Attachment,
         r#"INSERT INTO attachment
-               (sha256, mime_type, size_bytes, orig_name, kind, patient_id, treatment_id,
+               (sha256, mime_type, size_bytes, orig_name, kind, patient_id, patient_treatment_id,
                 reference_date, note, has_thumbnail)
            VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10)
            RETURNING id, sha256, mime_type, size_bytes, orig_name,
-                     kind AS "kind: AttachmentKind", patient_id, treatment_id,
+                     kind AS "kind: AttachmentKind", patient_id, patient_treatment_id,
                      reference_date, note, has_thumbnail, created_at"#,
         stored.sha256,
         mime_type,
@@ -141,7 +141,7 @@ pub async fn upload(
         orig_name,
         kind as AttachmentKind,
         meta.patient_id,
-        meta.treatment_id,
+        meta.patient_treatment_id,
         meta.reference_date,
         meta.note,
         has_thumbnail,
@@ -173,11 +173,11 @@ fn apply_meta(meta: &mut UploadMeta, field: &str, value: &str) -> AppResult<()> 
                     .map_err(|_| AppError::field("patient_id", "value.notANumber"))?,
             );
         }
-        "treatment_id" => {
-            meta.treatment_id = Some(
+        "patient_treatment_id" => {
+            meta.patient_treatment_id = Some(
                 trimmed
                     .parse()
-                    .map_err(|_| AppError::field("treatment_id", "value.notANumber"))?,
+                    .map_err(|_| AppError::field("patient_treatment_id", "value.notANumber"))?,
             );
         }
         "reference_date" => {

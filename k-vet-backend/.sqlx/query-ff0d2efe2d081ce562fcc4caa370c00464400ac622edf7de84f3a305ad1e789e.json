@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM attachment\n         WHERE kind = 'referenced' AND created_at < $1\n           AND patient_id IS NULL AND patient_treatment_id IS NULL\n           AND NOT EXISTS (SELECT 1 FROM patient WHERE photo_attachment_id = attachment.id)\n           AND NOT EXISTS (SELECT 1 FROM invoice WHERE pdf_attachment_id = attachment.id)\n           AND NOT EXISTS (\n                 SELECT 1 FROM global_settings WHERE logo_attachment_id = attachment.id)\n         RETURNING sha256",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "sha256",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "attachment",
+            "name": "sha256"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ff0d2efe2d081ce562fcc4caa370c00464400ac622edf7de84f3a305ad1e789e"
+}

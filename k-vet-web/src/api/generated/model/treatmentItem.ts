@@ -17,8 +17,12 @@ export interface TreatmentItem {
   drug_packaging_id?: number | null;
   /** @nullable */
   service_id?: number | null;
-  /** @nullable */
-  patient_id?: number | null;
+  /**
+     * The Patientenbehandlung this line belongs to, or null for a line that covers the
+     * visit rather than one animal — the Wegegeld of a house call for two of them.
+     * @nullable
+     */
+  patient_treatment_id?: number | null;
   /** Copied from the catalog; the vet may override it per line. */
   name: string;
   quantity: string;

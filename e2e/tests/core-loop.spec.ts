@@ -40,9 +40,14 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByPlaceholder('Patienten').fill(patientName)
   await page.getByRole('option', { name: new RegExp(patientName) }).first().click()
 
+  // The reason and the finding belong to the animal, on its own record.
+  await page.getByRole('link', { name: new RegExp(patientName) }).first().click()
+  await expect(page).toHaveURL(/\/patient-treatments\/\d+$/)
   await page.getByLabel('Behandlungsgrund').fill('Jahresimpfung und Kontrolle')
   await page.getByLabel('Befund').fill('Allgemeinzustand unauffällig, Gewicht stabil.')
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
+  await page.getByRole('link', { name: /Zurück/ }).click()
+  await expect(page).toHaveURL(/\/treatments\/\d+$/)
 
   // ── Two lines from the picker: a stocked drug and a service ──────────────────
   const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')

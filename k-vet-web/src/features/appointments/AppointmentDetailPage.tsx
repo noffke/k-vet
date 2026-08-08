@@ -219,9 +219,12 @@ export function AppointmentDetailPage() {
                     {treatment.invoice ? treatment.invoice.invoice_number : ''}
                   </span>
                 </span>
-                {treatment.treatment_reason ? (
+                {treatment.patients.some((patient) => patient.treatment_reason) ? (
                   <span className="mt-0.5 block text-sm text-ink-soft">
-                    {treatment.treatment_reason}
+                    {treatment.patients
+                      .filter((patient) => patient.treatment_reason)
+                      .map((patient) => `${patient.name}: ${patient.treatment_reason}`)
+                      .join(' · ')}
                   </span>
                 ) : null}
               </button>

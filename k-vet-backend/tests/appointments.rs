@@ -172,7 +172,11 @@ async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(po
         .await
         .json();
     assert_eq!(items[0]["price_net"], "23.62", "prices are copied verbatim");
-    assert_eq!(items[0]["patient_id"], patient_id);
+    assert_eq!(treatments[0]["patients"][0]["patient_id"], patient_id);
+    assert_eq!(
+        items[0]["patient_treatment_id"], treatments[0]["patients"][0]["id"],
+        "the copied line belongs to the copy's own record for that animal, not the source's"
+    );
 }
 
 #[sqlx::test]

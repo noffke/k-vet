@@ -1,0 +1,24 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n             SELECT 1 FROM treatment_item item\n             JOIN patient_treatment record ON record.id = item.patient_treatment_id\n             WHERE record.treatment_id = $1 AND record.patient_id = $2\n         )",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "exists",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "000adc1d572c8af745aac3184b567094828a443bc36581f46b77964df289c214"
+}

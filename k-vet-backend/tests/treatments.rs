@@ -20,12 +20,13 @@ fn date(year: i32, month: u32, day: u32) -> NaiveDate {
 }
 
 /// A customer with one patient, an appointment and a treatment.
+/// A treatment with one animal: its id, and the id of that animal's Patientenbehandlung —
+/// which is what a position belongs to.
 async fn treatment(pool: &PgPool) -> (i64, i64) {
     let customer_id = common::seed_customer(pool).await;
     let patient_id = common::seed_patient(pool, customer_id).await;
     let appointment_id = common::seed_appointment(pool, Utc::now()).await;
-    let treatment_id = common::seed_treatment(pool, appointment_id, patient_id).await;
-    (treatment_id, patient_id)
+    common::seed_patient_treatment(pool, appointment_id, patient_id).await
 }
 
 #[sqlx::test]
@@ -282,7 +283,7 @@ async fn the_lot_selection_can_be_overridden(pool: PgPool) {
 #[sqlx::test]
 async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let (treatment_id, patient_id) = treatment(&pool).await;
+    let (treatment_id, record_id) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
 
@@ -294,8 +295,8 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
         .await
         .json();
     assert_eq!(
-        drug_line["patient_id"], patient_id,
-        "single patient is preselected"
+        drug_line["patient_treatment_id"], record_id,
+        "the treatment's only animal is preselected"
     );
 
     let service_line = app
@@ -305,7 +306,7 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
         )
         .await
         .json();
-    assert_eq!(service_line["patient_id"], patient_id);
+    assert_eq!(service_line["patient_treatment_id"], record_id);
 
     // Clearing the patient of a drug line is rejected.
     let cleared = app
@@ -314,11 +315,15 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
                 "/api/treatment-items/{}",
                 drug_line["id"].as_i64().unwrap_or_default()
             ),
-            json!({ "patient_id": null }),
+            json!({ "patient_treatment_id": null }),
         )
         .await;
     assert_eq!(cleared.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(cleared.error_fields().contains(&"patient_id".to_owned()));
+    assert!(
+        cleared
+            .error_fields()
+            .contains(&"patient_treatment_id".to_owned())
+    );
 }
 
 #[sqlx::test]
@@ -328,12 +333,23 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
     let first = common::seed_patient(&pool, customer_id).await;
     let second = common::seed_patient(&pool, customer_id).await;
     let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
-    let treatment_id = common::seed_treatment(&pool, appointment_id, first).await;
-    app.post(
-        &format!("/api/treatments/{treatment_id}/patients"),
-        json!({ "patient_id": second }),
-    )
-    .await;
+    let (treatment_id, _) = common::seed_patient_treatment(&pool, appointment_id, first).await;
+    let attached = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/patients"),
+            json!({ "patient_id": second }),
+        )
+        .await
+        .json();
+    let seconds_record = attached["patients"]
+        .as_array()
+        .and_then(|patients| {
+            patients
+                .iter()
+                .find(|patient| patient["patient_id"] == second)
+        })
+        .and_then(|patient| patient["id"].as_i64())
+        .expect("the attached animal has a record");
     let drug = common::seed_drug(&pool).await;
 
     let without_patient = app
@@ -351,11 +367,165 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
                 "kind": "drug_packaging",
                 "drug_packaging_id": drug.packaging_id,
                 "quantity": "1",
-                "patient_id": second
+                "patient_treatment_id": seconds_record
             }),
         )
         .await;
     assert_eq!(with_patient.status, StatusCode::OK);
+}
+
+#[sqlx::test]
+async fn a_line_cannot_belong_to_another_treatments_animal(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, _) = treatment(&pool).await;
+    let (_, foreign_record) = treatment(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+
+    let response = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "service", "service_id": service_id, "quantity": "1",
+                "patient_treatment_id": foreign_record,
+            }),
+        )
+        .await;
+
+    assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        response
+            .error_fields()
+            .contains(&"patient_treatment_id".to_owned())
+    );
+}
+
+#[sqlx::test]
+async fn positions_are_ordered_within_each_animal(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let first = common::seed_patient(&pool, customer_id).await;
+    let second = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let (treatment_id, firsts_record) =
+        common::seed_patient_treatment(&pool, appointment_id, first).await;
+    let seconds_record: i64 = sqlx::query_scalar(
+        "INSERT INTO patient_treatment (treatment_id, patient_id) VALUES ($1, $2) RETURNING id",
+    )
+    .bind(treatment_id)
+    .bind(second)
+    .fetch_one(&pool)
+    .await
+    .expect("second record");
+    let service_id = common::seed_got_service(&pool).await;
+
+    // Two lines for each animal, interleaved: each pair is numbered 1, 2 in its own group.
+    let mut ids = Vec::new();
+    for record_id in [firsts_record, seconds_record, firsts_record, seconds_record] {
+        let line = app
+            .post(
+                &format!("/api/treatments/{treatment_id}/items"),
+                json!({
+                    "kind": "service", "service_id": service_id, "quantity": "1",
+                    "patient_treatment_id": record_id,
+                }),
+            )
+            .await
+            .json();
+        ids.push(line["id"].as_i64().unwrap_or_default());
+        assert_eq!(
+            line["position"],
+            if ids.len() <= 2 { 1 } else { 2 },
+            "positions start again for each animal"
+        );
+    }
+
+    // Moving the second animal's last line up swaps it with the first line of *that* animal.
+    app.post(
+        &format!("/api/treatment-items/{}/move", ids[3]),
+        json!({ "direction": "up" }),
+    )
+    .await;
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    let moved = items
+        .as_array()
+        .and_then(|items| items.iter().find(|item| item["id"] == ids[3]))
+        .expect("the moved line");
+    assert_eq!(moved["position"], 1);
+    assert_eq!(
+        moved["patient_treatment_id"], seconds_record,
+        "moving inside a group does not move the line out of it"
+    );
+    let untouched = items
+        .as_array()
+        .and_then(|items| items.iter().find(|item| item["id"] == ids[0]))
+        .expect("the first animal's first line");
+    assert_eq!(
+        untouched["position"], 1,
+        "the other animal's order is its own"
+    );
+}
+
+#[sqlx::test]
+async fn a_line_moved_to_another_animal_lands_at_the_end(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let first = common::seed_patient(&pool, customer_id).await;
+    let second = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let (treatment_id, firsts_record) =
+        common::seed_patient_treatment(&pool, appointment_id, first).await;
+    let seconds_record: i64 = sqlx::query_scalar(
+        "INSERT INTO patient_treatment (treatment_id, patient_id) VALUES ($1, $2) RETURNING id",
+    )
+    .bind(treatment_id)
+    .bind(second)
+    .fetch_one(&pool)
+    .await
+    .expect("second record");
+    let service_id = common::seed_got_service(&pool).await;
+
+    let mut ids = Vec::new();
+    for record_id in [firsts_record, firsts_record, seconds_record] {
+        let line = app
+            .post(
+                &format!("/api/treatments/{treatment_id}/items"),
+                json!({
+                    "kind": "service", "service_id": service_id, "quantity": "1",
+                    "patient_treatment_id": record_id,
+                }),
+            )
+            .await
+            .json();
+        ids.push(line["id"].as_i64().unwrap_or_default());
+    }
+
+    // The first animal's first line moves across.
+    let moved = app
+        .patch(
+            &format!("/api/treatment-items/{}", ids[0]),
+            json!({ "patient_treatment_id": seconds_record }),
+        )
+        .await
+        .json();
+    assert_eq!(moved["patient_treatment_id"], seconds_record);
+    assert_eq!(
+        moved["position"], 2,
+        "it lands behind what is already there"
+    );
+
+    // And the hole it left is closed, so the animal it came from is still 1..n.
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    let stayed = items
+        .as_array()
+        .and_then(|items| items.iter().find(|item| item["id"] == ids[1]))
+        .expect("the line that stayed");
+    assert_eq!(stayed["position"], 1);
 }
 
 #[sqlx::test]
@@ -613,11 +783,13 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
 #[sqlx::test]
 async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let (treatment_id, _) = treatment(&pool).await;
+    // The reason and the finding belong to the animal, not to the visit: two animals seen
+    // together are rarely seen for the same thing.
+    let (_, record_id) = treatment(&pool).await;
 
     let patched = app
         .patch(
-            &format!("/api/treatments/{treatment_id}"),
+            &format!("/api/patient-treatments/{record_id}"),
             json!({ "finding": "Ohne besonderen Befund" }),
         )
         .await
@@ -631,7 +803,7 @@ async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
     // An explicit null clears the field; an absent field does not.
     let cleared = app
         .patch(
-            &format!("/api/treatments/{treatment_id}"),
+            &format!("/api/patient-treatments/{record_id}"),
             json!({ "finding": null }),
         )
         .await

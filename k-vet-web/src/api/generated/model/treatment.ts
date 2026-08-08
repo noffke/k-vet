@@ -13,10 +13,7 @@ export interface Treatment {
   appointment_id: number;
   /** @nullable */
   starts_at?: string | null;
-  /** @nullable */
-  treatment_reason?: string | null;
-  /** @nullable */
-  finding?: string | null;
+  /** One record per animal, each with its own reason, finding and positions. */
   patients: TreatmentPatient[];
   /**
      * Derived from the patients — the invoice's customer.

@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO patient_treatment (treatment_id, patient_id, treatment_reason, finding)\n         SELECT $1, patient_id, treatment_reason, finding\n           FROM patient_treatment WHERE treatment_id = $2\n         RETURNING id, patient_id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "patient_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "patient_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "afe9b3de0848d5b7665e1e5f38c675e3ba85a3429707e34c33b40e23aa0e1831"
+}

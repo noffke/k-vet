@@ -29,6 +29,7 @@ import { ServiceDetailPage, ServicesPage } from '@/features/services/ServicesPag
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { NotFoundPage } from '@/features/shell/NotFoundPage'
 import { TemplateDetailPage, TemplatesPage } from '@/features/templates/TemplatesPage'
+import { PatientTreatmentPage } from '@/features/treatments/PatientTreatmentPage'
 import { TreatmentPage } from '@/features/treatments/TreatmentPage'
 import { queryClient } from '@/lib/query'
 
@@ -183,6 +184,12 @@ const treatmentRoute = createRoute({
   component: TreatmentPage,
 })
 
+const patientTreatmentRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/patient-treatments/$id',
+  component: PatientTreatmentPage,
+})
+
 const routeTree = rootRoute.addChildren([
   loginRoute,
   appRoute.addChildren([
@@ -207,6 +214,7 @@ const routeTree = rootRoute.addChildren([
     templatesRoute,
     templateDetailRoute,
     treatmentRoute,
+    patientTreatmentRoute,
   ]),
 ])
 

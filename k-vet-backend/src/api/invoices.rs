@@ -177,7 +177,7 @@ async fn insert_invoice(
         return Err(AppError::field("items", "invoice.noLines"));
     }
     let patients: i64 = sqlx::query_scalar!(
-        "SELECT count(*) FROM treatment_patient WHERE treatment_id = $1",
+        "SELECT count(*) FROM patient_treatment WHERE treatment_id = $1",
         treatment_id
     )
     .fetch_one(&mut **transaction)
@@ -454,8 +454,8 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
            FROM invoice
            LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id
            JOIN treatment ON treatment.id = invoice.treatment_id
-           LEFT JOIN treatment_patient ON treatment_patient.treatment_id = treatment.id
-           LEFT JOIN patient ON patient.id = treatment_patient.patient_id
+           LEFT JOIN patient_treatment ON patient_treatment.treatment_id = treatment.id
+           LEFT JOIN patient ON patient.id = patient_treatment.patient_id
            LEFT JOIN customer ON customer.id = patient.customer_id
            CROSS JOIN global_settings settings
            WHERE invoice.id = $1
@@ -474,8 +474,8 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
     let patients = sqlx::query_scalar!(
         "SELECT patient.name
          FROM invoice
-         JOIN treatment_patient ON treatment_patient.treatment_id = invoice.treatment_id
-         JOIN patient ON patient.id = treatment_patient.patient_id
+         JOIN patient_treatment ON patient_treatment.treatment_id = invoice.treatment_id
+         JOIN patient ON patient.id = patient_treatment.patient_id
          WHERE invoice.id = $1
          ORDER BY patient.name",
         invoice_id,
@@ -636,7 +636,6 @@ async fn build_document(
         r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.due_date,
                   invoice.includes_finding,
                   invoice.note, invoice.treatment_id,
-                  treatment.treatment_reason, treatment.finding,
                   appointment.starts_at
            FROM invoice
            JOIN treatment ON treatment.id = invoice.treatment_id
@@ -657,11 +656,13 @@ async fn build_document(
     .await?;
 
     let patients = sqlx::query!(
-        r#"SELECT patient.id, patient.name, patient.customer_id, patient.species, patient.race,
+        r#"SELECT patient_treatment.id, patient_treatment.treatment_reason,
+                  patient_treatment.finding,
+                  patient.name, patient.customer_id, patient.species, patient.race,
                   patient.date_of_birth
-           FROM treatment_patient
-           JOIN patient ON patient.id = treatment_patient.patient_id
-           WHERE treatment_patient.treatment_id = $1
+           FROM patient_treatment
+           JOIN patient ON patient.id = patient_treatment.patient_id
+           WHERE patient_treatment.treatment_id = $1
            ORDER BY patient.name"#,
         invoice.treatment_id,
     )
@@ -718,7 +719,7 @@ async fn build_document(
             name: item.name.clone(),
             // Only worth printing when the invoice covers more than one animal.
             patient: if patients.len() > 1 {
-                item.patient_id
+                item.patient_treatment_id
                     .and_then(|id| patient_names.get(&id).cloned())
                     .unwrap_or_default()
             } else {
@@ -816,14 +817,30 @@ async fn build_document(
                 .iter()
                 .map(|patient| patient.name.clone().unwrap_or_default())
                 .collect(),
-            treatment_reason: invoice.treatment_reason.unwrap_or_default(),
             treatment_heading: treatment_heading(&patient_pairs, &descriptions, &treatment_date),
-            // The finding is printed only when the vet asked for it (FR-030).
-            finding: if invoice.includes_finding {
-                invoice.finding.unwrap_or_default()
-            } else {
-                String::new()
-            },
+            // One report per animal, in the order the groups print. An animal with neither a
+            // reason nor a finding is left out rather than printed as a bare name, and the
+            // finding is only there when the vet asked for it (FR-030).
+            reports: patients
+                .iter()
+                .filter_map(|patient| {
+                    let reason = patient.treatment_reason.clone().unwrap_or_default();
+                    let finding = if invoice.includes_finding {
+                        patient.finding.clone().unwrap_or_default()
+                    } else {
+                        String::new()
+                    };
+                    if reason.trim().is_empty() && finding.trim().is_empty() {
+                        return None;
+                    }
+                    Some(pdf::PatientReport {
+                        patient: patient.name.clone().unwrap_or_default(),
+                        description: descriptions.get(&patient.id).cloned().unwrap_or_default(),
+                        treatment_reason: reason,
+                        finding,
+                    })
+                })
+                .collect(),
             patient_groups: group_by_patient(
                 &lines,
                 &items,
@@ -962,7 +979,7 @@ fn group_by_patient(
 ) -> Vec<PatientGroup> {
     let mut groups: Vec<(Option<i64>, PatientGroup)> = Vec::new();
     for (line, item) in lines.iter().zip(items.iter()) {
-        let key = item.patient_id;
+        let key = item.patient_treatment_id;
         if let Some((_, group)) = groups.iter_mut().find(|(existing, _)| *existing == key) {
             group.items.push(line.clone());
             continue;
@@ -1093,10 +1110,10 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
 
     let patients = sqlx::query!(
         r#"SELECT patient.name, patient.customer_id, customer.first_name, customer.last_name
-           FROM treatment_patient
-           JOIN patient ON patient.id = treatment_patient.patient_id
+           FROM patient_treatment
+           JOIN patient ON patient.id = patient_treatment.patient_id
            LEFT JOIN customer ON customer.id = patient.customer_id
-           WHERE treatment_patient.treatment_id = $1
+           WHERE patient_treatment.treatment_id = $1
            ORDER BY patient.name"#,
         row.treatment_id,
     )
@@ -1189,10 +1206,10 @@ pub async fn list(
              AND ($3::text IS NULL
                   OR invoice.invoice_number ILIKE $3
                   OR EXISTS (
-                       SELECT 1 FROM treatment_patient
-                       JOIN patient ON patient.id = treatment_patient.patient_id
+                       SELECT 1 FROM patient_treatment
+                       JOIN patient ON patient.id = patient_treatment.patient_id
                        JOIN customer ON customer.id = patient.customer_id
-                       WHERE treatment_patient.treatment_id = invoice.treatment_id
+                       WHERE patient_treatment.treatment_id = invoice.treatment_id
                          AND concat_ws(' ', customer.first_name, customer.last_name) ILIKE $3))
            ORDER BY (invoice.status = 'accepted') DESC, invoice.invoice_date DESC, invoice.id DESC
            LIMIT $4 OFFSET $5"#,

@@ -75,15 +75,30 @@ font falls back silently and changes the metrics, so stay with these.
 | `sender_line` | string | Practice and address on one line, for the DIN 5008 Rücksendeangabe above the address block. |
 | `greeting` | string | Ready-made salutation, e.g. `Sehr geehrter Herr Mustermann` — follows the invoice recipient when one is set. Write the comma yourself. |
 | `patients` | string[] | Animal names on this invoice. |
-| `treatment_reason` | string | May be empty. |
 | `treatment_heading` | string | e.g. `Behandlung/Konsultation Eddie (Hund – Havaneser) am 28.07.2026`; empty when there are no animals. |
-| `finding` | string | Only filled when the invoice was created with *Befund aufführen*; otherwise empty. |
+| `reports` | report[] | The clinical report, one entry per animal. See below. |
 | `patient_groups` | group[] | The lines grouped per animal — what the default template prints. See below. |
 | `items` | line[] | Every line in one flat list, in the vet's chosen order. Kept so templates written before grouping keep working. |
 | `vat_groups` | group[] | One entry per VAT rate on the invoice. |
 | `total` | string | Gross total, e.g. `38,62 €`. |
 | `note` | string | Free note from the create dialog; may be empty. |
 | `qr_present` | bool | `true` when `inputs.qr` holds a GiroCode. Guard the QR block with this. |
+
+A report (`invoice.reports[]`) — the Behandlungsbericht, per animal. An animal with neither a
+reason nor a finding is **not** in the list, so `reports.len() > 0` is the guard for the whole
+section:
+
+| Field | Notes |
+| --- | --- |
+| `patient` | Animal name. |
+| `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`; empty parts are left out. |
+| `treatment_reason` | Why the animal was seen; may be empty. |
+| `finding` | Only filled when the invoice was created with *Befund aufführen*; otherwise empty. |
+
+> **Changed with the Patientenbehandlung.** The reason and the finding used to be single
+> invoice-level fields, `invoice.treatment_reason` and `invoice.finding`, because a treatment
+> had one of each for all its animals. They are now recorded per animal and only exist inside
+> `reports`. A custom template that printed the old fields has to iterate instead.
 
 A patient group (`invoice.patient_groups[]`):
 
@@ -123,7 +138,9 @@ rather than the rate applied to the group's net.
 Empty strings are the "absent" signal throughout — there are no nulls. Guard optional fields:
 
 ```typst
-#if invoice.finding != "" [ #text(10pt)[*Befund:* #invoice.finding] ]
+#for report in invoice.reports [
+  #if report.finding != "" [ #text(10pt)[*Befund:* #report.finding] ]
+]
 ```
 
 ### Example: a minimal template

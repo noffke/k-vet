@@ -1,13 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { Link } from '@tanstack/react-router'
 import {
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
   ChevronUp,
   Pill,
+  Plus,
   Stethoscope,
   Trash2,
 } from 'lucide-react'
+import type { ReactNode } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetTreatmentQueryKey,
@@ -41,6 +45,84 @@ interface LineEditorProps {
  */
 export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
   const { t } = useTranslation()
+  const { money } = useLocaleFormat()
+
+  const loose = items.filter((item) => item.patient_treatment_id === null)
+  // The bucket is for what covers the visit rather than an animal — a Wegegeld shared by two
+  // of them. Rare, so it only appears once it holds something, or on request.
+  const [bucketOpen, setBucketOpen] = useState(false)
+  const showBucket = loose.length > 0 || bucketOpen || treatment.patients.length === 0
+
+  return (
+    <section className="mt-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h2 className="text-base">{t('treatments.items')}</h2>
+        <span className="flex items-center gap-3">
+          {readOnly || showBucket ? null : (
+            <Button size="small" variant="ghost" onClick={() => setBucketOpen(true)}>
+              <Plus className="size-4" />
+              {t('treatments.withoutPatient')}
+            </Button>
+          )}
+          <span className="numeric text-sm font-semibold text-ink">
+            {t('treatments.total')}: {money(treatment.total_gross)}
+          </span>
+        </span>
+      </div>
+
+      {treatment.patients.map((patient) => (
+        <PositionGroup
+          key={patient.id}
+          treatment={treatment}
+          heading={
+            <Link
+              to="/patient-treatments/$id"
+              params={{ id: String(patient.id) }}
+              className="hover:underline"
+            >
+              {patient.name}
+            </Link>
+          }
+          patientTreatmentId={patient.id}
+          items={items.filter((item) => item.patient_treatment_id === patient.id)}
+          readOnly={readOnly}
+        />
+      ))}
+
+      {showBucket ? (
+        <PositionGroup
+          treatment={treatment}
+          heading={<span className="text-ink-soft">{t('treatments.withoutPatient')}</span>}
+          patientTreatmentId={null}
+          items={loose}
+          readOnly={readOnly}
+        />
+      ) : null}
+    </section>
+  )
+}
+
+interface PositionGroupProps {
+  treatment: Treatment
+  heading: ReactNode
+  /** The animal these lines belong to, or null for the visit's own. */
+  patientTreatmentId: number | null
+  items: TreatmentItem[]
+  readOnly: boolean
+}
+
+/**
+ * One animal's positions: its own search box, its own order. A Behandlungsgruppe is offered
+ * only inside an animal's group — its lines are clinical and belong to one.
+ */
+export function PositionGroup({
+  treatment,
+  heading,
+  patientTreatmentId,
+  items,
+  readOnly,
+}: PositionGroupProps) {
+  const { t } = useTranslation()
   const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
   const client = useQueryClient()
 
@@ -61,8 +143,18 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
       id: treatment.id,
       data:
         item.kind === 'drug_packaging'
-          ? { kind: 'drug_packaging', drug_packaging_id: item.id, quantity: '1' }
-          : { kind: 'service', service_id: item.id, quantity: '1' },
+          ? {
+              kind: 'drug_packaging',
+              drug_packaging_id: item.id,
+              quantity: '1',
+              patient_treatment_id: patientTreatmentId,
+            }
+          : {
+              kind: 'service',
+              service_id: item.id,
+              quantity: '1',
+              patient_treatment_id: patientTreatmentId,
+            },
     })
   }
 
@@ -70,27 +162,31 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
     moveItem.mutate({ id: itemId, data: { direction } })
 
   return (
-    <section className="mt-6">
-      <div className="flex items-center justify-between gap-3">
-        <h2 className="text-base">{t('treatments.items')}</h2>
-        <span className="numeric text-sm font-semibold text-ink">
-          {t('treatments.total')}: {money(treatment.total_gross)}
-        </span>
-      </div>
+    <div className="mt-4">
+      <h3 className="text-sm font-semibold text-ink">{heading}</h3>
 
       {readOnly ? null : (
-        <div className="mt-3">
+        <div className="mt-2">
           <ItemPicker
             onPick={pick}
-            onPickTemplate={(template) =>
-              applyTemplate.mutate({ id: treatment.id, data: { template_id: template.id } })
+            onPickTemplate={
+              patientTreatmentId === null
+                ? undefined
+                : (template) =>
+                    applyTemplate.mutate({
+                      id: treatment.id,
+                      data: {
+                        template_id: template.id,
+                        patient_treatment_id: patientTreatmentId,
+                      },
+                    })
             }
             disabled={addItem.isPending}
           />
         </div>
       )}
 
-      <ul className="mt-3 flex flex-col gap-2">
+      <ul className="mt-2 flex flex-col gap-2">
         {items.map((item, index) => (
           <li key={item.id} className="rounded-card border border-line bg-surface p-3">
             <div className="flex items-start gap-2">
@@ -114,9 +210,6 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                 <p className="text-xs text-ink-faint">
                   {item.got_number ? `GOT ${item.got_number} · ` : ''}
                   {percent(item.vat_percent)} {t('field.vat')}
-                  {item.patient_id
-                    ? ` · ${treatment.patients.find((patient) => patient.patient_id === item.patient_id)?.name ?? ''}`
-                    : ''}
                 </p>
               </div>
               <span className="numeric shrink-0 font-semibold text-ink">
@@ -179,25 +272,31 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
                   />
                 </>
               ) : null}
-              {treatment.patients.length > 1 ? (
+              {/* Moving a line to the animal it belongs to, when it was entered under the
+                  wrong one. A drug line cannot leave every animal — that is its traceability. */}
+              {treatment.patients.length > 1 || item.patient_treatment_id === null ? (
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-semibold text-ink-soft">{t('field.patient')}</span>
                   <select
-                    value={item.patient_id ?? ''}
+                    value={item.patient_treatment_id ?? ''}
                     disabled={readOnly}
                     onChange={(event) =>
                       patchItem.mutate({
                         id: item.id,
                         data: {
-                          patient_id: event.target.value ? Number(event.target.value) : null,
+                          patient_treatment_id: event.target.value
+                            ? Number(event.target.value)
+                            : null,
                         },
                       })
                     }
                     className="rounded-control border border-line-strong bg-surface px-2 py-2 min-h-11 sm:min-h-9"
                   >
-                    {item.kind === 'service' ? <option value="">—</option> : null}
+                    {item.kind === 'service' ? (
+                      <option value="">{t('treatments.withoutPatient')}</option>
+                    ) : null}
                     {treatment.patients.map((patient) => (
-                      <option key={patient.patient_id} value={patient.patient_id}>
+                      <option key={patient.id} value={patient.id}>
                         {patient.name}
                       </option>
                     ))}
@@ -290,11 +389,11 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
           </li>
         ))}
         {items.length === 0 ? (
-          <li className="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-faint">
+          <li className="rounded-card border border-dashed border-line-strong px-4 py-4 text-center text-sm text-ink-faint">
             {t('list.empty')}
           </li>
         ) : null}
       </ul>
-    </section>
+    </div>
   )
 }

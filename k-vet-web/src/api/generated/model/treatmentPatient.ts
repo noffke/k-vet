@@ -7,9 +7,15 @@
  */
 
 export interface TreatmentPatient {
+  /** The Patientenbehandlung — what positions and files hang on. */
+  id: number;
   patient_id: number;
   name: string;
   customer_id: number;
   /** @nullable */
   warning_remark?: string | null;
+  /** @nullable */
+  treatment_reason?: string | null;
+  /** @nullable */
+  finding?: string | null;
 }

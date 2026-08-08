@@ -1,0 +1,52 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment_id, patient_treatment_id, position FROM treatment_item WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "patient_treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "patient_treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "position"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false
+    ]
+  },
+  "hash": "9152e90507c8e7c582cb966f8ffdc75a611123f338e4a3db624bc01397a75c63"
+}

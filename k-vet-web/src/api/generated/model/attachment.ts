@@ -21,7 +21,7 @@ export interface Attachment {
   /** @nullable */
   patient_id?: number | null;
   /** @nullable */
-  treatment_id?: number | null;
+  patient_treatment_id?: number | null;
   /**
      * Date the document refers to (patient files), independent of the upload time.
      * @nullable
