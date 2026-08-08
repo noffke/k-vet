@@ -57,6 +57,8 @@ pub struct Drug {
     pub missing_fields: Vec<String>,
     /// Derived stock over the lots of the original packaging, in base units.
     pub in_stock: Decimal,
+    /// The original packaging's unit — what `in_stock` is counted in.
+    pub unit: Option<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -592,7 +594,10 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
                   (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining
-                    WHERE lot_remaining.drug_id = drug.id) AS "in_stock?"
+                    WHERE lot_remaining.drug_id = drug.id) AS "in_stock?",
+                  (SELECT unit FROM drug_packaging
+                    WHERE drug_packaging.drug_id = drug.id
+                      AND drug_packaging.kind = 'original') AS "unit?"
            FROM drug
            LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id
            WHERE drug.id = $1"#,
@@ -628,6 +633,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         draft: row.draft,
         missing_fields: missing,
         in_stock: row.in_stock.unwrap_or_default(),
+        unit: row.unit,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })

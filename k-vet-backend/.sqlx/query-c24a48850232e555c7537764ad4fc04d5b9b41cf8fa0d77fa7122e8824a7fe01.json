@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,\n                  drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,\n                  drug.human_drug,\n                  drug.vat_percent, drug.approval_number, drug.archived, drug.draft,\n                  drug.created_at, drug.updated_at,\n                  manufacturer.name AS \"manufacturer_name?\",\n                  (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining\n                    WHERE lot_remaining.drug_id = drug.id) AS \"in_stock?\"\n           FROM drug\n           LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id\n           WHERE drug.id = $1",
+  "query": "SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,\n                  drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,\n                  drug.human_drug,\n                  drug.vat_percent, drug.approval_number, drug.archived, drug.draft,\n                  drug.created_at, drug.updated_at,\n                  manufacturer.name AS \"manufacturer_name?\",\n                  (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining\n                    WHERE lot_remaining.drug_id = drug.id) AS \"in_stock?\",\n                  (SELECT unit FROM drug_packaging\n                    WHERE drug_packaging.drug_id = drug.id\n                      AND drug_packaging.kind = 'original') AS \"unit?\"\n           FROM drug\n           LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id\n           WHERE drug.id = $1",
   "describe": {
     "columns": [
       {
@@ -184,6 +184,12 @@
         "name": "in_stock?",
         "type_info": "Numeric",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 17,
+        "name": "unit?",
+        "type_info": "Text",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -208,8 +214,9 @@
       false,
       false,
       true,
+      null,
       null
     ]
   },
-  "hash": "9d522a004054bf07f40056c1024807d89732ce6ecc69872a9734e87fca5a3833"
+  "hash": "c24a48850232e555c7537764ad4fc04d5b9b41cf8fa0d77fa7122e8824a7fe01"
 }

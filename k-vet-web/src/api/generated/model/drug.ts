@@ -34,6 +34,11 @@ export interface Drug {
   missing_fields: string[];
   /** Derived stock over the lots of the original packaging, in base units. */
   in_stock: string;
+  /**
+     * The original packaging's unit — what `in_stock` is counted in.
+     * @nullable
+     */
+  unit?: string | null;
   created_at: string;
   updated_at: string;
 }

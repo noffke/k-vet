@@ -80,7 +80,8 @@ export function PharmacyPage() {
       id: 'stock',
       header: t('pharmacy.stock'),
       numeric: true,
-      cell: (row) => quantity(row.in_stock),
+      // The unit belongs to the packaging, not the drug — but a bare "100" says nothing.
+      cell: (row) => `${quantity(row.in_stock)} ${row.unit ?? ''}`.trim(),
     },
   ]
 

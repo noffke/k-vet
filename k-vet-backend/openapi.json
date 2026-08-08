@@ -4717,6 +4717,13 @@
             "type": "string",
             "description": "Derived stock over the lots of the original packaging, in base units."
           },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The original packaging's unit — what `in_stock` is counted in."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"

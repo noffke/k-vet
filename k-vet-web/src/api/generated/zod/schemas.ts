@@ -678,6 +678,7 @@ export const ListDrugsResponseItem = zod.object({
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -701,6 +702,7 @@ export const CreateDrugResponse = zod.object({
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -727,6 +729,7 @@ export const GetDrugResponse = zod.object({
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -766,6 +769,7 @@ export const PatchDrugResponse = zod.object({
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -792,6 +796,7 @@ export const ArchiveDrugResponse = zod.object({
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -869,6 +874,7 @@ export const UnarchiveDrugResponse = zod.object({
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
