@@ -1,5 +1,7 @@
+import { Minus, Plus } from 'lucide-react'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { currencyDecimals, formatNumber, localiseSeparators } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
@@ -18,6 +20,14 @@ export interface NumberInputProps {
    * never `14,8` — where a quantity drops its trailing zeros.
    */
   money?: boolean
+  /**
+   * Renders − / + buttons stepping by this much. For the small whole numbers that are
+   * counted rather than measured — how many packages arrived — where reaching for the
+   * keyboard to change a 1 into a 2 is the slower way round.
+   */
+  step?: number
+  min?: number
+  max?: number
   /**
    * Unit shown inside the field, after the value ("€", "%"). It is decoration, not part
    * of what is typed or stored — the field still holds a bare number.
@@ -47,6 +57,9 @@ export function NumberInput({
   onChange,
   decimals,
   money,
+  step,
+  min,
+  max,
   unit,
   error,
   hint,
@@ -90,10 +103,33 @@ export function NumberInput({
 
   const shown = localError ?? error
 
+  /** Steps the stored value, not the typed text: the field may hold a half-typed number. */
+  const nudge = (by: number) => {
+    const current = parseNumber(text) ?? Number(value ?? 0)
+    let next = current + by
+    if (min !== undefined) next = Math.max(min, next)
+    if (max !== undefined) next = Math.min(max, next)
+    const rounded = Number(next.toFixed(wireDecimals))
+    setText(displayValue(rounded.toFixed(wireDecimals), locale, fixed))
+    onChange(rounded.toFixed(wireDecimals))
+  }
+  const atMin = min !== undefined && Number(value ?? 0) <= min
+  const atMax = max !== undefined && Number(value ?? 0) >= max
+
   return (
     <Field label={label} error={shown} hint={hint} className={wrapperClassName}>
       {(id) => (
-        <div className="relative">
+        <div className={cn('relative', step ? 'flex items-stretch gap-1' : undefined)}>
+          {step ? (
+            <Button
+              size="icon"
+              disabled={disabled || atMin}
+              aria-label={t('action.decrease')}
+              onClick={() => nudge(-step)}
+            >
+              <Minus className="size-4" />
+            </Button>
+          ) : null}
           <input
             id={id}
             // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.
@@ -132,12 +168,23 @@ export function NumberInput({
               // Decoration only: clicks fall through to the input, and the value stays a
               // bare number. Screen readers get it as the field's description.
               className={cn(
-                'numeric pointer-events-none absolute inset-y-0 right-3 flex items-center',
+                'numeric pointer-events-none absolute inset-y-0 flex items-center',
+                step ? 'right-14' : 'right-3',
                 disabled ? 'text-ink-faint' : 'text-ink-soft',
               )}
             >
               {unit}
             </span>
+          ) : null}
+          {step ? (
+            <Button
+              size="icon"
+              disabled={disabled || atMax}
+              aria-label={t('action.increase')}
+              onClick={() => nudge(step)}
+            >
+              <Plus className="size-4" />
+            </Button>
           ) : null}
         </div>
       )}

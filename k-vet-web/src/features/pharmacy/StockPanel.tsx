@@ -1,22 +1,11 @@
-import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { PackagePlus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  getGetDrugQueryKey,
-  getListDrugsQueryKey,
-  getListLotsQueryKey,
-  useCreateStockIntake,
-  useListLots,
-} from '@/api/generated/endpoints'
+import { useListLots } from '@/api/generated/endpoints'
 import type { Drug, Packaging } from '@/api/generated/model'
-import { DateInput } from '@/components/DateInput'
-import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
-import { CheckboxField, TextField } from '@/components/ui/field'
-import { todayIso } from '@/lib/format'
+import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
 interface StockPanelProps {
@@ -32,29 +21,10 @@ export function StockPanel({ drug, original }: StockPanelProps) {
   const { t } = useTranslation()
   const { quantity: formatQuantity, date } = useLocaleFormat()
   const navigate = useNavigate()
-  const client = useQueryClient()
 
-  const [intakeOpen, setIntakeOpen] = useState(false)
   const [showEmpty, setShowEmpty] = useState(false)
-  const [arrivalDate, setArrivalDate] = useState<string | null>(todayIso())
-  const [packages, setPackages] = useState<string | null>('1')
-  const [batchNumber, setBatchNumber] = useState('')
-  const [expirationDate, setExpirationDate] = useState<string | null>(null)
 
   const lots = useListLots({ drug_id: drug.id, empty: showEmpty || undefined })
-  const createIntake = useCreateStockIntake({
-    mutation: {
-      onSuccess: async () => {
-        setIntakeOpen(false)
-        setBatchNumber('')
-        setExpirationDate(null)
-        await client.invalidateQueries({ queryKey: getListLotsQueryKey() })
-        await client.invalidateQueries({ queryKey: getListDrugsQueryKey() })
-        // The drug's derived stock changed with the delivery.
-        await client.invalidateQueries({ queryKey: getGetDrugQueryKey(drug.id) })
-      },
-    },
-  })
 
   return (
     <section className="mt-6">
@@ -76,7 +46,9 @@ export function StockPanel({ drug, original }: StockPanelProps) {
             size="small"
             disabled={!original || original.draft}
             title={original ? undefined : t('pharmacy.original')}
-            onClick={() => setIntakeOpen(true)}
+            onClick={() =>
+              void navigate({ to: '/pharmacy/$id/intake', params: { id: String(drug.id) } })
+            }
           >
             <PackagePlus className="size-4" />
             {t('pharmacy.intake')}
@@ -131,64 +103,6 @@ export function StockPanel({ drug, original }: StockPanelProps) {
           </li>
         ) : null}
       </ul>
-
-      <Dialog
-        open={intakeOpen}
-        onOpenChange={setIntakeOpen}
-        title={t('pharmacy.intake')}
-        footer={
-          <>
-            <Button onClick={() => setIntakeOpen(false)}>{t('action.cancel')}</Button>
-            <Button
-              variant="primary"
-              disabled={!original || !packages || createIntake.isPending}
-              onClick={() =>
-                original &&
-                packages &&
-                createIntake.mutate({
-                  id: original.id,
-                  data: {
-                    arrival_date: arrivalDate,
-                    packages_received: Number(packages),
-                    batch_number: batchNumber || null,
-                    expiration_date: expirationDate,
-                  },
-                })
-              }
-            >
-              {t('action.add')}
-            </Button>
-          </>
-        }
-      >
-        <div className="grid gap-3 sm:grid-cols-2">
-          <DateInput label={t('field.arrivalDate')} value={arrivalDate} onChange={setArrivalDate} />
-          <NumberInput
-            label={t('field.packagesReceived')}
-            value={packages}
-            decimals={0}
-            onChange={setPackages}
-          />
-          <TextField
-            label={t('field.batchNumber')}
-            value={batchNumber}
-            onChange={(event) => setBatchNumber(event.target.value)}
-          />
-          <DateInput
-            label={t('field.expirationDate')}
-            value={expirationDate}
-            onChange={setExpirationDate}
-          />
-          {original?.quantity && packages ? (
-            <p className="numeric text-xs text-ink-faint sm:col-span-2">
-              {t('pharmacy.intakeResult', {
-                quantity: formatQuantity(String(Number(original.quantity) * Number(packages))),
-                unit: original.unit ?? '',
-              })}
-            </p>
-          ) : null}
-        </div>
-      </Dialog>
     </section>
   )
 }

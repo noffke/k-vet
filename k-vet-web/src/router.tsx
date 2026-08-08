@@ -24,6 +24,7 @@ import { PatientsPage } from '@/features/patients/PatientsPage'
 import { DrugDetailPage } from '@/features/pharmacy/DrugDetailPage'
 import { LotDetailPage } from '@/features/pharmacy/LotDetailPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
+import { StockIntakePage } from '@/features/pharmacy/StockIntakePage'
 import { ServiceDetailPage, ServicesPage } from '@/features/services/ServicesPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { NotFoundPage } from '@/features/shell/NotFoundPage'
@@ -122,6 +123,12 @@ const drugDetailRoute = createRoute({
   component: DrugDetailPage,
 })
 
+const stockIntakeRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/pharmacy/$id/intake',
+  component: StockIntakePage,
+})
+
 const lotDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/lots/$id',
@@ -190,6 +197,7 @@ const routeTree = rootRoute.addChildren([
     patientDetailRoute,
     pharmacyRoute,
     drugDetailRoute,
+    stockIntakeRoute,
     lotDetailRoute,
     masterDataRoute,
     manufacturerDetailRoute,
