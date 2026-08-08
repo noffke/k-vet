@@ -351,10 +351,24 @@ pub async fn create_packaging(
     Path(drug_id): Path<i64>,
     Json(body): Json<CreatePackaging>,
 ) -> AppResult<Json<Packaging>> {
+    // A Teilmenge is measured in the same unit as the packaging it is taken from — 10 ml out
+    // of a 100 ml bottle — so it starts with the original's, and the vet may still change it.
+    let inherited_unit = match body.kind {
+        PackagingKind::Subset => sqlx::query_scalar!(
+            "SELECT unit FROM drug_packaging WHERE drug_id = $1 AND kind = 'original'",
+            drug_id,
+        )
+        .fetch_optional(&state.pool)
+        .await?
+        .flatten(),
+        PackagingKind::Original => None,
+    };
+
     let id: i64 = sqlx::query_scalar!(
-        "INSERT INTO drug_packaging (drug_id, kind) VALUES ($1, $2) RETURNING id",
+        "INSERT INTO drug_packaging (drug_id, kind, unit) VALUES ($1, $2, $3) RETURNING id",
         drug_id,
         body.kind as PackagingKind,
+        inherited_unit,
     )
     .fetch_one(&state.pool)
     .await?;
@@ -722,8 +736,29 @@ pub async fn load_packagings(
         .collect())
 }
 
+#[utoipa::path(
+    get,
+    path = "/api/pharmacy/units",
+    operation_id = "listUnits",
+    tag = "pharmacy",
+    responses((status = 200, description = "Units already in use, alphabetical", body = Vec<String>))
+)]
+pub async fn units(State(state): State<AppState>) -> AppResult<Json<Vec<String>>> {
+    // An editable select: what the practice already writes, plus free text. ml and Stück cover
+    // most of it, but nobody should have to remember whether they wrote "Tbl." or "Tabl.".
+    let units = sqlx::query_scalar!(
+        "SELECT DISTINCT unit FROM drug_packaging
+          WHERE unit IS NOT NULL AND unit <> '' AND NOT archived
+          ORDER BY unit",
+    )
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(Json(units.into_iter().flatten().collect()))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
+        .route("/pharmacy/units", get(units))
         .route("/drugs", get(list).post(create))
         .route("/drugs/{id}", get(detail).patch(patch))
         .route("/drugs/{id}/archive", post(archive))

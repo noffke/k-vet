@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO drug_packaging (drug_id, kind) VALUES ($1, $2) RETURNING id",
+  "query": "INSERT INTO drug_packaging (drug_id, kind, unit) VALUES ($1, $2, $3) RETURNING id",
   "describe": {
     "columns": [
       {
@@ -28,12 +28,13 @@
               ]
             }
           }
-        }
+        },
+        "Text"
       ]
     },
     "nullable": [
       false
     ]
   },
-  "hash": "b7df0a5d6a081c70bbbcd961545d70cedd854d25039fbea6f356a84adbce0daa"
+  "hash": "8c359b23e9c0ff792abd7604baa92e65313ac2560a8c7150d2d971c6801e3a2f"
 }

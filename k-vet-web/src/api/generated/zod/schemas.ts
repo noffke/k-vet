@@ -1590,6 +1590,10 @@ export const UnarchivePatientResponse = zod.object({
 })
 
 
+export const ListUnitsResponseItem = zod.string()
+export const ListUnitsResponse = zod.array(ListUnitsResponseItem)
+
+
 export const PickerItemsQueryParams = zod.object({
   "q": zod.string().optional().describe('Search term; empty returns the most-used entries.')
 })

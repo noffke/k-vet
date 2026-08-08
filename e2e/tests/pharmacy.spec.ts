@@ -75,6 +75,23 @@ test.describe('pharmacy', () => {
     await expect(page.getByLabel('Verkaufspreis (netto)').first()).toHaveValue('14,80')
   })
 
+  test('a Teilmenge starts on the original packaging unit', async ({ page, request }) => {
+    const drug = await seedDrug(request)
+    await signIn(page)
+    await page.goto(`/pharmacy/${drug.drugId}`)
+    await page.getByLabel('Einheit').first().waitFor()
+
+    await page.getByRole('button', { name: 'Teilmenge' }).click()
+    // 10 ml out of a 100 ml bottle: the same unit, so it is not retyped every time.
+    await expect(page.getByLabel('Einheit').last()).toHaveValue('ml')
+
+    // The field also offers what the practice already writes elsewhere.
+    const suggestions = await page
+      .locator('#packaging-units option')
+      .evaluateAll((nodes) => nodes.map((node) => node.getAttribute('value')))
+    expect(suggestions).toContain('ml')
+  })
+
   test('a delivery becomes a lot whose stock is derived', async ({ page, request }) => {
     const { drugId } = await seedDrug(request)
     await signIn(page)

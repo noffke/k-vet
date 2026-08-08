@@ -4865,6 +4865,101 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getUnarchivePatientMutationOptions(options), queryClient);
     }
 
+export const getListUnitsUrl = () => {
+
+
+
+
+  return `/api/pharmacy/units`
+}
+
+export const listUnits = async ( options?: Parameters<typeof apiFetch>[1]): Promise<string[]> => {
+
+  return apiFetch<string[]>(getListUnitsUrl(),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListUnitsQueryKey = () => {
+    return [
+    `/api/pharmacy/units`
+    ] as const;
+    }
+
+
+export const getListUnitsQueryOptions = <TData = Awaited<ReturnType<typeof listUnits>>, TError = unknown>( options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUnits>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListUnitsQueryKey();
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listUnits>>> = ({ signal }) => listUnits({ signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listUnits>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListUnitsQueryResult = NonNullable<Awaited<ReturnType<typeof listUnits>>>
+export type ListUnitsQueryError = unknown
+
+
+export function useListUnits<TData = Awaited<ReturnType<typeof listUnits>>, TError = unknown>(
+  options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUnits>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listUnits>>,
+          TError,
+          Awaited<ReturnType<typeof listUnits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListUnits<TData = Awaited<ReturnType<typeof listUnits>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUnits>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listUnits>>,
+          TError,
+          Awaited<ReturnType<typeof listUnits>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListUnits<TData = Awaited<ReturnType<typeof listUnits>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUnits>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListUnits<TData = Awaited<ReturnType<typeof listUnits>>, TError = unknown>(
+  options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listUnits>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListUnitsQueryOptions(options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getPickerItemsUrl = (params?: PickerItemsParams,) => {
   const normalizedParams = new URLSearchParams();
 

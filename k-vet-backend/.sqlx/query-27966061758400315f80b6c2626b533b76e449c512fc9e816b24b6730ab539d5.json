@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT unit FROM drug_packaging WHERE drug_id = $1 AND kind = 'original'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "27966061758400315f80b6c2626b533b76e449c512fc9e816b24b6730ab539d5"
+}

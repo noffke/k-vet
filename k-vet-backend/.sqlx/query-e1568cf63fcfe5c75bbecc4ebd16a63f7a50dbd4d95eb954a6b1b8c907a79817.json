@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT DISTINCT unit FROM drug_packaging\n          WHERE unit IS NOT NULL AND unit <> '' AND NOT archived\n          ORDER BY unit",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "e1568cf63fcfe5c75bbecc4ebd16a63f7a50dbd4d95eb954a6b1b8c907a79817"
+}

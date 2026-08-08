@@ -5,6 +5,7 @@ import {
   getListLotsQueryKey,
   getListPackagingsQueryKey,
   useCreatePackaging,
+  useListUnits,
   usePatchPackaging,
 } from '@/api/generated/endpoints'
 import type { AddressBookEntry, Drug, Packaging } from '@/api/generated/model'
@@ -31,6 +32,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
   const { t } = useTranslation()
   const { money, quantity: formatQuantity, currencySymbol } = useLocaleFormat()
   const client = useQueryClient()
+  const units = useListUnits()
 
   const refresh = async () => {
     await client.invalidateQueries({ queryKey: getListPackagingsQueryKey(drug.id) })
@@ -66,6 +68,12 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
         </div>
       </div>
 
+      <datalist id="packaging-units">
+        {(units.data ?? []).map((unit) => (
+          <option key={unit} value={unit} />
+        ))}
+      </datalist>
+
       <ul className="mt-3 flex flex-col gap-3">
         {packagings.map((packaging) => {
           const isOriginal = packaging.kind === 'original'
@@ -92,8 +100,10 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
               </div>
 
               <div className="mt-2 grid gap-3 sm:grid-cols-4">
+                {/* An editable select: the units the practice already uses, plus free text. */}
                 <TextField
                   label={t('field.unit')}
+                  list="packaging-units"
                   defaultValue={packaging.unit ?? ''}
                   onBlur={(event) =>
                     event.target.value !== (packaging.unit ?? '') &&

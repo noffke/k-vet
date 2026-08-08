@@ -2238,6 +2238,29 @@
         }
       }
     },
+    "/api/pharmacy/units": {
+      "get": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "listUnits",
+        "responses": {
+          "200": {
+            "description": "Units already in use, alphabetical",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "type": "string"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/picker/items": {
       "get": {
         "tags": [
