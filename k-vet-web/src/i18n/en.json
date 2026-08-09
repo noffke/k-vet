@@ -251,6 +251,7 @@
       "vaccine": "Vaccine"
     },
     "flagsLegend": "Flags",
+    "initialStock": "Initial stock",
     "intake": "Stock intake",
     "intakeResult": "Adds {{quantity}} {{unit}} initial stock.",
     "lots": "Lots",

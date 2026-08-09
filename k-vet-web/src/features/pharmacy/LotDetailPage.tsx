@@ -91,7 +91,7 @@ export function LotDetailPage() {
             {formatQuantity(record.remaining)} {record.unit ?? ''}
           </span>
         </Fact>
-        <Fact label={t('pharmacy.intake')}>
+        <Fact label={t('pharmacy.initialStock')}>
           <span className="numeric">
             {formatQuantity(record.initial_quantity)} {record.unit ?? ''}
           </span>

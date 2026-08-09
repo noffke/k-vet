@@ -251,6 +251,7 @@
       "vaccine": "Impfstoff"
     },
     "flagsLegend": "Kennzeichen",
+    "initialStock": "Anfangsbestand",
     "intake": "Wareneingang",
     "intakeResult": "Ergibt {{quantity}} {{unit}} Anfangsbestand.",
     "lots": "Chargen",
