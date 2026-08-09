@@ -72,7 +72,11 @@ export function LotDetailPage() {
             label={record.drug_name ?? t('pharmacy.title')}
           />
         }
-        title={record.batch_number ?? `${t('pharmacy.lots')} ${record.id}`}
+        title={
+          record.batch_number
+            ? `${t('pharmacy.batchShort')} ${record.batch_number}`
+            : `${t('pharmacy.lots')} ${record.id}`
+        }
         actions={
           <Button variant="accent" onClick={openCorrection}>
             <SlidersHorizontal className="size-4" />

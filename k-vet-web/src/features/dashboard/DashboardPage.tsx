@@ -60,8 +60,13 @@ export function DashboardPage() {
                   >
                     <span className="min-w-0">
                       <span className="block truncate text-sm text-ink">{lot.drug_name}</span>
+                      {/* What is left comes first — that is what decides whether the expiry
+                          matters — and the batch number says what it is. */}
                       <span className="numeric block text-xs text-ink-faint">
-                        {lot.batch_number ?? '—'} · {quantity(lot.remaining)} {lot.unit ?? ''}
+                        {quantity(lot.remaining)} {lot.unit ?? ''}
+                        {lot.batch_number
+                          ? ` · ${t('pharmacy.batchShort')} ${lot.batch_number}`
+                          : ''}
                       </span>
                     </span>
                     <span className="numeric shrink-0 text-sm text-ink-soft">
