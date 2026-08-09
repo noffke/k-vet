@@ -118,6 +118,41 @@ async fn the_list_shows_newest_first_with_treatment_counts(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let appointment_id = common::seed_appointment(
+        &pool,
+        "2026-05-04T09:00:00Z".parse::<DateTime<Utc>>().unwrap(),
+    )
+    .await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+
+    // A treatment without positions is nothing to bill, so it is nothing to mark.
+    let list = app.get("/api/appointments").await.json();
+    assert_eq!(list[0]["unbilled_treatment_count"], 0);
+
+    let service_id = common::seed_got_service(&pool).await;
+    app.post(
+        &format!("/api/treatments/{treatment_id}/items"),
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await;
+    let list = app.get("/api/appointments").await.json();
+    assert_eq!(list[0]["unbilled_treatment_count"], 1);
+
+    // The invoice is what clears it — writing one is enough, it need not be released.
+    app.post(
+        &format!("/api/treatments/{treatment_id}/invoice"),
+        json!({}),
+    )
+    .await;
+    let list = app.get("/api/appointments").await.json();
+    assert_eq!(list[0]["unbilled_treatment_count"], 0);
+}
+
+#[sqlx::test]
 async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let source = common::seed_appointment(

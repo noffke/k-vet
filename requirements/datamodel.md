@@ -166,11 +166,12 @@ Fields:
 * Invoice Date
 * Email Recipients (optional)
 * Timestamp Sent by Email (optional)
+* Timestamp Sent by Post (optional)
 * Timestamp Submitted to Bookkeeping (optional)
 * Timestamp Cancelled (optional)
 * Includes Finding (bool)
 * Note (Anmerkung) (optional)
-* Status (enum: Created, Accepted, Submitted to Bookkeeping, Cancelled)
+* Status (enum: Created, Accepted, Sent, Submitted to Bookkeeping, Cancelled) — Sent is a precondition of Submitted
 * Relation: 1 Treatment
 
 ### Invoice Number Sequence (Rechnungsnummernkreis)

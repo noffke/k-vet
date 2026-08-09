@@ -126,6 +126,20 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   // The dispense is frozen, so the stock movement can no longer be rewritten.
   const detail = await request.get(`/api/invoices/${invoice.id}`)
   expect((await detail.json()).email_recipients).toEqual(['erika@example.com'])
+
+  // There is no mail server here, so the send failed and the invoice never reached the
+  // customer. That used to be invisible; now it is a state, it is marked on the page, and
+  // it blocks the hand-off until someone deals with it.
+  expect((await detail.json()).ts_sent_email).toBeNull()
+  await expect(page.getByText('Nicht versendet', { exact: true }).first()).toBeVisible()
+  const tooEarly = await request.post(`/api/invoices/${invoice.id}/submit`)
+  expect(tooEarly.status()).toBe(409)
+
+  // Posting it is what the vet does with an invoice the customer got on paper.
+  await page.getByRole('button', { name: 'Per Post versendet' }).first().click()
+  await expect(page.getByText('Versendet', { exact: true }).first()).toBeVisible()
+  await expect(page.getByText('Nicht versendet', { exact: true })).toHaveCount(0)
+
   const lots = await request.get(`/api/lots?packaging_id=${packagingId}`)
   const [lot] = await lots.json()
   expect(lot.batch_number).toBe('CH-KERN')

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT record.id, record.treatment_id, record.patient_id, record.treatment_reason,\n                  record.finding, record.created_at, record.updated_at,\n                  patient.name AS \"patient_name?\",\n                  appointment.starts_at,\n                  EXISTS (\n                      SELECT 1 FROM invoice\n                      WHERE invoice.treatment_id = record.treatment_id\n                        AND invoice.status IN ('accepted', 'submitted')\n                  ) AS \"frozen?\"\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE record.id = $1",
+  "query": "SELECT record.id, record.treatment_id, record.patient_id, record.treatment_reason,\n                  record.finding, record.created_at, record.updated_at,\n                  patient.name AS \"patient_name?\",\n                  appointment.starts_at,\n                  EXISTS (\n                      SELECT 1 FROM invoice\n                      WHERE invoice.treatment_id = record.treatment_id\n                        AND invoice.status IN ('accepted', 'sent', 'submitted')\n                  ) AS \"frozen?\"\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE record.id = $1",
   "describe": {
     "columns": [
       {
@@ -127,5 +127,5 @@
       null
     ]
   },
-  "hash": "0828ecaef4213f5944097219b30f9eef897f8911f6cf09eeb8706d98f8ded4ba"
+  "hash": "2e1081049065cd5718e019d128428cafb3d0727bcd5d561849243177406cdb03"
 }

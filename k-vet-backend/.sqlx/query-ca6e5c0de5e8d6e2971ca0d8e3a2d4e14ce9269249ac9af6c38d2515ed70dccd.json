@@ -1,0 +1,35 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment.id, appointment.starts_at::date AS \"visit_date?\"\n           FROM treatment\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE appointment.starts_at < date_trunc('day', now())\n             AND EXISTS (\n                   SELECT 1 FROM treatment_item WHERE treatment_item.treatment_id = treatment.id)\n             AND NOT EXISTS (\n                   SELECT 1 FROM invoice\n                   WHERE invoice.treatment_id = treatment.id AND invoice.status <> 'cancelled')\n           ORDER BY appointment.starts_at, treatment.id\n           LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "visit_date?",
+        "type_info": "Date",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      null
+    ]
+  },
+  "hash": "ca6e5c0de5e8d6e2971ca0d8e3a2d4e14ce9269249ac9af6c38d2515ed70dccd"
+}

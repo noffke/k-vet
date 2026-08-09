@@ -56,8 +56,9 @@ db_enum! {
 }
 
 db_enum! {
-    /// Invoice lifecycle.
-    InvoiceStatus => "invoice_status" { Created, Accepted, Submitted, Cancelled }
+    /// Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.
+    /// Dispatch is a precondition of the hand-off, which is what keeps one column sufficient.
+    InvoiceStatus => "invoice_status" { Created, Accepted, Sent, Submitted, Cancelled }
 }
 
 db_enum! {

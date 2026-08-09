@@ -1,0 +1,21 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT count(*)\n         FROM treatment\n         JOIN appointment ON appointment.id = treatment.appointment_id\n         WHERE appointment.starts_at < date_trunc('day', now())\n           AND EXISTS (\n                 SELECT 1 FROM treatment_item WHERE treatment_item.treatment_id = treatment.id)\n           AND NOT EXISTS (\n                 SELECT 1 FROM invoice\n                 WHERE invoice.treatment_id = treatment.id AND invoice.status <> 'cancelled')",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "count",
+        "type_info": "Int8",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "af4fcbe77e559d04cf918b0a5f970e07edd6ec5e2634b68f8255f16e4e79c253"
+}

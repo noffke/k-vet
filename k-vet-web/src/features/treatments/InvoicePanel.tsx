@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { Ban, FileText, Mail, ReceiptText } from 'lucide-react'
+import { Ban, FileText, Mail, ReceiptText, Send } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -9,9 +9,10 @@ import {
   getInvoicePdfUrl,
   useCancelInvoice,
   useGetInvoice,
-  useSendInvoice,
+  useMarkInvoicePosted,
 } from '@/api/generated/endpoints'
 import type { Treatment } from '@/api/generated/model'
+import { NotSentBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { useLocaleFormat } from '@/lib/locale'
@@ -22,12 +23,13 @@ interface InvoicePanelProps {
 }
 
 /**
- * Create → inspect the PDF → accept and email. The panel also carries the two warnings
- * that matter: updating an accepted invoice burns its number, and cancelling is final.
+ * Create → inspect the PDF → release → get it to the customer, by e-mail or on paper. The
+ * panel also carries the two warnings that matter: updating a released invoice burns its
+ * number, and cancelling is final.
  */
 export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
   const { t } = useTranslation()
-  const { money, date } = useLocaleFormat()
+  const { money, date, dateTime } = useLocaleFormat()
   const client = useQueryClient()
   const navigate = useNavigate()
 
@@ -43,7 +45,7 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
     }
   }
 
-  const sendInvoice = useSendInvoice({ mutation: { onSuccess: refresh } })
+  const markPosted = useMarkInvoicePosted({ mutation: { onSuccess: refresh } })
   const cancelInvoice = useCancelInvoice({
     mutation: {
       onSuccess: async () => {
@@ -54,7 +56,9 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
   })
 
   const status = treatment.invoice?.status
-  const isAccepted = status === 'accepted' || status === 'submitted'
+  const isReleased = status === 'accepted' || status === 'sent' || status === 'submitted'
+  // Released and still with the practice: the one stage where the postal mark makes sense.
+  const isUnsent = status === 'accepted'
   // A cancelled invoice is history: the panel shows it, but the actions start over.
   const isCancelled = status === 'cancelled'
   const live = treatment.invoice && !isCancelled ? treatment.invoice : null
@@ -72,12 +76,23 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
               </span>
             </p>
           ) : (
-            <p className="text-sm text-ink-soft">{t('save.hint')}</p>
+            <p className="text-sm text-ink-soft">{t('invoices.noInvoice')}</p>
           )}
           {invoice.data ? (
             <p className="mt-0.5 text-xs text-ink-faint">
               {date(invoice.data.invoice_date)} · {money(invoice.data.total_gross)}
-              {invoice.data.ts_sent_email ? ` · ${t('invoices.send')} ✓` : ''}
+              {/* Which route it took, and when — the `sent` status alone does not say. */}
+              {invoice.data.ts_sent_email
+                ? ` · ${t('invoices.sentByEmail')} ${dateTime(invoice.data.ts_sent_email)}`
+                : ''}
+              {invoice.data.ts_sent_post
+                ? ` · ${t('invoices.sentByPost')} ${dateTime(invoice.data.ts_sent_post)}`
+                : ''}
+            </p>
+          ) : null}
+          {isUnsent ? (
+            <p className="mt-1.5">
+              <NotSentBadge status={status} />
             </p>
           ) : null}
         </div>
@@ -124,13 +139,30 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
             </Button>
           ) : null}
 
-          {isAccepted ? (
+          {isReleased ? (
             <Button
-              onClick={() => treatment.invoice && sendInvoice.mutate({ id: treatment.invoice.id })}
-              disabled={sendInvoice.isPending || invoice.data?.email_recipients.length === 0}
+              onClick={() =>
+                void navigate({
+                  to: '/treatments/$id/invoice/send',
+                  params: { id: String(treatment.id) },
+                })
+              }
             >
               <Mail className="size-4" />
               {t('invoices.send')}
+            </Button>
+          ) : null}
+
+          {/* Nothing else can see a letter go into a postbox, so the vet says so. */}
+          {isUnsent ? (
+            <Button
+              variant="primary"
+              title={t('invoices.markPostedHint')}
+              disabled={markPosted.isPending}
+              onClick={() => treatment.invoice && markPosted.mutate({ id: treatment.invoice.id })}
+            >
+              <Send className="size-4" />
+              {t('invoices.markPosted')}
             </Button>
           ) : null}
 
@@ -143,7 +175,7 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
         </div>
       </div>
 
-      {isAccepted ? (
+      {isReleased ? (
         <p className="mt-3 text-xs text-rust">{t('invoices.acceptedWillCancel')}</p>
       ) : null}
 

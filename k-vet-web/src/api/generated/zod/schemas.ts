@@ -21,6 +21,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
+  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -39,6 +40,7 @@ export const CreateAppointmentResponse = zod.object({
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
+  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -55,6 +57,7 @@ export const GetAppointmentResponse = zod.object({
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
+  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -83,6 +86,7 @@ export const PatchAppointmentResponse = zod.object({
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
+  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -103,6 +107,7 @@ export const DuplicateAppointmentResponse = zod.object({
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
+  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -130,8 +135,9 @@ export const ListTreatmentsResponseItem = zod.object({
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
@@ -167,8 +173,9 @@ export const CreateTreatmentResponse = zod.object({
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
@@ -643,7 +650,40 @@ export const UnarchiveCustomerResponse = zod.object({
 
 
 export const GetDashboardResponse = zod.object({
-  "pending_invoice_count": zod.int().describe('Accepted invoices not yet handed over to bookkeeping.'),
+  "pending_invoice_count": zod.int().describe('Sent invoices not yet handed over to bookkeeping.'),
+  "unbilled": zod.object({
+  "count": zod.int(),
+  "entries": zod.array(zod.object({
+  "treatment_id": zod.int().describe('Every case is resolved on the treatment page, so that is where a row leads.'),
+  "invoice_number": zod.string().nullish().describe('Absent while no invoice exists.'),
+  "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
+  "customer_name": zod.string(),
+  "patients": zod.array(zod.string()),
+  "total_gross": zod.string()
+}))
+}).describe('Treatments that were worked and billed to nobody.'),
+  "unreleased": zod.object({
+  "count": zod.int(),
+  "entries": zod.array(zod.object({
+  "treatment_id": zod.int().describe('Every case is resolved on the treatment page, so that is where a row leads.'),
+  "invoice_number": zod.string().nullish().describe('Absent while no invoice exists.'),
+  "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
+  "customer_name": zod.string(),
+  "patients": zod.array(zod.string()),
+  "total_gross": zod.string()
+}))
+}).describe('Invoices written but never released.'),
+  "unsent": zod.object({
+  "count": zod.int(),
+  "entries": zod.array(zod.object({
+  "treatment_id": zod.int().describe('Every case is resolved on the treatment page, so that is where a row leads.'),
+  "invoice_number": zod.string().nullish().describe('Absent while no invoice exists.'),
+  "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
+  "customer_name": zod.string(),
+  "patients": zod.array(zod.string()),
+  "total_gross": zod.string()
+}))
+}).describe('Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show.'),
   "expiring_lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "drug_id": zod.int(),
@@ -884,7 +924,7 @@ export const UnarchiveDrugResponse = zod.object({
 
 export const ListInvoicesQueryParams = zod.object({
   "q": zod.string().optional().describe('Matches the invoice number or the customer\'s name.'),
-  "pending": zod.boolean().optional().describe('Only invoices waiting for the bookkeeper (accepted, not yet submitted).'),
+  "pending": zod.boolean().optional().describe('Only invoices waiting for the bookkeeper (sent, not yet submitted).'),
   "cancelled": zod.boolean().optional().describe('Include cancelled invoices.'),
   "limit": zod.int().optional(),
   "offset": zod.int().optional()
@@ -895,13 +935,14 @@ export const ListInvoicesResponseItem = zod.object({
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -931,13 +972,14 @@ export const GetInvoiceResponse = zod.object({
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -961,13 +1003,14 @@ export const AcceptInvoiceResponse = zod.object({
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -987,13 +1030,41 @@ export const CancelInvoiceResponse = zod.object({
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
+  "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
+  "customer_id": zod.int().nullish(),
+  "customer_name": zod.string().describe('Display name of the customer, for lists.'),
+  "patients": zod.array(zod.string()),
+  "total_gross": zod.string(),
+  "created_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const MarkInvoicePostedParams = zod.object({
+  "id": zod.int()
+})
+
+export const MarkInvoicePostedResponse = zod.object({
+  "id": zod.int(),
+  "treatment_id": zod.int(),
+  "invoice_number": zod.string(),
+  "invoice_date": zod.iso.date(),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
+  "includes_finding": zod.boolean(),
+  "note": zod.string().nullish(),
+  "pdf_attachment_id": zod.int().nullish(),
+  "email_recipients": zod.array(zod.string()),
+  "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1015,18 +1086,23 @@ export const SendInvoiceParams = zod.object({
   "id": zod.int()
 })
 
+export const SendInvoiceBody = zod.object({
+  "recipient_emails": zod.array(zod.string()).optional().describe('Where this send goes. Replaces the stored recipients, so a mistyped address can be\ncorrected and an invoice accepted without one can still be emailed.')
+})
+
 export const SendInvoiceResponse = zod.object({
   "id": zod.int(),
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1046,13 +1122,14 @@ export const SubmitInvoiceResponse = zod.object({
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1121,7 +1198,7 @@ export const GetLotResponse = zod.object({
   "customer_name": zod.string().nullish(),
   "invoice_id": zod.int().nullish(),
   "invoice_number": zod.string().nullish(),
-  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')]).optional()
+  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
 }).describe('One line of a lot\'s history — a dispense with its links, or a correction with a reason.'))
 }))
 
@@ -1165,7 +1242,7 @@ export const CreateCorrectionResponse = zod.object({
   "customer_name": zod.string().nullish(),
   "invoice_id": zod.int().nullish(),
   "invoice_number": zod.string().nullish(),
-  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')]).optional()
+  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
 }).describe('One line of a lot\'s history — a dispense with its links, or a correction with a reason.'))
 }))
 
@@ -2406,8 +2483,9 @@ export const GetTreatmentResponse = zod.object({
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
@@ -2491,8 +2569,9 @@ export const DuplicateTreatmentResponse = zod.object({
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
@@ -2515,13 +2594,14 @@ export const CreateInvoiceResponse = zod.object({
   "treatment_id": zod.int(),
   "invoice_number": zod.string(),
   "invoice_date": zod.iso.date(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.'),
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),
   "includes_finding": zod.boolean(),
   "note": zod.string().nullish(),
   "pdf_attachment_id": zod.int().nullish(),
   "email_recipients": zod.array(zod.string()),
   "ts_accepted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_sent_email": zod.iso.datetime({"offset":true}).nullish(),
+  "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -2642,8 +2722,9 @@ export const AddTreatmentPatientResponse = zod.object({
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),
@@ -2675,8 +2756,9 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'submitted', 'cancelled']).describe('Invoice lifecycle.')
+  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "total_gross": zod.string(),

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count\n           FROM appointment WHERE appointment.id = $1",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count,\n                  (SELECT count(*) FROM treatment\n                   WHERE treatment.appointment_id = appointment.id\n                     AND EXISTS (SELECT 1 FROM treatment_item\n                                 WHERE treatment_item.treatment_id = treatment.id)\n                     AND NOT EXISTS (SELECT 1 FROM invoice\n                                     WHERE invoice.treatment_id = treatment.id\n                                       AND invoice.status <> 'cancelled'))\n                      AS unbilled_treatment_count\n           FROM appointment WHERE appointment.id = $1",
   "describe": {
     "columns": [
       {
@@ -74,6 +74,12 @@
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "unbilled_treatment_count",
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -88,8 +94,9 @@
       false,
       false,
       false,
+      null,
       null
     ]
   },
-  "hash": "fe50aa645a515448f56c098550ef83872a99cf8d8fb6fc70971190f8db60f907"
+  "hash": "101ab9af0d8f754dc06a6ac97c4aef8800b9f24cb7e3d4470836d3522aabc1eb"
 }

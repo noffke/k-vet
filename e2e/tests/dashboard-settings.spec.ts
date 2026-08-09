@@ -4,7 +4,12 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { clearPendingInvoices, seedAcceptedInvoice, seedDrug } from '../fixtures/seed'
+import {
+  clearPendingInvoices,
+  seedAcceptedInvoice,
+  seedDrug,
+  seedSentInvoice,
+} from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 const run = promisify(execFile)
@@ -25,8 +30,10 @@ async function pdfText(bytes: Buffer): Promise<string> {
 test.describe('dashboard and settings', () => {
   test('the widgets lead to the work they announce', async ({ page, request }) => {
     await clearPendingInvoices(request)
-    await seedAcceptedInvoice(request)
-    await seedAcceptedInvoice(request)
+    await seedSentInvoice(request)
+    await seedSentInvoice(request)
+    // Released and stuck here — the case that used to be invisible.
+    const unsent = await seedAcceptedInvoice(request)
 
     // A lot that expires next week, so it belongs in the expiring list.
     const { drugName, packagingId } = await seedDrug(request)
@@ -46,6 +53,13 @@ test.describe('dashboard and settings', () => {
     await expect(pending).toContainText('2')
     await pending.click()
     await expect(page).toHaveURL(/\/invoices$/)
+
+    // So is the money that never left the practice.
+    await navigate(page, 'Übersicht')
+    const unsentCard = page.locator('section').filter({ hasText: 'Nicht versendet' }).first()
+    await expect(unsentCard.getByText('1', { exact: true })).toBeVisible()
+    await unsentCard.getByRole('link').first().click()
+    await expect(page).toHaveURL(new RegExp(`/treatments/${unsent.treatmentId}$`))
 
     await navigate(page, 'Übersicht')
     await expect(page.getByText(batchNumber, { exact: false })).toBeVisible()

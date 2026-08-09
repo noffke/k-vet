@@ -11,7 +11,7 @@ import {
 import type { Appointment } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { PageHeader } from '@/components/PageHeader'
-import { IncompleteBadge } from '@/components/RecordBadges'
+import { IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { useLocaleFormat } from '@/lib/locale'
 
@@ -89,7 +89,12 @@ export function AppointmentsPage() {
         getRowId={(row) => String(row.id)}
         isLoading={appointments.isPending}
         error={appointments.isError ? t('list.error') : null}
-        rowBadge={(row) => <IncompleteBadge missing={row.missing_fields} />}
+        rowBadge={(row) => (
+          <span className="inline-flex flex-wrap items-center gap-1">
+            <IncompleteBadge missing={row.missing_fields} />
+            <NotBilledBadge count={row.unbilled_treatment_count} />
+          </span>
+        )}
         onRowClick={(row) =>
           void navigate({ to: '/appointments/$id', params: { id: String(row.id) } })
         }

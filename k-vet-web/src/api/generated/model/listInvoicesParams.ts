@@ -12,7 +12,7 @@ export type ListInvoicesParams = {
  */
 q?: string;
 /**
- * Only invoices waiting for the bookkeeper (accepted, not yet submitted).
+ * Only invoices waiting for the bookkeeper (sent, not yet submitted).
  */
 pending?: boolean;
 /**

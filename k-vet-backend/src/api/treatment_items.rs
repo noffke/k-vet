@@ -913,6 +913,22 @@ pub async fn load_items(
         .collect())
 }
 
+/// What a treatment's lines add up to, gross — the one place that answer is computed, so the
+/// treatment page, the invoice and the dashboard cannot disagree about it.
+pub async fn treatment_total_gross(
+    connection: &mut PgConnection,
+    treatment_id: i64,
+) -> AppResult<Decimal> {
+    let items = load_items(connection, treatment_id).await?;
+    let groups = money::vat_summary(
+        &items
+            .iter()
+            .map(|item| (item.line_net, item.vat_percent))
+            .collect::<Vec<_>>(),
+    );
+    Ok(money::total_gross(&groups))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route(

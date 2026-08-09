@@ -5,11 +5,21 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { AtRisk } from './atRisk';
 import type { ExpiringLot } from './expiringLot';
 
 export interface Dashboard {
-  /** Accepted invoices not yet handed over to bookkeeping. */
+  /** Sent invoices not yet handed over to bookkeeping. */
   pending_invoice_count: number;
+  /** Treatments that were worked and billed to nobody. */
+  unbilled: AtRisk;
+  /** Invoices written but never released. */
+  unreleased: AtRisk;
+  /**
+     * Invoices released but never sent to the customer — including the ones whose email
+     * failed on the way out, which is the case nothing used to show.
+     */
+  unsent: AtRisk;
   /** The lots expiring soonest that still hold stock. */
   expiring_lots: ExpiringLot[];
 }

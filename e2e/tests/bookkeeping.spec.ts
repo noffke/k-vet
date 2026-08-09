@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { clearPendingInvoices, seedAcceptedInvoice } from '../fixtures/seed'
+import { clearPendingInvoices, seedAcceptedInvoice, seedSentInvoice } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -14,9 +14,9 @@ test.describe('bookkeeping hand-off', () => {
     // The specs share one database, so the slate is cleared before counting.
     await clearPendingInvoices(request)
     const invoices = [
-      await seedAcceptedInvoice(request),
-      await seedAcceptedInvoice(request),
-      await seedAcceptedInvoice(request),
+      await seedSentInvoice(request),
+      await seedSentInvoice(request),
+      await seedSentInvoice(request),
     ]
 
     await signIn(page)

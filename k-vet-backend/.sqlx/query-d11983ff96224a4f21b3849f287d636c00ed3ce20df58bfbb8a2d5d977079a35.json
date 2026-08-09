@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT EXISTS (\n             SELECT 1 FROM invoice\n             WHERE treatment_id = $1 AND status IN ('accepted', 'submitted')\n         )",
+  "query": "SELECT EXISTS (\n             SELECT 1 FROM invoice\n             WHERE treatment_id = $1 AND status IN ('accepted', 'sent', 'submitted')\n         )",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "d5c22391289a763bbba6c70f0382d3149686a71a24c8e7724632adc31fc4fa5a"
+  "hash": "d11983ff96224a4f21b3849f287d636c00ed3ce20df58bfbb8a2d5d977079a35"
 }

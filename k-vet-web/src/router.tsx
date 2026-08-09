@@ -32,6 +32,7 @@ import { NotFoundPage } from '@/features/shell/NotFoundPage'
 import { TemplateDetailPage, TemplatesPage } from '@/features/templates/TemplatesPage'
 import { InvoiceAcceptPage } from '@/features/treatments/InvoiceAcceptPage'
 import { InvoiceCreatePage } from '@/features/treatments/InvoiceCreatePage'
+import { InvoiceSendPage } from '@/features/treatments/InvoiceSendPage'
 import { PatientTreatmentPage } from '@/features/treatments/PatientTreatmentPage'
 import { TreatmentPage } from '@/features/treatments/TreatmentPage'
 import { queryClient } from '@/lib/query'
@@ -205,6 +206,12 @@ const invoiceAcceptRoute = createRoute({
   component: InvoiceAcceptPage,
 })
 
+const invoiceSendRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/treatments/$id/invoice/send',
+  component: InvoiceSendPage,
+})
+
 const patientTreatmentRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/patient-treatments/$id',
@@ -238,6 +245,7 @@ const routeTree = rootRoute.addChildren([
     treatmentRoute,
     invoiceCreateRoute,
     invoiceAcceptRoute,
+    invoiceSendRoute,
     patientTreatmentRoute,
   ]),
 ])

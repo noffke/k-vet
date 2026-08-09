@@ -19,8 +19,9 @@ layouts are first-class — not one design squeezed onto a phone.
   § 3, § 4 and § 10, VAT summarised per rate, invoice numbers from an operator-defined pattern
   with a counter that never goes backwards.
 - **Invoices** — PDF from a Typst template, plain-text email through the practice's own mail
-  server, and a lifecycle (created → accepted → submitted, or cancelled) where every step is
-  stamped.
+  server, and a lifecycle (created → accepted → sent → submitted, or cancelled) where every step
+  is stamped. An invoice reaches the customer — by email or on paper — before the bookkeeper
+  sees it, and the dashboard lists the ones that did not.
 - **Bookkeeping hand-off** — every pending PDF as one ZIP, then one click to mark them handed
   over.
 - **Everything auto-saves.** A record is created as a draft on the first keystroke and completes

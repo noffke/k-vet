@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "INSERT INTO appointment (starts_at, note, draft)\n           VALUES ($1, $2, $3)\n           RETURNING id, starts_at, note, draft, created_at, updated_at,\n                     0::bigint AS treatment_count",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count,\n                  (SELECT count(*) FROM treatment\n                   WHERE treatment.appointment_id = appointment.id\n                     AND EXISTS (SELECT 1 FROM treatment_item\n                                 WHERE treatment_item.treatment_id = treatment.id)\n                     AND NOT EXISTS (SELECT 1 FROM invoice\n                                     WHERE invoice.treatment_id = treatment.id\n                                       AND invoice.status <> 'cancelled'))\n                      AS unbilled_treatment_count\n           FROM appointment\n           WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')\n           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC\n           LIMIT $2 OFFSET $3",
   "describe": {
     "columns": [
       {
@@ -74,13 +74,19 @@
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "unbilled_treatment_count",
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Timestamptz",
         "Text",
-        "Bool"
+        "Int8",
+        "Int8"
       ]
     },
     "nullable": [
@@ -90,8 +96,9 @@
       false,
       false,
       false,
+      null,
       null
     ]
   },
-  "hash": "8dd6389f72d193a0272a6af76cd3e524e4126f029e49a25dfb0072f003b274fb"
+  "hash": "064e72a3f12c531d32bd0a8ba38b502b2646ba060b9e4839714cdcf8443ea5b0"
 }

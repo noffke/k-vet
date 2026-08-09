@@ -43,7 +43,24 @@ async fn invoice(app: &TestApp, pool: &PgPool) -> Value {
     created.json()
 }
 
-/// An invoice waiting for the bookkeeper: accepted, not yet submitted.
+/// An invoice waiting for the bookkeeper: the customer has it, nobody has handed it over yet.
+/// Marking it posted is how a test says "sent" without a mail server.
+async fn sent_invoice(app: &TestApp, pool: &PgPool) -> Value {
+    let invoice = accepted_invoice(app, pool).await;
+    let id = invoice["id"].as_i64().unwrap_or_default();
+    let posted = app
+        .post_empty(&format!("/api/invoices/{id}/mark-posted"))
+        .await;
+    assert_eq!(
+        posted.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&posted.body)
+    );
+    posted.json()
+}
+
+/// A released invoice that has not gone anywhere yet.
 async fn accepted_invoice(app: &TestApp, pool: &PgPool) -> Value {
     let invoice = invoice(app, pool).await;
     let id = invoice["id"].as_i64().unwrap_or_default();
@@ -96,8 +113,8 @@ async fn pending_invoices_come_first_and_cancelled_ones_stay_out_of_the_list(poo
 
     // Created first, so it is the oldest by id — ordering must not fall back to that.
     let created = invoice(&app, &pool).await;
-    let pending = accepted_invoice(&app, &pool).await;
-    let submitted = accepted_invoice(&app, &pool).await;
+    let pending = sent_invoice(&app, &pool).await;
+    let submitted = sent_invoice(&app, &pool).await;
     let cancelled = accepted_invoice(&app, &pool).await;
 
     app.post_empty(&format!(
@@ -164,7 +181,7 @@ async fn the_list_can_be_searched_by_number_and_customer_name(pool: PgPool) {
 #[sqlx::test]
 async fn submitting_stamps_the_hand_off_and_happens_once(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let invoice = accepted_invoice(&app, &pool).await;
+    let invoice = sent_invoice(&app, &pool).await;
     let id = invoice["id"].as_i64().unwrap_or_default();
     assert!(invoice["ts_submitted"].is_null());
 
@@ -189,7 +206,7 @@ async fn submitting_stamps_the_hand_off_and_happens_once(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn only_an_accepted_invoice_can_be_submitted(pool: PgPool) {
+async fn only_a_sent_invoice_can_be_submitted(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
 
     let created = invoice(&app, &pool).await;
@@ -201,6 +218,19 @@ async fn only_an_accepted_invoice_can_be_submitted(pool: PgPool) {
         rejected.status,
         StatusCode::CONFLICT,
         "a draft-stage invoice never reaches the bookkeeper"
+    );
+
+    // The hole this guard closes: an accepted invoice whose email never went out looks
+    // finished, and used to be handed over as if the customer had it.
+    let unsent = accepted_invoice(&app, &pool).await;
+    let unsent_id = unsent["id"].as_i64().unwrap_or_default();
+    let rejected = app
+        .post_empty(&format!("/api/invoices/{unsent_id}/submit"))
+        .await;
+    assert_eq!(
+        rejected.status,
+        StatusCode::CONFLICT,
+        "the bookkeeper only ever gets invoices the customer already has"
     );
 
     let cancelled = accepted_invoice(&app, &pool).await;
@@ -216,8 +246,8 @@ async fn only_an_accepted_invoice_can_be_submitted(pool: PgPool) {
 #[sqlx::test]
 async fn bulk_submit_hands_over_every_pending_invoice_at_once(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let first = accepted_invoice(&app, &pool).await;
-    let second = accepted_invoice(&app, &pool).await;
+    let first = sent_invoice(&app, &pool).await;
+    let second = sent_invoice(&app, &pool).await;
     let untouched = invoice(&app, &pool).await;
 
     let result = app.post_empty("/api/invoices/bulk-submit").await;
@@ -263,8 +293,8 @@ async fn bulk_submit_hands_over_every_pending_invoice_at_once(pool: PgPool) {
 #[sqlx::test]
 async fn the_pending_bundle_zips_one_pdf_per_waiting_invoice(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let first = accepted_invoice(&app, &pool).await;
-    let second = accepted_invoice(&app, &pool).await;
+    let first = sent_invoice(&app, &pool).await;
+    let second = sent_invoice(&app, &pool).await;
     let _not_accepted = invoice(&app, &pool).await;
 
     let bundle = app.get("/api/invoices/pending-pdfs").await;

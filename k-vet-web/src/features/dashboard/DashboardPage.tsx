@@ -1,13 +1,15 @@
 import { Link } from '@tanstack/react-router'
-import { CalendarClock, ReceiptText } from 'lucide-react'
+import { CalendarClock, MailWarning, ReceiptText, Stamp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useGetDashboard } from '@/api/generated/endpoints'
+import type { AtRisk } from '@/api/generated/model'
 import { PageHeader } from '@/components/PageHeader'
 import { useLocaleFormat } from '@/lib/locale'
 
 /**
- * Landing page: the two things that quietly pile up — invoices the bookkeeper has not seen
- * and stock about to expire (FR-036). Both widgets are entry points, not just numbers.
+ * Landing page: what quietly piles up (FR-036). Three of the widgets track money that has not
+ * arrived — work nobody billed, invoices nobody released, invoices that never reached the
+ * customer — and every row is a link to the page where that case is settled.
  */
 export function DashboardPage() {
   const { t } = useTranslation()
@@ -27,7 +29,30 @@ export function DashboardPage() {
         </p>
       ) : null}
 
-      <div className="mt-5 grid gap-4 sm:grid-cols-2">
+      <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* In the order the money moves: worked, billed, sent. */}
+        <AtRiskCard
+          icon={<ReceiptText className="size-3.5" />}
+          title={t('dashboard.unbilled')}
+          hint={t('dashboard.unbilledHint')}
+          empty={t('dashboard.noUnbilled')}
+          data={dashboard.data?.unbilled}
+        />
+        <AtRiskCard
+          icon={<Stamp className="size-3.5" />}
+          title={t('dashboard.unreleased')}
+          hint={t('dashboard.unreleasedHint')}
+          empty={t('dashboard.noUnreleased')}
+          data={dashboard.data?.unreleased}
+        />
+        <AtRiskCard
+          icon={<MailWarning className="size-3.5" />}
+          title={t('dashboard.unsent')}
+          hint={t('dashboard.unsentHint')}
+          empty={t('dashboard.noUnsent')}
+          data={dashboard.data?.unsent}
+        />
+
         <Link
           to="/invoices"
           className="rounded-card border border-line bg-cream-soft p-4 hover:border-rust/40"
@@ -42,7 +67,7 @@ export function DashboardPage() {
           </span>
         </Link>
 
-        <section className="rounded-card border border-line bg-surface p-4">
+        <section className="rounded-card border border-line bg-surface p-4 sm:col-span-2">
           <h2 className="eyebrow flex items-center gap-1.5">
             <CalendarClock className="size-3.5" />
             {t('dashboard.expiringLots')}
@@ -80,5 +105,79 @@ export function DashboardPage() {
         </section>
       </div>
     </div>
+  )
+}
+
+/**
+ * One case of money that has not arrived: the oldest few, and how many there are in all.
+ *
+ * Empty is the normal state, and it stays quiet — the rust count only appears when there is
+ * something to do, so a coloured dashboard means work rather than decoration.
+ */
+function AtRiskCard({
+  icon,
+  title,
+  hint,
+  empty,
+  data,
+}: {
+  icon: React.ReactNode
+  title: string
+  hint: string
+  empty: string
+  data: AtRisk | undefined
+}) {
+  const { t } = useTranslation()
+  const { date, money } = useLocaleFormat()
+  const entries = data?.entries ?? []
+  const count = data?.count ?? 0
+
+  return (
+    <section className="rounded-card border border-line bg-surface p-4">
+      <h2 className="eyebrow flex items-center gap-1.5">
+        {icon}
+        {title}
+        {count > 0 ? (
+          <span className="numeric ml-auto rounded-full bg-rust-soft px-2 py-0.5 text-xs font-bold text-rust">
+            {count}
+          </span>
+        ) : null}
+      </h2>
+
+      {count === 0 ? (
+        <p className="mt-2 text-sm text-ink-soft">{empty}</p>
+      ) : (
+        <>
+          <p className="mt-1 text-xs text-ink-faint">{hint}</p>
+          <ul className="mt-1 flex flex-col divide-y divide-line">
+            {entries.map((entry) => (
+              <li key={`${entry.treatment_id}-${entry.invoice_number ?? ''}`}>
+                <Link
+                  to="/treatments/$id"
+                  params={{ id: String(entry.treatment_id) }}
+                  className="flex items-baseline justify-between gap-3 py-2 hover:text-rust"
+                >
+                  <span className="min-w-0">
+                    <span className="block truncate text-sm text-ink">{entry.customer_name}</span>
+                    <span className="block truncate text-xs text-ink-faint">
+                      {entry.patients.join(', ')}
+                      {entry.date ? ` · ${date(entry.date)}` : ''}
+                    </span>
+                  </span>
+                  <span className="numeric shrink-0 text-sm font-semibold text-ink-soft">
+                    {money(entry.total_gross)}
+                  </span>
+                </Link>
+              </li>
+            ))}
+          </ul>
+          {count > entries.length ? (
+            <p className="mt-2 text-xs text-ink-faint">
+              {t('dashboard.andMore', { count: count - entries.length })}
+            </p>
+          ) : null}
+        </>
+      )}
+    </section>
   )
 }

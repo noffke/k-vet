@@ -7,7 +7,8 @@
  */
 
 /**
- * Invoice lifecycle.
+ * Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.
+ * Dispatch is a precondition of the hand-off, which is what keeps one column sufficient.
  */
 export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
 
@@ -15,6 +16,7 @@ export type InvoiceStatus = typeof InvoiceStatus[keyof typeof InvoiceStatus];
 export const InvoiceStatus = {
   created: 'created',
   accepted: 'accepted',
+  sent: 'sent',
   submitted: 'submitted',
   cancelled: 'cancelled',
 } as const;

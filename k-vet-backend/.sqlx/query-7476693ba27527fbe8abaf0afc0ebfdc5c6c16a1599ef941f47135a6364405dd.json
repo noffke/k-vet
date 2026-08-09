@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count\n           FROM appointment\n           WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')\n           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC\n           LIMIT $2 OFFSET $3",
+  "query": "UPDATE appointment SET\n               starts_at = CASE WHEN $2 THEN $3 ELSE starts_at END,\n               note      = CASE WHEN $4 THEN $5 ELSE note END,\n               draft     = $6\n           WHERE id = $1\n           RETURNING id, starts_at, note, draft, created_at, updated_at,\n                     (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                         AS treatment_count,\n                     (SELECT count(*) FROM treatment\n                      WHERE treatment.appointment_id = appointment.id\n                        AND EXISTS (SELECT 1 FROM treatment_item\n                                    WHERE treatment_item.treatment_id = treatment.id)\n                        AND NOT EXISTS (SELECT 1 FROM invoice\n                                        WHERE invoice.treatment_id = treatment.id\n                                          AND invoice.status <> 'cancelled'))\n                         AS unbilled_treatment_count",
   "describe": {
     "columns": [
       {
@@ -74,13 +74,22 @@
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "unbilled_treatment_count",
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Text",
         "Int8",
-        "Int8"
+        "Bool",
+        "Timestamptz",
+        "Bool",
+        "Text",
+        "Bool"
       ]
     },
     "nullable": [
@@ -90,8 +99,9 @@
       false,
       false,
       false,
+      null,
       null
     ]
   },
-  "hash": "ccc2f671eeba88dbe7895f449674ffaeb15734c1938bf9feab039c878bd4365e"
+  "hash": "7476693ba27527fbe8abaf0afc0ebfdc5c6c16a1599ef941f47135a6364405dd"
 }

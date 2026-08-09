@@ -19,7 +19,7 @@ import type { Appointment, PriceMode } from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
-import { IncompleteBadge } from '@/components/RecordBadges'
+import { IncompleteBadge, NotBilledBadge, NotSentBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TimeInput } from '@/components/TimeInput'
 import { Button } from '@/components/ui/button'
@@ -215,8 +215,19 @@ export function AppointmentDetailPage() {
                     {treatment.patients.map((patient) => patient.name).join(', ') ||
                       t('field.patient')}
                   </span>
-                  <span className="numeric text-sm text-ink-soft">
-                    {treatment.invoice ? treatment.invoice.invoice_number : ''}
+                  {/* Where the invoice number stands once there is one, and where its
+                      absence used to be silence. */}
+                  <span className="numeric flex items-center gap-1.5 text-sm text-ink-soft">
+                    {treatment.invoice ? treatment.invoice.invoice_number : null}
+                    <NotBilledBadge
+                      count={
+                        treatment.item_count > 0 &&
+                        (!treatment.invoice || treatment.invoice.status === 'cancelled')
+                          ? 1
+                          : 0
+                      }
+                    />
+                    <NotSentBadge status={treatment.invoice?.status} />
                   </span>
                 </span>
                 {treatment.patients.some((patient) => patient.treatment_reason) ? (

@@ -442,26 +442,98 @@ async fn a_dispensed_treatment_cannot_be_deleted_once_invoiced(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn resending_requires_an_accepted_invoice_with_recipients(pool: PgPool) {
+async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
     let invoice_id = invoice["id"].as_i64().unwrap_or_default();
 
     let too_early = app
-        .post_empty(&format!("/api/invoices/{invoice_id}/send"))
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({ "recipient_emails": ["kundin@example.com"] }),
+        )
         .await;
     assert_eq!(too_early.status, StatusCode::CONFLICT);
 
+    // Accepted with nobody ticked — which used to make the invoice unsendable for good,
+    // because only `accept` could ever write the recipients.
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
         json!({ "recipient_emails": [] }),
     )
     .await;
     let without_recipients = app
-        .post_empty(&format!("/api/invoices/{invoice_id}/send"))
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({ "recipient_emails": [] }),
+        )
         .await;
     assert_eq!(without_recipients.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // With an address it gets that far: no SMTP server in tests, so the mail server rejects it
+    // and the invoice stays accepted — which is exactly what the dashboard calls "not sent".
+    let no_mail_server = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({ "recipient_emails": ["andere@example.com"] }),
+        )
+        .await;
+    assert_eq!(no_mail_server.status, StatusCode::INTERNAL_SERVER_ERROR);
+
+    let after = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
+    assert_eq!(after["status"], "accepted");
+    assert!(after["ts_sent_email"].is_null());
+    assert_eq!(
+        after["email_recipients"][0], "andere@example.com",
+        "the address the vet just typed is the one a retry uses"
+    );
+}
+
+#[sqlx::test]
+async fn a_postal_hand_over_is_recorded_by_hand(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let invoice = create_invoice(&app, billed.treatment_id).await;
+    let invoice_id = invoice["id"].as_i64().unwrap_or_default();
+
+    let too_early = app
+        .post_empty(&format!("/api/invoices/{invoice_id}/mark-posted"))
+        .await;
+    assert_eq!(
+        too_early.status,
+        StatusCode::CONFLICT,
+        "an invoice that was never released cannot have been posted"
+    );
+
+    app.post(
+        &format!("/api/invoices/{invoice_id}/accept"),
+        json!({ "recipient_emails": [] }),
+    )
+    .await;
+
+    let posted = app
+        .post_empty(&format!("/api/invoices/{invoice_id}/mark-posted"))
+        .await;
+    assert_eq!(
+        posted.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&posted.body)
+    );
+    let posted = posted.json();
+    assert_eq!(posted["status"], "sent");
+    assert!(!posted["ts_sent_post"].is_null(), "FR-035 wants the stamp");
+    assert!(
+        posted["ts_sent_email"].is_null(),
+        "nothing was emailed — the two routes stay distinguishable"
+    );
+
+    // Only the accepted stage offers the button, so saying it twice is a mistake.
+    let again = app
+        .post_empty(&format!("/api/invoices/{invoice_id}/mark-posted"))
+        .await;
+    assert_eq!(again.status, StatusCode::CONFLICT);
 }
 
 /// The regression guard for the bug migration `0009` fixed.

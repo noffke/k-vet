@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT count(*) FROM invoice WHERE status = 'accepted'",
+  "query": "SELECT count(*) FROM invoice WHERE status = 'sent'",
   "describe": {
     "columns": [
       {
@@ -17,5 +17,5 @@
       null
     ]
   },
-  "hash": "c95a4c054b57357fa135033db949614c909667b0f1182bc265d75147b0512948"
+  "hash": "a351ee254a62583b385a27a892dd199372330742f7ed0eb14e54524b77ac70e9"
 }

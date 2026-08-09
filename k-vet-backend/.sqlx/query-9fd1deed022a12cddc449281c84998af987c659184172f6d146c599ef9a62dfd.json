@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
+  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,\n                  invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
   "describe": {
     "columns": [
       {
@@ -57,6 +57,7 @@
               "Enum": [
                 "created",
                 "accepted",
+                "sent",
                 "submitted",
                 "cancelled"
               ]
@@ -138,6 +139,17 @@
       },
       {
         "ordinal": 11,
+        "name": "ts_sent_post",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "ts_sent_post"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
         "name": "ts_submitted",
         "type_info": "Timestamptz",
         "origin": {
@@ -148,7 +160,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "ts_cancelled",
         "type_info": "Timestamptz",
         "origin": {
@@ -159,7 +171,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -189,8 +201,9 @@
       true,
       true,
       true,
+      true,
       false
     ]
   },
-  "hash": "317247d56d288262dd338764f550054f65f5cddd1c71b7ee75e522de7a3e62d1"
+  "hash": "9fd1deed022a12cddc449281c84998af987c659184172f6d146c599ef9a62dfd"
 }

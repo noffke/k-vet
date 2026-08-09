@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE appointment SET\n               starts_at = CASE WHEN $2 THEN $3 ELSE starts_at END,\n               note      = CASE WHEN $4 THEN $5 ELSE note END,\n               draft     = $6\n           WHERE id = $1\n           RETURNING id, starts_at, note, draft, created_at, updated_at,\n                     (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                         AS treatment_count",
+  "query": "INSERT INTO appointment (starts_at, note, draft)\n           VALUES ($1, $2, $3)\n           RETURNING id, starts_at, note, draft, created_at, updated_at,\n                     0::bigint AS treatment_count, 0::bigint AS unbilled_treatment_count",
   "describe": {
     "columns": [
       {
@@ -74,14 +74,17 @@
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "unbilled_treatment_count",
+        "type_info": "Int8",
+        "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
-        "Int8",
-        "Bool",
         "Timestamptz",
-        "Bool",
         "Text",
         "Bool"
       ]
@@ -93,8 +96,9 @@
       false,
       false,
       false,
+      null,
       null
     ]
   },
-  "hash": "d9b9af3ebd4002bc2cd7be762c3c286493f5071f5907539a1c484be58244c444"
+  "hash": "3d28b2c9bbeff184904fe08d0dd19125f26a6a2588da2ab8e29022857329aaf3"
 }

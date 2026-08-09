@@ -130,7 +130,7 @@ async fn load(state: &AppState, id: i64) -> AppResult<PatientTreatment> {
                   EXISTS (
                       SELECT 1 FROM invoice
                       WHERE invoice.treatment_id = record.treatment_id
-                        AND invoice.status IN ('accepted', 'submitted')
+                        AND invoice.status IN ('accepted', 'sent', 'submitted')
                   ) AS "frozen?"
            FROM patient_treatment record
            JOIN patient ON patient.id = record.patient_id

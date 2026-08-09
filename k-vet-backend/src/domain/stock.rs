@@ -114,8 +114,9 @@ where
     Ok(total.unwrap_or_default())
 }
 
-/// `true` once the treatment's invoice is accepted or submitted — from then on the
-/// dispense movements are frozen and the ledger is append-only (FR-020).
+/// `true` once the treatment's invoice is released — from then on the dispense movements are
+/// frozen and the ledger is append-only (FR-020). Acceptance is the freeze point; sending and
+/// handing over are later stages of the same released invoice.
 pub async fn treatment_is_frozen<'e, E>(executor: E, treatment_id: i64) -> AppResult<bool>
 where
     E: PgExecutor<'e>,
@@ -123,7 +124,7 @@ where
     let frozen: Option<bool> = sqlx::query_scalar!(
         "SELECT EXISTS (
              SELECT 1 FROM invoice
-             WHERE treatment_id = $1 AND status IN ('accepted', 'submitted')
+             WHERE treatment_id = $1 AND status IN ('accepted', 'sent', 'submitted')
          )",
         treatment_id,
     )

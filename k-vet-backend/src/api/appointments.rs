@@ -25,6 +25,9 @@ pub struct Appointment {
     /// Mandatory fields still empty, for the "incomplete — missing: …" hint.
     pub missing_fields: Vec<String>,
     pub treatment_count: i64,
+    /// Treatments here that carry positions and no live invoice — work that has not been
+    /// billed to anyone yet (FR-036).
+    pub unbilled_treatment_count: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -50,6 +53,7 @@ struct Row {
     note: Option<String>,
     draft: bool,
     treatment_count: Option<i64>,
+    unbilled_treatment_count: Option<i64>,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -63,6 +67,7 @@ impl From<Row> for Appointment {
             draft: row.draft,
             missing_fields: missing(row.starts_at.is_some()),
             treatment_count: row.treatment_count.unwrap_or(0),
+            unbilled_treatment_count: row.unbilled_treatment_count.unwrap_or(0),
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -95,7 +100,15 @@ pub async fn list(
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,
                   appointment.created_at, appointment.updated_at,
                   (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
-                      AS treatment_count
+                      AS treatment_count,
+                  (SELECT count(*) FROM treatment
+                   WHERE treatment.appointment_id = appointment.id
+                     AND EXISTS (SELECT 1 FROM treatment_item
+                                 WHERE treatment_item.treatment_id = treatment.id)
+                     AND NOT EXISTS (SELECT 1 FROM invoice
+                                     WHERE invoice.treatment_id = treatment.id
+                                       AND invoice.status <> 'cancelled'))
+                      AS unbilled_treatment_count
            FROM appointment
            WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')
            ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC
@@ -129,7 +142,7 @@ pub async fn create(
         r#"INSERT INTO appointment (starts_at, note, draft)
            VALUES ($1, $2, $3)
            RETURNING id, starts_at, note, draft, created_at, updated_at,
-                     0::bigint AS treatment_count"#,
+                     0::bigint AS treatment_count, 0::bigint AS unbilled_treatment_count"#,
         body.starts_at,
         body.note,
         draft,
@@ -161,7 +174,15 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,
                   appointment.created_at, appointment.updated_at,
                   (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
-                      AS treatment_count
+                      AS treatment_count,
+                  (SELECT count(*) FROM treatment
+                   WHERE treatment.appointment_id = appointment.id
+                     AND EXISTS (SELECT 1 FROM treatment_item
+                                 WHERE treatment_item.treatment_id = treatment.id)
+                     AND NOT EXISTS (SELECT 1 FROM invoice
+                                     WHERE invoice.treatment_id = treatment.id
+                                       AND invoice.status <> 'cancelled'))
+                      AS unbilled_treatment_count
            FROM appointment WHERE appointment.id = $1"#,
         id,
     )
@@ -208,7 +229,15 @@ pub async fn patch(
            WHERE id = $1
            RETURNING id, starts_at, note, draft, created_at, updated_at,
                      (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
-                         AS treatment_count"#,
+                         AS treatment_count,
+                     (SELECT count(*) FROM treatment
+                      WHERE treatment.appointment_id = appointment.id
+                        AND EXISTS (SELECT 1 FROM treatment_item
+                                    WHERE treatment_item.treatment_id = treatment.id)
+                        AND NOT EXISTS (SELECT 1 FROM invoice
+                                        WHERE invoice.treatment_id = treatment.id
+                                          AND invoice.status <> 'cancelled'))
+                         AS unbilled_treatment_count"#,
         id,
         body.starts_at.is_some(),
         starts_at,

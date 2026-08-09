@@ -87,6 +87,7 @@ import type {
   PickerItemsParams,
   PricePreview,
   PricePreviewRequest,
+  SendInvoice,
   Service,
   SessionInfo,
   Settings,
@@ -3170,6 +3171,71 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCancelInvoiceMutationOptions(options), queryClient);
     }
 
+export const getMarkInvoicePostedUrl = (id: number,) => {
+
+
+
+
+  return `/api/invoices/${id}/mark-posted`
+}
+
+export const markInvoicePosted = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<Invoice> => {
+
+  return apiFetch<Invoice>(getMarkInvoicePostedUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMarkInvoicePostedMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markInvoicePosted>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof markInvoicePosted>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['markInvoicePosted'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof markInvoicePosted>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  markInvoicePosted(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MarkInvoicePostedMutationResult = NonNullable<Awaited<ReturnType<typeof markInvoicePosted>>>
+
+    export type MarkInvoicePostedMutationError = void
+
+    export const useMarkInvoicePosted = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof markInvoicePosted>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof markInvoicePosted>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getMarkInvoicePostedMutationOptions(options), queryClient);
+    }
+
 export const getInvoicePdfUrl = (id: number,) => {
 
 
@@ -3273,14 +3339,15 @@ export const getSendInvoiceUrl = (id: number,) => {
   return `/api/invoices/${id}/send`
 }
 
-export const sendInvoice = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<Invoice> => {
+export const sendInvoice = async (id: number,
+    sendInvoice: SendInvoice, options?: Parameters<typeof apiFetch>[1]): Promise<Invoice> => {
 
   return apiFetch<Invoice>(getSendInvoiceUrl(id),
   {
     ...options,
-    method: 'POST'
-
-
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(sendInvoice)
   }
 );}
 
@@ -3289,8 +3356,8 @@ export const sendInvoice = async (id: number, options?: Parameters<typeof apiFet
 
 
 export const getSendInvoiceMutationOptions = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendInvoice>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
-): UseMutationOptions<Awaited<ReturnType<typeof sendInvoice>>, TError,{id: number}, TContext> => {
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendInvoice>>, TError,{id: number;data: SendInvoice}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof sendInvoice>>, TError,{id: number;data: SendInvoice}, TContext> => {
 
 const mutationKey = ['sendInvoice'];
 const {mutation: mutationOptions, request: requestOptions} = options ?
@@ -3302,10 +3369,10 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
 
 
 
-      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendInvoice>>, {id: number}> = (props) => {
-          const {id} = props ?? {};
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof sendInvoice>>, {id: number;data: SendInvoice}> = (props) => {
+          const {id,data} = props ?? {};
 
-          return  sendInvoice(id,requestOptions)
+          return  sendInvoice(id,data,requestOptions)
         }
 
 
@@ -3316,15 +3383,15 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
   return  { mutationFn, ...mutationOptions }}
 
     export type SendInvoiceMutationResult = NonNullable<Awaited<ReturnType<typeof sendInvoice>>>
-
+    export type SendInvoiceMutationBody = SendInvoice
     export type SendInvoiceMutationError = void
 
     export const useSendInvoice = <TError = void,
-    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendInvoice>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof sendInvoice>>, TError,{id: number;data: SendInvoice}, TContext>, request?: SecondParameter<typeof apiFetch>}
  , queryClient?: QueryClient): UseMutationResult<
         Awaited<ReturnType<typeof sendInvoice>>,
         TError,
-        {id: number},
+        {id: number;data: SendInvoice},
         TContext
       > => {
       return useMutation(getSendInvoiceMutationOptions(options), queryClient);

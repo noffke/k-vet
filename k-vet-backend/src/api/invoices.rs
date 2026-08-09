@@ -3,10 +3,12 @@
 //!
 //! Lifecycle rules that must hold (FR-030…FR-035):
 //!   * an invoice is only ever created or updated **from a treatment**
-//!   * updating a `created` invoice keeps its number; updating an `accepted` one cancels it
+//!   * updating a `created` invoice keeps its number; updating a released one cancels it
 //!     first — its number is burned and never reissued
 //!   * accepting freezes the treatment's dispense movements; cancelling writes linked
 //!     compensating corrections
+//!   * `created → accepted → sent → submitted`: the customer gets the invoice before the
+//!     bookkeeper does, whether by email or on paper
 //!   * every lifecycle step is stamped with a timestamp as the audit trail
 
 use std::io::{Cursor, Write};
@@ -25,7 +27,7 @@ use zip::CompressionMethod;
 use zip::write::{SimpleFileOptions, ZipWriter};
 
 use crate::AppState;
-use crate::api::treatment_items;
+use crate::api::{treatment_items, treatments};
 use crate::domain::enums::{InvoiceStatus, PackagingKind, Salutation};
 use crate::domain::files::BytesSource;
 use crate::domain::invoice_number::{NumberPattern, allocate_number, validate_pattern};
@@ -55,6 +57,8 @@ pub struct Invoice {
     pub email_recipients: Vec<String>,
     pub ts_accepted: Option<DateTime<Utc>>,
     pub ts_sent_email: Option<DateTime<Utc>>,
+    /// When the invoice was handed over on paper — the only trace a postal send leaves.
+    pub ts_sent_post: Option<DateTime<Utc>>,
     pub ts_submitted: Option<DateTime<Utc>>,
     pub ts_cancelled: Option<DateTime<Utc>>,
     pub customer_id: Option<i64>,
@@ -76,6 +80,14 @@ pub struct CreateInvoice {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct AcceptInvoice {
     /// Customer email addresses the PDF is sent to.
+    #[serde(default)]
+    pub recipient_emails: Vec<String>,
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct SendInvoice {
+    /// Where this send goes. Replaces the stored recipients, so a mistyped address can be
+    /// corrected and an invoice accepted without one can still be emailed.
     #[serde(default)]
     pub recipient_emails: Vec<String>,
 }
@@ -337,35 +349,93 @@ pub async fn accept(
     path = "/api/invoices/{id}/send",
     tag = "invoices",
     params(("id" = i64, Path,)),
+    request_body = SendInvoice,
     responses(
-        (status = 200, body = Invoice),
-        (status = 409, description = "The invoice is not accepted, or has no recipients"),
+        (status = 200, description = "Sent; the invoice is now `sent`", body = Invoice),
+        (status = 409, description = "The invoice is not released, or is cancelled"),
+        (status = 422, description = "No recipient was given"),
         (status = 500, description = "The mail server rejected the message")
     )
 )]
-pub async fn send(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<Json<Invoice>> {
+pub async fn send(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+    Json(body): Json<SendInvoice>,
+) -> AppResult<Json<Invoice>> {
     let current = sqlx::query!(
-        r#"SELECT status AS "status: InvoiceStatus", email_recipients FROM invoice WHERE id = $1"#,
+        r#"SELECT status AS "status: InvoiceStatus" FROM invoice WHERE id = $1"#,
         id
     )
     .fetch_optional(&state.pool)
     .await?
     .ok_or(AppError::NotFound)?;
 
+    // A sent invoice may be sent again — that is when a resend is usually wanted.
     if matches!(
         current.status,
         InvoiceStatus::Created | InvoiceStatus::Cancelled
     ) {
         return Err(AppError::Conflict(
-            "only an accepted invoice can be emailed".to_owned(),
+            "only a released invoice can be emailed".to_owned(),
         ));
     }
-    if current.email_recipients.unwrap_or_default().is_empty() {
+
+    let recipients: Vec<String> = body
+        .recipient_emails
+        .into_iter()
+        .map(|email| email.trim().to_owned())
+        .filter(|email| !email.is_empty())
+        .collect();
+    if recipients.is_empty() {
         return Err(AppError::field("recipient_emails", "field.required"));
     }
 
-    // Unlike accept, an explicit resend reports the failure to the caller.
+    sqlx::query!(
+        "UPDATE invoice SET email_recipients = $2 WHERE id = $1",
+        id,
+        &recipients,
+    )
+    .execute(&state.pool)
+    .await?;
+
+    // Unlike accept, an explicit send reports the failure to the caller.
     send_invoice_email(&state, id).await?;
+    load(&state.pool, id).await.map(Json)
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "markInvoicePosted",
+    path = "/api/invoices/{id}/mark-posted",
+    tag = "invoices",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 200, description = "Recorded as handed over on paper", body = Invoice),
+        (status = 409, description = "Only a released, unsent invoice can be marked as posted")
+    )
+)]
+pub async fn mark_posted(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<Invoice>> {
+    // Nothing else can observe a letter going into a postbox, so the vet says so here.
+    let updated = sqlx::query_scalar!(
+        "UPDATE invoice SET status = 'sent', ts_sent_post = now()
+         WHERE id = $1 AND status = 'accepted'
+         RETURNING id",
+        id,
+    )
+    .fetch_optional(&state.pool)
+    .await?;
+
+    if updated.is_none() {
+        // Distinguish "no such invoice" from "wrong stage" — the UI shows different things.
+        load(&state.pool, id).await?;
+        return Err(AppError::Conflict(
+            "only a released invoice that has not been sent can be marked as posted".to_owned(),
+        ));
+    }
+
     load(&state.pool, id).await.map(Json)
 }
 
@@ -426,8 +496,11 @@ async fn cancel_in_transaction(
     .execute(&mut **transaction)
     .await?;
 
-    // Only frozen (accepted) dispenses need reversing — draft ones were never booked.
-    if matches!(status, InvoiceStatus::Accepted | InvoiceStatus::Submitted) {
+    // Only frozen (released) dispenses need reversing — draft ones were never booked.
+    if matches!(
+        status,
+        InvoiceStatus::Accepted | InvoiceStatus::Sent | InvoiceStatus::Submitted
+    ) {
         let reversed = stock::reverse_treatment_dispenses(transaction, treatment_id).await?;
         tracing::info!(
             invoice_id,
@@ -548,9 +621,13 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
     })?;
     state.mailer.send(message).await?;
 
-    // The timestamp is written only after the mail server accepted the message.
+    // The timestamp is written only after the mail server accepted the message, and it is what
+    // moves the invoice on. A resend must not drag a submitted invoice back a stage.
     sqlx::query!(
-        "UPDATE invoice SET ts_sent_email = now() WHERE id = $1",
+        "UPDATE invoice
+         SET ts_sent_email = now(),
+             status = CASE WHEN status = 'accepted' THEN 'sent'::invoice_status ELSE status END
+         WHERE id = $1",
         invoice_id
     )
     .execute(&state.pool)
@@ -1083,14 +1160,7 @@ pub async fn invoice_total(pool: &PgPool, invoice_id: i64) -> AppResult<Decimal>
             .ok_or(AppError::NotFound)?;
 
     let mut connection = pool.acquire().await?;
-    let items = treatment_items::load_items(&mut connection, treatment_id).await?;
-    let groups = money::vat_summary(
-        &items
-            .iter()
-            .map(|item| (item.line_net, item.vat_percent))
-            .collect::<Vec<_>>(),
-    );
-    Ok(money::total_gross(&groups))
+    treatment_items::treatment_total_gross(&mut connection, treatment_id).await
 }
 
 /// Loads one invoice with the display data lists and detail views need.
@@ -1099,7 +1169,8 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
         r#"SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,
                   invoice.status AS "status: InvoiceStatus", invoice.includes_finding,
                   invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,
-                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_submitted,
+                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,
+                  invoice.ts_submitted,
                   invoice.ts_cancelled, invoice.created_at
            FROM invoice WHERE invoice.id = $1"#,
         id,
@@ -1108,28 +1179,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
     .await?
     .ok_or(AppError::NotFound)?;
 
-    let patients = sqlx::query!(
-        r#"SELECT patient.name, patient.customer_id, customer.first_name, customer.last_name
-           FROM patient_treatment
-           JOIN patient ON patient.id = patient_treatment.patient_id
-           LEFT JOIN customer ON customer.id = patient.customer_id
-           WHERE patient_treatment.treatment_id = $1
-           ORDER BY patient.name"#,
-        row.treatment_id,
-    )
-    .fetch_all(pool)
-    .await?;
-
-    let customer_name = patients
-        .first()
-        .map(|patient| {
-            [patient.first_name.clone(), patient.last_name.clone()]
-                .into_iter()
-                .flatten()
-                .collect::<Vec<_>>()
-                .join(" ")
-        })
-        .unwrap_or_default();
+    let parties = treatments::parties(pool, row.treatment_id).await?;
 
     Ok(Invoice {
         id: row.id,
@@ -1143,14 +1193,12 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
         email_recipients: row.email_recipients.unwrap_or_default(),
         ts_accepted: row.ts_accepted,
         ts_sent_email: row.ts_sent_email,
+        ts_sent_post: row.ts_sent_post,
         ts_submitted: row.ts_submitted,
         ts_cancelled: row.ts_cancelled,
-        customer_id: patients.first().and_then(|patient| patient.customer_id),
-        customer_name,
-        patients: patients
-            .iter()
-            .map(|patient| patient.name.clone().unwrap_or_default())
-            .collect(),
+        customer_id: parties.customer_id,
+        customer_name: parties.customer_name,
+        patients: parties.patients,
         total_gross: invoice_total(pool, id).await?,
         created_at: row.created_at,
     })
@@ -1162,7 +1210,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
 pub struct InvoiceQuery {
     /// Matches the invoice number or the customer's name.
     pub q: Option<String>,
-    /// Only invoices waiting for the bookkeeper (accepted, not yet submitted).
+    /// Only invoices waiting for the bookkeeper (sent, not yet submitted).
     pub pending: Option<bool>,
     /// Include cancelled invoices.
     pub cancelled: Option<bool>,
@@ -1202,7 +1250,7 @@ pub async fn list(
         r#"SELECT invoice.id
            FROM invoice
            WHERE (invoice.status <> 'cancelled' OR $1)
-             AND (NOT $2 OR invoice.status = 'accepted')
+             AND (NOT $2 OR invoice.status = 'sent')
              AND ($3::text IS NULL
                   OR invoice.invoice_number ILIKE $3
                   OR EXISTS (
@@ -1211,7 +1259,7 @@ pub async fn list(
                        JOIN customer ON customer.id = patient.customer_id
                        WHERE patient_treatment.treatment_id = invoice.treatment_id
                          AND concat_ws(' ', customer.first_name, customer.last_name) ILIKE $3))
-           ORDER BY (invoice.status = 'accepted') DESC, invoice.invoice_date DESC, invoice.id DESC
+           ORDER BY (invoice.status = 'sent') DESC, invoice.invoice_date DESC, invoice.id DESC
            LIMIT $4 OFFSET $5"#,
         query.cancelled.unwrap_or(false),
         query.pending.unwrap_or(false),
@@ -1239,16 +1287,17 @@ pub async fn list(
     params(("id" = i64, Path,)),
     responses(
         (status = 200, body = Invoice),
-        (status = 409, description = "Only an accepted invoice can be submitted")
+        (status = 409, description = "Only a sent invoice can be submitted")
     )
 )]
 pub async fn submit(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> AppResult<Json<Invoice>> {
+    // The bookkeeper only ever receives invoices the customer already has.
     let updated = sqlx::query_scalar!(
         "UPDATE invoice SET status = 'submitted', ts_submitted = now()
-         WHERE id = $1 AND status = 'accepted'
+         WHERE id = $1 AND status = 'sent'
          RETURNING id",
         id,
     )
@@ -1259,7 +1308,7 @@ pub async fn submit(
         // Distinguish "no such invoice" from "wrong stage" — the UI shows different things.
         load(&state.pool, id).await?;
         return Err(AppError::Conflict(
-            "only an accepted invoice can be submitted to bookkeeping".to_owned(),
+            "only a sent invoice can be submitted to bookkeeping".to_owned(),
         ));
     }
 
@@ -1277,7 +1326,7 @@ pub async fn bulk_submit(State(state): State<AppState>) -> AppResult<Json<BulkSu
     // One statement, one timestamp: the whole month is handed over as a single act.
     let invoice_numbers = sqlx::query_scalar!(
         "UPDATE invoice SET status = 'submitted', ts_submitted = now()
-         WHERE status = 'accepted'
+         WHERE status = 'sent'
          RETURNING invoice_number",
     )
     .fetch_all(&state.pool)
@@ -1306,7 +1355,7 @@ pub async fn pending_pdfs(State(state): State<AppState>) -> AppResult<Response> 
         r#"SELECT invoice.invoice_number, attachment.sha256 AS "sha256?"
            FROM invoice
            LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id
-           WHERE invoice.status = 'accepted'
+           WHERE invoice.status = 'sent'
            ORDER BY invoice.invoice_number"#,
     )
     .fetch_all(&state.pool)
@@ -1320,7 +1369,7 @@ pub async fn pending_pdfs(State(state): State<AppState>) -> AppResult<Response> 
 
     let mut files = Vec::with_capacity(rows.len());
     for row in rows {
-        // An accepted invoice always has its PDF; a missing one must not fail the bundle.
+        // A released invoice always has its PDF; a missing one must not fail the bundle.
         let Some(sha256) = row.sha256 else {
             tracing::error!(invoice_number = %row.invoice_number, "pending invoice without a PDF");
             continue;
@@ -1374,6 +1423,7 @@ pub fn routes() -> Router<AppState> {
         .route("/invoices/{id}/pdf", get(pdf))
         .route("/invoices/{id}/accept", post(accept))
         .route("/invoices/{id}/send", post(send))
+        .route("/invoices/{id}/mark-posted", post(mark_posted))
         .route("/invoices/{id}/cancel", post(cancel))
         .route("/invoices/{id}/submit", post(submit))
 }

@@ -23,6 +23,11 @@ export interface Invoice {
   ts_accepted?: string | null;
   /** @nullable */
   ts_sent_email?: string | null;
+  /**
+     * When the invoice was handed over on paper — the only trace a postal send leaves.
+     * @nullable
+     */
+  ts_sent_post?: string | null;
   /** @nullable */
   ts_submitted?: string | null;
   /** @nullable */

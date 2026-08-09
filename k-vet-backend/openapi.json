@@ -1179,7 +1179,7 @@
           {
             "name": "pending",
             "in": "query",
-            "description": "Only invoices waiting for the bookkeeper (accepted, not yet submitted).",
+            "description": "Only invoices waiting for the bookkeeper (sent, not yet submitted).",
             "required": false,
             "schema": {
               "type": "boolean"
@@ -1378,6 +1378,40 @@
         }
       }
     },
+    "/api/invoices/{id}/mark-posted": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "markInvoicePosted",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Recorded as handed over on paper",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Invoice"
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "Only a released, unsent invoice can be marked as posted"
+          }
+        }
+      }
+    },
     "/api/invoices/{id}/pdf": {
       "get": {
         "tags": [
@@ -1422,9 +1456,19 @@
             }
           }
         ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/SendInvoice"
+              }
+            }
+          },
+          "required": true
+        },
         "responses": {
           "200": {
-            "description": "",
+            "description": "Sent; the invoice is now `sent`",
             "content": {
               "application/json": {
                 "schema": {
@@ -1434,7 +1478,10 @@
             }
           },
           "409": {
-            "description": "The invoice is not accepted, or has no recipients"
+            "description": "The invoice is not released, or is cancelled"
+          },
+          "422": {
+            "description": "No recipient was given"
           },
           "500": {
             "description": "The mail server rejected the message"
@@ -1471,7 +1518,7 @@
             }
           },
           "409": {
-            "description": "Only an accepted invoice can be submitted"
+            "description": "Only a sent invoice can be submitted"
           }
         }
       }
@@ -4087,6 +4134,7 @@
           "draft",
           "missing_fields",
           "treatment_count",
+          "unbilled_treatment_count",
           "created_at",
           "updated_at"
         ],
@@ -4124,6 +4172,11 @@
             "type": "integer",
             "format": "int64"
           },
+          "unbilled_treatment_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036)."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -4131,6 +4184,69 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "AtRisk": {
+        "type": "object",
+        "description": "One money-at-risk list: the oldest few cases, and how many there are in all.",
+        "required": [
+          "count",
+          "entries"
+        ],
+        "properties": {
+          "count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "entries": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AtRiskEntry"
+            }
+          }
+        }
+      },
+      "AtRiskEntry": {
+        "type": "object",
+        "required": [
+          "treatment_id",
+          "customer_name",
+          "patients",
+          "total_gross"
+        ],
+        "properties": {
+          "treatment_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Every case is resolved on the treatment page, so that is where a row leads."
+          },
+          "invoice_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Absent while no invoice exists."
+          },
+          "date": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "The invoice's date, or the visit's while there is no invoice."
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "total_gross": {
+            "type": "string"
           }
         }
       },
@@ -4706,13 +4822,28 @@
         "type": "object",
         "required": [
           "pending_invoice_count",
+          "unbilled",
+          "unreleased",
+          "unsent",
           "expiring_lots"
         ],
         "properties": {
           "pending_invoice_count": {
             "type": "integer",
             "format": "int64",
-            "description": "Accepted invoices not yet handed over to bookkeeping."
+            "description": "Sent invoices not yet handed over to bookkeeping."
+          },
+          "unbilled": {
+            "$ref": "#/components/schemas/AtRisk",
+            "description": "Treatments that were worked and billed to nobody."
+          },
+          "unreleased": {
+            "$ref": "#/components/schemas/AtRisk",
+            "description": "Invoices written but never released."
+          },
+          "unsent": {
+            "$ref": "#/components/schemas/AtRisk",
+            "description": "Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show."
           },
           "expiring_lots": {
             "type": "array",
@@ -4977,6 +5108,14 @@
             ],
             "format": "date-time"
           },
+          "ts_sent_post": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When the invoice was handed over on paper — the only trace a postal send leaves."
+          },
           "ts_submitted": {
             "type": [
               "string",
@@ -5019,10 +5158,11 @@
       },
       "InvoiceStatus": {
         "type": "string",
-        "description": "Invoice lifecycle.",
+        "description": "Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.",
         "enum": [
           "created",
           "accepted",
+          "sent",
           "submitted",
           "cancelled"
         ]
@@ -6622,6 +6762,18 @@
           "familie"
         ]
       },
+      "SendInvoice": {
+        "type": "object",
+        "properties": {
+          "recipient_emails": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Where this send goes. Replaces the stored recipients, so a mistyped address can be\ncorrected and an invoice accepted without one can still be emailed."
+          }
+        }
+      },
       "Service": {
         "type": "object",
         "required": [
@@ -6931,6 +7083,7 @@
           "appointment_id",
           "patients",
           "customer_emails",
+          "item_count",
           "frozen",
           "pdf_stale",
           "total_gross",
@@ -6985,6 +7138,11 @@
                 "description": "The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again."
               }
             ]
+          },
+          "item_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells \"still being written up\" apart from \"worked and never billed\" (FR-036)."
           },
           "frozen": {
             "type": "boolean",

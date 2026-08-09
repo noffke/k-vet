@@ -144,6 +144,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::invoices::pdf,
         api::invoices::accept,
         api::invoices::send,
+        api::invoices::mark_posted,
         api::invoices::cancel,
         api::invoices::list,
         api::invoices::submit,

@@ -1,5 +1,6 @@
-import { AlertTriangle, Archive, CircleDashed } from 'lucide-react'
+import { AlertTriangle, Archive, CircleDashed, MailWarning, ReceiptText } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
+import type { InvoiceStatus } from '@/api/generated/model'
 import { cn } from '@/lib/utils'
 
 const badge =
@@ -37,6 +38,36 @@ export function ArchivedBadge({ archived }: { archived: boolean | undefined }) {
     <span className={cn(badge, 'bg-sunken text-ink-faint')}>
       <Archive className="size-3" aria-hidden />
       {t('record.archived')}
+    </span>
+  )
+}
+
+/**
+ * Work that was done and billed to nobody — the first of the two ways money goes missing
+ * (FR-036). Rust, like the other "unfinished" markers: it is a task, not a hazard.
+ */
+export function NotBilledBadge({ count }: { count: number | undefined }) {
+  const { t } = useTranslation()
+  if (!count) return null
+  return (
+    <span className={cn(badge, 'bg-rust-soft text-rust')}>
+      <ReceiptText className="size-3" aria-hidden />
+      {t('record.notBilled')}
+    </span>
+  )
+}
+
+/**
+ * The second one: a released invoice the customer never got. Only `accepted` can be unsent —
+ * sending is what moves an invoice on, and nothing reaches bookkeeping without it.
+ */
+export function NotSentBadge({ status }: { status: InvoiceStatus | undefined }) {
+  const { t } = useTranslation()
+  if (status !== 'accepted') return null
+  return (
+    <span className={cn(badge, 'bg-rust-soft text-rust')}>
+      <MailWarning className="size-3" aria-hidden />
+      {t('record.notSent')}
     </span>
   )
 }

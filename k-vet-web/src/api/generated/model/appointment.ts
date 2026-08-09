@@ -20,6 +20,11 @@ export interface Appointment {
   /** Mandatory fields still empty, for the "incomplete — missing: …" hint. */
   missing_fields: string[];
   treatment_count: number;
+  /**
+     * Treatments here that carry positions and no live invoice — work that has not been
+     * billed to anyone yet (FR-036).
+     */
+  unbilled_treatment_count: number;
   created_at: string;
   updated_at: string;
 }

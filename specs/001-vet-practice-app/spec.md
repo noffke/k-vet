@@ -397,25 +397,39 @@ reflected on the next generated invoice.
   gross is a courtesy to the reader, not a statutory requirement.
 - **FR-031**: Accepting a Created invoice MUST allow selecting one or more of the customer's
   email addresses and emailing the invoice PDF; configured global CC/BCC addresses are
-  applied; the sent timestamp is recorded on successful send. A failed or repeated send can be
-  retriggered for an Accepted invoice.
+  applied; the sent timestamp is recorded on successful send, which moves the invoice to Sent.
+  A failed or repeated send MUST be retriggerable for any released invoice, with the recipient
+  addresses chosen again at that moment — the last send may have gone nowhere or to the wrong
+  address, so the stored ones MUST NOT be the only ones it can use.
+- **FR-031a**: An invoice handed to the customer on paper MUST be markable as sent by post,
+  from Accepted only, with its own timestamp. The two routes stay distinguishable.
 - **FR-032**: Updating an invoice MUST keep the invoice number if the invoice is still
   Created; if it is Accepted, the invoice is automatically cancelled first and the new invoice
   gets a fresh number — numbers of Accepted invoices are burned, never reused.
 - **FR-033**: Invoice numbers MUST follow an operator-configured pattern with a monotonic
   counter per scope (e.g. per year); the counter never decrements and numbers are never
   reissued.
-- **FR-034**: The invoice list MUST show Accepted-but-not-submitted invoices on top, exclude
-  Cancelled invoices by default, and support viewing/downloading the PDF, cancelling, and
-  marking as submitted to bookkeeping — including bulk download of all not-submitted PDFs and
-  bulk marking as submitted.
-- **FR-035**: Each lifecycle step (accepted, sent by email, submitted to bookkeeping,
-  cancelled) MUST be recorded with a timestamp as the audit trail.
+- **FR-034**: The invoice list MUST show Sent-but-not-submitted invoices on top, exclude
+  Cancelled invoices by default, and support viewing/downloading the PDF, cancelling, marking
+  as sent by post, and marking as submitted to bookkeeping — including bulk download of all
+  not-submitted PDFs and bulk marking as submitted.
+- **FR-034a**: The lifecycle is `Created → Accepted → Sent → Submitted`, or Cancelled. Only a
+  Sent invoice MAY be submitted to bookkeeping: the customer has the invoice before the
+  bookkeeper does. This is what lets a single status column carry the whole lifecycle.
+- **FR-035**: Each lifecycle step (accepted, sent by email, sent by post, submitted to
+  bookkeeping, cancelled) MUST be recorded with a timestamp as the audit trail.
 
 #### Dashboard & Settings
 
 - **FR-036**: The dashboard MUST show the count of invoices not yet submitted to bookkeeping
   with a direct link, and the 5 lots expiring soonest that still have stock, each navigable.
+- **FR-036a**: The dashboard MUST list the money that has not arrived, as three lists: treatments
+  that carry positions and have no live invoice (counting visits before today only, so work in
+  hand is not reported as work lost), invoices still Created, and invoices still Accepted. Each
+  MUST show the oldest few cases with customer, animals, date and amount, link every row to the
+  treatment it is settled on, and state how many more there are.
+- **FR-036b**: The same two cases MUST be marked on the records themselves: appointments and
+  treatments carrying unbilled positions, and released invoices that have not been sent.
 - **FR-037**: A settings page MUST let the vet edit practice name and address, IBAN, UStID,
   uploadable practice logo, and global CC/BCC email addresses; invoices and emails generated
   afterwards use the new values. Infrastructure settings (mail server, invoice number pattern,

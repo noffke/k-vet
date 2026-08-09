@@ -189,8 +189,26 @@ export async function seedAcceptedInvoice(request: APIRequestContext): Promise<S
   return { invoiceId: invoice.id, invoiceNumber: invoice.invoice_number, treatmentId }
 }
 
-/** Hands every pending invoice over, so a spec can count from a known slate. */
+/**
+ * The same treatment, with the invoice already at the customer — where the bookkeeping
+ * hand-off starts from. Marked as posted, because the E2E environment has no mail server.
+ */
+export async function seedSentInvoice(request: APIRequestContext): Promise<SeededInvoice> {
+  const seeded = await seedAcceptedInvoice(request)
+  await post(request, `/api/invoices/${seeded.invoiceId}/mark-posted`)
+  return seeded
+}
+
+/**
+ * Empties both waiting piles, so a spec can count from a known slate: everything released is
+ * marked as sent, and everything sent is handed over.
+ */
 export async function clearPendingInvoices(request: APIRequestContext): Promise<void> {
   await login(request)
+  const response = await request.get('/api/invoices?limit=500')
+  const invoices = (await response.json()) as { id: number; status: string }[]
+  for (const invoice of invoices.filter((entry) => entry.status === 'accepted')) {
+    await post(request, `/api/invoices/${invoice.id}/mark-posted`)
+  }
   await post(request, '/api/invoices/bulk-submit')
 }

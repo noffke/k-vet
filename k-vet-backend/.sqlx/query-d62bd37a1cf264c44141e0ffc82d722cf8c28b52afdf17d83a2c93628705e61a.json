@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.invoice_number, attachment.sha256 AS \"sha256?\"\n           FROM invoice\n           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id\n           WHERE invoice.status = 'accepted'\n           ORDER BY invoice.invoice_number",
+  "query": "SELECT invoice.invoice_number, attachment.sha256 AS \"sha256?\"\n           FROM invoice\n           LEFT JOIN attachment ON attachment.id = invoice.pdf_attachment_id\n           WHERE invoice.status = 'sent'\n           ORDER BY invoice.invoice_number",
   "describe": {
     "columns": [
       {
@@ -34,5 +34,5 @@
       false
     ]
   },
-  "hash": "80fea9bbfa047594a2d1f8a4ff2d764e0b6f1801e237eaca5cf3c935f109e24f"
+  "hash": "d62bd37a1cf264c44141e0ffc82d722cf8c28b52afdf17d83a2c93628705e61a"
 }

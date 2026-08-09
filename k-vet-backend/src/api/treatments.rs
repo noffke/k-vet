@@ -35,6 +35,9 @@ pub struct Treatment {
     /// The live invoice of this treatment, or the most recent cancelled one — the vet has
     /// to see that the last attempt was cancelled, and can then bill again.
     pub invoice: Option<TreatmentInvoice>,
+    /// How many positions are billed here. Zero means there is nothing to invoice yet, which
+    /// is what tells "still being written up" apart from "worked and never billed" (FR-036).
+    pub item_count: i64,
     /// `true` once the invoice is accepted: lines and stock movements are frozen.
     pub frozen: bool,
     /// The treatment changed after its invoice PDF was rendered, so the document on file no
@@ -626,11 +629,55 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
         customer_id,
         customer_emails,
         invoice,
+        item_count: i64::try_from(items.len()).unwrap_or(i64::MAX),
         frozen,
         pdf_stale,
         total_gross: money::total_gross(&groups),
         created_at: row.created_at,
         updated_at: row.updated_at,
+    })
+}
+
+/// Who a treatment concerns: the customer's display name and the animals', in the order lists
+/// and documents show them. The customer comes from the animals — a treatment has no other.
+#[derive(Debug)]
+pub struct Parties {
+    pub customer_id: Option<i64>,
+    pub customer_name: String,
+    pub patients: Vec<String>,
+}
+
+pub async fn parties(pool: &sqlx::PgPool, treatment_id: i64) -> AppResult<Parties> {
+    let rows = sqlx::query!(
+        r#"SELECT patient.name, patient.customer_id, customer.first_name, customer.last_name
+           FROM patient_treatment
+           JOIN patient ON patient.id = patient_treatment.patient_id
+           LEFT JOIN customer ON customer.id = patient.customer_id
+           WHERE patient_treatment.treatment_id = $1
+           ORDER BY patient.name"#,
+        treatment_id,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let customer_name = rows
+        .first()
+        .map(|row| {
+            [row.first_name.clone(), row.last_name.clone()]
+                .into_iter()
+                .flatten()
+                .collect::<Vec<_>>()
+                .join(" ")
+        })
+        .unwrap_or_default();
+
+    Ok(Parties {
+        customer_id: rows.first().and_then(|row| row.customer_id),
+        customer_name,
+        patients: rows
+            .iter()
+            .map(|row| row.name.clone().unwrap_or_default())
+            .collect(),
     })
 }
 

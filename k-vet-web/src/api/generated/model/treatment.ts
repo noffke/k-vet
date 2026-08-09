@@ -23,6 +23,11 @@ export interface Treatment {
   /** The customer's email addresses, offered as invoice recipients (FR-031). */
   customer_emails: string[];
   invoice?: null | TreatmentInvoice;
+  /**
+     * How many positions are billed here. Zero means there is nothing to invoice yet, which
+     * is what tells "still being written up" apart from "worked and never billed" (FR-036).
+     */
+  item_count: number;
   /** `true` once the invoice is accepted: lines and stock movements are frozen. */
   frozen: boolean;
   /**

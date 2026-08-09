@@ -1,15 +1,15 @@
 //! Dashboard payload and practice settings (T071).
 //!
-//! The dashboard answers two questions the vet has when opening the app: what still has to
-//! go to the bookkeeper, and which stock is about to expire (FR-036). Settings are one row
-//! that field-level auto-save patches (FR-037).
+//! The dashboard answers the questions the vet has when opening the app: which money has not
+//! arrived yet, what still has to go to the bookkeeper, and which stock is about to expire
+//! (FR-036). Settings are one row that field-level auto-save patches (FR-037).
 
 // Integration tests may panic on unexpected results — that is how a test reports failure.
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 mod common;
 
 use axum::http::StatusCode;
-use chrono::{Days, Utc};
+use chrono::{DateTime, Days, Utc};
 use common::TestApp;
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
@@ -32,11 +32,22 @@ fn dec(value: &str) -> Decimal {
     Decimal::from_str_exact(value).expect("test literal is a decimal")
 }
 
-/// An accepted invoice, i.e. one waiting for the bookkeeper.
-async fn accepted_invoice(app: &TestApp, pool: &PgPool) -> i64 {
+/// An invoice the customer already has, i.e. one waiting for the bookkeeper. Posting it is how
+/// a test says "sent" without a mail server.
+async fn sent_invoice(app: &TestApp, pool: &PgPool) -> i64 {
+    let id = accepted_invoice(app, pool).await;
+    let posted = app
+        .post_empty(&format!("/api/invoices/{id}/mark-posted"))
+        .await;
+    assert_eq!(posted.status, StatusCode::OK);
+    id
+}
+
+/// A visit on `when` with one animal and one billed position, and no invoice.
+async fn worked_treatment(app: &TestApp, pool: &PgPool, when: DateTime<Utc>) -> i64 {
     let customer_id = common::seed_customer(pool).await;
     let patient_id = common::seed_patient(pool, customer_id).await;
-    let appointment_id = common::seed_appointment(pool, Utc::now()).await;
+    let appointment_id = common::seed_appointment(pool, when).await;
     let treatment_id = common::seed_treatment(pool, appointment_id, patient_id).await;
     let service_id = common::seed_got_service(pool).await;
 
@@ -45,6 +56,12 @@ async fn accepted_invoice(app: &TestApp, pool: &PgPool) -> i64 {
         json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
     )
     .await;
+    treatment_id
+}
+
+/// A released invoice that has not gone anywhere yet.
+async fn accepted_invoice(app: &TestApp, pool: &PgPool) -> i64 {
+    let treatment_id = worked_treatment(app, pool, Utc::now()).await;
     let invoice = app
         .post(
             &format!("/api/treatments/{treatment_id}/invoice"),
@@ -86,8 +103,8 @@ async fn the_dashboard_counts_what_is_waiting_for_the_bookkeeper(pool: PgPool) {
     );
     assert_eq!(empty.json()["pending_invoice_count"], 0);
 
-    let first = accepted_invoice(&app, &pool).await;
-    accepted_invoice(&app, &pool).await;
+    let first = sent_invoice(&app, &pool).await;
+    sent_invoice(&app, &pool).await;
     assert_eq!(
         app.get("/api/dashboard").await.json()["pending_invoice_count"],
         2
@@ -98,6 +115,92 @@ async fn the_dashboard_counts_what_is_waiting_for_the_bookkeeper(pool: PgPool) {
         .await;
     assert_eq!(
         app.get("/api/dashboard").await.json()["pending_invoice_count"],
+        1
+    );
+}
+
+#[sqlx::test]
+async fn the_dashboard_lists_the_three_ways_money_goes_missing(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let last_week = Utc::now() - Days::new(7);
+
+    let empty = app.get("/api/dashboard").await;
+    assert_eq!(
+        empty.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&empty.body)
+    );
+    let empty = empty.json();
+    for case in ["unbilled", "unreleased", "unsent"] {
+        assert_eq!(empty[case]["count"], 0, "{case} starts empty");
+        assert_eq!(empty[case]["entries"], json!([]));
+    }
+
+    // Worked, positions entered, and billed to nobody.
+    let unbilled = worked_treatment(&app, &pool, last_week).await;
+
+    // Billed, and the invoice never released.
+    let unreleased = worked_treatment(&app, &pool, last_week).await;
+    app.post(&format!("/api/treatments/{unreleased}/invoice"), json!({}))
+        .await;
+
+    // Released, and it never reached the customer — the email failed, or was never tried.
+    let unsent = worked_treatment(&app, &pool, last_week).await;
+    let invoice = app
+        .post(&format!("/api/treatments/{unsent}/invoice"), json!({}))
+        .await;
+    let invoice_id = invoice.id();
+    app.post(
+        &format!("/api/invoices/{invoice_id}/accept"),
+        json!({ "recipient_emails": [] }),
+    )
+    .await;
+
+    let board = app.get("/api/dashboard").await.json();
+    for (case, treatment_id) in [
+        ("unbilled", unbilled),
+        ("unreleased", unreleased),
+        ("unsent", unsent),
+    ] {
+        assert_eq!(board[case]["count"], 1, "{case} holds exactly its own case");
+        let entry = &board[case]["entries"][0];
+        assert_eq!(entry["treatment_id"], treatment_id, "{case} leads there");
+        assert_eq!(entry["customer_name"], "Erika Mustermann");
+        assert_ne!(
+            entry["total_gross"], "0.00",
+            "{case} says how much is at stake"
+        );
+    }
+    assert!(
+        board["unbilled"]["entries"][0]["invoice_number"].is_null(),
+        "there is no invoice to name yet"
+    );
+    assert!(!board["unsent"]["entries"][0]["invoice_number"].is_null());
+
+    // Posting the released one settles it, and moves it on to the bookkeeper's pile.
+    app.post_empty(&format!("/api/invoices/{invoice_id}/mark-posted"))
+        .await;
+    let board = app.get("/api/dashboard").await.json();
+    assert_eq!(board["unsent"]["count"], 0);
+    assert_eq!(board["pending_invoice_count"], 1);
+}
+
+#[sqlx::test]
+async fn todays_unbilled_work_is_work_in_hand_and_not_yet_at_risk(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+
+    // Written up during the visit: positions, no invoice yet. A dashboard that shouts about
+    // this teaches the vet to ignore it.
+    worked_treatment(&app, &pool, Utc::now()).await;
+    assert_eq!(
+        app.get("/api/dashboard").await.json()["unbilled"]["count"],
+        0
+    );
+
+    worked_treatment(&app, &pool, Utc::now() - Days::new(1)).await;
+    assert_eq!(
+        app.get("/api/dashboard").await.json()["unbilled"]["count"],
         1
     );
 }

@@ -59,14 +59,43 @@ be the possibility to update an invoice (e.g. finding changed, etc.). If the inv
 has to be automatically canceled first. Created invoices can keep their invoice number on update, Accepted invoice
 numbers are "burned".
 
+The lifecycle is `Created → Accepted → Sent → Submitted`, or `Cancelled` from any of them. An
+invoice must have reached the customer before it can be handed to bookkeeping — Sent is a
+precondition of Submitted, which is why one status column suffices.
+
+An invoice reaches the customer by one of two routes, and both are recorded with their own
+timestamp:
+
+* by email — the timestamp is written only after the mail server accepted the message. Accepting
+  the invoice sends it as a side effect; if that fails, the invoice stays Accepted and can be
+  sent again from the treatment page, to addresses chosen at that moment (the last send may have
+  gone to the wrong one, or to none at all).
+* by post — nothing else can observe a letter going into a postbox, so the vet marks it by hand.
+  Only an Accepted invoice can be marked as posted.
+
 ## Invoice (Rechnung)
 Invoices can only be created or updated from a treatment. On the invoices page, it should be possible to view and
 download an invoice PDF and cancel an invoice. Additionally, it should be possible to mark invoices
-as submitted to bookkeeping. Accepted but not Submitted to Bookkeeping invoices should be listed on top of the page.
+as submitted to bookkeeping, and to mark an Accepted one as sent by post. Sent but not Submitted
+to Bookkeeping invoices should be listed on top of the page.
 There should be the option to bulk-download all PDFs not submitted for bookkeeping, and bulk-mark them as submitted.
 
 ## Dashboard
 On the dashboard, we should give the number of invoices not yet submitted to bookkeeping and allow to directly jump to the corresponding page.
+
+There are two ways the practice loses money, and the dashboard tracks both — as three lists,
+because each has its own remedy. Each shows the oldest few cases with the customer, the animals,
+the date and the amount, links each row to the treatment it is settled on, and says how many
+more there are:
+
+* **not billed** — treatments that carry positions and have no live invoice. Only visits before
+  today count: a treatment being written up during the visit has positions and no invoice by
+  definition, and a dashboard that shouts about the work in hand teaches the vet to ignore it.
+* **not released** — invoices in Created.
+* **not sent** — invoices in Accepted, including the ones whose email failed on the way out.
+
+The same two cases are marked on the records themselves: appointments and treatments carrying
+unbilled work, and released invoices that never went anywhere.
 
 Also, the top 5 drug lots that will expire next (but still have stock) should be listed and be allowed to directly navigate to. 
 

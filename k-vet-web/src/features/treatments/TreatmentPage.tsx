@@ -3,6 +3,7 @@ import { useTranslation } from 'react-i18next'
 import { useGetTreatment, useListTreatmentItems } from '@/api/generated/endpoints'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
+import { NotBilledBadge } from '@/components/RecordBadges'
 import { WarningBanner } from '@/components/WarningBanner'
 import { InvoicePanel } from '@/features/treatments/InvoicePanel'
 import { LineEditor } from '@/features/treatments/LineEditor'
@@ -41,7 +42,17 @@ export function TreatmentPage() {
         }
         title={record.patients.map((patient) => patient.name).join(', ') || t('treatments.title')}
         actions={<span className="text-sm text-ink-faint">{t('save.hint')}</span>}
-      />
+      >
+        {/* The same marker the appointment list carries, so following it lands somewhere
+            that still says why (FR-036). */}
+        <NotBilledBadge
+          count={
+            record.item_count > 0 && (!record.invoice || record.invoice.status === 'cancelled')
+              ? 1
+              : 0
+          }
+        />
+      </PageHeader>
 
       {warnings.map((patient) => (
         <WarningBanner

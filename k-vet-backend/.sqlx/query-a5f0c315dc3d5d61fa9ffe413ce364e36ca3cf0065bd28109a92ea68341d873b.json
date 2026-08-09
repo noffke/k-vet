@@ -35,6 +35,7 @@
               "Enum": [
                 "created",
                 "accepted",
+                "sent",
                 "submitted",
                 "cancelled"
               ]

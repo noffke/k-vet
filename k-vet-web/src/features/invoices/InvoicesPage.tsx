@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { Ban, Download, FileText, PackageCheck } from 'lucide-react'
+import { Ban, Download, FileText, PackageCheck, Send } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,6 +10,7 @@ import {
   useBulkSubmitInvoices,
   useCancelInvoice,
   useListInvoices,
+  useMarkInvoicePosted,
   useSubmitInvoice,
 } from '@/api/generated/endpoints'
 import type { Invoice } from '@/api/generated/model'
@@ -19,6 +20,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
+import { cn } from '@/lib/utils'
 
 /**
  * The invoice overview and the monthly bookkeeping hand-off (FR-034).
@@ -45,6 +47,7 @@ export function InvoicesPage() {
 
   const refresh = () => client.invalidateQueries({ queryKey: getListInvoicesQueryKey() })
   const submit = useSubmitInvoice({ mutation: { onSuccess: refresh } })
+  const markPosted = useMarkInvoicePosted({ mutation: { onSuccess: refresh } })
   const cancel = useCancelInvoice({
     mutation: {
       onSuccess: async () => {
@@ -86,8 +89,16 @@ export function InvoicesPage() {
     {
       id: 'status',
       header: t('invoices.status'),
+      // Released and still here is the one status that is a task rather than a fact, so it is
+      // the one that gets a colour.
       cell: (row) => (
-        <span className="rounded-full bg-sunken px-2 py-0.5 text-xs text-ink-soft">
+        <span
+          className={cn(
+            'rounded-full px-2 py-0.5 text-xs',
+            row.status === 'accepted' ? 'bg-rust-soft text-rust' : 'bg-sunken text-ink-soft',
+          )}
+          title={row.status === 'accepted' ? t('invoices.notSent') : undefined}
+        >
           {t(`invoices.status_${row.status}`)}
         </span>
       ),
@@ -114,7 +125,21 @@ export function InvoicesPage() {
         <FileText className="size-3.5" />
         {t('invoices.pdf')}
       </a>
+      {/* Nothing else can see a letter go into a postbox, and until it has, the invoice is
+          not ready for the bookkeeper. */}
       {row.status === 'accepted' ? (
+        <Button
+          size="small"
+          variant="primary"
+          title={t('invoices.markPostedHint')}
+          disabled={markPosted.isPending}
+          onClick={() => markPosted.mutate({ id: row.id })}
+        >
+          <Send className="size-3.5" />
+          {t('invoices.markPosted')}
+        </Button>
+      ) : null}
+      {row.status === 'sent' ? (
         <Button
           size="small"
           variant="primary"

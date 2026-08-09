@@ -34,7 +34,7 @@ Conventions (from `requirements/datamodel.md` and the constitution):
 | `template_item_kind` | `drug_packaging`, `service` |
 | `treatment_item_kind` | `drug_packaging`, `service` |
 | `attachment_kind` | `patient_file`, `treatment_file`, `referenced` |
-| `invoice_status` | `created`, `accepted`, `submitted`, `cancelled` |
+| `invoice_status` | `created`, `accepted`, `sent`, `submitted`, `cancelled` |
 | `email_type` | `private`, `work`, `other` |
 
 ## Draft rows (auto-save)
@@ -225,7 +225,8 @@ CHECKs (kind-bound columns per modeling conventions):
 
 Semantics (application layer, tested against the real DB):
 - **Draft vs frozen is derived**: a dispense is a draft while its treatment has no invoice in
-  status `accepted`/`submitted`; drafts are freely deleted/rewritten on treatment edits.
+  a released status (`accepted`, `sent`, `submitted`); drafts are freely deleted/rewritten on
+  treatment edits.
 - Once the invoice is Accepted, movements are **append-only** ("Storno statt Löschen"):
   cancellation inserts compensating corrections with `reverses_movement_id` set; nothing is
   updated or deleted.
@@ -346,7 +347,8 @@ group's gross without any amount being adjusted.
 | pdf_attachment_id | bigint | FK → attachment, NULL (kind `referenced`; set when PDF generated) |
 | email_recipients | text[] | NULL |
 | ts_accepted | timestamptz | NULL |
-| ts_sent_email | timestamptz | NULL |
+| ts_sent_email | timestamptz | NULL (written only after the mail server accepted the message) |
+| ts_sent_post | timestamptz | NULL (a hand-over on paper; nothing else can observe it) |
 | ts_submitted | timestamptz | NULL |
 | ts_cancelled | timestamptz | NULL |
 
@@ -354,18 +356,25 @@ Constraints:
 - `UNIQUE (treatment_id) WHERE status <> 'cancelled'` — at most one live invoice per treatment;
   cancelled invoices are retained for bookkeeping.
 - Status/timestamp CHECKs: `status = 'accepted' → ts_accepted IS NOT NULL`,
-  `status = 'submitted' → ts_submitted IS NOT NULL`, `status = 'cancelled' → ts_cancelled IS NOT NULL`.
+  `status = 'sent' → ts_sent_email IS NOT NULL OR ts_sent_post IS NOT NULL`,
+  `status = 'submitted' → ts_accepted AND ts_submitted AND (ts_sent_email OR ts_sent_post)`,
+  `status = 'cancelled' → ts_cancelled IS NOT NULL`.
 
 State machine (status is the lifecycle, timestamps are the audit record):
 
 ```
-created ──accept──▶ accepted ──mark submitted──▶ submitted
-   │                    │                            │
-   └──────cancel────────┴──────────cancel────────────┘──▶ cancelled (terminal)
+created ──accept──▶ accepted ──email/post──▶ sent ──mark submitted──▶ submitted
+   │                    │                        │                         │
+   └──────cancel────────┴────────cancel──────────┴─────────cancel──────────┘──▶ cancelled (terminal)
 ```
 
-- `created → accepted`: select recipients, email PDF, freeze dispense movements.
-- Update flow: `created` keeps its invoice number; updating an `accepted`/`submitted` invoice
+- `created → accepted`: select recipients, freeze dispense movements, and try the email.
+- `accepted → sent`: the mail server accepted the message, or the vet marked the invoice as
+  posted. A failed send leaves the invoice `accepted`, which is what the dashboard reports as
+  money that never reached the customer.
+- `sent → submitted`: only a sent invoice reaches the bookkeeper. Dispatch is a precondition of
+  the hand-off, which is what lets one status column carry the whole lifecycle.
+- Update flow: `created` keeps its invoice number; updating a released invoice
   auto-cancels it first (number burned) and creates a new `created` invoice.
 - `→ cancelled`: writes compensating stock corrections for all frozen dispenses of the treatment.
 - Listings exclude `cancelled` by default.
