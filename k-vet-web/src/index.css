@@ -90,6 +90,13 @@
     outline-offset: 2px;
   }
 
+  /* A field that wraps its input — a number field with a stepper — draws the ring around the
+     whole control, since the input inside it has no border of its own. */
+  .control-box:focus-within {
+    outline: 2px solid var(--color-rust-bright);
+    outline-offset: 2px;
+  }
+
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,

@@ -1,7 +1,7 @@
 import { Minus, Plus } from 'lucide-react'
+import type { ReactNode } from 'react'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Button } from '@/components/ui/button'
 import { Field } from '@/components/ui/field'
 import { currencyDecimals, formatNumber, localiseSeparators } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
@@ -103,92 +103,149 @@ export function NumberInput({
 
   const shown = localError ?? error
 
-  /** Steps the stored value, not the typed text: the field may hold a half-typed number. */
+  /** Steps the value in the field, whether it is the stored one or half-typed. */
+  const current = () => parseNumber(text) ?? Number(value ?? 0)
   const nudge = (by: number) => {
-    const current = parseNumber(text) ?? Number(value ?? 0)
-    let next = current + by
+    let next = current() + by
     if (min !== undefined) next = Math.max(min, next)
     if (max !== undefined) next = Math.min(max, next)
-    const rounded = Number(next.toFixed(wireDecimals))
-    setText(displayValue(rounded.toFixed(wireDecimals), locale, fixed))
-    onChange(rounded.toFixed(wireDecimals))
+    const stepped = next.toFixed(wireDecimals)
+    setText(displayValue(stepped, locale, fixed))
+    onChange(stepped)
   }
-  const atMin = min !== undefined && Number(value ?? 0) <= min
-  const atMax = max !== undefined && Number(value ?? 0) >= max
+  // Read from the same place `nudge` steps from, or the buttons disable against a value the
+  // next press would not use.
+  const atMin = min !== undefined && current() <= min
+  const atMax = max !== undefined && current() >= max
+
+  // With a stepper the border belongs to the row, so the whole thing reads as one control —
+  // the way the calendar button sits inside a date field rather than beside it.
+  const boxed = step !== undefined
 
   return (
     <Field label={label} error={shown} hint={hint} className={wrapperClassName}>
       {(id) => (
-        <div className={cn('relative', step ? 'flex items-stretch gap-1' : undefined)}>
-          {step ? (
-            <Button
-              size="icon"
-              disabled={disabled || atMin}
-              aria-label={t('action.decrease')}
-              onClick={() => nudge(-step)}
-            >
-              <Minus className="size-4" />
-            </Button>
-          ) : null}
-          <input
-            id={id}
-            // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.
-            type="text"
-            inputMode="decimal"
-            autoComplete="off"
-            value={text}
-            placeholder={placeholder}
-            disabled={disabled}
-            aria-invalid={shown ? true : undefined}
-            aria-describedby={unit ? unitId : undefined}
-            // Room for the unit: its own inset, its width in digit widths, and a gap.
-            style={unit ? { paddingInlineEnd: `calc(1.25rem + ${unit.length}ch)` } : undefined}
-            onFocus={() => {
-              setFocused(true)
-              setText(editValue(value, locale, fixed))
-            }}
-            onBlur={() => {
-              setFocused(false)
-              setText(displayValue(value, locale, fixed))
-              setLocalError(null)
-              onBlur?.()
-            }}
-            onChange={(event) => handleChange(event.target.value)}
-            className={cn(
-              'numeric w-full rounded-control border border-line-strong bg-surface px-3 py-2',
-              'text-right text-ink min-h-11 sm:min-h-9 placeholder:text-ink-faint',
-              'disabled:bg-sunken disabled:text-ink-faint',
-              shown && 'border-danger bg-danger/5',
-              className,
-            )}
-          />
-          {unit ? (
-            <span
-              id={unitId}
-              // Decoration only: clicks fall through to the input, and the value stays a
-              // bare number. Screen readers get it as the field's description.
+        <div
+          className={cn(
+            'relative',
+            boxed &&
+              cn(
+                'control-box flex items-stretch rounded-control border border-line-strong',
+                disabled ? 'bg-sunken' : 'bg-surface',
+                shown && 'border-danger bg-danger/5',
+              ),
+          )}
+        >
+          <div className={cn('relative', boxed && 'min-w-0 flex-1')}>
+            <input
+              id={id}
+              // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.
+              type="text"
+              inputMode="decimal"
+              autoComplete="off"
+              value={text}
+              placeholder={placeholder}
+              disabled={disabled}
+              aria-invalid={shown ? true : undefined}
+              aria-describedby={unit ? unitId : undefined}
+              // Room for the unit: its own inset, its width in digit widths, and a gap.
+              style={unit ? { paddingInlineEnd: `calc(1.25rem + ${unit.length}ch)` } : undefined}
+              onFocus={() => {
+                setFocused(true)
+                setText(editValue(value, locale, fixed))
+              }}
+              onBlur={() => {
+                setFocused(false)
+                setText(displayValue(value, locale, fixed))
+                setLocalError(null)
+                onBlur?.()
+              }}
+              onChange={(event) => handleChange(event.target.value)}
               className={cn(
-                'numeric pointer-events-none absolute inset-y-0 flex items-center',
-                step ? 'right-14' : 'right-3',
-                disabled ? 'text-ink-faint' : 'text-ink-soft',
+                'numeric w-full px-3 py-2 text-right text-ink min-h-11 sm:min-h-9',
+                'placeholder:text-ink-faint disabled:text-ink-faint',
+                boxed
+                  ? // The box around it carries the border and the focus ring.
+                    'bg-transparent focus:outline-none'
+                  : cn(
+                      'rounded-control border border-line-strong bg-surface disabled:bg-sunken',
+                      shown && 'border-danger bg-danger/5',
+                    ),
+                className,
               )}
-            >
-              {unit}
-            </span>
-          ) : null}
-          {step ? (
-            <Button
-              size="icon"
-              disabled={disabled || atMax}
-              aria-label={t('action.increase')}
-              onClick={() => nudge(step)}
-            >
-              <Plus className="size-4" />
-            </Button>
+            />
+            {unit ? (
+              <span
+                id={unitId}
+                // Decoration only: clicks fall through to the input, and the value stays a
+                // bare number. Screen readers get it as the field's description.
+                className={cn(
+                  'numeric pointer-events-none absolute inset-y-0 right-3 flex items-center',
+                  disabled ? 'text-ink-faint' : 'text-ink-soft',
+                )}
+              >
+                {unit}
+              </span>
+            ) : null}
+          </div>
+
+          {boxed && step ? (
+            <>
+              <StepButton
+                label={t('action.decrease')}
+                disabled={disabled || atMin}
+                onClick={() => nudge(-step)}
+              >
+                <Minus className="size-4" />
+              </StepButton>
+              <StepButton
+                label={t('action.increase')}
+                disabled={disabled || atMax}
+                onClick={() => nudge(step)}
+                last
+              >
+                <Plus className="size-4" />
+              </StepButton>
+            </>
           ) : null}
         </div>
       )}
     </Field>
+  )
+}
+
+/**
+ * One half of the stepper: a full-height cell inside the field, divided from the value by a
+ * hairline. 44 px wide on a phone, because the height it inherits is 44 px too (SC-009).
+ */
+function StepButton({
+  label,
+  disabled,
+  onClick,
+  last,
+  children,
+}: {
+  label: string
+  disabled: boolean
+  onClick: () => void
+  last?: boolean
+  children: ReactNode
+}) {
+  return (
+    <button
+      type="button"
+      aria-label={label}
+      disabled={disabled}
+      onClick={onClick}
+      className={cn(
+        'flex w-11 shrink-0 items-center justify-center border-l border-line text-ink-soft',
+        'transition-colors hover:bg-sunken hover:text-ink sm:w-9',
+        'disabled:pointer-events-none disabled:text-ink-faint',
+        last && 'rounded-r-control',
+      )}
+    >
+      {children}
+    </button>
   )
 }
 
