@@ -1,22 +1,10 @@
-import { useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { ArrowDownRight, ArrowUpRight, SlidersHorizontal } from 'lucide-react'
-import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  getGetDrugQueryKey,
-  getGetLotQueryKey,
-  getListDrugsQueryKey,
-  useCreateCorrection,
-  useGetLot,
-  useListCorrectionReasons,
-} from '@/api/generated/endpoints'
+import { useGetLot } from '@/api/generated/endpoints'
 import { BackLink } from '@/components/BackLink'
-import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
-import { TextField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
 /**
@@ -29,38 +17,14 @@ export function LotDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/lots/$id' })
   const lotId = Number(id)
-  const client = useQueryClient()
+  const navigate = useNavigate()
   const { quantity: formatQuantity, date, dateTime } = useLocaleFormat()
 
   const lot = useGetLot(lotId)
-  const reasons = useListCorrectionReasons()
-  const [correctionOpen, setCorrectionOpen] = useState(false)
-  const [newRemaining, setNewRemaining] = useState<string | null>(null)
-  const [reason, setReason] = useState('')
-
-  const correct = useCreateCorrection({
-    mutation: {
-      onSuccess: async () => {
-        setCorrectionOpen(false)
-        setReason('')
-        await client.invalidateQueries({ queryKey: getGetLotQueryKey(lotId) })
-        await client.invalidateQueries({ queryKey: getListDrugsQueryKey() })
-        if (lot.data) {
-          await client.invalidateQueries({ queryKey: getGetDrugQueryKey(lot.data.drug_id) })
-        }
-      },
-    },
-  })
 
   if (lot.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!lot.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = lot.data
-
-  /** The correction dialog opens pre-filled with the derived stock (FR-016). */
-  const openCorrection = () => {
-    setNewRemaining(record.remaining)
-    setCorrectionOpen(true)
-  }
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -78,7 +42,12 @@ export function LotDetailPage() {
             : `${t('pharmacy.lots')} ${record.id}`
         }
         actions={
-          <Button variant="accent" onClick={openCorrection}>
+          <Button
+            variant="accent"
+            onClick={() =>
+              void navigate({ to: '/lots/$id/correction', params: { id: String(lotId) } })
+            }
+          >
             <SlidersHorizontal className="size-4" />
             {t('pharmacy.correction')}
           </Button>
@@ -185,53 +154,6 @@ export function LotDetailPage() {
           ) : null}
         </ul>
       </section>
-
-      <Dialog
-        open={correctionOpen}
-        onOpenChange={setCorrectionOpen}
-        title={t('pharmacy.correction')}
-        description={t('pharmacy.correctionHint')}
-        footer={
-          <>
-            <Button onClick={() => setCorrectionOpen(false)}>{t('action.cancel')}</Button>
-            <Button
-              variant="primary"
-              disabled={newRemaining === null || correct.isPending}
-              onClick={() =>
-                newRemaining !== null &&
-                correct.mutate({
-                  id: lotId,
-                  data: { new_remaining: newRemaining, reason: reason || null },
-                })
-              }
-            >
-              {t('action.confirm')}
-            </Button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          <NumberInput
-            label={t('pharmacy.remaining')}
-            value={newRemaining}
-            unit={record.unit ?? undefined}
-            error={correct.isError ? t('value.mustNotBeZero') : undefined}
-            onChange={setNewRemaining}
-          />
-          {/* An editable select: previous reasons, alphabetical, or new free text. */}
-          <TextField
-            label={t('field.reason')}
-            list="correction-reasons"
-            value={reason}
-            onChange={(event) => setReason(event.target.value)}
-          />
-          <datalist id="correction-reasons">
-            {(reasons.data ?? []).map((entry) => (
-              <option key={entry} value={entry} />
-            ))}
-          </datalist>
-        </div>
-      </Dialog>
     </div>
   )
 }

@@ -64,6 +64,8 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
 
   // ── Invoice with the finding printed ────────────────────────────────────────
   await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
+  // Billing happens on its own page — no dialog takes data anywhere in the app.
+  await expect(page).toHaveURL(/\/treatments\/\d+\/invoice$/)
   // The Befund is listed by default now, so the box is already ticked.
   await expect(page.getByLabel('Befund aufführen')).toBeChecked()
   // And the PDF opens by itself, in a tab held open from the click. Headless Chromium has no
@@ -106,6 +108,7 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
 
   // ── Accept it, with the customer's address as recipient ─────────────────────
   await page.getByRole('button', { name: 'Rechnung freigeben' }).click()
+  await expect(page).toHaveURL(/\/treatments\/\d+\/invoice\/accept$/)
   await expect(page.getByLabel('erika@example.com')).toBeChecked()
   await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()
 

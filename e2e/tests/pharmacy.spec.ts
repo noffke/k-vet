@@ -118,7 +118,9 @@ test.describe('pharmacy', () => {
     await page.getByText('CH-INVENTUR').filter({ visible: true }).first().click()
 
     await page.getByRole('button', { name: 'Korrektur' }).click()
-    // The dialog opens with the derived stock filled in (FR-016).
+    // A stocktake is entered on its own page, not in a dialog, and opens with the derived
+    // stock filled in (FR-016).
+    await expect(page).toHaveURL(/\/lots\/\d+\/correction$/)
     await expect(page.getByLabel('Restbestand').last()).toHaveValue('100')
     await page.getByLabel('Restbestand').last().fill('88')
     await page.getByLabel('Grund').fill('Bruch')

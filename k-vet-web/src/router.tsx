@@ -24,11 +24,14 @@ import { PatientsPage } from '@/features/patients/PatientsPage'
 import { DrugDetailPage } from '@/features/pharmacy/DrugDetailPage'
 import { LotDetailPage } from '@/features/pharmacy/LotDetailPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
+import { StockCorrectionPage } from '@/features/pharmacy/StockCorrectionPage'
 import { StockIntakePage } from '@/features/pharmacy/StockIntakePage'
 import { ServiceDetailPage, ServicesPage } from '@/features/services/ServicesPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { NotFoundPage } from '@/features/shell/NotFoundPage'
 import { TemplateDetailPage, TemplatesPage } from '@/features/templates/TemplatesPage'
+import { InvoiceAcceptPage } from '@/features/treatments/InvoiceAcceptPage'
+import { InvoiceCreatePage } from '@/features/treatments/InvoiceCreatePage'
 import { PatientTreatmentPage } from '@/features/treatments/PatientTreatmentPage'
 import { TreatmentPage } from '@/features/treatments/TreatmentPage'
 import { queryClient } from '@/lib/query'
@@ -154,6 +157,12 @@ const supplierDetailRoute = createRoute({
   component: SupplierDetailPage,
 })
 
+const stockCorrectionRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/lots/$id/correction',
+  component: StockCorrectionPage,
+})
+
 const servicesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/services',
@@ -184,6 +193,18 @@ const treatmentRoute = createRoute({
   component: TreatmentPage,
 })
 
+const invoiceCreateRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/treatments/$id/invoice',
+  component: InvoiceCreatePage,
+})
+
+const invoiceAcceptRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/treatments/$id/invoice/accept',
+  component: InvoiceAcceptPage,
+})
+
 const patientTreatmentRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/patient-treatments/$id',
@@ -206,6 +227,7 @@ const routeTree = rootRoute.addChildren([
     drugDetailRoute,
     stockIntakeRoute,
     lotDetailRoute,
+    stockCorrectionRoute,
     masterDataRoute,
     manufacturerDetailRoute,
     supplierDetailRoute,
@@ -214,6 +236,8 @@ const routeTree = rootRoute.addChildren([
     templatesRoute,
     templateDetailRoute,
     treatmentRoute,
+    invoiceCreateRoute,
+    invoiceAcceptRoute,
     patientTreatmentRoute,
   ]),
 ])

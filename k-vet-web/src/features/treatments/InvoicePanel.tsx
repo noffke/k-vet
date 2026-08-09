@@ -1,21 +1,19 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { Ban, FileText, Mail, ReceiptText } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetInvoiceQueryKey,
   getGetTreatmentQueryKey,
   getInvoicePdfUrl,
-  useAcceptInvoice,
   useCancelInvoice,
-  useCreateInvoice,
   useGetInvoice,
   useSendInvoice,
 } from '@/api/generated/endpoints'
 import type { Treatment } from '@/api/generated/model'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
-import { CheckboxField, TextAreaField, TextField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
 interface InvoicePanelProps {
@@ -31,17 +29,9 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
   const { t } = useTranslation()
   const { money, date } = useLocaleFormat()
   const client = useQueryClient()
+  const navigate = useNavigate()
 
-  const [createOpen, setCreateOpen] = useState(false)
-  const [acceptOpen, setAcceptOpen] = useState(false)
   const [cancelOpen, setCancelOpen] = useState(false)
-  const [includesFinding, setIncludesFinding] = useState(false)
-  const [note, setNote] = useState('')
-  const [recipients, setRecipients] = useState<string[]>([])
-  const [extraRecipient, setExtraRecipient] = useState('')
-  // Opened empty on the click and pointed at the PDF when it exists: a tab opened from an
-  // awaited mutation is a popup, and every browser blocks that.
-  const pdfTab = useRef<Window | null>(null)
 
   const invoiceId = treatment.invoice?.id
   const invoice = useGetInvoice(invoiceId ?? 0, { query: { enabled: Boolean(invoiceId) } })
@@ -53,30 +43,6 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
     }
   }
 
-  const createInvoice = useCreateInvoice({
-    mutation: {
-      onSuccess: async (created) => {
-        setCreateOpen(false)
-        if (pdfTab.current && !pdfTab.current.closed) {
-          pdfTab.current.location.href = getInvoicePdfUrl(created.id)
-        }
-        pdfTab.current = null
-        await refresh()
-      },
-      onError: () => {
-        pdfTab.current?.close()
-        pdfTab.current = null
-      },
-    },
-  })
-  const acceptInvoice = useAcceptInvoice({
-    mutation: {
-      onSuccess: async () => {
-        setAcceptOpen(false)
-        await refresh()
-      },
-    },
-  })
   const sendInvoice = useSendInvoice({ mutation: { onSuccess: refresh } })
   const cancelInvoice = useCancelInvoice({
     mutation: {
@@ -92,23 +58,6 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
   // A cancelled invoice is history: the panel shows it, but the actions start over.
   const isCancelled = status === 'cancelled'
   const live = treatment.invoice && !isCancelled ? treatment.invoice : null
-
-  const openCreateDialog = () => {
-    // A new invoice lists the finding; an existing one opens with what it was created with.
-    setIncludesFinding(invoice.data?.includes_finding ?? true)
-    setNote(invoice.data?.note ?? '')
-    setCreateOpen(true)
-  }
-
-  const openAcceptDialog = () => {
-    setRecipients(treatment.customer_emails)
-    setAcceptOpen(true)
-  }
-
-  const toggleRecipient = (email: string) =>
-    setRecipients((current) =>
-      current.includes(email) ? current.filter((entry) => entry !== email) : [...current, email],
-    )
 
   return (
     <section className="mt-6 rounded-card border border-line bg-cream-soft p-4">
@@ -146,13 +95,30 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
             </a>
           ) : null}
 
-          <Button variant="accent" onClick={openCreateDialog} disabled={!hasItems}>
+          <Button
+            variant="accent"
+            disabled={!hasItems}
+            onClick={() =>
+              void navigate({
+                to: '/treatments/$id/invoice',
+                params: { id: String(treatment.id) },
+              })
+            }
+          >
             <ReceiptText className="size-4" />
             {live ? t('invoices.update') : t('invoices.create')}
           </Button>
 
           {status === 'created' ? (
-            <Button variant="primary" onClick={openAcceptDialog}>
+            <Button
+              variant="primary"
+              onClick={() =>
+                void navigate({
+                  to: '/treatments/$id/invoice/accept',
+                  params: { id: String(treatment.id) },
+                })
+              }
+            >
               <Mail className="size-4" />
               {t('invoices.accept')}
             </Button>
@@ -188,98 +154,6 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
           {t('invoices.pdfStale')}
         </p>
       ) : null}
-
-      <Dialog
-        open={createOpen}
-        onOpenChange={setCreateOpen}
-        title={live ? t('invoices.update') : t('invoices.create')}
-        description={isAccepted ? t('invoices.acceptedWillCancel') : undefined}
-        footer={
-          <>
-            <Button onClick={() => setCreateOpen(false)}>{t('action.cancel')}</Button>
-            <Button
-              variant="primary"
-              disabled={createInvoice.isPending}
-              onClick={() => {
-                pdfTab.current = window.open('', '_blank')
-                createInvoice.mutate({
-                  id: treatment.id,
-                  data: { includes_finding: includesFinding, note: note || null },
-                })
-              }}
-            >
-              {live ? t('invoices.update') : t('invoices.create')}
-            </Button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          <CheckboxField
-            label={t('invoices.includesFinding')}
-            checked={includesFinding}
-            onChange={(event) => setIncludesFinding(event.target.checked)}
-          />
-          <TextAreaField
-            label={t('field.note')}
-            value={note}
-            onChange={(event) => setNote(event.target.value)}
-          />
-        </div>
-      </Dialog>
-
-      <Dialog
-        open={acceptOpen}
-        onOpenChange={setAcceptOpen}
-        title={t('invoices.accept')}
-        description={t('invoices.recipients')}
-        footer={
-          <>
-            <Button onClick={() => setAcceptOpen(false)}>{t('action.cancel')}</Button>
-            <Button
-              variant="primary"
-              disabled={acceptInvoice.isPending}
-              onClick={() =>
-                treatment.invoice &&
-                acceptInvoice.mutate({
-                  id: treatment.invoice.id,
-                  data: {
-                    recipient_emails: [...recipients, extraRecipient].filter(
-                      (email) => email.trim() !== '',
-                    ),
-                  },
-                })
-              }
-            >
-              {t('invoices.accept')}
-            </Button>
-          </>
-        }
-      >
-        <div className="flex flex-col gap-3">
-          {treatment.customer_emails.length > 0 ? (
-            <fieldset className="flex flex-col gap-1 border-0 p-0">
-              <legend className="text-xs font-semibold text-ink-soft">
-                {t('customers.emails')}
-              </legend>
-              {treatment.customer_emails.map((email) => (
-                <CheckboxField
-                  key={email}
-                  label={email}
-                  checked={recipients.includes(email)}
-                  onChange={() => toggleRecipient(email)}
-                />
-              ))}
-            </fieldset>
-          ) : null}
-          <TextField
-            label={t('field.email')}
-            type="email"
-            inputMode="email"
-            value={extraRecipient}
-            onChange={(event) => setExtraRecipient(event.target.value)}
-          />
-        </div>
-      </Dialog>
 
       <Dialog
         open={cancelOpen}
