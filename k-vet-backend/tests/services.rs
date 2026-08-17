@@ -120,8 +120,10 @@ async fn a_got_service_needs_its_number_and_factor_to_complete(pool: PgPool) {
     );
 }
 
+/// § 8 GOT: the practice may define its own position on the basis of a listed one. The number
+/// it names is what marks it as such — there is no second flag — and it stays optional.
 #[sqlx::test]
-async fn a_self_defined_service_never_carries_a_got_number(pool: PgPool) {
+async fn a_self_defined_service_may_name_the_got_position_it_follows(pool: PgPool) {
     let app = TestApp::new(pool).await;
 
     let created = app
@@ -137,16 +139,34 @@ async fn a_self_defined_service_never_carries_a_got_number(pool: PgPool) {
     let complete = app
         .patch(
             &format!("/api/services/{id}"),
-            json!({ "name": "Hausbesuch", "vat_percent": "19.000", "net_price": "25.00",
-                    "got_number": "1234" }),
+            json!({ "name": "Zahnsteinentfernung nach Maß", "vat_percent": "19.000",
+                    "net_price": "68.00", "got_number": "16" }),
         )
         .await
         .json();
 
     assert_eq!(complete["draft"], false);
-    assert!(
-        complete["got_number"].is_null(),
-        "a self-defined service stays without a number: {complete:?}"
+    assert_eq!(
+        complete["got_number"], "16",
+        "the position it follows is recorded: {complete:?}"
+    );
+    assert_eq!(
+        complete["type"], "self_defined",
+        "it stays the practice's own position, not a catalogue entry"
+    );
+
+    // Unticking the checkbox clears the number, and the service is still complete without it.
+    let cleared = app
+        .patch(
+            &format!("/api/services/{id}"),
+            json!({ "got_number": null }),
+        )
+        .await
+        .json();
+    assert!(cleared["got_number"].is_null());
+    assert_eq!(
+        cleared["draft"], false,
+        "the reference is optional: {cleared:?}"
     );
 }
 
@@ -265,4 +285,62 @@ async fn an_ordinary_service_line_keeps_the_catalog_price(pool: PgPool) {
         .json();
 
     assert_eq!(line["price_net"], "23.62");
+}
+
+/// The line has to know whether its GOT number is its own or one it is only charged
+/// analogously to — that is what decides between `GOT-Nr. 16` and `GOT-Nr. 16 (§8)` on the
+/// invoice. The number itself is pinned; this flag is read from the service, like
+/// `travel_expenses`.
+#[sqlx::test]
+async fn a_line_says_whether_its_got_number_is_its_own_or_an_analogy(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+
+    // A catalogue position, and the practice's own position charged on the basis of it.
+    let catalogue_id = common::seed_got_service(&pool).await;
+    let own_id: i64 = sqlx::query_scalar(
+        "INSERT INTO service (type, name, got_number, vat_percent, net_price, draft)
+         VALUES ('self_defined', 'Zahnsteinentfernung nach Maß', '1', 19.000, 68.00, false)
+         RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("seed § 8 service");
+
+    let catalogue_line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": catalogue_id, "quantity": "1" }),
+        )
+        .await
+        .json();
+    let own_line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": own_id, "quantity": "1" }),
+        )
+        .await
+        .json();
+
+    assert_eq!(catalogue_line["got_number"], "1");
+    assert_eq!(
+        catalogue_line["got_analogous"], false,
+        "a catalogue position carries its own number: {catalogue_line:?}"
+    );
+    assert_eq!(
+        own_line["got_number"], "1",
+        "the position it follows is pinned onto the line: {own_line:?}"
+    );
+    assert_eq!(own_line["got_analogous"], true);
+
+    // And the same two lines read back the same way from the list the invoice is built from.
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    assert_eq!(items[0]["got_analogous"], false);
+    assert_eq!(items[1]["got_analogous"], true);
 }

@@ -208,7 +208,9 @@ export function PositionGroup({
                   className="w-full border-0 bg-transparent p-0 font-medium text-ink focus:outline-none disabled:text-ink-soft"
                 />
                 <p className="text-xs text-ink-faint">
-                  {item.got_number ? `GOT ${item.got_number} · ` : ''}
+                  {item.got_number
+                    ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · `
+                    : ''}
                   {percent(item.vat_percent)} {t('field.vat')}
                 </p>
               </div>

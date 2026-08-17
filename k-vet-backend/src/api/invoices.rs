@@ -980,10 +980,16 @@ fn patient_description(
 
 /// The grey second line under a billing position.
 fn line_detail(item: &treatment_items::TreatmentItem, packagings: &[PackagingDetail]) -> String {
+    // A GOT position always prints its number; a self-defined position that names one is only
+    // charged *analogously* to it (§ 8 GOT), and the customer-facing document says which.
     if let Some(number) = item.got_number.as_deref().map(str::trim)
         && !number.is_empty()
     {
-        return format!("GOT-Nr: {number}");
+        return if item.got_analogous {
+            format!("GOT-Nr. {number} (§8)")
+        } else {
+            format!("GOT-Nr. {number}")
+        };
     }
     let Some(packaging_id) = item.drug_packaging_id else {
         return String::new();

@@ -119,10 +119,10 @@ A line (`invoice.items[]`):
 | `quantity` | Number of packagings or units, German decimals. |
 | `unit` | e.g. `ml`; empty for services. |
 | `factor` | GOT factor as a percentage (`150 %`); empty when none applies. |
-| `got_number` | GOT position number; empty for self-defined services and drugs. |
+| `got_number` | GOT position number; empty for drugs and for self-defined services that name none. |
 | `km` | Kilometres on a travel-expense line; empty otherwise. |
 | `vat` | This line's VAT rate, e.g. `19 %`. |
-| `detail` | The small second line: `GOT-Nr: 16`, `1 Stück`, or `1 Originalpackung, Zulassungsnr: 402485.00.00`. Empty when there is nothing to add. |
+| `detail` | The small second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)` for a self-defined position charged analogously to that GOT number, `1 Stück`, or `1 Originalpackung, Zulassungsnr: 402485.00.00`. Empty when there is nothing to add. |
 | `price` | Unit price, gross. |
 | `total` | Line total, gross. |
 

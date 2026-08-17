@@ -141,7 +141,8 @@ hidden, create a self-defined service, create a template, and reorder its items.
    official GOT 2022 positions are available, with surgical positions hidden; hidden GOT
    services are excluded from pickers and lists by default.
 2. **Given** a GOT service, **When** it is maintained, **Then** it carries its GOT number and a
-   factor (default 100%); self-defined services have no GOT number and an optional factor.
+   factor (default 100%); a self-defined service has an optional factor and may name the GOT
+   position it is charged analogously to (§ 8 GOT), which the invoice marks as such.
 3. **Given** a service flagged as travel expense, **When** it is added to a treatment, **Then**
    the vet enters the kilometers driven and the price is computed from the official travel-fee
    rule (rate per double kilometer with the legal minimum) and appears as a normal invoice
@@ -342,6 +343,10 @@ reflected on the next generated invoice.
   GOT number and mandatory factor (default 100%), and self-defined with optional factor; both
   carry VAT rate, gross price, a travel-expense flag, and a hidden flag. Hidden services are
   excluded from pickers and lists by default.
+- **FR-021a**: A self-defined service MAY name the GOT position it is charged analogously to
+  (§ 8 GOT). The number is optional and is what marks the position as such — there is no second
+  flag. It stays `self_defined`, never an entry of the imported catalogue, and the invoice
+  prints `GOT-Nr. <number> (§8)` where a catalogue position prints `GOT-Nr. <number>`.
 - **FR-022**: The full GOT 2022 fee schedule MUST be available as a one-time initial import,
   with surgical positions marked hidden.
 - **FR-023**: For services flagged as travel expense, the vet MUST enter the kilometers driven

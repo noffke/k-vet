@@ -40,6 +40,10 @@ pub struct TreatmentItem {
     /// GOT factor in percent (100 = single rate).
     pub factor: Option<Decimal>,
     pub got_number: Option<String>,
+    /// `true` when the number above is a position this line is only charged *analogously* to
+    /// (§ 8 GOT), rather than the line's own GOT position. Read from the service, like
+    /// `travel_expenses` — the number itself stays pinned, this only picks the label.
+    pub got_analogous: bool,
     /// Per-unit **net** price, pinned at line entry.
     pub price_net: Decimal,
     /// Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.
@@ -840,7 +844,9 @@ pub async fn load_items(
                   item.factor, item.got_number, item.price_net, item.vat_percent, item.km,
                   item.redesignation,
                   item.km_multiplier, item.created_at,
-                  COALESCE(service.travel_expenses, false) AS "travel_expenses!"
+                  COALESCE(service.travel_expenses, false) AS "travel_expenses!",
+                  COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)
+                      AS "got_analogous!"
            FROM treatment_item item
            LEFT JOIN service ON service.id = item.service_id
            WHERE item.treatment_id = $1 ORDER BY item.position"#,
@@ -908,6 +914,7 @@ pub async fn load_items(
             km: row.km,
             km_multiplier: row.km_multiplier,
             travel_expenses: row.travel_expenses,
+            got_analogous: row.got_analogous,
             created_at: row.created_at,
         })
         .collect())

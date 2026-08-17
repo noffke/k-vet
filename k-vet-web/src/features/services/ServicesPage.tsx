@@ -63,9 +63,11 @@ export function ServicesPage() {
       primary: true,
       cell: (row) => (
         <span className="inline-flex items-center gap-1.5">
+          {/* The practice's own position may name the GOT position it follows — it must not
+              read as a catalogue entry, so the badge says which it is. */}
           {row.got_number ? (
             <span className="numeric rounded bg-sunken px-1 text-[0.625rem] font-bold text-ink-soft">
-              {t('services.got')} {row.got_number}
+              {row.type === 'got' ? t('services.got') : t('services.gotAnalogous')} {row.got_number}
             </span>
           ) : null}
           {row.name ?? '—'}
@@ -151,6 +153,10 @@ export function ServicesPage() {
 /**
  * One service. A GOT position may be renamed and repriced like any other — the practice
  * owns its copy of the schedule — but its number and factor stay mandatory (FR-021).
+ *
+ * A self-defined position may name the GOT position it is charged analogously to (§ 8 GOT).
+ * That number *is* the marker, so the checkbox is derived from it rather than stored beside
+ * it, and unticking clears it.
  */
 export function ServiceDetailPage() {
   const { t } = useTranslation()
@@ -158,6 +164,9 @@ export function ServiceDetailPage() {
   const serviceId = Number(id)
   const client = useQueryClient()
   const { money, currencySymbol } = useLocaleFormat()
+
+  const [ticked, setTicked] = useState<boolean | null>(null)
+  const [typed, setTyped] = useState<string | null>(null)
 
   const service = useGetService(serviceId)
   const patchService = usePatchService()
@@ -182,6 +191,10 @@ export function ServiceDetailPage() {
   if (!service.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = service.data
   const isGot = record.type === 'got'
+  // The stored number decides until the vet touches the box, and what she types wins over
+  // what came back, so the 600 ms auto-save round-trip never snaps the caret back.
+  const isAnalogous = ticked ?? Boolean(record.got_number)
+  const gotNumber = typed ?? record.got_number ?? ''
   const errorFor = (field: string) =>
     autoSave.fieldErrors[field] ? t(autoSave.fieldErrors[field] ?? '') : undefined
 
@@ -189,7 +202,11 @@ export function ServiceDetailPage() {
     <div className="mx-auto max-w-3xl">
       <PageHeader
         back={<BackLink to="/services" label={t('services.title')} />}
-        eyebrow={isGot ? `${t('services.got')} ${record.got_number ?? ''}` : undefined}
+        eyebrow={
+          record.got_number
+            ? `${isGot ? t('services.got') : t('services.gotAnalogous')} ${record.got_number}`
+            : undefined
+        }
         title={record.name ?? t('services.new')}
         actions={
           <>
@@ -225,15 +242,37 @@ export function ServiceDetailPage() {
           onChange={(event) => autoSave.set({ name: event.target.value || null })}
           onBlur={() => void autoSave.flush()}
         />
-        {isGot ? (
-          <TextField
-            label={t('field.gotNumber')}
-            defaultValue={record.got_number ?? ''}
-            error={errorFor('got_number')}
-            onChange={(event) => autoSave.set({ got_number: event.target.value || null })}
-            onBlur={() => void autoSave.flush()}
-          />
-        ) : null}
+        {/* The practice may write its own position on the basis of a listed one (§ 8 GOT).
+            The field stands where it always does so the form does not jump; it is the
+            checkbox that decides whether it applies. */}
+        {isGot ? null : (
+          <div className="flex flex-col gap-1">
+            <CheckboxField
+              label={t('services.gotAnalogous')}
+              checked={isAnalogous}
+              onChange={(event) => {
+                setTicked(event.target.checked)
+                if (!event.target.checked) {
+                  setTyped('')
+                  autoSave.set({ got_number: null })
+                  void autoSave.flush()
+                }
+              }}
+            />
+            <p className="text-xs text-ink-faint">{t('services.gotAnalogousHint')}</p>
+          </div>
+        )}
+        <TextField
+          label={t('field.gotNumber')}
+          value={gotNumber}
+          disabled={!isGot && !isAnalogous}
+          error={errorFor('got_number')}
+          onChange={(event) => {
+            setTyped(event.target.value)
+            autoSave.set({ got_number: event.target.value || null })
+          }}
+          onBlur={() => void autoSave.flush()}
+        />
         <NumberInput
           label={t('field.factor')}
           value={record.factor ?? null}

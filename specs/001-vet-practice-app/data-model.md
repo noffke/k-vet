@@ -244,7 +244,7 @@ Semantics (application layer, tested against the real DB):
 | id | identity | PK |
 | type | service_type | NOT NULL (chosen at creation) |
 | name | text | ★ |
-| got_number | text | NULL (★ for GOT type) |
+| got_number | text | NULL (★ for GOT type; optional for a self-defined position charged analogously — § 8 GOT) |
 | factor | numeric(7,3) | NULL, DEFAULT 100 (★ for GOT type) |
 | vat_percent | numeric(7,3) | ★ |
 | net_price | numeric(10,2) | ★ (single GOT rate for `got`, **net** — the GOT publishes net fees) |
@@ -253,7 +253,7 @@ Semantics (application layer, tested against the real DB):
 | archived | boolean | NOT NULL DEFAULT false |
 | draft | boolean | NOT NULL DEFAULT true (see Draft rows) |
 
-CHECK (draft-aware, evaluated on completion): `draft OR ((type = 'got' AND got_number IS NOT NULL AND factor IS NOT NULL) OR (type = 'self_defined' AND got_number IS NULL))`.
+CHECK (draft-aware, evaluated on completion): `draft OR type <> 'got' OR (got_number IS NOT NULL AND factor IS NOT NULL)` — a GOT position needs both; a self-defined one may carry a number (§ 8 GOT) or none (migration `0017`).
 The GOT 2022 import migration populates `type = 'got'` rows; surgical positions get `hidden = true`.
 
 ### treatment_template
@@ -314,7 +314,7 @@ All billing-relevant values are **pinned at line entry** (copied from catalog; n
 | quantity | numeric(10,2) | NOT NULL CHECK (> 0) |
 | unit | text | NULL |
 | factor | numeric(7,3) | NULL |
-| got_number | text | NULL (copied for GOT services) |
+| got_number | text | NULL (copied from the service, for a GOT position or a § 8 analogy) |
 | price_net | numeric(10,2) | NOT NULL (per-unit **net** price; copied, overridable) |
 | vat_percent | numeric(7,3) | NOT NULL (copied) |
 | km | numeric(10,2) | NULL (travel-expense lines: entered kilometers the price was computed from) |

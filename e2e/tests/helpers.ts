@@ -1,5 +1,21 @@
+import { execFile } from 'node:child_process'
+import { mkdtemp, writeFile } from 'node:fs/promises'
+import { tmpdir } from 'node:os'
+import { join } from 'node:path'
+import { promisify } from 'node:util'
 import { expect, type Page } from '@playwright/test'
 import { E2E_PASSWORD, E2E_USERNAME } from '../fixtures/credentials'
+
+const run = promisify(execFile)
+
+/** Reads a PDF's text with poppler's pdftotext, the same tool the GOT import uses. */
+export async function pdfText(bytes: Buffer): Promise<string> {
+  const dir = await mkdtemp(join(tmpdir(), 'kvet-pdf-'))
+  const file = join(dir, 'invoice.pdf')
+  await writeFile(file, bytes)
+  const { stdout } = await run('pdftotext', ['-layout', file, '-'])
+  return stdout
+}
 
 /**
  * A page that scrolls sideways is a layout bug on a phone — and it also shrinks Chrome's

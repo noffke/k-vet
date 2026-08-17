@@ -22,6 +22,8 @@ pub struct Service {
     #[serde(rename = "type")]
     pub service_type: ServiceType,
     pub name: Option<String>,
+    /// For a GOT position its own number; for a self-defined one the position it is charged
+    /// analogously to (§ 8 GOT), which is what marks it as such — there is no second flag.
     pub got_number: Option<String>,
     /// Percent; 100 is the single rate.
     pub factor: Option<Decimal>,
@@ -229,7 +231,8 @@ pub async fn patch(
         None => stored.is_some(),
     };
 
-    // GOT positions carry a number and a factor; self-defined ones never carry a number.
+    // A GOT position is incomplete without its number and factor. A self-defined one may name
+    // the position it is charged analogously to (§ 8 GOT), but is complete without it.
     let mut completeness = vec![
         ("name", text_present(&body.name, &current.name)),
         (
@@ -264,8 +267,7 @@ pub async fn patch(
         id,
         body.name.is_some(),
         blank_to_null(&body.name),
-        // A self-defined service never gets a GOT number.
-        body.got_number.is_some() && current.service_type == ServiceType::Got,
+        body.got_number.is_some(),
         blank_to_null(&body.got_number),
         body.factor.is_some(),
         body.factor.flatten(),

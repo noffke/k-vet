@@ -285,6 +285,8 @@
   },
   "services": {
     "got": "GOT",
+    "gotAnalogous": "§8 GOT",
+    "gotAnalogousHint": "An own position based on a GOT one — the number appears on the invoice.",
     "gotHint": "A position of the GOT 2022 schedule — number and factor are required.",
     "hidden": "Hidden",
     "new": "New service",

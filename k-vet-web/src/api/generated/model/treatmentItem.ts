@@ -35,6 +35,12 @@ export interface TreatmentItem {
   factor?: string | null;
   /** @nullable */
   got_number?: string | null;
+  /**
+     * `true` when the number above is a position this line is only charged *analogously* to
+     * (§ 8 GOT), rather than the line's own GOT position. Read from the service, like
+     * `travel_expenses` — the number itself stays pinned, this only picks the label.
+     */
+  got_analogous: boolean;
   /** Per-unit **net** price, pinned at line entry. */
   price_net: string;
   /** Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price. */

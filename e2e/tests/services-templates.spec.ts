@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
+import { navigate, pdfText, signIn } from './helpers'
 
 /**
  * Services and templates (T066): the GOT catalog is searchable with surgery hidden, a
@@ -23,6 +23,71 @@ test.describe('services and templates', () => {
     await expect(page.getByText('Keine Einträge')).toBeVisible()
     await page.getByLabel('Ausgeblendete anzeigen').check()
     await expect(page.getByText('Nephrotomie').filter({ visible: true }).first()).toBeVisible()
+  })
+
+  test('an own position may name the GOT position it follows, and says so on the invoice', async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const name = `Zahnsteinentfernung ${Date.now().toString().slice(-6)}`
+
+    await signIn(page)
+    await navigate(page, 'Leistungen')
+    await page.getByRole('button', { name: 'Neue Leistung' }).click()
+    await expect(page).toHaveURL(/\/services\/\d+$/)
+
+    // The field stands there from the start, but nothing can be typed into it yet.
+    const gotNumber = page.getByLabel('GOT-Nr.')
+    await expect(gotNumber).toBeDisabled()
+
+    await page.getByLabel('Name').fill(name)
+    await page.getByLabel('USt.').selectOption('19.000')
+    await page.getByLabel('Preis (netto)').fill('68,00')
+    await page.getByLabel('§8 GOT').check()
+    await expect(gotNumber).toBeEnabled()
+    await gotNumber.fill('2')
+    await gotNumber.blur()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+
+    // It survives a reload — the stored number is what keeps the box ticked.
+    await page.reload()
+    await expect(page.getByLabel('§8 GOT')).toBeChecked()
+    await expect(page.getByLabel('GOT-Nr.')).toHaveValue('2')
+
+    // Both kinds of position on one invoice: the own one and the catalogue position 1 it
+    // does *not* follow, so the two labels can be told apart in the rendered document.
+    await page.goto(`/treatments/${treatmentId}`)
+    const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
+    await picker.fill(name)
+    await page.getByRole('option', { name: new RegExp(name) }).first().click()
+    await picker.fill('Beratung im einzelnen Fall')
+    await page.getByRole('option', { name: /Beratung im einzelnen Fall/ }).first().click()
+
+    const lines = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
+    expect(lines).toHaveLength(2)
+
+    // Wait for the page to actually change before hunting for the second button — both pages
+    // carry one with this label.
+    await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
+    await expect(page).toHaveURL(/\/treatments\/\d+\/invoice$/)
+    const openedTab = page.context().waitForEvent('page')
+    await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
+    await (await openedTab).close()
+    await expect(page).toHaveURL(/\/treatments\/\d+$/)
+
+    const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
+    const pdf = await page.request.get(`/api/invoices/${treatment.invoice.id}/pdf`)
+    expect(pdf.status()).toBe(200)
+    const text = await pdfText(Buffer.from(await pdf.body()))
+
+    // The own position is marked as an analogy; the catalogue position states its number
+    // plainly, which it must always do.
+    expect(text).toContain('GOT-Nr. 2 (§8)')
+    expect(text).toContain('GOT-Nr. 1')
+    expect(text.match(/\(§8\)/g)).toHaveLength(1)
   })
 
   test('a self-defined travel service prices a line from its kilometres', async ({

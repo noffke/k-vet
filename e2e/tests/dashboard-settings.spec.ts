@@ -1,8 +1,3 @@
-import { execFile } from 'node:child_process'
-import { mkdtemp, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
-import { join } from 'node:path'
-import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
 import {
   clearPendingInvoices,
@@ -10,18 +5,7 @@ import {
   seedDrug,
   seedSentInvoice,
 } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
-
-const run = promisify(execFile)
-
-/** Reads a PDF's text with poppler's pdftotext, the same tool the GOT import uses. */
-async function pdfText(bytes: Buffer): Promise<string> {
-  const dir = await mkdtemp(join(tmpdir(), 'kvet-pdf-'))
-  const file = join(dir, 'invoice.pdf')
-  await writeFile(file, bytes)
-  const { stdout } = await run('pdftotext', ['-layout', file, '-'])
-  return stdout
-}
+import { navigate, pdfText, signIn } from './helpers'
 
 /**
  * Dashboard widgets and practice settings (T075): each widget leads to the work it

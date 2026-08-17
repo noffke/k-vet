@@ -110,7 +110,7 @@ pub struct InvoiceLine {
     pub km: String,
     /// VAT rate of this line, e.g. `19 %`.
     pub vat: String,
-    /// The small grey second line: `GOT-Nr: 16`, `1 Stück`, or
+    /// The small grey second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)`, `1 Stück`, or
     /// `1 Originalpackung, Zulassungsnr: 402485.00.00`.
     pub detail: String,
     /// Gross unit price and gross line total — what a private customer expects to read.
@@ -540,7 +540,7 @@ mod tests {
             got_number: "1".to_owned(),
             km: String::new(),
             vat: "19 %".to_owned(),
-            detail: "GOT-Nr: 1".to_owned(),
+            detail: "GOT-Nr. 1".to_owned(),
             price: "28,11 €".to_owned(),
             total: "28,11 €".to_owned(),
         };

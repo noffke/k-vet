@@ -13,7 +13,11 @@ export interface Service {
   type: ServiceType;
   /** @nullable */
   name?: string | null;
-  /** @nullable */
+  /**
+     * For a GOT position its own number; for a self-defined one the position it is charged
+     * analogously to (§ 8 GOT), which is what marks it as such — there is no second flag.
+     * @nullable
+     */
   got_number?: string | null;
   /**
      * Percent; 100 is the single rate.

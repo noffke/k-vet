@@ -285,6 +285,8 @@
   },
   "services": {
     "got": "GOT",
+    "gotAnalogous": "§8 GOT",
+    "gotAnalogousHint": "Eigene Leistung auf Grundlage einer GOT-Position — die Nummer steht auf der Rechnung.",
     "gotHint": "Position aus der GOT 2022 — Nummer und Faktor sind Pflicht.",
     "hidden": "Ausgeblendet",
     "new": "Neue Leistung",

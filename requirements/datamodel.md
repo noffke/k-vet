@@ -73,11 +73,11 @@ Generally, all entities should have a created and updated timestamp.
 * Prices are unaffected by stock reversals: movements carry no money, all prices are pinned on Treatment Item at line entry
 
 ### Services (Leistungen)
-There are two types of services: self defined (like lab costs) and schedule of fees (GOT, Gebührenordnung für Tierärzte). Decision: single entity with an explicit type discriminator (see Modeling Conventions); CHECK constraints tie GOT Number and Factor presence to the type: `(type = 'got' AND got_number IS NOT NULL AND factor IS NOT NULL) OR (type = 'self_defined' AND got_number IS NULL)`.
+There are two types of services: self defined (like lab costs) and schedule of fees (GOT, Gebührenordnung für Tierärzte). Decision: single entity with an explicit type discriminator (see Modeling Conventions); a CHECK constraint ties GOT Number and Factor presence to the type: `type <> 'got' OR (got_number IS NOT NULL AND factor IS NOT NULL)`. A self-defined service may name the GOT position it is charged analogously to (§ 8 GOT); that number is optional and is what marks it as such — no second flag — and the invoice prints it as `GOT-Nr. <number> (§8)`.
 Fields:
 * Type (enum: GOT | self-defined)
 * Name
-* GOT Number (for GOT service only)
+* GOT Number (mandatory for a GOT service; optional on a self-defined one, naming the position it follows under § 8 GOT)
 * Factor (default 100%, mandatory for GOT, optional for non-GOT)
 * VAT Percent (selector)
 * Gross Price
