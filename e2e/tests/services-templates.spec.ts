@@ -173,6 +173,51 @@ test.describe('services and templates', () => {
     await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('2,00')
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
+
+  test('a group clicked by mistake is taken back in one click', async ({ page, request }) => {
+    const { drugName } = await seedDrug(request)
+    const templateName = `Fehlgriff-${Date.now().toString().slice(-6)}`
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+
+    await signIn(page)
+    await navigate(page, 'Behandlungsgruppen')
+    await page.getByRole('button', { name: 'Neue Behandlungsgruppe' }).click()
+    await page.getByLabel('Name').fill(templateName)
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await page.getByPlaceholder('Medikament oder Leistung suchen …').fill('Beratung im')
+    await page.getByRole('option').first().click()
+    await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drugName)
+    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+
+    // One position the vet entered herself — the undo must not touch it. Named explicitly:
+    // this picker lists the Behandlungsgruppen above the positions, so the first option is
+    // the group that was just created.
+    await page.goto(`/treatments/${treatmentId}`)
+    const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
+    await picker.fill('Beratung im einzelnen Fall')
+    await page.getByRole('option', { name: /Beratung im einzelnen Fall/ }).first().click()
+    // Every line carries an editable name, so counting those counts the positions.
+    const lines = page.getByLabel('Name')
+    await expect(lines).toHaveCount(1)
+
+    // The wrong group, and the way back out of it.
+    await picker.fill(templateName)
+    await page.getByRole('option', { name: new RegExp(templateName) }).first().click()
+    await expect(lines).toHaveCount(3)
+
+    await expect(page.getByText(new RegExp(`2 Positionen aus .${templateName}`))).toBeVisible()
+    await page.getByRole('button', { name: 'Rückgängig' }).click()
+
+    await expect(lines).toHaveCount(1)
+    await expect(lines.first()).toHaveValue(/Beratung im einzelnen Fall/)
+
+    // The vet's own line is left where it was, still numbered 1.
+    const items = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
+    expect(items).toHaveLength(1)
+    expect(items[0].position).toBe(1)
+  })
 })
 
 test.describe('treatment lines', () => {

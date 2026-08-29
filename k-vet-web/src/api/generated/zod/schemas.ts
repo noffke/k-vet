@@ -2702,6 +2702,48 @@ export const CreateTreatmentItemResponse = zod.object({
 })
 
 
+export const BulkDeleteTreatmentItemsParams = zod.object({
+  "id": zod.int()
+})
+
+export const BulkDeleteTreatmentItemsBody = zod.object({
+  "item_ids": zod.array(zod.int()).describe('The lines to remove. All of them must belong to the treatment in the path.')
+})
+
+export const BulkDeleteTreatmentItemsResponseItem = zod.object({
+  "id": zod.int(),
+  "treatment_id": zod.int(),
+  "position": zod.int(),
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "drug_packaging_id": zod.int().nullish(),
+  "service_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
+  "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
+  "quantity": zod.string(),
+  "unit": zod.string().nullish(),
+  "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
+  "got_number": zod.string().nullish(),
+  "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
+  "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
+  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "vat_percent": zod.string(),
+  "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
+  "km_multiplier": zod.string().nullish(),
+  "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor\/100`, rounded to cents — \*\*net\*\*.'),
+  "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "lots": zod.array(zod.object({
+  "lot_id": zod.int(),
+  "quantity": zod.string(),
+  "batch_number": zod.string().nullish(),
+  "expiration_date": zod.iso.date().nullish()
+})).describe('Lots the dispense was booked against (drug lines).'),
+  "created_at": zod.iso.datetime({"offset":true})
+})
+export const BulkDeleteTreatmentItemsResponse = zod.array(BulkDeleteTreatmentItemsResponseItem)
+
+
 export const AddTreatmentPatientParams = zod.object({
   "id": zod.int()
 })

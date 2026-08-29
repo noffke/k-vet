@@ -31,6 +31,7 @@ import type {
   ApplyTemplate,
   Appointment,
   Attachment,
+  BulkDeleteItems,
   BulkSubmitResult,
   CreateAppointment,
   CreateCorrection,
@@ -8321,6 +8322,72 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateTreatmentItemMutationOptions(options), queryClient);
+    }
+
+export const getBulkDeleteTreatmentItemsUrl = (id: number,) => {
+
+
+
+
+  return `/api/treatments/${id}/items/bulk-delete`
+}
+
+export const bulkDeleteTreatmentItems = async (id: number,
+    bulkDeleteItems: BulkDeleteItems, options?: Parameters<typeof apiFetch>[1]): Promise<TreatmentItem[]> => {
+
+  return apiFetch<TreatmentItem[]>(getBulkDeleteTreatmentItemsUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(bulkDeleteItems)
+  }
+);}
+
+
+
+
+
+export const getBulkDeleteTreatmentItemsMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteTreatmentItems>>, TError,{id: number;data: BulkDeleteItems}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteTreatmentItems>>, TError,{id: number;data: BulkDeleteItems}, TContext> => {
+
+const mutationKey = ['bulkDeleteTreatmentItems'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof bulkDeleteTreatmentItems>>, {id: number;data: BulkDeleteItems}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  bulkDeleteTreatmentItems(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type BulkDeleteTreatmentItemsMutationResult = NonNullable<Awaited<ReturnType<typeof bulkDeleteTreatmentItems>>>
+    export type BulkDeleteTreatmentItemsMutationBody = BulkDeleteItems
+    export type BulkDeleteTreatmentItemsMutationError = void
+
+    export const useBulkDeleteTreatmentItems = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof bulkDeleteTreatmentItems>>, TError,{id: number;data: BulkDeleteItems}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof bulkDeleteTreatmentItems>>,
+        TError,
+        {id: number;data: BulkDeleteItems},
+        TContext
+      > => {
+      return useMutation(getBulkDeleteTreatmentItemsMutationOptions(options), queryClient);
     }
 
 export const getAddTreatmentPatientUrl = (id: number,) => {

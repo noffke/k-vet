@@ -271,6 +271,97 @@ async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool)
     assert_eq!(names(&twice).len(), 4);
 }
 
+/// Undoing a Behandlungsgruppe that was clicked by mistake: the lines go, and — the part
+/// that matters — the drugs they dispensed FEFO go back on the shelf.
+#[sqlx::test]
+async fn a_group_applied_by_mistake_can_be_taken_back_in_one_call(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    common::seed_lot(&pool, drug.packaging_id, 1, Decimal::from(100), None).await;
+    let service_id = common::seed_got_service(&pool).await;
+
+    let template_id = app.post_empty("/api/treatment-templates").await.id();
+    app.patch(
+        &format!("/api/treatment-templates/{template_id}"),
+        json!({ "name": "Impfung Hund" }),
+    )
+    .await;
+    app.post(
+        &format!("/api/treatment-templates/{template_id}/items"),
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "2" }),
+    )
+    .await;
+    app.post(
+        &format!("/api/treatment-templates/{template_id}/items"),
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await;
+
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+
+    // A line the vet entered herself, which the undo must leave alone.
+    let kept = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+        )
+        .await
+        .json();
+    let kept_id = kept["id"].as_i64().unwrap_or_default();
+
+    let before: Vec<i64> = vec![kept_id];
+    let applied = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/apply-template"),
+            json!({ "template_id": template_id }),
+        )
+        .await
+        .json();
+    let added: Vec<i64> = applied
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter_map(|item| item["id"].as_i64())
+                .filter(|id| !before.contains(id))
+                .collect()
+        })
+        .unwrap_or_default();
+    assert_eq!(added.len(), 2, "the group brought two lines: {applied:?}");
+    assert_eq!(
+        common::lot_remaining(&pool, 1).await,
+        Decimal::from(80),
+        "20 ml left the shelf with the group"
+    );
+
+    let remaining = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items/bulk-delete"),
+            json!({ "item_ids": added }),
+        )
+        .await;
+    assert_eq!(
+        remaining.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&remaining.body)
+    );
+    let remaining = remaining.json();
+
+    assert_eq!(remaining.as_array().map(Vec::len), Some(1));
+    assert_eq!(remaining[0]["id"], kept_id, "the vet's own line stays");
+    assert_eq!(remaining[0]["position"], 1);
+    assert_eq!(
+        common::lot_remaining(&pool, 1).await,
+        Decimal::from(100),
+        "and the drugs are back on the shelf"
+    );
+}
+
 #[sqlx::test]
 async fn an_incomplete_template_cannot_be_applied(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

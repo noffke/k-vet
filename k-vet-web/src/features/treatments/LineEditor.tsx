@@ -13,10 +13,12 @@ import {
 import type { ReactNode } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   getGetTreatmentQueryKey,
   getListTreatmentItemsQueryKey,
   useApplyTemplate,
+  useBulkDeleteTreatmentItems,
   useCreateTreatmentItem,
   useDeleteTreatmentItem,
   useMoveTreatmentItem,
@@ -28,6 +30,9 @@ import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
+
+/** How long the undo stays on screen. Sonner's 4 s default is too quick to read and decide. */
+const UNDO_MS = 10_000
 
 interface LineEditorProps {
   treatment: Treatment
@@ -136,7 +141,37 @@ export function PositionGroup({
   const patchItem = usePatchTreatmentItem({ mutation })
   const moveItem = useMoveTreatmentItem({ mutation })
   const deleteItem = useDeleteTreatmentItem({ mutation })
+  const bulkDelete = useBulkDeleteTreatmentItems({ mutation })
   const applyTemplate = useApplyTemplate({ mutation })
+
+  /**
+   * A Behandlungsgruppe adds several positions at once, and the groups sit directly above the
+   * individual items in the picker — so the wrong one is easy to click. Offer to take it back
+   * for as long as that mistake takes to notice.
+   *
+   * Which lines to remove is read off the response, which carries the *whole* treatment: the
+   * animal has to be matched as well, because the other animals' lines are absent from `items`
+   * and would otherwise look newly added.
+   */
+  const offerUndo = (applied: TreatmentItem[], groupName: string) => {
+    const before = new Set(items.map((item) => item.id))
+    const added = applied
+      .filter((item) => item.patient_treatment_id === patientTreatmentId)
+      .filter((item) => !before.has(item.id))
+    if (added.length === 0) return
+
+    toast(t('treatments.groupAdded', { count: added.length, name: groupName }), {
+      duration: UNDO_MS,
+      action: {
+        label: t('action.undo'),
+        onClick: () =>
+          bulkDelete.mutate({
+            id: treatment.id,
+            data: { item_ids: added.map((item) => item.id) },
+          }),
+      },
+    })
+  }
 
   const pick = (item: PickerItem) => {
     addItem.mutate({
@@ -173,13 +208,18 @@ export function PositionGroup({
               patientTreatmentId === null
                 ? undefined
                 : (template) =>
-                    applyTemplate.mutate({
-                      id: treatment.id,
-                      data: {
-                        template_id: template.id,
-                        patient_treatment_id: patientTreatmentId,
+                    applyTemplate.mutate(
+                      {
+                        id: treatment.id,
+                        data: {
+                          template_id: template.id,
+                          patient_treatment_id: patientTreatmentId,
+                        },
                       },
-                    })
+                      // Here rather than on the hook: this is where the group that was
+                      // clicked is known, and its name is what the undo has to say.
+                      { onSuccess: (applied) => offerUndo(applied, template.name ?? '') },
+                    )
             }
             disabled={addItem.isPending}
           />

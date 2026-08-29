@@ -693,6 +693,10 @@ pub fn routes() -> Router<AppState> {
             "/treatments/{id}/items",
             get(treatment_items::list).post(treatment_items::create),
         )
+        .route(
+            "/treatments/{id}/items/bulk-delete",
+            post(treatment_items::bulk_delete),
+        )
         .route("/treatments/{id}/apply-template", post(apply_template))
         .route("/treatments/{id}/duplicate", post(duplicate))
 }

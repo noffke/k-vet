@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment_item AS item\n         SET position = ranked.rank\n         FROM (SELECT id,\n                      (row_number() OVER (PARTITION BY treatment_id, patient_treatment_id\n                                          ORDER BY position))::int AS rank\n               FROM treatment_item\n               WHERE treatment_id = $1) AS ranked\n         WHERE item.id = ranked.id AND item.position <> ranked.rank",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9c7a99d70c790702c0862ed688cbd6b40f153499ec25cfd79da2a03b9cfb7c81"
+}

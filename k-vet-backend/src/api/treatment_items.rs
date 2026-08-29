@@ -508,32 +508,109 @@ pub async fn patch(
 )]
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
     let mut transaction = state.pool.begin().await?;
-    let current = sqlx::query!(
-        "SELECT treatment_id, patient_treatment_id, position FROM treatment_item WHERE id = $1",
-        id
-    )
-    .fetch_optional(&mut *transaction)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    stock::ensure_editable(&mut transaction, current.treatment_id).await?;
+    let treatment_id =
+        sqlx::query_scalar!("SELECT treatment_id FROM treatment_item WHERE id = $1", id)
+            .fetch_optional(&mut *transaction)
+            .await?
+            .ok_or(AppError::NotFound)?;
+    stock::ensure_editable(&mut transaction, treatment_id).await?;
 
     // Draft movements go with the line (the FK cascades, this is explicit for clarity).
     stock::remove_draft_dispenses(&mut transaction, id).await?;
     sqlx::query!("DELETE FROM treatment_item WHERE id = $1", id)
         .execute(&mut *transaction)
         .await?;
-    // Close the gap so positions stay 1..n.
-    sqlx::query!(
-        "UPDATE treatment_item SET position = position - 1
-         WHERE treatment_id = $1 AND position > $2",
-        current.treatment_id,
-        current.position,
-    )
-    .execute(&mut *transaction)
-    .await?;
+    close_position_gaps(&mut transaction, treatment_id).await?;
 
     transaction.commit().await?;
     Ok(StatusCode::NO_CONTENT)
+}
+
+#[derive(Debug, Deserialize, ToSchema)]
+pub struct BulkDeleteItems {
+    /// The lines to remove. All of them must belong to the treatment in the path.
+    pub item_ids: Vec<i64>,
+}
+
+#[utoipa::path(
+    post,
+    operation_id = "bulkDeleteTreatmentItems",
+    path = "/api/treatments/{id}/items/bulk-delete",
+    tag = "treatments",
+    params(("id" = i64, Path,)),
+    request_body = BulkDeleteItems,
+    responses(
+        (status = 200, description = "The lines that remain", body = Vec<TreatmentItem>),
+        (status = 409, description = "The treatment's invoice is accepted"),
+        (status = 422, description = "A line does not belong to this treatment")
+    )
+)]
+pub async fn bulk_delete(
+    State(state): State<AppState>,
+    Path(treatment_id): Path<i64>,
+    Json(body): Json<BulkDeleteItems>,
+) -> AppResult<Json<Vec<TreatmentItem>>> {
+    let mut transaction = state.pool.begin().await?;
+    stock::ensure_editable(&mut transaction, treatment_id).await?;
+
+    // Undoing a Behandlungsgruppe is the caller for this, and it hands back ids it read a
+    // moment ago — so an id from elsewhere is a bug worth reporting, not a silent no-op.
+    let found = sqlx::query_scalar!(
+        "SELECT count(*) FROM treatment_item WHERE treatment_id = $1 AND id = ANY($2)",
+        treatment_id,
+        &body.item_ids,
+    )
+    .fetch_one(&mut *transaction)
+    .await?
+    .unwrap_or(0);
+    if found != i64::try_from(body.item_ids.len()).unwrap_or(i64::MAX) {
+        return Err(AppError::field("item_ids", "record.notFound"));
+    }
+
+    // The draft dispenses are what put the drugs back on the shelf; a group's lines are
+    // dispensed FEFO when it is applied, so removing them without this loses stock.
+    for item_id in &body.item_ids {
+        stock::remove_draft_dispenses(&mut transaction, *item_id).await?;
+    }
+    sqlx::query!(
+        "DELETE FROM treatment_item WHERE treatment_id = $1 AND id = ANY($2)",
+        treatment_id,
+        &body.item_ids,
+    )
+    .execute(&mut *transaction)
+    .await?;
+    close_position_gaps(&mut transaction, treatment_id).await?;
+
+    transaction.commit().await?;
+    let mut connection = state.pool.acquire().await?;
+    Ok(Json(load_items(&mut connection, treatment_id).await?))
+}
+
+/// Renumbers a treatment's lines back to 1..n, **per animal**.
+///
+/// Positions are unique and ordered within one animal's group (`UNIQUE (treatment_id,
+/// patient_treatment_id, position)`, and `reorder` moves lines inside a group), so closing a
+/// gap has to partition the same way — otherwise deleting one animal's line walks every other
+/// animal's positions down with it. The index is `DEFERRABLE INITIALLY DEFERRED`, so the
+/// intermediate collisions this update passes through are checked only at commit.
+async fn close_position_gaps(
+    transaction: &mut Transaction<'_, Postgres>,
+    treatment_id: i64,
+) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE treatment_item AS item
+         SET position = ranked.rank
+         FROM (SELECT id,
+                      (row_number() OVER (PARTITION BY treatment_id, patient_treatment_id
+                                          ORDER BY position))::int AS rank
+               FROM treatment_item
+               WHERE treatment_id = $1) AS ranked
+         WHERE item.id = ranked.id AND item.position <> ranked.rank",
+        treatment_id,
+    )
+    .execute(&mut **transaction)
+    .await?;
+    Ok(())
 }
 
 #[utoipa::path(

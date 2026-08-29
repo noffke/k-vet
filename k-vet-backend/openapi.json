@@ -3920,6 +3920,56 @@
         }
       }
     },
+    "/api/treatments/{id}/items/bulk-delete": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "bulkDeleteTreatmentItems",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/BulkDeleteItems"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The lines that remain",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TreatmentItem"
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "The treatment's invoice is accepted"
+          },
+          "422": {
+            "description": "A line does not belong to this treatment"
+          }
+        }
+      }
+    },
     "/api/treatments/{id}/patients": {
       "post": {
         "tags": [
@@ -4330,6 +4380,22 @@
           "treatment_file",
           "referenced"
         ]
+      },
+      "BulkDeleteItems": {
+        "type": "object",
+        "required": [
+          "item_ids"
+        ],
+        "properties": {
+          "item_ids": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "The lines to remove. All of them must belong to the treatment in the path."
+          }
+        }
       },
       "BulkSubmitResult": {
         "type": "object",

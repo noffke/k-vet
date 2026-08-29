@@ -15,6 +15,7 @@ export * from './atRisk';
 export * from './atRiskEntry';
 export * from './attachment';
 export * from './attachmentKind';
+export * from './bulkDeleteItems';
 export * from './bulkSubmitResult';
 export * from './createAppointment';
 export * from './createCorrection';

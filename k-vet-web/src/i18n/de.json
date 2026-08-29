@@ -145,6 +145,7 @@
     "open": "Öffnen",
     "openCalendar": "Kalender öffnen",
     "search": "Suchen",
+    "undo": "Rückgängig",
     "upload": "Datei hochladen"
   },
   "value": {
@@ -191,6 +192,7 @@
   "treatments": {
     "addItem": "Position hinzufügen",
     "files": "Dateien",
+    "groupAdded": "{{count}} Positionen aus „{{name}}“ hinzugefügt",
     "items": "Positionen",
     "kmHint": "Einfache Strecke; abgerechnet wird je Doppelkilometer.",
     "lotSelection": "Chargenauswahl",

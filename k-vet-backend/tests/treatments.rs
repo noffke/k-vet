@@ -8,7 +8,7 @@ use axum::http::StatusCode;
 use chrono::{NaiveDate, Utc};
 use common::TestApp;
 use rust_decimal::Decimal;
-use serde_json::json;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 fn dec(value: &str) -> Decimal {
@@ -722,6 +722,149 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
         Some(1),
         "drug lines dispense"
     );
+}
+
+/// Positions are numbered per animal, so removing one animal's line must leave the other
+/// animal's numbering alone — the treatment page shows one ordered group per animal and
+/// `reorder` moves lines inside a group.
+///
+/// Closing the gap across the whole treatment instead does not merely renumber the other
+/// animal: it walks its positions onto each other, and `UNIQUE (treatment_id,
+/// patient_treatment_id, position)` then rejects the commit. Deleting anything but the last
+/// line of a two-animal treatment used to fail with a 409 for exactly that reason.
+#[sqlx::test]
+async fn removing_a_line_renumbers_only_its_own_animal(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, first_record) = treatment(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+
+    // A second animal of the same customer, with its own list.
+    let customer_id: i64 = sqlx::query_scalar(
+        "SELECT patient.customer_id FROM patient_treatment record
+         JOIN patient ON patient.id = record.patient_id WHERE record.id = $1",
+    )
+    .bind(first_record)
+    .fetch_one(&pool)
+    .await
+    .expect("customer of the first animal");
+    let second_patient = common::seed_patient(&pool, customer_id).await;
+    let with_both = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/patients"),
+            json!({ "patient_id": second_patient }),
+        )
+        .await
+        .json();
+    let second_record = with_both["patients"]
+        .as_array()
+        .and_then(|patients| patients.iter().find(|p| p["patient_id"] == second_patient))
+        .and_then(|patient| patient["id"].as_i64())
+        .expect("the second animal's record");
+
+    let mut first_lines = Vec::new();
+    let mut second_lines = Vec::new();
+    for record in [first_record, second_record] {
+        for _ in 0..3 {
+            let line = app
+                .post(
+                    &format!("/api/treatments/{treatment_id}/items"),
+                    json!({ "kind": "service", "service_id": service_id, "quantity": "1",
+                            "patient_treatment_id": record }),
+                )
+                .await
+                .json();
+            let id = line["id"].as_i64().unwrap_or_default();
+            if record == first_record {
+                first_lines.push(id);
+            } else {
+                second_lines.push(id);
+            }
+        }
+    }
+
+    let positions_of = |items: &Value, record: i64| -> Vec<i64> {
+        items
+            .as_array()
+            .map(|rows| {
+                rows.iter()
+                    .filter(|row| row["patient_treatment_id"] == record)
+                    .filter_map(|row| row["position"].as_i64())
+                    .collect()
+            })
+            .unwrap_or_default()
+    };
+
+    // One line off the first animal: its own list closes up, the other is untouched.
+    let removed = app
+        .delete(&format!("/api/treatment-items/{}", first_lines[1]))
+        .await;
+    assert_eq!(
+        removed.status,
+        StatusCode::NO_CONTENT,
+        "a middle line of a two-animal treatment comes out: {}",
+        String::from_utf8_lossy(&removed.body)
+    );
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    assert_eq!(positions_of(&items, first_record), vec![1, 2]);
+    assert_eq!(
+        positions_of(&items, second_record),
+        vec![1, 2, 3],
+        "the other animal keeps its numbering: {items:?}"
+    );
+
+    // The same holds when several go at once.
+    let remaining = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items/bulk-delete"),
+            json!({ "item_ids": [second_lines[0], second_lines[2]] }),
+        )
+        .await;
+    assert_eq!(
+        remaining.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&remaining.body)
+    );
+    let remaining = remaining.json();
+    assert_eq!(positions_of(&remaining, second_record), vec![1]);
+    assert_eq!(positions_of(&remaining, first_record), vec![1, 2]);
+}
+
+#[sqlx::test]
+async fn a_bulk_removal_refuses_lines_it_was_not_asked_about(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, _) = treatment(&pool).await;
+    let (other_treatment_id, _) = treatment(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+
+    let elsewhere = app
+        .post(
+            &format!("/api/treatments/{other_treatment_id}/items"),
+            json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+        )
+        .await
+        .json();
+    let elsewhere_id = elsewhere["id"].as_i64().unwrap_or_default();
+
+    // Nothing is removed when one id is wrong — the caller read them a moment ago, so a
+    // stray id is a bug rather than something to shrug at.
+    let rejected = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items/bulk-delete"),
+            json!({ "item_ids": [elsewhere_id] }),
+        )
+        .await;
+    assert_eq!(rejected.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(rejected.error_fields().contains(&"item_ids".to_owned()));
+
+    let untouched = app
+        .get(&format!("/api/treatments/{other_treatment_id}/items"))
+        .await
+        .json();
+    assert_eq!(untouched.as_array().map(Vec::len), Some(1));
 }
 
 #[sqlx::test]

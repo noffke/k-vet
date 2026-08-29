@@ -75,6 +75,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::treatment_items::create,
         api::treatment_items::patch,
         api::treatment_items::delete,
+        api::treatment_items::bulk_delete,
         api::treatment_items::move_item,
         api::treatment_items::set_lots,
         api::customers::list,

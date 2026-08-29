@@ -145,6 +145,7 @@
     "open": "Open",
     "openCalendar": "Open calendar",
     "search": "Search",
+    "undo": "Undo",
     "upload": "Upload file"
   },
   "value": {
@@ -191,6 +192,7 @@
   "treatments": {
     "addItem": "Add line",
     "files": "Files",
+    "groupAdded": "{{count}} positions added from “{{name}}”",
     "items": "Lines",
     "kmHint": "One-way distance; billed per double kilometre.",
     "lotSelection": "Lot selection",
