@@ -1,5 +1,6 @@
 # Future Ideas
 *Not to be implemented now!*
+* appointment date sanity check: if more than 1 week in future or past show confirmation dialog. make configurable and allow to disable alltogether
 * cloud form for customer self registration
 * send AGB, DSGVO via email
 * integrate google contacts
