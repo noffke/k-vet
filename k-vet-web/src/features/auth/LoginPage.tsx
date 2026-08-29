@@ -1,4 +1,4 @@
-import { useNavigate } from '@tanstack/react-router'
+import { useNavigate, useSearch } from '@tanstack/react-router'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/fetcher'
@@ -13,6 +13,7 @@ import { useLogin } from '@/features/auth/session'
 export function LoginPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
+  const { expired } = useSearch({ from: '/login' })
   const signIn = useLogin()
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
@@ -65,9 +66,15 @@ export function LoginPage() {
             autoComplete="current-password"
             onChange={(event) => setPassword(event.target.value)}
           />
+          {/* A failed attempt is the more urgent thing to read, so it replaces the notice
+              that the previous session had run out. */}
           {message ? (
             <p className="text-sm font-medium text-danger" role="alert">
               {message}
+            </p>
+          ) : expired ? (
+            <p className="text-sm text-ink-soft" role="status">
+              {t('login.expired')}
             </p>
           ) : null}
           <Button type="submit" variant="primary" disabled={signIn.isPending}>

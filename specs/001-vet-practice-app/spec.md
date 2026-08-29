@@ -241,6 +241,10 @@ reflected on the next generated invoice.
 
 - **FR-001**: The system MUST support exactly one user account with login and session; the
   credentials are supplied by the operator's configuration, not managed in the UI.
+- **FR-001a**: A session that has run out while the app sat open MUST be recognised the first
+  time the server refuses a request, and MUST take the user back to the sign-in screen with a
+  stated reason rather than leaving screens that render nothing. Cached answers from the old
+  session MUST be dropped, so nothing from it survives the next sign-in.
 - **FR-002**: The system MUST auto-save all user input continuously (as in collaborative
   document editors) with no explicit save action anywhere; entered data survives navigation
   and reload. New records are persisted from the first input; records still missing mandatory

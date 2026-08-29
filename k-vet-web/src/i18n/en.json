@@ -18,6 +18,7 @@
     "templates": "Treatment templates"
   },
   "login": {
+    "expired": "Your session has expired. Please sign in again.",
     "failed": "That user name and password do not match.",
     "password": "Password",
     "submit": "Sign in",

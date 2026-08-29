@@ -18,6 +18,7 @@
     "templates": "Behandlungsgruppen"
   },
   "login": {
+    "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
     "failed": "Benutzername oder Passwort ist falsch.",
     "password": "Passwort",
     "submit": "Anmelden",

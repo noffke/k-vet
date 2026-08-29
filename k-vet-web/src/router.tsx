@@ -46,6 +46,10 @@ const loginRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: '/login',
   component: LoginPage,
+  // Why the vet is looking at this screen. The toast that announced it has faded by the
+  // time someone comes back to the tab, so the reason has to survive in the URL.
+  validateSearch: (search: Record<string, unknown>): { expired?: boolean } =>
+    search.expired ? { expired: true } : {},
 })
 
 /**
