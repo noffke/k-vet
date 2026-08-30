@@ -44,6 +44,35 @@ test.describe('customers and patients', () => {
     await expect(page.getByText('Keine gültige E-Mail-Adresse')).toBeVisible()
   })
 
+  test('a stored address and its type are edited in place', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    await signIn(page)
+    await page.goto(`/customers/${customerId}`)
+
+    // The row is a form like any other on this page, not a line of text with a bin next to it.
+    const address = page.getByLabel('E-Mail').first()
+    await expect(address).toHaveValue('erika@example.com')
+    await address.fill('erika.neu@example.com')
+    await address.blur()
+
+    // Saved on blur, like every other field — no button to press.
+    await page.reload()
+    await expect(page.getByLabel('E-Mail').first()).toHaveValue('erika.neu@example.com')
+
+    // The type is stored the moment it is chosen.
+    await page.getByLabel('Art').first().selectOption('work')
+    await page.reload()
+    await expect(page.getByLabel('Art').first()).toHaveValue('work')
+
+    // A rejected address reports on its own row and keeps what was stored.
+    const broken = page.getByLabel('E-Mail').first()
+    await broken.fill('kaputt(at)example.com')
+    await broken.blur()
+    await expect(page.getByText('Keine gültige E-Mail-Adresse')).toBeVisible()
+    await page.reload()
+    await expect(page.getByLabel('E-Mail').first()).toHaveValue('erika.neu@example.com')
+  })
+
   test('a phone number is redisplayed in the national format', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     await signIn(page)

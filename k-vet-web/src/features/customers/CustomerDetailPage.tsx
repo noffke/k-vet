@@ -14,6 +14,7 @@ import {
   useGetCustomer,
   useListPatients,
   usePatchCustomer,
+  usePatchCustomerEmail,
   useUnarchiveCustomer,
 } from '@/api/generated/endpoints'
 import type { Customer, EmailType, Salutation } from '@/api/generated/model'
@@ -46,7 +47,14 @@ export function CustomerDetailPage() {
   const patients = useListPatients({ customer_id: customerId })
   const patchCustomer = usePatchCustomer()
   const addEmail = useAddCustomerEmail()
+  const patchEmail = usePatchCustomerEmail()
   const deleteEmail = useDeleteCustomerEmail()
+  /**
+   * Per-row validation message, keyed by the address's id. The server is authoritative about
+   * what an address may look like, and with several rows on screen its answer has to land on
+   * the one it was about.
+   */
+  const [emailErrors, setEmailErrors] = useState<Record<number, string>>({})
   const archive = useArchiveCustomer()
   const unarchive = useUnarchiveCustomer()
   const createPatient = useCreatePatient()
@@ -72,6 +80,34 @@ export function CustomerDetailPage() {
   if (!customer.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = customer.data
   const invoiceAddressVisible = showInvoiceAddress || record.has_invoice_address
+
+  /**
+   * Saves one stored address. `unchanged` short-circuits the blur that follows every focus,
+   * so tabbing through the list does not fire a write per row.
+   *
+   * The server owns the validation, so its rejection is what the row shows — and it is cleared
+   * on the next attempt rather than left to linger once the address is fixed.
+   */
+  const saveEmail = (
+    id: number,
+    data: { email?: string; email_type?: EmailType },
+    unchanged?: string,
+  ) => {
+    if (data.email !== undefined && data.email === unchanged) return
+    patchEmail.mutate(
+      { id, data },
+      {
+        onSuccess: (updated) => {
+          setEmailErrors((current) => {
+            const { [id]: _removed, ...rest } = current
+            return rest
+          })
+          store(updated)
+        },
+        onError: () => setEmailErrors((current) => ({ ...current, [id]: t('value.invalidEmail') })),
+      },
+    )
+  }
 
   /**
    * Text field bound to auto-save; the field error comes from the server.
@@ -245,14 +281,35 @@ export function CustomerDetailPage() {
           {record.emails.map((email) => (
             <li
               key={email.id}
-              className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-3 py-2"
+              className="flex flex-wrap items-end gap-2 rounded-card border border-line bg-surface px-3 py-2"
             >
-              <span className="min-w-0 truncate">
-                {email.email}
-                <span className="ml-2 text-xs text-ink-faint">
-                  {t(`emailType.${email.email_type}`)}
-                </span>
-              </span>
+              {/*
+                Editable in place, and saved the way every other field on this page is: a typo
+                in an address used to mean deleting the row and typing the whole thing again.
+              */}
+              <TextField
+                label={t('field.email')}
+                type="email"
+                inputMode="email"
+                defaultValue={email.email}
+                wrapperClassName="min-w-48 flex-1"
+                error={emailErrors[email.id]}
+                onBlur={(event) => saveEmail(email.id, { email: event.target.value }, email.email)}
+              />
+              <SelectField
+                label={t('field.emailType')}
+                value={email.email_type}
+                wrapperClassName="w-36"
+                onChange={(event) =>
+                  saveEmail(email.id, { email_type: event.target.value as EmailType })
+                }
+              >
+                {EMAIL_TYPES.map((type) => (
+                  <option key={type} value={type}>
+                    {t(`emailType.${type}`)}
+                  </option>
+                ))}
+              </SelectField>
               <Button
                 size="icon"
                 variant="ghost"
