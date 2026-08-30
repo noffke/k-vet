@@ -66,6 +66,10 @@ test.describe('services and templates', () => {
     await picker.fill('Beratung im einzelnen Fall')
     await page.getByRole('option', { name: /Beratung im einzelnen Fall/ }).first().click()
 
+    // Both picks have to have landed before the server is asked: clicking an option fires the
+    // mutation and returns, so reading the API straight away races it — which under the load of
+    // a full suite run is a race the read sometimes wins.
+    await expect(page.getByLabel('Name')).toHaveCount(2)
     const lines = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
     expect(lines).toHaveLength(2)
 

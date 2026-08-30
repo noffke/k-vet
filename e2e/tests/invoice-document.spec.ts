@@ -38,6 +38,8 @@ test.describe('the invoice document', () => {
     await picker.fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
 
+    // The pick has to have landed first, or the id read back here is `undefined`.
+    await expect(page.getByLabel('Name')).toHaveCount(1)
     const items = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
     await request.patch(`/api/treatment-items/${items[0].id}`, { data: { factor: '150.000' } })
 
