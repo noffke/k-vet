@@ -17,12 +17,13 @@ import {
   usePatchCustomerEmail,
   useUnarchiveCustomer,
 } from '@/api/generated/endpoints'
-import type { Customer, EmailType, Salutation } from '@/api/generated/model'
+import type { Customer, CustomerEmail, EmailType, Salutation } from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/field'
 import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
@@ -65,6 +66,8 @@ export function CustomerDetailPage() {
    */
   const [draftEmails, setDraftEmails] = useState<{ email: string; email_type: EmailType }[]>([])
   const [draftError, setDraftError] = useState<string | null>(null)
+  /** The stored address a removal is being confirmed for; its bin sits right beside its fields. */
+  const [pendingEmailRemoval, setPendingEmailRemoval] = useState<CustomerEmail | null>(null)
   const [showInvoiceAddress, setShowInvoiceAddress] = useState(false)
 
   const store = (updated: Customer) => {
@@ -341,17 +344,7 @@ export function CustomerDetailPage() {
                 size="icon"
                 variant="ghost"
                 aria-label={t('action.delete')}
-                onClick={() =>
-                  deleteEmail.mutate(
-                    { id: email.id },
-                    {
-                      onSuccess: () =>
-                        client.invalidateQueries({
-                          queryKey: getGetCustomerQueryKey(customerId),
-                        }),
-                    },
-                  )
-                }
+                onClick={() => setPendingEmailRemoval(email)}
               >
                 <Trash2 className="size-4 text-danger" />
               </Button>
@@ -424,6 +417,43 @@ export function CustomerDetailPage() {
           <Plus className="size-4" />
           {t('customers.addEmail')}
         </Button>
+
+        <Dialog
+          open={pendingEmailRemoval !== null}
+          onOpenChange={(open) => {
+            if (!open) setPendingEmailRemoval(null)
+          }}
+          title={t('customers.removeEmail')}
+          footer={
+            <>
+              <Button onClick={() => setPendingEmailRemoval(null)}>{t('action.cancel')}</Button>
+              <Button
+                variant="danger"
+                disabled={deleteEmail.isPending}
+                onClick={() => {
+                  if (pendingEmailRemoval) {
+                    deleteEmail.mutate(
+                      { id: pendingEmailRemoval.id },
+                      {
+                        onSuccess: () =>
+                          client.invalidateQueries({
+                            queryKey: getGetCustomerQueryKey(customerId),
+                          }),
+                      },
+                    )
+                  }
+                  setPendingEmailRemoval(null)
+                }}
+              >
+                {t('action.delete')}
+              </Button>
+            </>
+          }
+        >
+          <p className="text-sm text-ink-soft">
+            {t('customers.removeEmailConfirm', { email: pendingEmailRemoval?.email ?? '' })}
+          </p>
+        </Dialog>
       </section>
 
       <section className="mt-6">

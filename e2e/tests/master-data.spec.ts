@@ -58,6 +58,29 @@ test.describe('customers and patients', () => {
     await expect(page.getByLabel('Art').last()).toHaveValue('work')
   })
 
+  test('removing a stored address is confirmed first', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    await signIn(page)
+    await page.goto(`/customers/${customerId}`)
+
+    // The bin sits beside the address's own fields, so the click alone must not remove it.
+    const row = page.getByRole('listitem').filter({ has: page.getByLabel('Art') }).first()
+    await row.getByRole('button', { name: 'Löschen', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText('erika@example.com')
+
+    await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByLabel('E-Mail')).toHaveCount(1)
+
+    // Confirming is what removes it.
+    await row.getByRole('button', { name: 'Löschen', exact: true }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByLabel('E-Mail')).toHaveCount(0)
+  })
+
   test('an invalid email address is rejected with a field message', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     await signIn(page)

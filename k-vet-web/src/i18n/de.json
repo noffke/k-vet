@@ -186,6 +186,8 @@
     "emails": "E-Mail-Adressen",
     "new": "Neuer Kunde",
     "patients": "Patienten",
+    "removeEmail": "E-Mail-Adresse entfernen",
+    "removeEmailConfirm": "„{{email}}“ wirklich aus den Kontaktdaten entfernen?",
     "title": "Kunden"
   },
   "patients": {
