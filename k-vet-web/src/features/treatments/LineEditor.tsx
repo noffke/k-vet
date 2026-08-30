@@ -28,6 +28,7 @@ import type { MoveDirection, PickerItem, Treatment, TreatmentItem } from '@/api/
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
@@ -141,6 +142,12 @@ export function PositionGroup({
   const patchItem = usePatchTreatmentItem({ mutation })
   const moveItem = useMoveTreatmentItem({ mutation })
   const deleteItem = useDeleteTreatmentItem({ mutation })
+  /**
+   * The line a removal is being confirmed for. Deleting sits in a row of five icon buttons,
+   * next to "move down" — on a phone that is one thumb's width from a position the vet meant
+   * to reorder, and a removed drug line takes its dispense with it.
+   */
+  const [pendingRemoval, setPendingRemoval] = useState<TreatmentItem | null>(null)
   const bulkDelete = useBulkDeleteTreatmentItems({ mutation })
   const applyTemplate = useApplyTemplate({ mutation })
 
@@ -430,7 +437,7 @@ export function PositionGroup({
                   size="icon"
                   variant="ghost"
                   aria-label={t('action.delete')}
-                  onClick={() => deleteItem.mutate({ id: item.id })}
+                  onClick={() => setPendingRemoval(item)}
                 >
                   <Trash2 className="size-4 text-danger" />
                 </Button>
@@ -444,6 +451,38 @@ export function PositionGroup({
           </li>
         ) : null}
       </ul>
+
+      <Dialog
+        open={pendingRemoval !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingRemoval(null)
+        }}
+        title={t('treatments.removeItem')}
+        footer={
+          <>
+            <Button onClick={() => setPendingRemoval(null)}>{t('action.cancel')}</Button>
+            <Button
+              variant="danger"
+              disabled={deleteItem.isPending}
+              onClick={() => {
+                if (pendingRemoval) deleteItem.mutate({ id: pendingRemoval.id })
+                setPendingRemoval(null)
+              }}
+            >
+              {t('action.delete')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-soft">
+          {t('treatments.removeItemConfirm', { name: pendingRemoval?.name ?? '' })}
+        </p>
+        {/* A drug line holds a dispense; removing it books the quantity back. Worth saying, so
+            the vet is not left wondering what happened to the stock. */}
+        {pendingRemoval?.lots.length ? (
+          <p className="mt-2 text-sm text-ink-faint">{t('treatments.removeItemReturnsStock')}</p>
+        ) : null}
+      </Dialog>
     </div>
   )
 }

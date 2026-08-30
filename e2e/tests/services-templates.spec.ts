@@ -245,4 +245,52 @@ test.describe('treatment lines', () => {
     await page.reload()
     await expect(page.getByLabel('Umwidmung')).toBeChecked()
   })
+
+  test('a position is not removed by a stray click', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const drug = await seedDrug(request)
+    // Stock on hand, so the line actually dispenses and the dialog has a return to warn about.
+    const intake = await request.post(`/api/packagings/${drug.packagingId}/stock-intakes`, {
+      data: { packages_received: 1, batch_number: 'CHARGE-1' },
+    })
+    expect(intake.status()).toBe(200)
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
+    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+
+    // Scoped to the position: the treatment's patient list carries a "Löschen" of its own.
+    const positionRow = page
+      .getByRole('listitem')
+      .filter({ has: page.getByLabel('Menge') })
+      .first()
+    const nameField = positionRow.getByLabel('Name')
+    await expect(nameField).toHaveValue(new RegExp(drug.drugName))
+    const remove = positionRow.getByRole('button', { name: 'Löschen', exact: true })
+
+    // Delete sits at the end of the reorder buttons, so the click alone must not remove anything.
+    // The dialog is modal, so the line behind it is out of the accessibility tree while it is
+    // open — the line is checked again once it closes.
+    await remove.click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toBeVisible()
+    await expect(dialog).toContainText(drug.drugName)
+    // A drug line carries a dispense, and the dialog says the stock comes back.
+    await expect(dialog).toContainText('Die abgegebene Menge geht zurück in den Bestand.')
+
+    // Backing out leaves the line alone.
+    await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
+    await expect(dialog).toHaveCount(0)
+    await expect(nameField).toHaveValue(new RegExp(drug.drugName))
+
+    // Confirming is what removes it.
+    await remove.click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click()
+    await expect(page.getByRole('dialog')).toHaveCount(0)
+    await expect(page.getByLabel('Menge')).toHaveCount(0)
+    await expect(page.getByText('Keine Einträge').first()).toBeVisible()
+  })
 })
