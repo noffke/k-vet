@@ -245,6 +245,7 @@
     "date": "Rechnungsdatum",
     "includesFinding": "Therapie und weiteres Vorgehen aufführen",
     "liveInvoiceExists": "Zu dieser Behandlung gibt es eine Rechnung — sie muss erst storniert werden.",
+    "mailUnreachable": "Der Mailserver ist nicht erreichbar. Die Rechnung wurde nicht versendet — bitte die Mail-Einstellungen prüfen, oder die Rechnung ausdrucken und als „Per Post versendet“ markieren.",
     "markPosted": "Per Post versendet",
     "markPostedHint": "Hält fest, dass die Rechnung auf Papier beim Kunden ist. Erst danach geht sie an die Buchhaltung.",
     "missingCustomerData": "Rechnungsdaten des Kunden unvollständig",
@@ -265,6 +266,7 @@
     "saveEmailTitle": "E-Mail-Adresse übernehmen?",
     "searchPlaceholder": "Rechnungsnummer oder Kunde suchen …",
     "send": "E-Mail senden",
+    "sendFailed": "Die Rechnung konnte nicht versendet werden.",
     "sendTitle": "Rechnung per E-Mail senden",
     "sentByEmail": "Per E-Mail versendet",
     "sentByPost": "Per Post versendet",
@@ -415,6 +417,7 @@
   },
   "invoice": {
     "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung",
+    "mailUnreachable": "Der Mailserver ist nicht erreichbar",
     "noLines": "Die Behandlung hat noch keine Positionen",
     "noPatient": "Der Behandlung ist noch kein Tier zugeordnet"
   },

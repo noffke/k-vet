@@ -473,13 +473,18 @@ async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool
 
     // With an address it gets that far: no SMTP server in tests, so the mail server rejects it
     // and the invoice stays accepted — which is exactly what the dashboard calls "not sent".
+    //
+    // 502 rather than 500, carrying a key: an unreachable relay is upstream of the app and is
+    // the one server-side failure the vet can act on, so the screen has to be able to say so
+    // rather than print "something went wrong".
     let no_mail_server = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
             json!({ "recipient_emails": ["andere@example.com"] }),
         )
         .await;
-    assert_eq!(no_mail_server.status, StatusCode::INTERNAL_SERVER_ERROR);
+    assert_eq!(no_mail_server.status, StatusCode::BAD_GATEWAY);
+    assert_eq!(no_mail_server.json()["detail"], "invoice.mailUnreachable");
 
     let after = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
     assert_eq!(after["status"], "accepted");

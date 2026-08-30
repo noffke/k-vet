@@ -171,7 +171,12 @@ impl Mailer {
             .send(message)
             .await
             .map(|_| ())
-            .map_err(|error| AppError::internal("sending the invoice email", error))
+            .map_err(|error| {
+                // Logged with the transport's own words, which name the host and the port; the
+                // client gets a key it can translate, because this is a failure the vet acts on.
+                tracing::error!(%error, "the mail server could not be reached");
+                AppError::MailTransport
+            })
     }
 }
 

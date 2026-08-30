@@ -62,6 +62,14 @@ pub enum AppError {
     Database(#[from] sqlx::Error),
     #[error("i/o error")]
     Io(#[from] std::io::Error),
+    /// The mail server could not be reached, or refused the message.
+    ///
+    /// Distinct from [`Self::Internal`] because it is the one server-side failure the vet can
+    /// do something about — and the one they meet regularly, since an appliance on a practice
+    /// network reaches its SMTP relay or does not. The detail is a translation key rather than
+    /// the transport's own words, which are English and name hosts and ports.
+    #[error("the mail server could not be reached")]
+    MailTransport,
     #[error("{0}")]
     Internal(String),
 }
@@ -89,6 +97,8 @@ impl AppError {
                 Some(problem) => problem.status,
                 None => StatusCode::INTERNAL_SERVER_ERROR,
             },
+            // Upstream, not us: the practice's relay is the thing that did not answer.
+            Self::MailTransport => StatusCode::BAD_GATEWAY,
             Self::Io(_) | Self::Internal(_) => StatusCode::INTERNAL_SERVER_ERROR,
         }
     }
@@ -102,6 +112,8 @@ impl AppError {
                 None => ("internal server error".to_owned(), Vec::new()),
             },
             Self::Io(_) | Self::Internal(_) => ("internal server error".to_owned(), Vec::new()),
+            // A key, not prose: this one reaches the screen, and the screen is German.
+            Self::MailTransport => ("invoice.mailUnreachable".to_owned(), Vec::new()),
             other => (other.to_string(), Vec::new()),
         };
         ProblemDetails {

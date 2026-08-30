@@ -245,6 +245,7 @@
     "date": "Invoice date",
     "includesFinding": "Print treatment and next steps",
     "liveInvoiceExists": "This treatment has an invoice — cancel it first.",
+    "mailUnreachable": "The mail server cannot be reached. The invoice was not sent — check the mail settings, or print it and mark it as sent by post.",
     "markPosted": "Sent by post",
     "markPostedHint": "Records that the customer has the invoice on paper. Only then does it go to bookkeeping.",
     "missingCustomerData": "Customer invoice data incomplete",
@@ -265,6 +266,7 @@
     "saveEmailTitle": "Save this e-mail address?",
     "searchPlaceholder": "Search invoice number or customer …",
     "send": "Send e-mail",
+    "sendFailed": "The invoice could not be sent.",
     "sendTitle": "Send the invoice by e-mail",
     "sentByEmail": "Sent by e-mail",
     "sentByPost": "Sent by post",
@@ -415,6 +417,7 @@
   },
   "invoice": {
     "liveInvoiceExists": "This treatment already has an invoice",
+    "mailUnreachable": "The mail server cannot be reached",
     "noLines": "The treatment has no positions yet",
     "noPatient": "No animal is attached to the treatment yet"
   },
