@@ -8,6 +8,9 @@ import { pdfText, signIn } from './helpers'
  * These are claims about the PDF the customer receives, so they are checked against the real
  * document rather than against the data that went into it.
  */
+/** Distinctive enough that finding it in the PDF could only mean the note was printed. */
+const INTERNAL_NOTE = 'Interner Vermerk: Halterin telefonisch erinnern'
+
 test.describe('the invoice document', () => {
   test('prices the unit with the factor, and closes with the payment details', async ({
     page,
@@ -51,6 +54,8 @@ test.describe('the invoice document', () => {
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
     await expect(page).toHaveURL(/\/treatments\/\d+\/invoice$/)
     await expect(page.getByLabel('Therapie und weiteres Vorgehen aufführen')).toBeChecked()
+    // Written for the practice, not the customer — it must not reach the document.
+    await page.getByLabel('Notiz (intern)').fill(INTERNAL_NOTE)
     const openedTab = page.context().waitForEvent('page')
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
     await (await openedTab).close()
@@ -67,6 +72,9 @@ test.describe('the invoice document', () => {
     expect(text).toContain('42,16 €')
     // The Steigerungssatz is still stated — GOT requires it, and it explains the price.
     expect(text).toContain('Faktor: 150 %')
+
+    // The internal note stays internal.
+    expect(text).not.toContain(INTERNAL_NOTE)
 
     // issues.md 12: the two report headings are the vet's words, not the old ones.
     expect(text).toContain('Vorbericht und Untersuchung:')

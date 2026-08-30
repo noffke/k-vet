@@ -173,11 +173,6 @@ Vielen Dank für Ihr Vertrauen!
   ],
 )
 
-#if invoice.note != "" [
-  #v(5mm)
-  #text(10pt)[#invoice.note]
-]
-
 // ── Behandlungsbericht ────────────────────────────────────────────────────────
 // One block per animal. Animals with neither a reason nor a finding are not in `reports`.
 #if invoice.reports.len() > 0 [

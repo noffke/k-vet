@@ -86,7 +86,7 @@ faces stay available, so a template that prefers them only has to say so.
 | `items` | line[] | Every line in one flat list, in the vet's chosen order. Kept so templates written before grouping keep working. |
 | `vat_groups` | group[] | One entry per VAT rate on the invoice. |
 | `total` | string | Gross total, e.g. `38,62 €`. |
-| `note` | string | Free note from the create dialog; may be empty. |
+| `note` | string | The internal note from the create dialog; may be empty. **The default template does not print it** — it is written for the practice, not for the customer, and the field is labelled *Notiz (intern)* on screen. Still passed so a template can use it for a copy kept in-house; do not put it on the customer's invoice. |
 | `qr_present` | bool | `true` when `inputs.qr` holds a GiroCode. Guard the QR block with this. |
 
 A report (`invoice.reports[]`) — the Behandlungsbericht, per animal. An animal with neither a
