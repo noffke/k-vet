@@ -96,7 +96,22 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     </span>
                   ) : null}
                 </span>
-                <IncompleteBadge missing={packaging.missing_fields} />
+                <span className="flex flex-wrap items-baseline gap-2">
+                  {/*
+                    The number the vet reads out to a customer asking what something costs
+                    (issues.md 6). It belongs on each packaging, not once on the page: a
+                    Teilmenge has its own price, and that is usually the one being quoted.
+                  */}
+                  {packaging.sales_price_gross ? (
+                    <>
+                      <span className="eyebrow">{t('field.salesPriceGross')}</span>
+                      <span className="numeric text-lg font-semibold text-rust">
+                        {money(packaging.sales_price_gross)}
+                      </span>
+                    </>
+                  ) : null}
+                  <IncompleteBadge missing={packaging.missing_fields} />
+                </span>
               </div>
 
               <div className="mt-2 grid gap-3 sm:grid-cols-4">
@@ -127,18 +142,13 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   hint={isOriginal ? t('field.listPriceHint') : t('pharmacy.subsetPriceDerived')}
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
                 />
-                {/* The vet edits the net price the AMPreisV computes; the gross underneath is
-                    what the customer will see, so there is no hidden conversion either way. */}
+                {/* The vet edits the net price the AMPreisV computes; the gross it comes to is
+                    on this box's headline, so there is no hidden conversion either way. */}
                 <NumberInput
                   label={t('field.salesPriceNet')}
                   value={packaging.sales_price_net ?? null}
                   unit={currencySymbol}
                   money
-                  hint={
-                    packaging.sales_price_gross
-                      ? `${t('field.salesPriceGross')}: ${money(packaging.sales_price_gross)}`
-                      : undefined
-                  }
                   onChange={(value) => value && patch({ sales_price_net: value })}
                 />
 

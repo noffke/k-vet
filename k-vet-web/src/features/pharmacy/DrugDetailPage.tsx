@@ -25,7 +25,6 @@ import { VatSelect } from '@/components/VatSelect'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
 import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
-import { useLocaleFormat } from '@/lib/locale'
 
 /** The regulatory flags of a drug — informational in this version (FR-012). */
 const FLAGS = [
@@ -41,7 +40,6 @@ const FLAGS = [
 /** One drug: identity, VAT, flags, its packagings and its stock. */
 export function DrugDetailPage() {
   const { t } = useTranslation()
-  const { money, quantity } = useLocaleFormat()
   const { id } = useParams({ from: '/app/pharmacy/$id' })
   const drugId = Number(id)
   const client = useQueryClient()
@@ -106,25 +104,6 @@ export function DrugDetailPage() {
           <ArchivedBadge archived={record.archived} />
         </span>
       </PageHeader>
-
-      {/*
-        The price a customer is quoted, at reading distance (issues.md 6). It is derivable from
-        the net field further down, but the vet is usually on the phone when they need it, and a
-        hint under an input is not something you find in that moment.
-      */}
-      {original?.sales_price_gross ? (
-        <p className="mt-4 flex flex-wrap items-baseline gap-x-3 gap-y-1 rounded-card border border-line bg-cream-soft px-4 py-3">
-          <span className="eyebrow">{t('field.salesPriceGross')}</span>
-          <span className="numeric text-2xl font-semibold text-rust">
-            {money(original.sales_price_gross)}
-          </span>
-          {original.quantity && original.unit ? (
-            <span className="text-xs text-ink-faint">
-              {t('pharmacy.original')} · {quantity(original.quantity)} {original.unit}
-            </span>
-          ) : null}
-        </p>
-      ) : null}
 
       <section className="mt-5 grid gap-4 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
         <TextField
