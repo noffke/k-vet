@@ -128,15 +128,18 @@ CI verify that the image still builds.
 
 ## Licence
 
-Private project; all rights reserved.
+[GNU General Public License v3](LICENSE).
 
 ### Third-party components
 
 The invoice PDF sets in **Source Sans 3**, © 2010–2024 Adobe, under the
 [SIL Open Font License 1.1](k-vet-backend/fonts/LICENSE.txt). The four faces in
 `k-vet-backend/fonts/` are compiled into the binary (`src/pdf`), because the appliance has no
-font packages installed. They are shipped unmodified and under their own licence — the OFL
-permits bundling with software under any licence (clause 2) and requires only that the notice
-accompany each copy, which is why the deployment image carries it at
-`/usr/share/k-vet/licences/`. "Source" is a Reserved Font Name: a modified version of these
-files may not keep the name (clause 3).
+font packages installed.
+
+They stay under the OFL rather than the GPL, and that is not a conflict: a font is data, not
+linked code, so it is neither a derivative of the program nor the program a derivative of it.
+The OFL expressly allows bundling with software under any licence (clause 2) and asks only that
+the notice accompany every copy — which is why the deployment image carries it at
+`/usr/share/k-vet/licences/`. The faces are shipped unmodified; "Source" is a Reserved Font
+Name, so a modified version may not keep it (clause 3).
