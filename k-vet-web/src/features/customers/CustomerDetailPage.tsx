@@ -58,8 +58,13 @@ export function CustomerDetailPage() {
   const archive = useArchiveCustomer()
   const unarchive = useUnarchiveCustomer()
   const createPatient = useCreatePatient()
-  const [newEmail, setNewEmail] = useState('')
-  const [newEmailType, setNewEmailType] = useState<EmailType>('private')
+  /**
+   * Addresses typed but not yet stored. A `customer_email` row cannot exist empty — the column
+   * is NOT NULL and the table has no draft flag — so a new address lives here until it has a
+   * value to save, and "E-Mail hinzufügen" adds one of these rather than storing anything.
+   */
+  const [draftEmails, setDraftEmails] = useState<{ email: string; email_type: EmailType }[]>([])
+  const [draftError, setDraftError] = useState<string | null>(null)
   const [showInvoiceAddress, setShowInvoiceAddress] = useState(false)
 
   const store = (updated: Customer) => {
@@ -105,6 +110,28 @@ export function CustomerDetailPage() {
           store(updated)
         },
         onError: () => setEmailErrors((current) => ({ ...current, [id]: t('value.invalidEmail') })),
+      },
+    )
+  }
+
+  /**
+   * Turns a typed draft row into a stored address, on blur — the same moment the rows above it
+   * save. An empty row is left alone: the vet may have opened it and thought better of it, and
+   * it costs nothing to leave sitting there.
+   */
+  const storeDraftEmail = (index: number) => {
+    const draft = draftEmails[index]
+    if (!draft || draft.email.trim() === '') return
+    addEmail.mutate(
+      { id: customerId, data: { email: draft.email, email_type: draft.email_type } },
+      {
+        onSuccess: (updated) => {
+          setDraftError(null)
+          // The address is one of the stored rows now, so its draft goes.
+          setDraftEmails((rows) => rows.filter((_, i) => i !== index))
+          store(updated)
+        },
+        onError: () => setDraftError(t('value.invalidEmail')),
       },
     )
   }
@@ -332,50 +359,71 @@ export function CustomerDetailPage() {
           ))}
         </ul>
 
-        <form
-          // The server is authoritative for validation and its message is what the vet
-          // reads; the browser's own bubble would block the submit and speak its language.
-          noValidate
-          className="mt-3 flex flex-wrap items-end gap-2"
-          onSubmit={(event) => {
-            event.preventDefault()
-            if (!newEmail.trim()) return
-            addEmail.mutate(
-              { id: customerId, data: { email: newEmail, email_type: newEmailType } },
-              {
-                onSuccess: (updated) => {
-                  setNewEmail('')
-                  store(updated)
-                },
-              },
-            )
-          }}
-        >
-          <TextField
-            label={t('field.email')}
-            type="email"
-            inputMode="email"
-            value={newEmail}
-            wrapperClassName="min-w-48 flex-1"
-            error={addEmail.isError ? t('value.invalidEmail') : undefined}
-            onChange={(event) => setNewEmail(event.target.value)}
-          />
-          <SelectField
-            label={t('field.emailType')}
-            value={newEmailType}
-            wrapperClassName="w-36"
-            onChange={(event) => setNewEmailType(event.target.value as EmailType)}
+        {draftEmails.map((draft, index) => (
+          <div
+            // Position is the only identity a row without an id has; the list is append-only
+            // until the row is stored, so it is a stable one.
+            // biome-ignore lint/suspicious/noArrayIndexKey: an unsaved row has no id yet
+            key={index}
+            className="mt-2 flex flex-wrap items-end gap-2 rounded-card border border-dashed border-line-strong bg-surface px-3 py-2"
           >
-            {EMAIL_TYPES.map((type) => (
-              <option key={type} value={type}>
-                {t(`emailType.${type}`)}
-              </option>
-            ))}
-          </SelectField>
-          <Button type="submit" variant="primary" disabled={addEmail.isPending}>
-            {t('customers.addEmail')}
-          </Button>
-        </form>
+            <TextField
+              label={t('field.email')}
+              type="email"
+              inputMode="email"
+              // The row appears because the vet clicked "add", so it is where the cursor goes.
+              autoFocus
+              value={draft.email}
+              wrapperClassName="min-w-48 flex-1"
+              error={draftError ?? undefined}
+              onChange={(event) =>
+                setDraftEmails((rows) =>
+                  rows.map((row, i) => (i === index ? { ...row, email: event.target.value } : row)),
+                )
+              }
+              onBlur={() => storeDraftEmail(index)}
+            />
+            <SelectField
+              label={t('field.emailType')}
+              value={draft.email_type}
+              wrapperClassName="w-36"
+              onChange={(event) =>
+                setDraftEmails((rows) =>
+                  rows.map((row, i) =>
+                    i === index ? { ...row, email_type: event.target.value as EmailType } : row,
+                  ),
+                )
+              }
+            >
+              {EMAIL_TYPES.map((type) => (
+                <option key={type} value={type}>
+                  {t(`emailType.${type}`)}
+                </option>
+              ))}
+            </SelectField>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={t('action.delete')}
+              onClick={() => {
+                setDraftError(null)
+                setDraftEmails((rows) => rows.filter((_, i) => i !== index))
+              }}
+            >
+              <Trash2 className="size-4 text-danger" />
+            </Button>
+          </div>
+        ))}
+
+        <Button
+          className="mt-3"
+          // Nothing to gain from two blank rows at once.
+          disabled={draftEmails.some((row) => row.email.trim() === '')}
+          onClick={() => setDraftEmails((rows) => [...rows, { email: '', email_type: 'private' }])}
+        >
+          <Plus className="size-4" />
+          {t('customers.addEmail')}
+        </Button>
       </section>
 
       <section className="mt-6">

@@ -33,15 +33,43 @@ test.describe('customers and patients', () => {
     await expect(page.getByText('Erika Beispiel').filter({ visible: true }).first()).toBeVisible()
   })
 
+  test('a further address is opened as a row and saves itself', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    await signIn(page)
+    await page.goto(`/customers/${customerId}`)
+    await expect(page.getByLabel('E-Mail')).toHaveCount(1)
+
+    // The button opens a row to type in; it does not store anything by itself.
+    await page.getByRole('button', { name: 'E-Mail hinzufügen' }).click()
+    await expect(page.getByLabel('E-Mail')).toHaveCount(2)
+    await page.reload()
+    await expect(page.getByLabel('E-Mail')).toHaveCount(1)
+
+    // Filled in, it saves on blur like the rows above it.
+    await page.getByRole('button', { name: 'E-Mail hinzufügen' }).click()
+    const fresh = page.getByLabel('E-Mail').last()
+    await fresh.fill('zweite@example.com')
+    await page.getByLabel('Art').last().selectOption('work')
+    await fresh.blur()
+
+    await page.reload()
+    await expect(page.getByLabel('E-Mail')).toHaveCount(2)
+    await expect(page.getByLabel('E-Mail').last()).toHaveValue('zweite@example.com')
+    await expect(page.getByLabel('Art').last()).toHaveValue('work')
+  })
+
   test('an invalid email address is rejected with a field message', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     await signIn(page)
     await page.goto(`/customers/${customerId}`)
 
-    await page.getByLabel('E-Mail').last().fill('erika(at)example.com')
     await page.getByRole('button', { name: 'E-Mail hinzufügen' }).click()
+    await page.getByLabel('E-Mail').last().fill('erika(at)example.com')
+    await page.getByLabel('E-Mail').last().blur()
 
     await expect(page.getByText('Keine gültige E-Mail-Adresse')).toBeVisible()
+    // Nothing was stored, and the typed value stays put to be corrected.
+    await expect(page.getByLabel('E-Mail').last()).toHaveValue('erika(at)example.com')
   })
 
   test('a stored address and its type are edited in place', async ({ page, request }) => {
