@@ -43,8 +43,8 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   // The reason and the finding belong to the animal, on its own record.
   await page.getByRole('link', { name: new RegExp(patientName) }).first().click()
   await expect(page).toHaveURL(/\/patient-treatments\/\d+$/)
-  await page.getByLabel('Behandlungsgrund').fill('Jahresimpfung und Kontrolle')
-  await page.getByLabel('Befund').fill('Allgemeinzustand unauffällig, Gewicht stabil.')
+  await page.getByLabel('Vorbericht und Untersuchung').fill('Jahresimpfung und Kontrolle')
+  await page.getByLabel('Therapie und weiteres Vorgehen').fill('Allgemeinzustand unauffällig, Gewicht stabil.')
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
   await page.getByRole('link', { name: /Zurück/ }).click()
   await expect(page).toHaveURL(/\/treatments\/\d+$/)
@@ -66,8 +66,8 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
   // Billing happens on its own page — no dialog takes data anywhere in the app.
   await expect(page).toHaveURL(/\/treatments\/\d+\/invoice$/)
-  // The Befund is listed by default now, so the box is already ticked.
-  await expect(page.getByLabel('Befund aufführen')).toBeChecked()
+  // The Therapie is listed by default now, so the box is already ticked.
+  await expect(page.getByLabel('Therapie und weiteres Vorgehen aufführen')).toBeChecked()
   // And the PDF opens by itself, in a tab held open from the click. Headless Chromium has no
   // PDF viewer and turns the navigation into a download, so the tab's own URL stays
   // about:blank — what proves it is the request the tab makes.

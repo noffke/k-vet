@@ -1,0 +1,19 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE text_block SET\n               name    = CASE WHEN $2 THEN $3 ELSE name END,\n               content = CASE WHEN $4 THEN $5 ELSE content END,\n               draft   = $6\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "09e938662923c6181f6678e4e1f091c78ea8a12c7df76bfca13a36bf2febb45a"
+}

@@ -115,18 +115,18 @@ test.describe('customers and patients', () => {
     await signIn(page)
     await page.goto(`/patients/${patientId}`)
 
-    // The back link names the list it returns to; the eyebrow keeps the owning customer,
-    // which is a different destination and must survive alongside it.
-    await expect(page.getByRole('link', { name: 'Zurück: Patienten' })).toBeVisible()
-    await expect(page.getByRole('link', { name: new RegExp(lastName) })).toBeVisible()
+    // An animal is reached through its customer, so that is where "back" goes — there is no
+    // patient list any more (issues.md 9).
+    const back = page.getByRole('link', { name: new RegExp(`Zurück: .*${lastName}`) })
+    await expect(back).toBeVisible()
 
     // The header buttons shrink to their icon on a phone. Their names have to survive it,
     // or the phone viewport — a first-class target — gets unlabelled buttons.
     await expect(page.getByRole('button', { name: 'Archivieren', exact: true })).toBeVisible()
 
-    await page.getByRole('link', { name: 'Zurück: Patienten' }).click()
-    await expect(page).toHaveURL(/\/patients$/)
-    await expect(page.getByPlaceholder('Suchen …')).toBeVisible()
+    await back.click()
+    await expect(page).toHaveURL(new RegExp(`/customers/${customerId}$`))
+    await expect(page.getByRole('heading', { name: 'Patienten' })).toBeVisible()
   })
 
   test('the Rasse field suggests what the practice already sees', async ({ page, request }) => {
@@ -167,25 +167,30 @@ test.describe('customers and patients', () => {
       .not.toContain(race)
   })
 
-  test('a date of death archives the patient and hides it from the list', async ({
+  test("a date of death archives the patient and takes it off the customer", async ({
     page,
     request,
   }) => {
     const { customerId } = await seedCustomer(request)
-    const patientId = await seedPatient(request, customerId, 'Minka')
+    const name = `Minka-${Date.now().toString().slice(-6)}`
+    const patientId = await seedPatient(request, customerId, name)
     await signIn(page)
-    await page.goto(`/patients/${patientId}`)
 
+    // The customer lists the animal to begin with, on the page and in the customers index.
+    await page.goto(`/customers/${customerId}`)
+    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible()
+
+    await page.goto(`/patients/${patientId}`)
     await page.getByLabel('Todesdatum').fill('04.05.2026')
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
     await expect(page.getByText('Archiviert').first()).toBeVisible()
 
-    await navigate(page, 'Patienten')
-    await page.getByPlaceholder('Suchen …').fill('Minka')
-    await expect(page.getByText('Keine Einträge')).toBeVisible()
+    // Archived: gone from the owner's list of animals, and from the name the index shows.
+    await page.goto(`/customers/${customerId}`)
+    await expect(page.getByRole('button', { name: new RegExp(name) })).toHaveCount(0)
 
-    // Archived records are one toggle away, never gone.
-    await page.getByLabel('Archivierte anzeigen').check()
-    await expect(page.getByText('Minka').filter({ visible: true }).first()).toBeVisible()
+    await navigate(page, 'Kunden')
+    await page.getByPlaceholder('Suchen …').fill(name)
+    await expect(page.getByText('Keine Einträge')).toBeVisible()
   })
 })

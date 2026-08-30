@@ -8,6 +8,7 @@ import {
   getGetTreatmentQueryKey,
   getInvoicePdfUrl,
   useCreateInvoice,
+  useGetCustomer,
   useGetInvoice,
   useGetTreatment,
   useListTreatmentItems,
@@ -15,8 +16,10 @@ import {
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextAreaField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
+import { toCamelCase } from '@/lib/utils'
 
 /**
  * Creating the invoice for a treatment, or making it again after the lines changed.
@@ -36,9 +39,16 @@ export function InvoiceCreatePage() {
   const items = useListTreatmentItems(treatmentId)
   const invoiceId = treatment.data?.invoice?.id
   const invoice = useGetInvoice(invoiceId ?? 0, { query: { enabled: Boolean(invoiceId) } })
+  // Only to warn about gaps in the address the invoice would print — creating one is never
+  // blocked on it (issues.md 20).
+  const customerId = treatment.data?.customer_id
+  const customer = useGetCustomer(customerId ?? 0, {
+    query: { enabled: Boolean(customerId) },
+  })
 
   const [includesFinding, setIncludesFinding] = useState<boolean | null>(null)
   const [note, setNote] = useState<string | null>(null)
+  const [confirmIncomplete, setConfirmIncomplete] = useState(false)
   // Opened empty on the click and pointed at the PDF when it exists: a tab opened from an
   // awaited mutation is a popup, and every browser blocks that.
   const pdfTab = useRef<Window | null>(null)
@@ -76,6 +86,20 @@ export function InvoiceCreatePage() {
   const finding = includesFinding ?? invoice.data?.includes_finding ?? true
   const noteText = note ?? invoice.data?.note ?? ''
 
+  const missingCustomerFields = customer.data?.invoice_missing_fields ?? []
+  const missingLabels = missingCustomerFields
+    .map((field) => t(`field.${toCamelCase(field)}`, field))
+    .join(', ')
+
+  const create = () => {
+    setConfirmIncomplete(false)
+    pdfTab.current = window.open('', '_blank')
+    createInvoice.mutate({
+      id: treatmentId,
+      data: { includes_finding: finding, note: noteText || null },
+    })
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
@@ -103,8 +127,9 @@ export function InvoiceCreatePage() {
           checked={finding}
           onChange={(event) => setIncludesFinding(event.target.checked)}
         />
+        {/* Never printed on the invoice — say so, or it reads as a message to the customer. */}
         <TextAreaField
-          label={t('field.note')}
+          label={t('invoices.noteInternal')}
           value={noteText}
           onChange={(event) => setNote(event.target.value)}
         />
@@ -118,18 +143,30 @@ export function InvoiceCreatePage() {
         <Button
           variant="primary"
           disabled={!hasItems || createInvoice.isPending}
-          onClick={() => {
-            pdfTab.current = window.open('', '_blank')
-            createInvoice.mutate({
-              id: treatmentId,
-              data: { includes_finding: finding, note: noteText || null },
-            })
-          }}
+          onClick={() => (missingCustomerFields.length > 0 ? setConfirmIncomplete(true) : create())}
         >
           <ReceiptText className="size-4" />
           {live ? t('invoices.update') : t('invoices.create')}
         </Button>
       </div>
+
+      <Dialog
+        open={confirmIncomplete}
+        onOpenChange={setConfirmIncomplete}
+        title={t('invoices.missingCustomerData')}
+        footer={
+          <>
+            <Button onClick={() => setConfirmIncomplete(false)}>{t('action.cancel')}</Button>
+            <Button variant="primary" onClick={create}>
+              {t('invoices.createAnyway')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-soft">
+          {t('invoices.missingCustomerDataBody', { fields: missingLabels })}
+        </p>
+      </Dialog>
     </div>
   )
 }

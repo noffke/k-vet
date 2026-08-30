@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT name FROM patient\n          WHERE customer_id = $1 AND NOT archived AND date_of_death IS NULL AND name IS NOT NULL\n          ORDER BY name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "name"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "64b13040d2c1d5afad4f9aba5fd441e1d137a563184ac5ecb72d5652cbd01fe6"
+}

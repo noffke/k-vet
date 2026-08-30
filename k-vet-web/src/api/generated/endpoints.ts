@@ -60,6 +60,7 @@ import type {
   ListServicesParams,
   ListSuppliersParams,
   ListTemplatesParams,
+  ListTextBlocksParams,
   LoginRequest,
   Lot,
   LotDetail,
@@ -80,10 +81,12 @@ import type {
   PatchSettings,
   PatchTemplate,
   PatchTemplateItem,
+  PatchTextBlock,
   PatchTreatmentItem,
   Patient,
   PatientFile,
   PatientTreatment,
+  PatientTreatmentSummary,
   PickerItem,
   PickerItemsParams,
   PricePreview,
@@ -94,6 +97,7 @@ import type {
   Settings,
   Template,
   TemplateItem,
+  TextBlock,
   Treatment,
   TreatmentItem
 } from './model';
@@ -5228,6 +5232,101 @@ export function useListPatientFiles<TData = Awaited<ReturnType<typeof listPatien
 
 
 
+export const getListPatientTreatmentsOfPatientUrl = (id: number,) => {
+
+
+
+
+  return `/api/patients/${id}/treatments`
+}
+
+export const listPatientTreatmentsOfPatient = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<PatientTreatmentSummary[]> => {
+
+  return apiFetch<PatientTreatmentSummary[]>(getListPatientTreatmentsOfPatientUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListPatientTreatmentsOfPatientQueryKey = (id: number,) => {
+    return [
+    `/api/patients/${id}/treatments`
+    ] as const;
+    }
+
+
+export const getListPatientTreatmentsOfPatientQueryOptions = <TData = Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError = unknown>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListPatientTreatmentsOfPatientQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>> = ({ signal }) => listPatientTreatmentsOfPatient(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListPatientTreatmentsOfPatientQueryResult = NonNullable<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>>
+export type ListPatientTreatmentsOfPatientQueryError = unknown
+
+
+export function useListPatientTreatmentsOfPatient<TData = Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError = unknown>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>,
+          TError,
+          Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPatientTreatmentsOfPatient<TData = Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>,
+          TError,
+          Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListPatientTreatmentsOfPatient<TData = Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListPatientTreatmentsOfPatient<TData = Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listPatientTreatmentsOfPatient>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListPatientTreatmentsOfPatientQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getUnarchivePatientUrl = (id: number,) => {
 
 
@@ -6921,6 +7020,464 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getMoveTemplateItemMutationOptions(options), queryClient);
+    }
+
+export const getListTextBlocksUrl = (params?: ListTextBlocksParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/text-blocks?${stringifiedParams}` : `/api/text-blocks`
+}
+
+export const listTextBlocks = async (params?: ListTextBlocksParams, options?: Parameters<typeof apiFetch>[1]): Promise<TextBlock[]> => {
+
+  return apiFetch<TextBlock[]>(getListTextBlocksUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListTextBlocksQueryKey = (params?: ListTextBlocksParams,) => {
+    return [
+    `/api/text-blocks`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getListTextBlocksQueryOptions = <TData = Awaited<ReturnType<typeof listTextBlocks>>, TError = unknown>(params?: ListTextBlocksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTextBlocks>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListTextBlocksQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listTextBlocks>>> = ({ signal }) => listTextBlocks(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listTextBlocks>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListTextBlocksQueryResult = NonNullable<Awaited<ReturnType<typeof listTextBlocks>>>
+export type ListTextBlocksQueryError = unknown
+
+
+export function useListTextBlocks<TData = Awaited<ReturnType<typeof listTextBlocks>>, TError = unknown>(
+ params: undefined |  ListTextBlocksParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTextBlocks>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTextBlocks>>,
+          TError,
+          Awaited<ReturnType<typeof listTextBlocks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTextBlocks<TData = Awaited<ReturnType<typeof listTextBlocks>>, TError = unknown>(
+ params?: ListTextBlocksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTextBlocks>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listTextBlocks>>,
+          TError,
+          Awaited<ReturnType<typeof listTextBlocks>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListTextBlocks<TData = Awaited<ReturnType<typeof listTextBlocks>>, TError = unknown>(
+ params?: ListTextBlocksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTextBlocks>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListTextBlocks<TData = Awaited<ReturnType<typeof listTextBlocks>>, TError = unknown>(
+ params?: ListTextBlocksParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listTextBlocks>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListTextBlocksQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateTextBlockUrl = () => {
+
+
+
+
+  return `/api/text-blocks`
+}
+
+export const createTextBlock = async ( options?: Parameters<typeof apiFetch>[1]): Promise<TextBlock> => {
+
+  return apiFetch<TextBlock>(getCreateTextBlockUrl(),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getCreateTextBlockMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTextBlock>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createTextBlock>>, TError,void, TContext> => {
+
+const mutationKey = ['createTextBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createTextBlock>>, void> = () => {
+
+
+          return  createTextBlock(requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateTextBlockMutationResult = NonNullable<Awaited<ReturnType<typeof createTextBlock>>>
+
+    export type CreateTextBlockMutationError = unknown
+
+    export const useCreateTextBlock = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createTextBlock>>, TError,void, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createTextBlock>>,
+        TError,
+        void,
+        TContext
+      > => {
+      return useMutation(getCreateTextBlockMutationOptions(options), queryClient);
+    }
+
+export const getGetTextBlockUrl = (id: number,) => {
+
+
+
+
+  return `/api/text-blocks/${id}`
+}
+
+export const getTextBlock = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<TextBlock> => {
+
+  return apiFetch<TextBlock>(getGetTextBlockUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetTextBlockQueryKey = (id: number,) => {
+    return [
+    `/api/text-blocks/${id}`
+    ] as const;
+    }
+
+
+export const getGetTextBlockQueryOptions = <TData = Awaited<ReturnType<typeof getTextBlock>>, TError = void>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTextBlock>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetTextBlockQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getTextBlock>>> = ({ signal }) => getTextBlock(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getTextBlock>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetTextBlockQueryResult = NonNullable<Awaited<ReturnType<typeof getTextBlock>>>
+export type GetTextBlockQueryError = void
+
+
+export function useGetTextBlock<TData = Awaited<ReturnType<typeof getTextBlock>>, TError = void>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTextBlock>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTextBlock>>,
+          TError,
+          Awaited<ReturnType<typeof getTextBlock>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTextBlock<TData = Awaited<ReturnType<typeof getTextBlock>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTextBlock>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getTextBlock>>,
+          TError,
+          Awaited<ReturnType<typeof getTextBlock>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetTextBlock<TData = Awaited<ReturnType<typeof getTextBlock>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTextBlock>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useGetTextBlock<TData = Awaited<ReturnType<typeof getTextBlock>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getTextBlock>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetTextBlockQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getPatchTextBlockUrl = (id: number,) => {
+
+
+
+
+  return `/api/text-blocks/${id}`
+}
+
+export const patchTextBlock = async (id: number,
+    patchTextBlock: PatchTextBlock, options?: Parameters<typeof apiFetch>[1]): Promise<TextBlock> => {
+
+  return apiFetch<TextBlock>(getPatchTextBlockUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...options?.headers },
+    body: JSON.stringify(patchTextBlock)
+  }
+);}
+
+
+
+
+
+export const getPatchTextBlockMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchTextBlock>>, TError,{id: number;data: PatchTextBlock}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchTextBlock>>, TError,{id: number;data: PatchTextBlock}, TContext> => {
+
+const mutationKey = ['patchTextBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchTextBlock>>, {id: number;data: PatchTextBlock}> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchTextBlock(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchTextBlockMutationResult = NonNullable<Awaited<ReturnType<typeof patchTextBlock>>>
+    export type PatchTextBlockMutationBody = PatchTextBlock
+    export type PatchTextBlockMutationError = void
+
+    export const usePatchTextBlock = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchTextBlock>>, TError,{id: number;data: PatchTextBlock}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchTextBlock>>,
+        TError,
+        {id: number;data: PatchTextBlock},
+        TContext
+      > => {
+      return useMutation(getPatchTextBlockMutationOptions(options), queryClient);
+    }
+
+export const getArchiveTextBlockUrl = (id: number,) => {
+
+
+
+
+  return `/api/text-blocks/${id}/archive`
+}
+
+export const archiveTextBlock = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<TextBlock> => {
+
+  return apiFetch<TextBlock>(getArchiveTextBlockUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getArchiveTextBlockMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveTextBlock>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof archiveTextBlock>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['archiveTextBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof archiveTextBlock>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  archiveTextBlock(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ArchiveTextBlockMutationResult = NonNullable<Awaited<ReturnType<typeof archiveTextBlock>>>
+
+    export type ArchiveTextBlockMutationError = unknown
+
+    export const useArchiveTextBlock = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof archiveTextBlock>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof archiveTextBlock>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getArchiveTextBlockMutationOptions(options), queryClient);
+    }
+
+export const getUnarchiveTextBlockUrl = (id: number,) => {
+
+
+
+
+  return `/api/text-blocks/${id}/unarchive`
+}
+
+export const unarchiveTextBlock = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<TextBlock> => {
+
+  return apiFetch<TextBlock>(getUnarchiveTextBlockUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getUnarchiveTextBlockMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unarchiveTextBlock>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof unarchiveTextBlock>>, TError,{id: number}, TContext> => {
+
+const mutationKey = ['unarchiveTextBlock'];
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof unarchiveTextBlock>>, {id: number}> = (props) => {
+          const {id} = props ?? {};
+
+          return  unarchiveTextBlock(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type UnarchiveTextBlockMutationResult = NonNullable<Awaited<ReturnType<typeof unarchiveTextBlock>>>
+
+    export type UnarchiveTextBlockMutationError = unknown
+
+    export const useUnarchiveTextBlock = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof unarchiveTextBlock>>, TError,{id: number}, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof unarchiveTextBlock>>,
+        TError,
+        {id: number},
+        TContext
+      > => {
+      return useMutation(getUnarchiveTextBlockMutationOptions(options), queryClient);
     }
 
 export const getDeleteTreatmentItemUrl = (id: number,) => {

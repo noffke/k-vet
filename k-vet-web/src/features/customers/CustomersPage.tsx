@@ -7,17 +7,26 @@ import {
   getListCustomersQueryKey,
   useCreateCustomer,
   useListCustomers,
-  usePatchCustomer,
 } from '@/api/generated/endpoints'
 import type { Customer } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { PageHeader } from '@/components/PageHeader'
-import { ArchivedBadge, IncompleteBadge, WarningIcon } from '@/components/RecordBadges'
+import {
+  ArchivedBadge,
+  IncompleteBadge,
+  NotInvoiceableBadge,
+  WarningIcon,
+} from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
-import { useOperatorConfig } from '@/lib/config'
 
-/** The customer index: search, warning indicators, archived on request (FR-009). */
+/**
+ * The customer index: search, warning indicators, archived on request (FR-009).
+ *
+ * Search reaches the street, the phone number and the animals' names as well as the household
+ * names — the vet looks a customer up by whichever of those they have in front of them
+ * (issues.md 3).
+ */
 export function CustomersPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -29,40 +38,32 @@ export function CustomersPage() {
     q: search || undefined,
     archived: showArchived || undefined,
   })
-  const { default_country } = useOperatorConfig()
-  const patchCustomer = usePatchCustomer()
+  // The draft already carries `[invoice] default_country` — the backend prefills it on create,
+  // so the field the vet sees and the value stored agree without a second round-trip.
   const createCustomer = useCreateCustomer({
     mutation: {
       onSuccess: async (customer) => {
-        // The practice's own country, so what is stored is what an invoice would print.
-        await patchCustomer.mutateAsync({
-          id: customer.id,
-          data: { home_country: default_country },
-        })
         await client.invalidateQueries({ queryKey: getListCustomersQueryKey() })
         await navigate({ to: '/customers/$id', params: { id: String(customer.id) } })
       },
     },
   })
 
+  // City, phone and e-mail gave up half the width to data the vet reads on the detail page
+  // anyway. The animals are what identifies a household on the phone; the address follows on a
+  // sub-line, where it is not squeezed into a column (issues.md 4).
   const columns: DataListColumn<Customer>[] = [
     {
+      // The cell has always shown the whole name, not just the surname (issues.md 8).
       id: 'name',
-      header: t('field.lastName'),
+      header: t('field.name'),
       primary: true,
       cell: (row) => customerName(row) || '—',
     },
     {
-      id: 'city',
-      header: t('field.city'),
-      cell: (row) => [row.home_zip, row.home_city].filter(Boolean).join(' '),
-    },
-    { id: 'phone', header: t('field.phone'), cell: (row) => row.phone_display ?? '' },
-    {
-      id: 'emails',
-      header: t('field.email'),
-      desktopOnly: true,
-      cell: (row) => row.emails.map((email) => email.email).join(', '),
+      id: 'patients',
+      header: t('field.patients'),
+      cell: (row) => row.patient_names.join(', '),
     },
   ]
 
@@ -105,15 +106,29 @@ export function CustomersPage() {
           <>
             <WarningIcon remark={row.warning_remark} />
             <IncompleteBadge missing={row.missing_fields} />
+            {/* Only once the record itself is complete, so one gap is not reported twice. */}
+            {row.missing_fields.length === 0 ? (
+              <NotInvoiceableBadge missing={row.invoice_missing_fields} />
+            ) : null}
             <ArchivedBadge archived={row.archived} />
           </>
         )}
+        rowSubline={(row) => addressLine(row) || null}
         onRowClick={(row) =>
           void navigate({ to: '/customers/$id', params: { id: String(row.id) } })
         }
       />
     </div>
   )
+}
+
+/** The address an invoice would print, on one line — street first, then ZIP and town. */
+function addressLine(customer: Customer): string {
+  const [street, zip, city] = customer.has_invoice_address
+    ? [customer.invoice_street, customer.invoice_zip, customer.invoice_city]
+    : [customer.home_street, customer.home_zip, customer.home_city]
+  const town = [zip, city].filter(Boolean).join(' ')
+  return [street, town].filter(Boolean).join(' · ')
 }
 
 /** "Frau Erika Mustermann", plus the second name when the household has one. */

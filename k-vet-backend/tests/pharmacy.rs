@@ -171,6 +171,11 @@ async fn the_sales_price_of_an_original_packaging_is_computed_per_ampreisv(pool:
         "computing the price completes the packaging"
     );
     assert_eq!(original["supplier_name"], "Großhandel GmbH");
+
+    // issues.md 5: the drug list quotes that same gross price, so the vet can read a figure to a
+    // customer on the phone without opening the drug.
+    let drug = app.get(&format!("/api/drugs/{drug_id}")).await.json();
+    assert_eq!(drug["original_price_gross"], "17.61");
 }
 
 #[sqlx::test]

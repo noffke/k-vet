@@ -38,7 +38,7 @@ test('a created invoice keeps its number, an accepted one burns it', async ({ pa
 
   // ── Updating while still created: same number, no waste ─────────────────────
   await page.getByRole('button', { name: 'Rechnung aktualisieren' }).click()
-  await page.getByLabel('Befund aufführen').check()
+  await page.getByLabel('Therapie und weiteres Vorgehen aufführen').check()
   await page.getByRole('button', { name: 'Rechnung aktualisieren' }).last().click()
   await expect(page.getByText('Erstellt').first()).toBeVisible()
   expect(await shownNumber(page)).toBe(first)

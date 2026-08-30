@@ -35,6 +35,9 @@ COPY k-vet-backend/.sqlx ./.sqlx
 COPY k-vet-backend/src ./src
 COPY k-vet-backend/migrations ./migrations
 COPY k-vet-backend/templates ./templates
+# The invoice sets in Source Sans 3, which `src/pdf` pulls in with `include_bytes!` — without
+# these the release build fails at compile time, and only on a `v*` tag where the image is built.
+COPY k-vet-backend/fonts ./fonts
 
 # The binary is copied out inside this RUN: a cache-mounted `target/` is gone afterwards.
 RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
@@ -58,6 +61,9 @@ COPY --from=web /build/dist /usr/share/k-vet/web
 # Shipped defaults. The entrypoint seeds the mounted templates directory from here.
 COPY k-vet-backend/templates/ /usr/share/k-vet/templates/
 COPY config.example.toml /usr/share/k-vet/config.example.toml
+# The font is compiled into the binary, so the licence has to travel with the image: SIL OFL 1.1
+# asks that the notice accompany every copy of the Font Software.
+COPY k-vet-backend/fonts/LICENSE.txt /usr/share/k-vet/licences/SourceSans3-OFL.txt
 COPY docker-entrypoint.sh /usr/local/bin/kvet-entrypoint.sh
 
 # Runs as noble's own `ubuntu` user (uid 1000, gid 1000) — the same ids as the first login

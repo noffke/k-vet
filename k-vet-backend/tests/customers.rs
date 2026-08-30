@@ -204,6 +204,165 @@ async fn search_matches_both_names_of_a_household(pool: PgPool) {
     assert_eq!(nothing.as_array().map(Vec::len), Some(0));
 }
 
+/// issues.md 3: the vet looks a customer up by whatever they have in front of them — the street
+/// on an envelope, the number on the phone display, or the animal's name.
+#[sqlx::test]
+async fn search_also_matches_street_phone_and_the_animals(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+    common::seed_patient(&pool, id).await;
+    app.patch(
+        &format!("/api/customers/{id}"),
+        json!({ "phone": "030 12345678" }),
+    )
+    .await;
+
+    let by_street = app.get("/api/customers?q=Musterweg").await.json();
+    assert_eq!(by_street.as_array().map(Vec::len), Some(1), "by street");
+
+    let by_animal = app.get("/api/customers?q=Bello").await.json();
+    assert_eq!(
+        by_animal.as_array().map(Vec::len),
+        Some(1),
+        "by animal name"
+    );
+
+    // Stored as E.164 (`+493012345678`) but typed the way it is written down: the trunk zero
+    // has to fall away for the two to meet.
+    let national = app.get("/api/customers?q=030%201234").await.json();
+    assert_eq!(
+        national.as_array().map(Vec::len),
+        Some(1),
+        "national format"
+    );
+
+    let international = app.get("/api/customers?q=%2B4930123").await.json();
+    assert_eq!(
+        international.as_array().map(Vec::len),
+        Some(1),
+        "E.164 input"
+    );
+
+    // A term with no digits at all must not fall through the phone clause and match everyone.
+    let nothing = app.get("/api/customers?q=Kaninchenweg").await.json();
+    assert_eq!(nothing.as_array().map(Vec::len), Some(0));
+
+    // A deceased animal is not among the names the row prints, so it must not surface its owner
+    // either — a match the row cannot explain reads as a bug.
+    let bello: i64 = sqlx::query_scalar("SELECT id FROM patient WHERE customer_id = $1")
+        .bind(id)
+        .fetch_one(&pool)
+        .await
+        .expect("the seeded animal");
+    app.patch(
+        &format!("/api/patients/{bello}"),
+        json!({ "date_of_death": "2026-05-03" }),
+    )
+    .await;
+    let gone = app.get("/api/customers?q=Bello").await.json();
+    assert_eq!(gone.as_array().map(Vec::len), Some(0));
+}
+
+/// issues.md 4: the list names a household by its animals, and deceased ones are not among them.
+#[sqlx::test]
+async fn the_customer_carries_the_names_of_its_living_animals(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+    let bello = common::seed_patient(&pool, id).await;
+    let minka = common::seed_patient(&pool, id).await;
+    app.patch(
+        &format!("/api/patients/{minka}"),
+        json!({ "name": "Minka" }),
+    )
+    .await;
+
+    let customer = app.get(&format!("/api/customers/{id}")).await.json();
+    assert_eq!(customer["patient_names"], json!(["Bello", "Minka"]));
+
+    // A date of death archives the animal; either way it drops off the customer.
+    app.patch(
+        &format!("/api/patients/{bello}"),
+        json!({ "date_of_death": "2026-05-03" }),
+    )
+    .await;
+    let after = app.get(&format!("/api/customers/{id}")).await.json();
+    assert_eq!(after["patient_names"], json!(["Minka"]));
+}
+
+/// issues.md 20: an invoice needs more than the record does — a first name and an address —
+/// but that is reported, never enforced. The `customer_complete` CHECK stays where it is.
+#[sqlx::test]
+async fn a_customer_reports_what_an_invoice_would_still_be_missing(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+
+    let complete = app.get(&format!("/api/customers/{id}")).await.json();
+    assert_eq!(complete["invoice_missing_fields"], json!([]));
+
+    // A household recorded as "Familie Mustermann" is a perfectly valid customer ...
+    let without_first_name = app
+        .patch(
+            &format!("/api/customers/{id}"),
+            json!({ "first_name": null }),
+        )
+        .await;
+    assert_eq!(without_first_name.status, StatusCode::OK);
+    let record = without_first_name.json();
+    assert_eq!(
+        record["draft"], false,
+        "the record itself is still complete"
+    );
+    assert_eq!(record["missing_fields"], json!([]));
+    // ... but not one to send an invoice to.
+    assert_eq!(record["invoice_missing_fields"], json!(["first_name"]));
+}
+
+/// The set follows the address the invoice would actually print, so a complete separate
+/// invoice address is not judged by gaps in the home address nobody will see.
+#[sqlx::test]
+async fn invoice_readiness_follows_the_address_that_would_be_printed(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+    app.patch(
+        &format!("/api/customers/{id}"),
+        json!({ "first_name": null }),
+    )
+    .await;
+
+    let record = app
+        .patch(
+            &format!("/api/customers/{id}"),
+            json!({
+                "invoice_salutation": "herr",
+                "invoice_first_name": "Karl",
+                "invoice_last_name": "Mustermann",
+                "invoice_street": "Rechnungsweg 1",
+                "invoice_zip": "54321",
+                "invoice_city": "Zahlstadt",
+            }),
+        )
+        .await
+        .json();
+
+    assert_eq!(record["has_invoice_address"], true);
+    assert_eq!(
+        record["invoice_missing_fields"],
+        json!([]),
+        "the home address's missing first name is not what gets printed"
+    );
+}
+
+/// issues.md, follow-up: the country field is prefilled rather than left to a render-time
+/// fallback, so what the vet sees on the form is what is stored.
+#[sqlx::test]
+async fn a_new_customer_starts_with_the_configured_country(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let created = app.post_empty("/api/customers").await.json();
+    assert_eq!(created["home_country"], "DE");
+    // Still a draft — a prefilled country is not one of the mandatory fields.
+    assert_eq!(created["draft"], true);
+}
+
 #[sqlx::test]
 async fn an_invoice_address_is_only_used_once_it_is_complete(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

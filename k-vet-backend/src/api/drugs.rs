@@ -59,6 +59,9 @@ pub struct Drug {
     pub in_stock: Decimal,
     /// The original packaging's unit — what `in_stock` is counted in.
     pub unit: Option<String>,
+    /// Gross sales price of the original packaging — the figure the vet reads out to a customer
+    /// asking what something costs. `None` until that packaging has a price.
+    pub original_price_gross: Option<Decimal>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -597,7 +600,10 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
                     WHERE lot_remaining.drug_id = drug.id) AS "in_stock?",
                   (SELECT unit FROM drug_packaging
                     WHERE drug_packaging.drug_id = drug.id
-                      AND drug_packaging.kind = 'original') AS "unit?"
+                      AND drug_packaging.kind = 'original') AS "unit?",
+                  (SELECT sales_price_net FROM drug_packaging
+                    WHERE drug_packaging.drug_id = drug.id
+                      AND drug_packaging.kind = 'original') AS "original_price_net?"
            FROM drug
            LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id
            WHERE drug.id = $1"#,
@@ -634,6 +640,10 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         missing_fields: missing,
         in_stock: row.in_stock.unwrap_or_default(),
         unit: row.unit,
+        // Derived here rather than in the frontend: money is computed in one place only.
+        original_price_gross: row
+            .original_price_net
+            .map(|net| money::add_vat(net, row.vat_percent.unwrap_or(Decimal::ZERO)).gross),
         created_at: row.created_at,
         updated_at: row.updated_at,
     })

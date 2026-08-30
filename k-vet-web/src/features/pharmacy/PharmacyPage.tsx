@@ -23,7 +23,7 @@ export function PharmacyPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const client = useQueryClient()
-  const { quantity, percent } = useLocaleFormat()
+  const { quantity, money } = useLocaleFormat()
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
 
@@ -75,7 +75,15 @@ export function PharmacyPage() {
       header: t('field.manufacturer'),
       cell: (row) => row.manufacturer_name ?? '',
     },
-    { id: 'vat', header: t('field.vat'), numeric: true, cell: (row) => percent(row.vat_percent) },
+    {
+      // The gross price of the original packaging, not the VAT rate: what the vet needs from
+      // this list is the number to read out to a customer asking what something costs
+      // (issues.md 5). The VAT rate is on the drug's own page.
+      id: 'price',
+      header: t('field.priceGross'),
+      numeric: true,
+      cell: (row) => (row.original_price_gross ? money(row.original_price_gross) : '—'),
+    },
     {
       id: 'stock',
       header: t('pharmacy.stock'),

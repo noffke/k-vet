@@ -51,10 +51,22 @@ pub struct Customer {
     pub archived: bool,
     pub draft: bool,
     pub missing_fields: Vec<String>,
+    /// What an invoice would still be missing, evaluated on the address group it would actually
+    /// print (`invoice_*` when `has_invoice_address`, the home address otherwise).
+    ///
+    /// Deliberately *not* the same set as `missing_fields`: a first name is not required to
+    /// record a customer, but an invoice without one is not one the practice wants to send.
+    /// Keeping it separate leaves the `customer_complete` CHECK — and therefore every existing
+    /// row — untouched. The country is never in this set: NULL means `[invoice] default_country`,
+    /// and it does not print on a domestic invoice anyway.
+    pub invoice_missing_fields: Vec<String>,
     /// `true` when the invoice address group is complete and replaces the home address.
     pub has_invoice_address: bool,
     pub has_second_name: bool,
     pub emails: Vec<CustomerEmail>,
+    /// Living animals of this customer, alphabetical — what the customers list prints under
+    /// the name.
+    pub patient_names: Vec<String>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -149,7 +161,17 @@ pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
 ) -> AppResult<Json<Vec<Customer>>> {
-    // Search matches both names of a household (data-model.md).
+    // Search matches both names of a household (data-model.md), the address, the phone number
+    // and the names of the animals — the vet looks a customer up by whichever of those they
+    // happen to have in front of them.
+    //
+    // The phone clause has to normalise: the column holds E.164 (`+493012345678`) while the vet
+    // types the national form (`0176 123`). Reducing both sides to digits and dropping the
+    // query's leading trunk zero makes `0176 123` find `+49176123…`. The emptiness guard stops a
+    // term without digits from turning `LIKE '%%'` into a match on every row.
+    //
+    // The animals matched are exactly the ones the row goes on to print, deceased ones excluded
+    // — a customer surfacing for a name that is then nowhere in their row reads as a bug.
     let ids: Vec<i64> = sqlx::query_scalar!(
         r#"SELECT id FROM customer
            WHERE ($2 OR NOT archived)
@@ -158,7 +180,17 @@ pub async fn list(
                   OR first_name ILIKE '%' || $1 || '%'
                   OR second_last_name ILIKE '%' || $1 || '%'
                   OR second_first_name ILIKE '%' || $1 || '%'
-                  OR home_city ILIKE '%' || $1 || '%')
+                  OR home_city ILIKE '%' || $1 || '%'
+                  OR home_street ILIKE '%' || $1 || '%'
+                  OR invoice_street ILIKE '%' || $1 || '%'
+                  OR (regexp_replace($1, '\D', '', 'g') <> ''
+                      AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g')
+                          LIKE '%' || ltrim(regexp_replace($1, '\D', '', 'g'), '0') || '%')
+                  OR EXISTS (SELECT 1 FROM patient
+                              WHERE patient.customer_id = customer.id
+                                AND NOT patient.archived
+                                AND patient.date_of_death IS NULL
+                                AND patient.name ILIKE '%' || $1 || '%'))
            ORDER BY last_name NULLS LAST, first_name NULLS LAST, id
            LIMIT $3 OFFSET $4"#,
         query.search(),
@@ -184,9 +216,15 @@ pub async fn list(
     responses((status = 200, description = "An empty draft, ready for auto-save", body = Customer))
 )]
 pub async fn create(State(state): State<AppState>) -> AppResult<Json<Customer>> {
-    let id: i64 = sqlx::query_scalar!("INSERT INTO customer DEFAULT VALUES RETURNING id")
-        .fetch_one(&state.pool)
-        .await?;
+    // The country is prefilled rather than left NULL: the edit page has always *shown* the
+    // configured default in that field, and a stored value the vet can see and change beats one
+    // that only exists as a fallback in the renderer.
+    let id: i64 = sqlx::query_scalar!(
+        "INSERT INTO customer (home_country) VALUES ($1) RETURNING id",
+        state.config.invoice.default_country,
+    )
+    .fetch_one(&state.pool)
+    .await?;
     Ok(Json(load(&state.pool, id).await?))
 }
 
@@ -535,6 +573,44 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
     .map(str::to_owned)
     .collect();
 
+    // Evaluated on the address the invoice would print, so a customer with a complete separate
+    // invoice address is not nagged about gaps in the home address it will never use.
+    let filled = |value: &Option<String>| value.as_deref().is_some_and(|v| !v.trim().is_empty());
+    let invoice_missing_fields = if row.has_invoice_address {
+        crate::domain::draft::missing_fields(&[
+            ("invoice_first_name", filled(&row.invoice_first_name)),
+            ("invoice_last_name", filled(&row.invoice_last_name)),
+            ("invoice_street", filled(&row.invoice_street)),
+            ("invoice_zip", filled(&row.invoice_zip)),
+            ("invoice_city", filled(&row.invoice_city)),
+        ])
+    } else {
+        crate::domain::draft::missing_fields(&[
+            ("first_name", filled(&row.first_name)),
+            ("last_name", filled(&row.last_name)),
+            ("home_street", filled(&row.home_street)),
+            ("home_zip", filled(&row.home_zip)),
+            ("home_city", filled(&row.home_city)),
+        ])
+    }
+    .into_iter()
+    .map(str::to_owned)
+    .collect();
+
+    // Archiving already hides a deceased animal, but an unarchived one with a date of death
+    // still is not someone to greet the customer with.
+    let patient_names = sqlx::query_scalar!(
+        "SELECT name FROM patient
+          WHERE customer_id = $1 AND NOT archived AND date_of_death IS NULL AND name IS NOT NULL
+          ORDER BY name",
+        id,
+    )
+    .fetch_all(pool)
+    .await?
+    .into_iter()
+    .flatten()
+    .collect();
+
     Ok(Customer {
         id: row.id,
         salutation: row.salutation,
@@ -564,9 +640,11 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
         archived: row.archived,
         draft: row.draft,
         missing_fields,
+        invoice_missing_fields,
         has_invoice_address: row.has_invoice_address,
         has_second_name: row.has_second_name,
         emails,
+        patient_names,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })

@@ -70,10 +70,26 @@ export interface Customer {
   archived: boolean;
   draft: boolean;
   missing_fields: string[];
+  /**
+     * What an invoice would still be missing, evaluated on the address group it would actually
+     * print (`invoice_*` when `has_invoice_address`, the home address otherwise).
+     *
+     * Deliberately *not* the same set as `missing_fields`: a first name is not required to
+     * record a customer, but an invoice without one is not one the practice wants to send.
+     * Keeping it separate leaves the `customer_complete` CHECK — and therefore every existing
+     * row — untouched. The country is never in this set: NULL means `[invoice] default_country`,
+     * and it does not print on a domestic invoice anyway.
+     */
+  invoice_missing_fields: string[];
   /** `true` when the invoice address group is complete and replaces the home address. */
   has_invoice_address: boolean;
   has_second_name: boolean;
   emails: CustomerEmail[];
+  /**
+     * Living animals of this customer, alphabetical — what the customers list prints under
+     * the name.
+     */
+  patient_names: string[];
   created_at: string;
   updated_at: string;
 }

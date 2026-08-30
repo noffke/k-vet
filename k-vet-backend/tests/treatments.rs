@@ -100,6 +100,40 @@ async fn line_total_applies_quantity_and_factor(pool: PgPool) {
         .await
         .json();
     assert_eq!(patched["line_net"], "70.86");
+
+    // issues.md 16: the unit price the invoice prints carries the Steigerungssatz, so
+    // Einzelpreis × Menge reconciles with Gesamt instead of falling 50 % short.
+    // 23.62 × 1.5 = 35.43 net → 42.16 gross at 19 %.
+    assert_eq!(
+        patched["price_net"], "23.62",
+        "the editable net price is the fee itself"
+    );
+    assert_eq!(patched["price_gross"], "42.16");
+}
+
+/// The same figure reaches the picker, so the price previewed before a pick is the price the
+/// line ends up costing (issues.md 16).
+#[sqlx::test]
+async fn the_picker_previews_the_price_the_line_will_have(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let service_id = common::seed_got_service(&pool).await;
+    sqlx::query("UPDATE service SET factor = 150.000 WHERE id = $1")
+        .bind(service_id)
+        .execute(&pool)
+        .await
+        .expect("raise the factor");
+
+    let items = app.get("/api/picker/items?q=Allgemeine").await.json();
+    let service = items
+        .as_array()
+        .and_then(|entries| {
+            entries
+                .iter()
+                .find(|entry| entry["kind"] == "service" && entry["id"] == service_id)
+        })
+        .expect("the GOT position is offered");
+    assert_eq!(service["price_net"], "23.62");
+    assert_eq!(service["price_gross"], "42.16");
 }
 
 #[sqlx::test]

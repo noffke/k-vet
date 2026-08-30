@@ -20,6 +20,15 @@ use crate::error::{AppError, AppResult};
 /// The template compiled into the binary; the config may point at a file instead.
 const DEFAULT_TEMPLATE: &str = include_str!("../../templates/invoice.typ");
 
+/// Source Sans 3 (SIL Open Font License 1.1, `fonts/LICENSE.txt`) — regular, bold, italic and
+/// bold italic, the four the default template asks for.
+const SANS_FACES: [&[u8]; 4] = [
+    include_bytes!("../../fonts/SourceSans3-Regular.otf"),
+    include_bytes!("../../fonts/SourceSans3-Bold.otf"),
+    include_bytes!("../../fonts/SourceSans3-Italic.otf"),
+    include_bytes!("../../fonts/SourceSans3-BoldItalic.otf"),
+];
+
 /// Everything the template needs, pre-formatted in German conventions.
 #[derive(Debug, Serialize)]
 pub struct InvoiceDocument {
@@ -139,7 +148,12 @@ pub fn render_invoice(
 
     let engine = TypstEngine::builder()
         .main_file(template)
-        // Only the fonts bundled with the binary — the Pi has no font packages installed.
+        // The invoice sets in Source Sans 3, which typst-assets does not carry: its embedded
+        // text faces are all serif (Libertinus Serif, New Computer Modern) and its only sans is
+        // DejaVu Sans *Mono*. So the four faces the template needs travel in the binary.
+        .fonts(SANS_FACES)
+        // Everything else stays bundled too — the Pi has no font packages installed, and a
+        // custom template may still want the serif faces.
         .search_fonts_with(
             TypstKitFontOptions::new()
                 .include_system_fonts(false)
@@ -662,6 +676,14 @@ mod tests {
             pdf.len() > 2_000,
             "a one-page invoice is a few kilobytes, got {}",
             pdf.len()
+        );
+        // The sans faces are the one part of the template that is not in typst-assets: an
+        // unknown family falls back to the bundled serif with only a warning, which is a
+        // regression nobody notices until an invoice is printed. The subset PostScript name is
+        // written into the PDF, so look for it (typst prefixes it with a six-letter subset tag).
+        assert!(
+            pdf.windows(12).any(|window| window == b"SourceSans3-"),
+            "the invoice must set in Source Sans 3, not fall back to the bundled serif"
         );
     }
 

@@ -291,6 +291,7 @@ export const PatchCustomerEmailResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -298,6 +299,7 @@ export const PatchCustomerEmailResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -339,6 +341,7 @@ export const ListCustomersResponseItem = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -346,6 +349,7 @@ export const ListCustomersResponseItem = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -381,6 +385,7 @@ export const CreateCustomerResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -388,6 +393,7 @@ export const CreateCustomerResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -426,6 +432,7 @@ export const GetCustomerResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -433,6 +440,7 @@ export const GetCustomerResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -497,6 +505,7 @@ export const PatchCustomerResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -504,6 +513,7 @@ export const PatchCustomerResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -542,6 +552,7 @@ export const ArchiveCustomerResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -549,6 +560,7 @@ export const ArchiveCustomerResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -592,6 +604,7 @@ export const AddCustomerEmailResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -599,6 +612,7 @@ export const AddCustomerEmailResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -637,6 +651,7 @@ export const UnarchiveCustomerResponse = zod.object({
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
+  "invoice_missing_fields": zod.array(zod.string()).describe('What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_\*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately \*not\* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway.'),
   "has_invoice_address": zod.boolean().describe('`true` when the invoice address group is complete and replaces the home address.'),
   "has_second_name": zod.boolean(),
   "emails": zod.array(zod.object({
@@ -644,6 +659,7 @@ export const UnarchiveCustomerResponse = zod.object({
   "email": zod.string(),
   "email_type": zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')
 })),
+  "patient_names": zod.array(zod.string()).describe('Living animals of this customer, alphabetical — what the customers list prints under\nthe name.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -721,6 +737,7 @@ export const ListDrugsResponseItem = zod.object({
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -745,6 +762,7 @@ export const CreateDrugResponse = zod.object({
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -772,6 +790,7 @@ export const GetDrugResponse = zod.object({
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -812,6 +831,7 @@ export const PatchDrugResponse = zod.object({
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -839,6 +859,7 @@ export const ArchiveDrugResponse = zod.object({
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -917,6 +938,7 @@ export const UnarchiveDrugResponse = zod.object({
   "missing_fields": zod.array(zod.string()),
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -1711,6 +1733,21 @@ export const ListPatientFilesResponseItem = zod.object({
 export const ListPatientFilesResponse = zod.array(ListPatientFilesResponseItem)
 
 
+export const ListPatientTreatmentsOfPatientParams = zod.object({
+  "id": zod.int()
+})
+
+export const ListPatientTreatmentsOfPatientResponseItem = zod.object({
+  "id": zod.int().describe('The `patient_treatment` record — what the list links to.'),
+  "treatment_id": zod.int(),
+  "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date; the record has none of its own.'),
+  "treatment_reason": zod.string().nullish(),
+  "invoice_number": zod.string().nullish().describe('The visit\'s invoice, when it has one that was not cancelled.'),
+  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
+}).describe('One visit this animal was part of, as the patient page lists them.')
+export const ListPatientTreatmentsOfPatientResponse = zod.array(ListPatientTreatmentsOfPatientResponseItem)
+
+
 export const UnarchivePatientParams = zod.object({
   "id": zod.int()
 })
@@ -1755,7 +1792,7 @@ export const PickerItemsResponseItem = zod.union([zod.object({
   "name": zod.string().describe('Drug name; the UI composes the display label with locale formatting.'),
   "unit": zod.string().nullish(),
   "quantity": zod.string().nullish(),
-  "price_net": zod.string().describe('Net price; `price_gross` is derived from it for display.'),
+  "price_net": zod.string().describe('Net price, before the Steigerungssatz; `price_gross` is what the line will cost.'),
   "price_gross": zod.string(),
   "vat_percent": zod.string(),
   "in_stock": zod.string().describe('Derived stock over all lots — a shortfall is visible before picking.'),
@@ -1766,7 +1803,7 @@ export const PickerItemsResponseItem = zod.union([zod.object({
   "name": zod.string(),
   "got_number": zod.string().nullish(),
   "factor": zod.string().nullish(),
-  "price_net": zod.string().describe('Net price; `price_gross` is derived from it for display.'),
+  "price_net": zod.string().describe('Net price, before the Steigerungssatz; `price_gross` is what the line will cost.'),
   "price_gross": zod.string(),
   "vat_percent": zod.string(),
   "travel_expenses": zod.boolean(),
@@ -2181,6 +2218,107 @@ export const MoveTemplateItemResponseItem = zod.object({
 export const MoveTemplateItemResponse = zod.array(MoveTemplateItemResponseItem)
 
 
+export const ListTextBlocksQueryParams = zod.object({
+  "q": zod.string().optional().describe('Text filter (name, number, …).'),
+  "archived": zod.boolean().optional().describe('Include archived records (default: false).'),
+  "limit": zod.int().optional(),
+  "offset": zod.int().optional()
+})
+
+export const ListTextBlocksResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+export const ListTextBlocksResponse = zod.array(ListTextBlocksResponseItem)
+
+
+export const CreateTextBlockResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const GetTextBlockParams = zod.object({
+  "id": zod.int()
+})
+
+export const GetTextBlockResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const PatchTextBlockParams = zod.object({
+  "id": zod.int()
+})
+
+export const PatchTextBlockBody = zod.object({
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish()
+})
+
+export const PatchTextBlockResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const ArchiveTextBlockParams = zod.object({
+  "id": zod.int()
+})
+
+export const ArchiveTextBlockResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const UnarchiveTextBlockParams = zod.object({
+  "id": zod.int()
+})
+
+export const UnarchiveTextBlockResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "content": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
 export const DeleteTreatmentItemParams = zod.object({
   "id": zod.int()
 })
@@ -2218,7 +2356,7 @@ export const PatchTreatmentItemResponse = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
@@ -2261,7 +2399,7 @@ export const SetTreatmentItemLotsResponse = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
@@ -2302,7 +2440,7 @@ export const MoveTreatmentItemResponseItem = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
@@ -2528,7 +2666,7 @@ export const ApplyTemplateResponseItem = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
@@ -2635,7 +2773,7 @@ export const ListTreatmentItemsResponseItem = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
@@ -2684,7 +2822,7 @@ export const CreateTreatmentItemResponse = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),
@@ -2725,7 +2863,7 @@ export const BulkDeleteTreatmentItemsResponseItem = zod.object({
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged \*analogously\* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
   "price_net": zod.string().describe('Per-unit \*\*net\*\* price, pinned at line entry.'),
-  "price_gross": zod.string().describe('Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, \*\*with the Steigerungssatz already applied\*\*.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross \/ quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
   "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
   "km_multiplier": zod.string().nullish(),

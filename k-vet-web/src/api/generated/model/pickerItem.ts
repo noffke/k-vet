@@ -18,7 +18,7 @@ export type PickerItem = {
   unit?: string | null;
   /** @nullable */
   quantity?: string | null;
-  /** Net price; `price_gross` is derived from it for display. */
+  /** Net price, before the Steigerungssatz; `price_gross` is what the line will cost. */
   price_net: string;
   price_gross: string;
   vat_percent: string;
@@ -33,7 +33,7 @@ export type PickerItem = {
   got_number?: string | null;
   /** @nullable */
   factor?: string | null;
-  /** Net price; `price_gross` is derived from it for display. */
+  /** Net price, before the Steigerungssatz; `price_gross` is what the line will cost. */
   price_net: string;
   price_gross: string;
   vat_percent: string;

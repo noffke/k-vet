@@ -20,7 +20,6 @@ import {
 } from '@/features/masterdata/AddressBookDetailPage'
 import { MasterDataPage } from '@/features/masterdata/MasterDataPage'
 import { PatientDetailPage } from '@/features/patients/PatientDetailPage'
-import { PatientsPage } from '@/features/patients/PatientsPage'
 import { DrugDetailPage } from '@/features/pharmacy/DrugDetailPage'
 import { LotDetailPage } from '@/features/pharmacy/LotDetailPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
@@ -30,6 +29,8 @@ import { ServiceDetailPage, ServicesPage } from '@/features/services/ServicesPag
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { NotFoundPage } from '@/features/shell/NotFoundPage'
 import { TemplateDetailPage, TemplatesPage } from '@/features/templates/TemplatesPage'
+import { TextBlockDetailPage } from '@/features/textblocks/TextBlockDetailPage'
+import { TextBlocksPage } from '@/features/textblocks/TextBlocksPage'
 import { InvoiceAcceptPage } from '@/features/treatments/InvoiceAcceptPage'
 import { InvoiceCreatePage } from '@/features/treatments/InvoiceCreatePage'
 import { InvoiceSendPage } from '@/features/treatments/InvoiceSendPage'
@@ -106,12 +107,6 @@ const customerDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/customers/$id',
   component: CustomerDetailPage,
-})
-
-const patientsRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/patients',
-  component: PatientsPage,
 })
 
 const patientDetailRoute = createRoute({
@@ -192,6 +187,18 @@ const templateDetailRoute = createRoute({
   component: TemplateDetailPage,
 })
 
+const textBlocksRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/text-blocks',
+  component: TextBlocksPage,
+})
+
+const textBlockDetailRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/text-blocks/$id',
+  component: TextBlockDetailPage,
+})
+
 const treatmentRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/treatments/$id',
@@ -232,7 +239,6 @@ const routeTree = rootRoute.addChildren([
     appointmentDetailRoute,
     customersRoute,
     customerDetailRoute,
-    patientsRoute,
     patientDetailRoute,
     pharmacyRoute,
     drugDetailRoute,
@@ -246,6 +252,8 @@ const routeTree = rootRoute.addChildren([
     serviceDetailRoute,
     templatesRoute,
     templateDetailRoute,
+    textBlocksRoute,
+    textBlockDetailRoute,
     treatmentRoute,
     invoiceCreateRoute,
     invoiceAcceptRoute,

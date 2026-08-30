@@ -49,6 +49,31 @@ describe('DataList', () => {
     expect(onRowClick).toHaveBeenCalledWith(rows[1])
   })
 
+  it('renders a sub-line under the row in both layouts', async () => {
+    const onRowClick = vi.fn()
+    render(
+      <DataList
+        data={rows}
+        columns={columns}
+        getRowId={(row) => String(row.id)}
+        onRowClick={onRowClick}
+        rowSubline={(row) => (row.id === 1 ? `Musterweg 5 · 12345 Musterstadt` : null)}
+      />,
+    )
+
+    // Once in the table's own `<tr>`, once inside the phone card.
+    expect(screen.getAllByText('Musterweg 5 · 12345 Musterstadt')).toHaveLength(2)
+    // The sub-line spans every column rather than sitting inside one.
+    const cell = screen.getAllByText('Musterweg 5 · 12345 Musterstadt')[0] as HTMLElement
+    expect(cell.closest('td')).toHaveAttribute('colspan', '2')
+    // Rows without one are unaffected.
+    expect(screen.getAllByText('Minka')).toHaveLength(2)
+
+    // Clicking the sub-line opens the row it belongs to, like the cells above it.
+    await userEvent.click(cell)
+    expect(onRowClick).toHaveBeenCalledWith(rows[0])
+  })
+
   it('shows an empty state instead of an empty table', () => {
     render(
       <DataList

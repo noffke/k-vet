@@ -32,14 +32,14 @@ test.describe('auto-save', () => {
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
     const recordId = treatment.patients[0].id
     await page.goto(`/patient-treatments/${recordId}`)
-    await page.getByLabel('Behandlungsgrund').fill('Impfung und Kontrolle')
+    await page.getByLabel('Vorbericht und Untersuchung').fill('Impfung und Kontrolle')
 
     // Navigate away immediately: the pending change is flushed, not dropped.
     await navigate(page, 'Kunden')
     await expect(page).toHaveURL(/\/customers$/)
 
     await page.goto(`/patient-treatments/${recordId}`)
-    await expect(page.getByLabel('Behandlungsgrund')).toHaveValue('Impfung und Kontrolle')
+    await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveValue('Impfung und Kontrolle')
   })
 
   test('an invalid value is not stored and the last valid one stays', async ({ page, request }) => {

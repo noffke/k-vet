@@ -44,10 +44,15 @@ Typst is called with two system inputs:
 #let invoice = data.invoice
 ```
 
-Only the fonts embedded in the binary are available: `Libertinus Serif`, `New Computer Modern`,
+Only the fonts embedded in the binary are available: `Source Sans 3` (regular, bold, italic and
+bold italic — what the default template sets in), plus `Libertinus Serif`, `New Computer Modern`,
 `New Computer Modern Math` and `DejaVu Sans Mono`. System fonts are deliberately not searched — the
 appliance has none installed, and a template must render identically everywhere. Naming any other
 font falls back silently and changes the metrics, so stay with these.
+
+Source Sans 3 is the only one that does not come from `typst-assets`: its four faces live in
+`k-vet-backend/fonts/` (SIL Open Font License 1.1) and are compiled into the binary. The serif
+faces stay available, so a template that prefers them only has to say so.
 
 ### `practice`
 
@@ -92,8 +97,8 @@ section:
 | --- | --- |
 | `patient` | Animal name. |
 | `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`; empty parts are left out. |
-| `treatment_reason` | Why the animal was seen; may be empty. |
-| `finding` | Only filled when the invoice was created with *Befund aufführen*; otherwise empty. |
+| `treatment_reason` | Why the animal was seen and what the examination showed — printed under *Vorbericht und Untersuchung*; may be empty. The wire name predates that heading. |
+| `finding` | What was treated and what happens next — printed under *Therapie und weiteres Vorgehen*. Only filled when the invoice was created with that box ticked; otherwise empty. |
 
 > **Changed with the Patientenbehandlung.** The reason and the finding used to be single
 > invoice-level fields, `invoice.treatment_reason` and `invoice.finding`, because a treatment
@@ -123,7 +128,7 @@ A line (`invoice.items[]`):
 | `km` | Kilometres on a travel-expense line; empty otherwise. |
 | `vat` | This line's VAT rate, e.g. `19 %`. |
 | `detail` | The small second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)` for a self-defined position charged analogously to that GOT number, `1 Stück`, or `1 Originalpackung, Zulassungsnr: 402485.00.00`. Empty when there is nothing to add. |
-| `price` | Unit price, gross. |
+| `price` | Unit price, gross, **with the GOT factor already applied** — so `price × quantity` reconciles with `total`. Not the bare catalogue fee; that is the net figure the vet edits. |
 | `total` | Line total, gross. |
 
 A VAT group (`invoice.vat_groups[]`) has `rate` (e.g. `19 %`), `net`, `vat` and `gross`. Sum the
@@ -139,7 +144,9 @@ Empty strings are the "absent" signal throughout — there are no nulls. Guard o
 
 ```typst
 #for report in invoice.reports [
-  #if report.finding != "" [ #text(10pt)[*Befund:* #report.finding] ]
+  #if report.finding != "" [
+    #text(10pt)[*Therapie und weiteres Vorgehen:* #report.finding]
+  ]
 ]
 ```
 

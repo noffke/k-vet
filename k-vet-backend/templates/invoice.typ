@@ -50,7 +50,9 @@
   ],
   footer-descent: 8mm,
 )
-#set text(font: ("Libertinus Serif",), size: 10.5pt, lang: "de")
+// Source Sans 3 travels in the binary (see `pdf::SANS_FACES`); the serif faces
+// typst-assets bundles stay available to a custom template.
+#set text(font: ("Source Sans 3",), size: 10pt, lang: "de")
 
 // ── Anschriftenfeld (DIN 5008) ────────────────────────────────────────────────
 #v(4mm)
@@ -176,12 +178,38 @@ Vielen Dank für Ihr Vertrauen!
   #text(10pt)[#invoice.note]
 ]
 
+// ── Behandlungsbericht ────────────────────────────────────────────────────────
+// One block per animal. Animals with neither a reason nor a finding are not in `reports`.
+#if invoice.reports.len() > 0 [
+  #v(8mm)
+  #if invoice.treatment_heading != "" [
+    #text(10pt, weight: "bold")[#invoice.treatment_heading]
+    #v(2mm)
+  ]
+  #set text(9.5pt)
+  #set par(leading: 0.65em)
+  #for report in invoice.reports [
+    #text(weight: "bold")[#report.patient]
+    #if report.description != "" [ #text(fill: muted)[(#report.description)]]
+    #v(1mm)
+    #if report.treatment_reason != "" [
+      *Vorbericht und Untersuchung:* #report.treatment_reason
+      #v(1mm)
+    ]
+    #if report.finding != "" [
+      *Therapie und weiteres Vorgehen:* #report.finding
+    ]
+    #v(3mm)
+  ]
+]
+
 // ── GiroCode ──────────────────────────────────────────────────────────────────
-// Placed with the money rather than after the clinical report: that report can run for pages
-// (the invoice this replaces ran to three), and the payment details should not end up behind it
-// or alone on a trailing page.
+// Last in the document: the report is what the customer reads through, the payment details are
+// what they act on once they have. `breakable: false` keeps the code together with the sentence
+// that explains it, and moves the pair to the next page only when they do not fit on this one —
+// no explicit page break, which would strand the block on a sheet of its own every time.
 #if invoice.qr_present [
-  #v(6mm)
+  #v(8mm)
   #block(breakable: false)[
     #grid(
       columns: (auto, 1fr),
@@ -198,30 +226,5 @@ Vielen Dank für Ihr Vertrauen!
         #invoice.total · Verwendungszweck: Rechnung #invoice.number
       ],
     )
-  ]
-]
-
-// ── Behandlungsbericht ────────────────────────────────────────────────────────
-// One block per animal. Animals with neither a reason nor a finding are not in `reports`.
-#if invoice.reports.len() > 0 [
-  #v(8mm)
-  #if invoice.treatment_heading != "" [
-    #text(10pt, weight: "bold")[#invoice.treatment_heading]
-    #v(2mm)
-  ]
-  #set text(9.5pt)
-  #set par(leading: 0.65em)
-  #for report in invoice.reports [
-    #text(weight: "bold")[#report.patient]
-    #if report.description != "" [ #text(fill: muted)[(#report.description)]]
-    #v(1mm)
-    #if report.treatment_reason != "" [
-      *Behandlungsgrund:* #report.treatment_reason
-      #v(1mm)
-    ]
-    #if report.finding != "" [
-      *Befund:* #report.finding
-    ]
-    #v(3mm)
   ]
 ]

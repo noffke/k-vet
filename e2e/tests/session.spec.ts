@@ -17,7 +17,7 @@ test.describe('an expired session', () => {
     // Dropping the cookie is what an expired session looks like from the browser's side.
     await page.context().clearCookies()
 
-    await navigate(page, 'Patienten')
+    await navigate(page, 'Apotheke')
 
     // The reason is in the URL, so it is still on screen once the toast has faded.
     await expect(page).toHaveURL(/\/login\?expired=true$/)

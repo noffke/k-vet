@@ -7,11 +7,13 @@ import {
   getGetInvoiceQueryKey,
   getGetTreatmentQueryKey,
   useAcceptInvoice,
+  useAddCustomerEmail,
   useGetTreatment,
 } from '@/api/generated/endpoints'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextField } from '@/components/ui/field'
 
 /**
@@ -28,6 +30,8 @@ export function InvoiceAcceptPage() {
   const treatment = useGetTreatment(treatmentId)
   const [chosen, setChosen] = useState<string[] | null>(null)
   const [extra, setExtra] = useState('')
+  const [confirmSaveEmail, setConfirmSaveEmail] = useState(false)
+  const addEmail = useAddCustomerEmail()
 
   const back = () => navigate({ to: '/treatments/$id', params: { id: String(treatmentId) } })
   const acceptInvoice = useAcceptInvoice({
@@ -78,6 +82,30 @@ export function InvoiceAcceptPage() {
     )
   }
 
+  const typedEmail = extra.trim()
+  // An address typed here is usually one the customer has just given the practice, so it is
+  // worth keeping — but that is a change to their master data, and it gets asked for
+  // (issues.md 15).
+  const isNewAddress = typedEmail !== '' && !record.customer_emails.includes(typedEmail)
+
+  const accept = () => {
+    setConfirmSaveEmail(false)
+    acceptInvoice.mutate({
+      id: invoice.id,
+      data: {
+        recipient_emails: [...recipients, typedEmail].filter((email) => email !== ''),
+      },
+    })
+  }
+
+  const keepAddressAndAccept = () => {
+    const customerId = record.customer_id
+    if (!customerId) return accept()
+    // Accept regardless of what storing the address does: a rejected address (the backend
+    // validates the syntax) must not hold up releasing the invoice it was typed for.
+    addEmail.mutate({ id: customerId, data: { email: typedEmail } }, { onSettled: accept })
+  }
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
@@ -111,7 +139,7 @@ export function InvoiceAcceptPage() {
           </fieldset>
         ) : null}
         <TextField
-          label={t('field.email')}
+          label={t('invoices.additionalEmail')}
           type="email"
           inputMode="email"
           value={extra}
@@ -124,19 +152,30 @@ export function InvoiceAcceptPage() {
         <Button
           variant="primary"
           disabled={acceptInvoice.isPending}
-          onClick={() =>
-            acceptInvoice.mutate({
-              id: invoice.id,
-              data: {
-                recipient_emails: [...recipients, extra].filter((email) => email.trim() !== ''),
-              },
-            })
-          }
+          onClick={() => (isNewAddress ? setConfirmSaveEmail(true) : accept())}
         >
           <Mail className="size-4" />
           {t('invoices.accept')}
         </Button>
       </div>
+
+      <Dialog
+        open={confirmSaveEmail}
+        onOpenChange={setConfirmSaveEmail}
+        title={t('invoices.saveEmailTitle')}
+        footer={
+          <>
+            <Button onClick={accept}>{t('invoices.saveEmailDecline')}</Button>
+            <Button variant="primary" onClick={keepAddressAndAccept}>
+              {t('invoices.saveEmailConfirm')}
+            </Button>
+          </>
+        }
+      >
+        <p className="text-sm text-ink-soft">
+          {t('invoices.saveEmailBody', { email: typedEmail })}
+        </p>
+      </Dialog>
     </div>
   )
 }

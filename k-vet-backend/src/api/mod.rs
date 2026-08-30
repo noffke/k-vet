@@ -22,6 +22,7 @@ pub mod services;
 pub mod settings;
 pub mod suppliers;
 pub mod templates;
+pub mod text_blocks;
 pub mod treatment_items;
 pub mod treatments;
 
@@ -45,6 +46,7 @@ pub fn protected_routes() -> Router<AppState> {
         .merge(settings::routes())
         .merge(suppliers::routes())
         .merge(templates::routes())
+        .merge(text_blocks::routes())
         .merge(treatment_items::routes())
         .merge(treatments::routes())
 }

@@ -1,6 +1,7 @@
 import type {
   InputHTMLAttributes,
   ReactNode,
+  Ref,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
@@ -13,16 +14,24 @@ const controlClasses =
 
 const invalidClasses = 'border-danger bg-danger/5'
 
+/**
+ * A value that is not wrong, only not there yet — softer than {@link invalidClasses}, which
+ * marks something the server rejected. Used for fields an invoice would still need.
+ */
+const warningClasses = 'border-rust bg-rust-soft/40'
+
 interface FieldShellProps {
   label: string
   error?: string | undefined
+  /** Not-yet-filled rather than wrong: shown below the control, quieter than `error`. */
+  warning?: string | undefined
   hint?: string | undefined
   className?: string | undefined
   children: (id: string) => ReactNode
 }
 
 /** Label, control and field-level error — the one shape every form field uses. */
-export function Field({ label, error, hint, className, children }: FieldShellProps) {
+export function Field({ label, error, warning, hint, className, children }: FieldShellProps) {
   const id = useId()
   return (
     <div className={cn('flex flex-col gap-1', className)}>
@@ -34,6 +43,8 @@ export function Field({ label, error, hint, className, children }: FieldShellPro
         <p className="text-xs font-medium text-danger" role="alert">
           {error}
         </p>
+      ) : warning ? (
+        <p className="text-xs font-medium text-rust">{warning}</p>
       ) : hint ? (
         <p className="text-xs text-ink-faint">{hint}</p>
       ) : null}
@@ -44,6 +55,7 @@ export function Field({ label, error, hint, className, children }: FieldShellPro
 export type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
   label: string
   error?: string | undefined
+  warning?: string | undefined
   hint?: string | undefined
   wrapperClassName?: string | undefined
 }
@@ -51,18 +63,23 @@ export type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> &
 export function TextField({
   label,
   error,
+  warning,
   hint,
   className,
   wrapperClassName,
   ...props
 }: TextFieldProps) {
   return (
-    <Field label={label} error={error} hint={hint} className={wrapperClassName}>
+    <Field label={label} error={error} warning={warning} hint={hint} className={wrapperClassName}>
       {(id) => (
         <input
           id={id}
           aria-invalid={error ? true : undefined}
-          className={cn(controlClasses, error && invalidClasses, className)}
+          className={cn(
+            controlClasses,
+            error ? invalidClasses : warning && warningClasses,
+            className,
+          )}
           {...props}
         />
       )}
@@ -75,6 +92,12 @@ export type TextAreaFieldProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement
   error?: string | undefined
   hint?: string | undefined
   wrapperClassName?: string | undefined
+  /**
+   * React 19 hands `ref` through as an ordinary prop, and it is spread onto the textarea below.
+   * Declared because `TextareaHTMLAttributes` does not carry it — the text-block picker needs
+   * the element to insert at the caret.
+   */
+  ref?: Ref<HTMLTextAreaElement> | undefined
 }
 
 export function TextAreaField({

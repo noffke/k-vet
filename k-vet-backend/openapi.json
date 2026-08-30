@@ -2395,6 +2395,40 @@
         }
       }
     },
+    "/api/patients/{id}/treatments": {
+      "get": {
+        "tags": [
+          "patients"
+        ],
+        "operationId": "listPatientTreatmentsOfPatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Newest visit first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/PatientTreatmentSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/patients/{id}/unarchive": {
       "post": {
         "tags": [
@@ -3175,6 +3209,226 @@
           },
           "404": {
             "description": ""
+          }
+        }
+      }
+    },
+    "/api/text-blocks": {
+      "get": {
+        "tags": [
+          "textBlocks"
+        ],
+        "operationId": "listTextBlocks",
+        "parameters": [
+          {
+            "name": "q",
+            "in": "query",
+            "description": "Text filter (name, number, …).",
+            "required": false,
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "archived",
+            "in": "query",
+            "description": "Include archived records (default: false).",
+            "required": false,
+            "schema": {
+              "type": "boolean"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "offset",
+            "in": "query",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TextBlock"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "textBlocks"
+        ],
+        "operationId": "createTextBlock",
+        "responses": {
+          "200": {
+            "description": "An empty draft, ready for auto-save",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextBlock"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/text-blocks/{id}": {
+      "get": {
+        "tags": [
+          "textBlocks"
+        ],
+        "operationId": "getTextBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextBlock"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "textBlocks"
+        ],
+        "operationId": "patchTextBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchTextBlock"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextBlock"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "422": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/text-blocks/{id}/archive": {
+      "post": {
+        "tags": [
+          "textBlocks"
+        ],
+        "operationId": "archiveTextBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextBlock"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/text-blocks/{id}/unarchive": {
+      "post": {
+        "tags": [
+          "textBlocks"
+        ],
+        "operationId": "unarchiveTextBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TextBlock"
+                }
+              }
+            }
           }
         }
       }
@@ -4657,9 +4911,11 @@
           "archived",
           "draft",
           "missing_fields",
+          "invoice_missing_fields",
           "has_invoice_address",
           "has_second_name",
           "emails",
+          "patient_names",
           "created_at",
           "updated_at"
         ],
@@ -4841,6 +5097,13 @@
               "type": "string"
             }
           },
+          "invoice_missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "What an invoice would still be missing, evaluated on the address group it would actually\nprint (`invoice_*` when `has_invoice_address`, the home address otherwise).\n\nDeliberately *not* the same set as `missing_fields`: a first name is not required to\nrecord a customer, but an invoice without one is not one the practice wants to send.\nKeeping it separate leaves the `customer_complete` CHECK — and therefore every existing\nrow — untouched. The country is never in this set: NULL means `[invoice] default_country`,\nand it does not print on a domestic invoice anyway."
+          },
           "has_invoice_address": {
             "type": "boolean",
             "description": "`true` when the invoice address group is complete and replaces the home address."
@@ -4853,6 +5116,13 @@
             "items": {
               "$ref": "#/components/schemas/CustomerEmail"
             }
+          },
+          "patient_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Living animals of this customer, alphabetical — what the customers list prints under\nthe name."
           },
           "created_at": {
             "type": "string",
@@ -5015,6 +5285,13 @@
               "null"
             ],
             "description": "The original packaging's unit — what `in_stock` is counted in."
+          },
+          "original_price_gross": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price."
           },
           "created_at": {
             "type": "string",
@@ -6278,6 +6555,23 @@
           }
         }
       },
+      "PatchTextBlock": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          }
+        }
+      },
       "PatchTreatmentItem": {
         "type": "object",
         "properties": {
@@ -6580,6 +6874,56 @@
           }
         }
       },
+      "PatientTreatmentSummary": {
+        "type": "object",
+        "description": "One visit this animal was part of, as the patient page lists them.",
+        "required": [
+          "id",
+          "treatment_id"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The `patient_treatment` record — what the list links to."
+          },
+          "treatment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "starts_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "The visit's date; the record has none of its own."
+          },
+          "treatment_reason": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "invoice_number": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The visit's invoice, when it has one that was not cancelled."
+          },
+          "invoice_status": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/InvoiceStatus"
+              }
+            ]
+          }
+        }
+      },
       "PickerItem": {
         "oneOf": [
           {
@@ -6622,7 +6966,7 @@
               },
               "price_net": {
                 "type": "string",
-                "description": "Net price; `price_gross` is derived from it for display."
+                "description": "Net price, before the Steigerungssatz; `price_gross` is what the line will cost."
               },
               "price_gross": {
                 "type": "string"
@@ -6680,7 +7024,7 @@
               },
               "price_net": {
                 "type": "string",
-                "description": "Net price; `price_gross` is derived from it for display."
+                "description": "Net price, before the Steigerungssatz; `price_gross` is what the line will cost."
               },
               "price_gross": {
                 "type": "string"
@@ -7143,6 +7487,55 @@
           "service"
         ]
       },
+      "TextBlock": {
+        "type": "object",
+        "required": [
+          "id",
+          "archived",
+          "draft",
+          "missing_fields",
+          "created_at",
+          "updated_at"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "content": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "archived": {
+            "type": "boolean"
+          },
+          "draft": {
+            "type": "boolean"
+          },
+          "missing_fields": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          }
+        }
+      },
       "Treatment": {
         "type": "object",
         "required": [
@@ -7346,7 +7739,7 @@
           },
           "price_gross": {
             "type": "string",
-            "description": "Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price."
+            "description": "The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the \"Einzelpreis\" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount."
           },
           "vat_percent": {
             "type": "string"
@@ -7488,6 +7881,10 @@
     {
       "name": "picker",
       "description": "Unified drug/service search"
+    },
+    {
+      "name": "textBlocks",
+      "description": "Reusable snippets for findings and reports"
     },
     {
       "name": "invoices",

@@ -105,7 +105,7 @@ export function InvoicesPage() {
     },
     {
       id: 'total',
-      header: t('field.total'),
+      header: t('treatments.total'),
       numeric: true,
       cell: (row) => money(row.total_gross),
     },

@@ -73,7 +73,13 @@ export function CustomerDetailPage() {
   const record = customer.data
   const invoiceAddressVisible = showInvoiceAddress || record.has_invoice_address
 
-  /** Text field bound to auto-save; the field error comes from the server. */
+  /**
+   * Text field bound to auto-save; the field error comes from the server.
+   *
+   * A field the *invoice* would still need is marked too, but as a warning rather than an error
+   * (issues.md 20) — it is not a value the server rejected, it is one nobody has typed yet, and
+   * the record itself is perfectly valid without it.
+   */
   const field = (
     key: keyof Customer & string,
     label: string,
@@ -83,6 +89,7 @@ export function CustomerDetailPage() {
       label={label}
       defaultValue={(record[key] as string | null) ?? options.fallback ?? ''}
       error={autoSave.fieldErrors[key] ? t(autoSave.fieldErrors[key] ?? '') : undefined}
+      warning={record.invoice_missing_fields.includes(key) ? t('record.notInvoiceable') : undefined}
       wrapperClassName={options.className}
       onChange={(event) => autoSave.set({ [key]: event.target.value || null } as Partial<Customer>)}
       onBlur={() => void autoSave.flush()}

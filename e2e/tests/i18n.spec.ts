@@ -1,6 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { seedAcceptedInvoice } from '../fixtures/seed'
-import { signIn } from './helpers'
+import { navigate, signIn } from './helpers'
 
 /**
  * Locale spot check (T080): de-DE is the default, and switching to en-US changes numbers,
@@ -39,4 +39,48 @@ test('numbers, money and dates follow the active locale', async ({ page, request
 
   await switchTo('de')
   await expect(row).toContainText('28,11 €')
+})
+
+/**
+ * No screen may show a translation key (issues.md 18).
+ *
+ * The vitest suite checks every literal `t('…')` against the JSON, which is what caught the
+ * invoice list's `FIELD.TOTAL`. This is the other half: keys that only arrive at runtime — the
+ * message a backend field error carries, or a key built from a template literal — are invisible
+ * to a static scan and only show up on a rendered page.
+ */
+test('no screen renders a translation key', async ({ page }) => {
+  // `namespace.someKey` / `namespace.some_key`: a dotted identifier with no spaces, which is
+  // what an unresolved key looks like and what ordinary prose never does.
+  const KEY_SHAPED = /^[a-z][a-zA-Z]*\.[a-zA-Z][a-zA-Z0-9_.]*$/
+
+  await signIn(page)
+  const sections = [
+    'Übersicht',
+    'Termine',
+    'Kunden',
+    'Apotheke',
+    'Leistungen',
+    'Behandlungsgruppen',
+    'Textbausteine',
+    'Stammdaten',
+    'Rechnungen',
+    'Einstellungen',
+  ]
+
+  for (const section of sections) {
+    await navigate(page, section)
+    // Leaf elements only, so a container's concatenated text is not mistaken for a key.
+    const leaked = await page
+      .locator('body :not(:has(*))')
+      .filter({ visible: true })
+      .evaluateAll(
+        (nodes, pattern) =>
+          nodes
+            .map((node) => (node.textContent ?? '').trim())
+            .filter((text) => new RegExp(pattern).test(text)),
+        KEY_SHAPED.source,
+      )
+    expect(leaked, `${section} renders a translation key`).toEqual([])
+  }
 })

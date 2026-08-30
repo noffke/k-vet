@@ -60,7 +60,13 @@ Im Programm sind alle GOT-Positionen mit dem **einfachen Satz** gespeichert. Den
 
 Beispiel: GOT-Nr. 16 zum 1,5-fachen Satz → 23,62 € × 1,5 = 35,43 € netto → **42,16 € brutto**.
 
-**Frage:** Ist das so richtig — Grundpreis einfacher Satz, Faktor pro Zeile?
+Auf der Rechnung steht in der Spalte **Einzelpreis** dieser Betrag mit Faktor, also 42,16 € —
+nicht der einfache Satz. So ergibt „Einzelpreis × Menge" genau die Spalte „Gesamt". Der Faktor
+selbst wird darunter trotzdem ausgewiesen („Faktor: 150 %"), damit der Steigerungssatz auf der
+Rechnung erkennbar bleibt.
+
+**Frage:** Ist das so richtig — Grundpreis einfacher Satz, Faktor pro Zeile, und auf der Rechnung
+der Einzelpreis inklusive Faktor?
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 

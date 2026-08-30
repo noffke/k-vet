@@ -39,6 +39,12 @@ export interface Drug {
      * @nullable
      */
   unit?: string | null;
+  /**
+     * Gross sales price of the original packaging — the figure the vet reads out to a customer
+     * asking what something costs. `None` until that packaging has a price.
+     * @nullable
+     */
+  original_price_gross?: string | null;
   created_at: string;
   updated_at: string;
 }

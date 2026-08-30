@@ -11,6 +11,7 @@ use utoipa::ToSchema;
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option};
 use crate::domain::draft::{missing_fields, recompute_draft};
+use crate::domain::enums::InvoiceStatus;
 use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -403,6 +404,65 @@ pub async fn list_files(
     Ok(Json(files))
 }
 
+/// One visit this animal was part of, as the patient page lists them.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct PatientTreatmentSummary {
+    /// The `patient_treatment` record — what the list links to.
+    pub id: i64,
+    pub treatment_id: i64,
+    /// The visit's date; the record has none of its own.
+    pub starts_at: Option<DateTime<Utc>>,
+    pub treatment_reason: Option<String>,
+    /// The visit's invoice, when it has one that was not cancelled.
+    pub invoice_number: Option<String>,
+    pub invoice_status: Option<InvoiceStatus>,
+}
+
+#[utoipa::path(
+    get,
+    path = "/api/patients/{id}/treatments",
+    operation_id = "listPatientTreatmentsOfPatient",
+    tag = "patients",
+    params(("id" = i64, Path,)),
+    responses((status = 200, description = "Newest visit first", body = Vec<PatientTreatmentSummary>))
+)]
+pub async fn list_treatments(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<Vec<PatientTreatmentSummary>>> {
+    // A cancelled invoice is history, not what this visit was billed under — the same rule the
+    // treatment page applies (`api::invoices`), so the two cannot disagree about it.
+    let rows = sqlx::query!(
+        r#"SELECT record.id, record.treatment_id, record.treatment_reason,
+                  appointment.starts_at,
+                  invoice.invoice_number AS "invoice_number?",
+                  invoice.status AS "invoice_status?: InvoiceStatus"
+           FROM patient_treatment record
+           JOIN treatment ON treatment.id = record.treatment_id
+           JOIN appointment ON appointment.id = treatment.appointment_id
+           LEFT JOIN invoice ON invoice.treatment_id = record.treatment_id
+                            AND invoice.status <> 'cancelled'
+           WHERE record.patient_id = $1
+           ORDER BY appointment.starts_at DESC NULLS LAST, record.id DESC"#,
+        id,
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    Ok(Json(
+        rows.into_iter()
+            .map(|row| PatientTreatmentSummary {
+                id: row.id,
+                treatment_id: row.treatment_id,
+                starts_at: row.starts_at,
+                treatment_reason: row.treatment_reason,
+                invoice_number: row.invoice_number,
+                invoice_status: row.invoice_status,
+            })
+            .collect(),
+    ))
+}
+
 #[utoipa::path(
     patch,
     path = "/api/patient-files/{id}",
@@ -548,5 +608,6 @@ pub fn routes() -> Router<AppState> {
         .route("/patients/{id}/archive", post(archive))
         .route("/patients/{id}/unarchive", post(unarchive))
         .route("/patients/{id}/files", get(list_files))
+        .route("/patients/{id}/treatments", get(list_treatments))
         .route("/patient-files/{id}", axum::routing::patch(patch_file))
 }

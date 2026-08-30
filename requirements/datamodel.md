@@ -94,6 +94,12 @@ A template set of Drugs and services for Treatment Items / Invoices
   * Relation: 1 Service XOR 1 Drug Packaging incl. unit, amount (XOR: see Modeling Conventions)
   * Relation: 1 Treatment Template
 
+### Text Blocks (Textbausteine)
+A library of reusable snippets for the two free texts of a Patientenbehandlung (Vorbericht und Untersuchung, Therapie und weiteres Vorgehen). Inserted at the cursor, or appended when the field was never focused. Deliberately **no** relation back to where a block was used: once inserted the text belongs to that animal's record and is edited there — a link would suggest that editing the block changes what was already written. Searched by name *and* by content, because the wording is remembered before the name is. Archived like other master data.
+Fields:
+* Name
+* Content
+
 ### Master Data (Stammdaten)
 * Customer
   * Name (structured, see Modeling Conventions: salutation, optional first name, last name)

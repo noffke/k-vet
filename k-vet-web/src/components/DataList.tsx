@@ -34,6 +34,11 @@ export interface DataListProps<T> {
    * elements.
    */
   rowActions?: ((row: T) => ReactNode) | undefined
+  /**
+   * A quieter second line under the row, spanning the full width — an address that would be
+   * squeezed into a column otherwise. Return `null` to leave a row without one.
+   */
+  rowSubline?: ((row: T) => ReactNode) | undefined
   isLoading?: boolean | undefined
   error?: string | null | undefined
   emptyMessage?: string | undefined
@@ -52,6 +57,7 @@ export function DataList<T>({
   onRowClick,
   rowBadge,
   rowActions,
+  rowSubline,
   isLoading,
   error,
   emptyMessage,
@@ -131,84 +137,126 @@ export function DataList<T>({
             </tr>
           ))}
         </thead>
-        <tbody>
-          {table.getRowModel().rows.map((row) => (
-            <tr
-              key={row.id}
-              onClick={onRowClick ? handleRowClick(row.original) : undefined}
-              className={cn('bg-surface', onRowClick && 'cursor-pointer hover:bg-cream-soft')}
-            >
-              {row.getVisibleCells().map((cell, index) => {
-                const column = columns[index]
-                return (
+        {/*
+          One `<tbody>` per row rather than one for the whole table: a sub-line needs its own
+          `<tr>` to escape the columns, and grouping the two rows is what lets them share a
+          hover state and carry the bottom rule under the entry as a whole. Several `<tbody>`
+          elements in one table are valid HTML.
+        */}
+        {table.getRowModel().rows.map((row) => {
+          const subline = rowSubline?.(row.original) ?? null
+          const cellBorder = subline ? '' : 'border-b border-line'
+          return (
+            <tbody key={row.id} className="group">
+              <tr
+                onClick={onRowClick ? handleRowClick(row.original) : undefined}
+                className={cn(
+                  'bg-surface',
+                  onRowClick && 'cursor-pointer group-hover:bg-cream-soft',
+                )}
+              >
+                {row.getVisibleCells().map((cell, index) => {
+                  const column = columns[index]
+                  return (
+                    <td
+                      key={cell.id}
+                      className={cn(
+                        'px-3 pt-2 align-top',
+                        subline ? 'pb-0.5' : 'pb-2',
+                        cellBorder,
+                        column?.numeric && 'numeric text-right',
+                        column?.primary && 'font-medium',
+                      )}
+                    >
+                      {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      {column?.primary && rowBadge ? (
+                        <span className="ml-2">{rowBadge(row.original)}</span>
+                      ) : null}
+                    </td>
+                  )
+                })}
+                {rowActions ? (
                   <td
-                    key={cell.id}
                     className={cn(
-                      'border-b border-line px-3 py-2 align-top',
-                      column?.numeric && 'numeric text-right',
-                      column?.primary && 'font-medium',
+                      'px-3 pt-2 align-top text-right',
+                      subline ? 'pb-0.5' : 'pb-2',
+                      cellBorder,
                     )}
                   >
-                    {flexRender(cell.column.columnDef.cell, cell.getContext())}
-                    {column?.primary && rowBadge ? (
-                      <span className="ml-2">{rowBadge(row.original)}</span>
-                    ) : null}
+                    <span className="inline-flex flex-wrap justify-end gap-1">
+                      {rowActions(row.original)}
+                    </span>
                   </td>
-                )
-              })}
-              {rowActions ? (
-                <td className="border-b border-line px-3 py-2 align-top text-right">
-                  <span className="inline-flex flex-wrap justify-end gap-1">
-                    {rowActions(row.original)}
-                  </span>
-                </td>
+                ) : null}
+              </tr>
+              {subline ? (
+                <tr
+                  onClick={onRowClick ? handleRowClick(row.original) : undefined}
+                  className={cn(
+                    'bg-surface',
+                    onRowClick && 'cursor-pointer group-hover:bg-cream-soft',
+                  )}
+                >
+                  <td
+                    colSpan={columns.length + (rowActions ? 1 : 0)}
+                    className="border-b border-line px-3 pb-2 text-xs text-ink-faint"
+                  >
+                    {subline}
+                  </td>
+                </tr>
               ) : null}
-            </tr>
-          ))}
-        </tbody>
+            </tbody>
+          )
+        })}
       </table>
 
       {/* Phone: cards */}
       <ul className="flex flex-col gap-2 sm:hidden">
-        {data.map((row) => (
-          <li key={getRowId(row)}>
-            <button
-              type="button"
-              onClick={onRowClick ? () => onRowClick(row) : undefined}
-              disabled={!onRowClick}
-              className={cn(
-                'w-full rounded-card border border-line bg-surface px-3 py-3 text-left',
-                onRowClick && 'active:bg-cream-soft',
-                rowActions && 'rounded-b-none border-b-0',
-              )}
-            >
-              <span className="flex items-center justify-between gap-2">
-                <span className="font-medium text-ink">{primary?.cell(row)}</span>
-                {rowBadge ? rowBadge(row) : null}
-              </span>
-              <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
-                {mobileColumns.map((column) => (
-                  <div key={column.id} className="col-span-2 flex justify-between gap-3">
-                    <dt className="eyebrow self-center">{column.header}</dt>
-                    <dd
-                      className={cn(
-                        'text-sm text-ink-soft',
-                        column.numeric && 'numeric text-right',
-                      )}
-                    >
-                      {column.cell(row)}
-                    </dd>
-                  </div>
-                ))}
-              </dl>
-            </button>
-            {rowActions ? (
-              <div className="flex flex-wrap gap-1 rounded-b-card border border-line bg-surface px-3 py-2">
-                {rowActions(row)}
-              </div>
-            ) : null}
-          </li>
-        ))}
+        {data.map((row) => {
+          const subline = rowSubline?.(row) ?? null
+          return (
+            <li key={getRowId(row)}>
+              <button
+                type="button"
+                onClick={onRowClick ? () => onRowClick(row) : undefined}
+                disabled={!onRowClick}
+                className={cn(
+                  'w-full rounded-card border border-line bg-surface px-3 py-3 text-left',
+                  onRowClick && 'active:bg-cream-soft',
+                  rowActions && 'rounded-b-none border-b-0',
+                )}
+              >
+                <span className="flex items-center justify-between gap-2">
+                  <span className="font-medium text-ink">{primary?.cell(row)}</span>
+                  {rowBadge ? rowBadge(row) : null}
+                </span>
+                <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
+                  {mobileColumns.map((column) => (
+                    <div key={column.id} className="col-span-2 flex justify-between gap-3">
+                      <dt className="eyebrow self-center">{column.header}</dt>
+                      <dd
+                        className={cn(
+                          'text-sm text-ink-soft',
+                          column.numeric && 'numeric text-right',
+                        )}
+                      >
+                        {column.cell(row)}
+                      </dd>
+                    </div>
+                  ))}
+                </dl>
+                {subline ? (
+                  <span className="mt-1.5 block text-xs text-ink-faint">{subline}</span>
+                ) : null}
+              </button>
+              {rowActions ? (
+                <div className="flex flex-wrap gap-1 rounded-b-card border border-line bg-surface px-3 py-2">
+                  {rowActions(row)}
+                </div>
+              ) : null}
+            </li>
+          )
+        })}
       </ul>
     </div>
   )

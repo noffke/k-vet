@@ -12,6 +12,7 @@ import {
   useArchivePatient,
   useGetPatient,
   useListPatientFiles,
+  useListPatientTreatmentsOfPatient,
   useListRaces,
   usePatchPatient,
   useUnarchivePatient,
@@ -40,12 +41,13 @@ export function PatientDetailPage() {
   const { id } = useParams({ from: '/app/patients/$id' })
   const patientId = Number(id)
   const client = useQueryClient()
-  const { date } = useLocaleFormat()
+  const { date, dateTime } = useLocaleFormat()
   const photoInput = useRef<HTMLInputElement>(null)
   const fileInput = useRef<HTMLInputElement>(null)
 
   const patient = useGetPatient(patientId)
   const files = useListPatientFiles(patientId)
+  const treatments = useListPatientTreatmentsOfPatient(patientId)
   const races = useListRaces({ species: patient.data?.species ?? undefined })
   const patchPatient = usePatchPatient()
   const archive = useArchivePatient()
@@ -90,21 +92,21 @@ export function PatientDetailPage() {
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
-        back={<BackLink to="/patients" label={t('patients.title')} />}
-        // The eyebrow stays the owning customer — the back link already names the list.
-        eyebrow={
+        // An animal is reached through its customer — there is no patient list to go back to
+        // (issues.md 9). A patient without an owner is a draft; that one falls back to the
+        // customer index.
+        back={
           record.customer_id ? (
-            <Link
+            <BackLink
               to="/customers/$id"
               params={{ id: String(record.customer_id) }}
-              className="hover:underline"
-            >
-              {record.customer_name ?? t('customers.title')}
-            </Link>
+              label={record.customer_name ?? t('customers.title')}
+            />
           ) : (
-            t('patients.title')
+            <BackLink to="/customers" label={t('customers.title')} />
           )
         }
+        eyebrow={t('patients.title')}
         title={record.name ?? t('patients.new')}
         actions={
           <>
@@ -302,6 +304,47 @@ export function PatientDetailPage() {
             </li>
           ))}
           {(files.data ?? []).length === 0 ? (
+            <li className="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-faint">
+              {t('list.empty')}
+            </li>
+          ) : null}
+        </ul>
+      </section>
+
+      {/*
+        Every visit this animal was part of, newest first (issues.md 19) — the history the vet
+        reads before a consultation, and the way back into a record from the animal rather than
+        from the calendar.
+      */}
+      <section className="mt-6">
+        <h2 className="text-base">{t('patients.treatments')}</h2>
+        <ul className="mt-2 flex flex-col gap-2">
+          {(treatments.data ?? []).map((visit) => (
+            <li key={visit.id}>
+              <Link
+                to="/patient-treatments/$id"
+                params={{ id: String(visit.id) }}
+                className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-card border border-line bg-surface px-3 py-2 hover:bg-cream-soft"
+              >
+                <span className="numeric text-sm font-medium text-ink">
+                  {visit.starts_at ? dateTime(visit.starts_at) : '—'}
+                </span>
+                {visit.treatment_reason ? (
+                  <span className="min-w-0 flex-1 truncate text-sm text-ink-soft">
+                    {visit.treatment_reason}
+                  </span>
+                ) : null}
+                {visit.invoice_number ? (
+                  <span className="numeric text-xs text-ink-faint">
+                    {visit.invoice_number} · {t(`invoices.status_${visit.invoice_status}`)}
+                  </span>
+                ) : (
+                  <span className="text-xs text-ink-faint">{t('invoices.noInvoice')}</span>
+                )}
+              </Link>
+            </li>
+          ))}
+          {(treatments.data ?? []).length === 0 ? (
             <li className="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-faint">
               {t('list.empty')}
             </li>

@@ -427,6 +427,36 @@ mod tests {
         );
     }
 
+    /// The invoice's Einzelpreis is `line_total` at quantity 1 (see `TreatmentItem.price_gross`),
+    /// which is what makes `Einzelpreis × Menge` reconcile with `Gesamt` for the common case.
+    /// FR-030 / issues.md: "the Einzelpreis must already be with the factor applied".
+    #[test]
+    fn unit_price_carries_the_factor_and_reconciles_with_the_line() {
+        // GOT-Nr. 16, net 23.62 EUR at the 1.5-fold rate, one animal, 19 % VAT.
+        let unit_net = line_total(dec("23.62"), Decimal::ONE, Some(dec("150")));
+        assert_eq!(unit_net, dec("35.43"));
+        assert_eq!(add_vat(unit_net, dec("19")).gross, dec("42.16"));
+
+        // At quantity 1 the unit price *is* the line: the two roundings coincide.
+        let line = line_total(dec("23.62"), Decimal::ONE, Some(dec("150")));
+        assert_eq!(add_vat(line, dec("19")).gross, dec("42.16"));
+
+        // At larger quantities the per-unit rounding may not multiply out exactly — the line
+        // total stays authoritative, which is why the invoice never re-derives it.
+        let three = line_total(dec("23.62"), dec("3"), Some(dec("150")));
+        assert_eq!(three, dec("106.29"));
+        assert_eq!(unit_net * dec("3"), dec("106.29"));
+
+        // A case where it genuinely drifts: 0.155 per unit rounds to 0.16, but seven of them
+        // come to 1.09, not 1.12.
+        let unit = line_total(dec("0.31"), Decimal::ONE, Some(dec("50")));
+        assert_eq!(unit, dec("0.16"));
+        assert_eq!(
+            line_total(dec("0.31"), dec("7"), Some(dec("50"))),
+            dec("1.09")
+        );
+    }
+
     #[test]
     fn line_total_rounds_half_up_to_cents() {
         // 0.05 × 2.5 = 0.125 → 0.13

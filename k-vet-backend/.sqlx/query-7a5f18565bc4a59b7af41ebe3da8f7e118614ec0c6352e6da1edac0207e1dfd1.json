@@ -1,0 +1,101 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT record.id, record.treatment_id, record.treatment_reason,\n                  appointment.starts_at,\n                  invoice.invoice_number AS \"invoice_number?\",\n                  invoice.status AS \"invoice_status?: InvoiceStatus\"\n           FROM patient_treatment record\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           LEFT JOIN invoice ON invoice.treatment_id = record.treatment_id\n                            AND invoice.status <> 'cancelled'\n           WHERE record.patient_id = $1\n           ORDER BY appointment.starts_at DESC NULLS LAST, record.id DESC",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "treatment_reason",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "patient_treatment",
+            "name": "treatment_reason"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "invoice_number?",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "invoice_number"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "invoice_status?: InvoiceStatus",
+        "type_info": {
+          "Custom": {
+            "name": "invoice_status",
+            "kind": {
+              "Enum": [
+                "created",
+                "accepted",
+                "sent",
+                "submitted",
+                "cancelled"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "status"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "7a5f18565bc4a59b7af41ebe3da8f7e118614ec0c6352e6da1edac0207e1dfd1"
+}

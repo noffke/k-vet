@@ -43,7 +43,16 @@ export interface TreatmentItem {
   got_analogous: boolean;
   /** Per-unit **net** price, pinned at line entry. */
   price_net: string;
-  /** Derived from `price_net` and `vat_percent` so the UI can show the customer-facing price. */
+  /**
+     * The customer-facing unit price: gross, **with the Steigerungssatz already applied**.
+     *
+     * This is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out
+     * to the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would
+     * print `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the
+     * rounding matches `line_gross` exactly for a quantity of one; at larger quantities the
+     * per-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`
+     * is the authoritative amount.
+     */
   price_gross: string;
   vat_percent: string;
   /**

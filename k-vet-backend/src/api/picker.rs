@@ -39,7 +39,7 @@ pub enum PickerItem {
         name: String,
         unit: Option<String>,
         quantity: Option<Decimal>,
-        /// Net price; `price_gross` is derived from it for display.
+        /// Net price, before the Steigerungssatz; `price_gross` is what the line will cost.
         price_net: Decimal,
         price_gross: Decimal,
         vat_percent: Decimal,
@@ -52,7 +52,7 @@ pub enum PickerItem {
         name: String,
         got_number: Option<String>,
         factor: Option<Decimal>,
-        /// Net price; `price_gross` is derived from it for display.
+        /// Net price, before the Steigerungssatz; `price_gross` is what the line will cost.
         price_net: Decimal,
         price_gross: Decimal,
         vat_percent: Decimal,
@@ -152,7 +152,13 @@ pub async fn items(
         .filter_map(|row| {
             let price_net = row.price_net?;
             let vat_percent = row.vat_percent?;
-            let price_gross = money::add_vat(price_net, vat_percent).gross;
+            // With the Steigerungssatz applied, so the preview matches the line the pick
+            // produces — a 150 % GOT position must not advertise the bare catalogue fee.
+            let price_gross = money::add_vat(
+                money::line_total(price_net, Decimal::ONE, row.factor),
+                vat_percent,
+            )
+            .gross;
             let name = row.name.unwrap_or_default();
             let uses = row.uses.unwrap_or(0);
             match row.kind.as_deref() {

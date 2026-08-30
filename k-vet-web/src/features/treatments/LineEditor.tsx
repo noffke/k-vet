@@ -173,24 +173,32 @@ export function PositionGroup({
     })
   }
 
+  /**
+   * A picked position is appended to the end of the list, which on a treatment of any length is
+   * below the fold — so nothing on screen moves and the vet cannot tell the click landed
+   * (issues.md 7). Name what was added rather than just confirming that something was.
+   */
   const pick = (item: PickerItem) => {
-    addItem.mutate({
-      id: treatment.id,
-      data:
-        item.kind === 'drug_packaging'
-          ? {
-              kind: 'drug_packaging',
-              drug_packaging_id: item.id,
-              quantity: '1',
-              patient_treatment_id: patientTreatmentId,
-            }
-          : {
-              kind: 'service',
-              service_id: item.id,
-              quantity: '1',
-              patient_treatment_id: patientTreatmentId,
-            },
-    })
+    addItem.mutate(
+      {
+        id: treatment.id,
+        data:
+          item.kind === 'drug_packaging'
+            ? {
+                kind: 'drug_packaging',
+                drug_packaging_id: item.id,
+                quantity: '1',
+                patient_treatment_id: patientTreatmentId,
+              }
+            : {
+                kind: 'service',
+                service_id: item.id,
+                quantity: '1',
+                patient_treatment_id: patientTreatmentId,
+              },
+      },
+      { onSuccess: () => toast(t('treatments.itemAdded', { name: item.name })) },
+    )
   }
 
   const move = (itemId: number, direction: MoveDirection) =>

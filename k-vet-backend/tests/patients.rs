@@ -5,6 +5,7 @@
 mod common;
 
 use axum::http::StatusCode;
+use chrono::{TimeZone, Utc};
 use common::TestApp;
 use serde_json::json;
 use sqlx::PgPool;
@@ -295,4 +296,41 @@ async fn a_weight_must_be_positive(pool: PgPool) {
             "{weight} kg is not a weight",
         );
     }
+}
+
+/// issues.md 19: the animal's page lists every visit it was part of, newest first — the history
+/// the vet reads before a consultation.
+#[sqlx::test]
+async fn a_patient_lists_the_visits_it_was_part_of(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let empty = app
+        .get(&format!("/api/patients/{patient_id}/treatments"))
+        .await
+        .json();
+    assert_eq!(empty.as_array().map(Vec::len), Some(0));
+
+    let older =
+        common::seed_appointment(&pool, Utc.with_ymd_and_hms(2026, 3, 1, 9, 0, 0).unwrap()).await;
+    let newer =
+        common::seed_appointment(&pool, Utc.with_ymd_and_hms(2026, 5, 3, 9, 0, 0).unwrap()).await;
+    let (_, older_record) = common::seed_patient_treatment(&pool, older, patient_id).await;
+    let (_, newer_record) = common::seed_patient_treatment(&pool, newer, patient_id).await;
+
+    // Another animal's visit must not show up here.
+    let other_patient = common::seed_patient(&pool, customer_id).await;
+    common::seed_patient_treatment(&pool, older, other_patient).await;
+
+    let visits = app
+        .get(&format!("/api/patients/{patient_id}/treatments"))
+        .await
+        .json();
+    assert_eq!(visits.as_array().map(Vec::len), Some(2));
+    assert_eq!(visits[0]["id"], newer_record, "newest visit first");
+    assert_eq!(visits[1]["id"], older_record);
+    assert_eq!(visits[0]["treatment_reason"], "Routinekontrolle");
+    // Nothing billed yet, so no invoice to name.
+    assert_eq!(visits[0]["invoice_number"], serde_json::Value::Null);
 }

@@ -15,7 +15,8 @@
     "pharmacy": "Apotheke",
     "services": "Leistungen",
     "settings": "Einstellungen",
-    "templates": "Behandlungsgruppen"
+    "templates": "Behandlungsgruppen",
+    "textBlocks": "Textbausteine"
   },
   "login": {
     "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
@@ -29,7 +30,7 @@
   },
   "save": {
     "failed": "Nicht gespeichert",
-    "hint": "Eingaben werden automatisch gespeichert.",
+    "hint": "Speichert automatisch",
     "retry": "Erneut versuchen",
     "saved": "Gespeichert",
     "saving": "Speichert …"
@@ -40,6 +41,9 @@
     "incomplete": "Unvollständig",
     "incompleteWithFields": "Unvollständig — fehlt: {{fields}}",
     "notBilled": "Nicht abgerechnet",
+    "notFound": "Datensatz nicht gefunden",
+    "notInvoiceable": "Rechnungsdaten fehlen",
+    "notInvoiceableWithFields": "Für eine Rechnung fehlt: {{fields}}",
     "notSent": "Nicht versendet",
     "showArchived": "Archivierte anzeigen",
     "unarchive": "Wiederherstellen",
@@ -53,6 +57,7 @@
     "city": "Ort",
     "colour": "Farbe",
     "company": "Firma",
+    "content": "Inhalt",
     "country": "Land",
     "date": "Datum",
     "dateOfBirth": "Geburtsdatum",
@@ -62,12 +67,21 @@
     "euPassportNumber": "EU-Ausweisnummer",
     "expirationDate": "Verfallsdatum",
     "factor": "Faktor",
-    "finding": "Befund",
+    "finding": "Therapie und weiteres Vorgehen",
     "firstName": "Vorname",
     "gotNumber": "GOT-Nr.",
     "homeAddress": "Adresse",
+    "homeCity": "Ort",
+    "homeCountry": "Land",
+    "homeStreet": "Straße und Hausnummer",
+    "homeZip": "PLZ",
     "insured": "Versichert",
     "invoiceAddress": "Rechnungsadresse",
+    "invoiceCity": "Ort (Rechnungsadresse)",
+    "invoiceFirstName": "Vorname (Rechnungsadresse)",
+    "invoiceLastName": "Nachname (Rechnungsadresse)",
+    "invoiceStreet": "Straße und Hausnummer (Rechnungsadresse)",
+    "invoiceZip": "PLZ (Rechnungsadresse)",
     "km": "Kilometer",
     "kmMultiplier": "Faktor (Verkehrsverhältnisse)",
     "lastName": "Nachname",
@@ -79,6 +93,7 @@
     "note": "Notiz",
     "packagesReceived": "Anzahl Packungen",
     "patient": "Patient",
+    "patients": "Tiere",
     "phone": "Telefon",
     "price": "Preis",
     "priceGross": "Preis (brutto)",
@@ -99,7 +114,7 @@
     "street": "Straße und Hausnummer",
     "supplier": "Lieferant",
     "time": "Uhrzeit",
-    "treatmentReason": "Behandlungsgrund",
+    "treatmentReason": "Vorbericht und Untersuchung",
     "unit": "Einheit",
     "vat": "USt.",
     "warningRemark": "Warnhinweis",
@@ -157,7 +172,8 @@
     "mustNotBeZero": "Darf nicht 0 sein",
     "notADate": "Kein gültiges Datum",
     "notANumber": "Keine gültige Zahl",
-    "notATime": "Keine gültige Uhrzeit"
+    "notATime": "Keine gültige Uhrzeit",
+    "tooPrecise": "Zu viele Nachkommastellen"
   },
   "list": {
     "empty": "Keine Einträge",
@@ -177,7 +193,8 @@
     "files": "Dateien",
     "new": "Neuer Patient",
     "photo": "Foto",
-    "title": "Patienten"
+    "title": "Patienten",
+    "treatments": "Behandlungen"
   },
   "appointments": {
     "addTreatment": "Behandlung hinzufügen",
@@ -193,11 +210,12 @@
     "addItem": "Position hinzufügen",
     "files": "Dateien",
     "groupAdded": "{{count}} Positionen aus „{{name}}“ hinzugefügt",
+    "itemAdded": "„{{name}}“ hinzugefügt",
     "items": "Positionen",
     "kmHint": "Einfache Strecke; abgerechnet wird je Doppelkilometer.",
     "lotSelection": "Chargenauswahl",
     "lots": "Chargen",
-    "noReason": "Kein Behandlungsgrund",
+    "noReason": "Kein Vorbericht",
     "pickerItemsOnly": "Medikament oder Leistung suchen …",
     "pickerPlaceholder": "Medikament, Leistung oder Gruppe suchen …",
     "redesignation": "Umwidmung",
@@ -210,6 +228,7 @@
   "invoices": {
     "accept": "Rechnung freigeben",
     "acceptedWillCancel": "Diese Rechnung ist freigegeben. Beim Aktualisieren wird sie storniert und die Nummer verfällt.",
+    "additionalEmail": "Weitere E-Mail-Adresse",
     "all": "Alle Rechnungen",
     "bulkDownload": "Alle PDFs herunterladen",
     "bulkSubmit": "Alle als übergeben markieren",
@@ -217,13 +236,17 @@
     "cancel": "Rechnung stornieren",
     "cancelConfirm": "Rechnung wirklich stornieren? Die Nummer wird nicht wiederverwendet.",
     "create": "Rechnung erstellen",
+    "createAnyway": "Trotzdem erstellen",
     "date": "Rechnungsdatum",
-    "includesFinding": "Befund aufführen",
+    "includesFinding": "Therapie und weiteres Vorgehen aufführen",
     "liveInvoiceExists": "Zu dieser Behandlung gibt es eine Rechnung — sie muss erst storniert werden.",
     "markPosted": "Per Post versendet",
     "markPostedHint": "Hält fest, dass die Rechnung auf Papier beim Kunden ist. Erst danach geht sie an die Buchhaltung.",
+    "missingCustomerData": "Rechnungsdaten des Kunden unvollständig",
+    "missingCustomerDataBody": "Für diesen Kunden fehlt: {{fields}}. Die Rechnung kann trotzdem erstellt werden.",
     "noInvoice": "Noch keine Rechnung",
     "notSent": "Noch nicht versendet",
+    "noteInternal": "Notiz (intern)",
     "nothingPending": "Nichts offen — alles übergeben",
     "nothingToAccept": "Diese Behandlung hat keine Rechnung zum Freigeben.",
     "number": "Rechnungsnummer",
@@ -231,6 +254,10 @@
     "pdfStale": "Die Positionen haben sich geändert, seit das PDF erstellt wurde — Rechnung neu erstellen.",
     "pending": "Noch nicht an die Buchhaltung übergeben",
     "recipients": "Empfänger",
+    "saveEmailBody": "„{{email}}“ ist beim Kunden noch nicht gespeichert. Soll sie zu den Kontaktdaten hinzugefügt werden?",
+    "saveEmailConfirm": "Übernehmen und freigeben",
+    "saveEmailDecline": "Nur diesmal verwenden",
+    "saveEmailTitle": "E-Mail-Adresse übernehmen?",
     "searchPlaceholder": "Rechnungsnummer oder Kunde suchen …",
     "send": "E-Mail senden",
     "sendTitle": "Rechnung per E-Mail senden",
@@ -362,6 +389,7 @@
   "item": {
     "drugShapeInvalid": "Ungültige Angaben für eine Medikamentenposition",
     "kmInvalid": "Kilometer und Faktor müssen zusammen angegeben werden",
+    "patientNotInTreatment": "Dieses Tier gehört nicht zu dieser Behandlung",
     "patientRequired": "Für Medikamente ist ein Patient erforderlich"
   },
   "packaging": {
@@ -372,6 +400,8 @@
     "gotFieldsRequired": "GOT-Nummer und Faktor sind erforderlich"
   },
   "lot": {
+    "noOriginalPackaging": "Zu diesem Medikament gibt es keine Originalpackung",
+    "notForThisPackaging": "Diese Charge gehört nicht zu dieser Packung",
     "originalPackagingOnly": "Bestand gibt es nur für Originalpackungen"
   },
   "movement": {
@@ -379,11 +409,24 @@
     "dispenseShapeInvalid": "Ungültige Abgabebuchung"
   },
   "invoice": {
-    "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung"
+    "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung",
+    "noLines": "Die Behandlung hat noch keine Positionen",
+    "noPatient": "Der Behandlung ist noch kein Tier zugeordnet"
   },
   "patient": {
     "sex": {
       "invalid": "Ungültiges Geschlecht"
     }
+  },
+  "textBlocks": {
+    "empty": "Noch keine Textbausteine",
+    "insert": "Textbaustein einfügen",
+    "new": "Neuer Textbaustein",
+    "pickerTitle": "Textbaustein auswählen",
+    "searchPlaceholder": "Name oder Inhalt suchen …",
+    "title": "Textbausteine"
+  },
+  "treatment": {
+    "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden"
   }
 }

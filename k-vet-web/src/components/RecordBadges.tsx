@@ -1,7 +1,14 @@
-import { AlertTriangle, Archive, CircleDashed, MailWarning, ReceiptText } from 'lucide-react'
+import {
+  AlertTriangle,
+  Archive,
+  CircleDashed,
+  FileWarning,
+  MailWarning,
+  ReceiptText,
+} from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import type { InvoiceStatus } from '@/api/generated/model'
-import { cn } from '@/lib/utils'
+import { cn, toCamelCase } from '@/lib/utils'
 
 const badge =
   'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold'
@@ -27,6 +34,33 @@ export function IncompleteBadge({
     >
       <CircleDashed className="size-3" aria-hidden />
       {t('record.incomplete')}
+    </span>
+  )
+}
+
+/**
+ * "Invoice data missing — …": the customer is a complete record, but an invoice for them would
+ * go out without a first name or an address (issues.md 20). Deliberately separate from
+ * {@link IncompleteBadge}: recording a customer and billing one ask for different sets, and the
+ * database's completeness constraint stays the looser of the two.
+ */
+export function NotInvoiceableBadge({
+  missing,
+  className,
+}: {
+  missing: string[] | undefined
+  className?: string
+}) {
+  const { t } = useTranslation()
+  if (!missing || missing.length === 0) return null
+  const fields = missing.map((field) => t(`field.${toCamelCase(field)}`, field)).join(', ')
+  return (
+    <span
+      className={cn(badge, 'bg-blush/50 text-danger', className)}
+      title={t('record.notInvoiceableWithFields', { fields })}
+    >
+      <FileWarning className="size-3" aria-hidden />
+      {t('record.notInvoiceable')}
     </span>
   )
 }
@@ -86,9 +120,4 @@ export function WarningIcon({ remark }: { remark: string | null | undefined }) {
       <AlertTriangle className="size-3" aria-hidden />
     </span>
   )
-}
-
-/** `home_zip` → `homeZip`, so wire field names hit the i18n keys. */
-function toCamelCase(field: string): string {
-  return field.replace(/_([a-z])/g, (_, letter: string) => letter.toUpperCase())
 }

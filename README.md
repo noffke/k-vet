@@ -11,8 +11,10 @@ layouts are first-class — not one design squeezed onto a phone.
 
 ## What it does
 
-- **Appointments and treatments** — an appointment holds one or more treatments; a treatment
-  carries the reason, the finding and the billed lines, in the order the vet wants them.
+- **Appointments and treatments** — an appointment holds one or more treatments; each animal's
+  record carries the Vorbericht, the Therapie and the billed lines, in the order the vet wants
+  them. **Textbausteine** are a library of named snippets that drop into either text at the
+  cursor, so the sentences that repeat every visit are not retyped on a phone.
 - **Pharmacy** — drugs with original and subset packagings, lot-based stock with FEFO
   dispensing, stocktakes that book the difference, and an append-only movement history.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV
@@ -127,3 +129,14 @@ CI verify that the image still builds.
 ## Licence
 
 Private project; all rights reserved.
+
+### Third-party components
+
+The invoice PDF sets in **Source Sans 3**, © 2010–2024 Adobe, under the
+[SIL Open Font License 1.1](k-vet-backend/fonts/LICENSE.txt). The four faces in
+`k-vet-backend/fonts/` are compiled into the binary (`src/pdf`), because the appliance has no
+font packages installed. They are shipped unmodified and under their own licence — the OFL
+permits bundling with software under any licence (clause 2) and requires only that the notice
+accompany each copy, which is why the deployment image carries it at
+`/usr/share/k-vet/licences/`. "Source" is a Reserved Font Name: a modified version of these
+files may not keep the name (clause 3).

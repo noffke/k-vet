@@ -15,7 +15,8 @@
     "pharmacy": "Pharmacy",
     "services": "Services",
     "settings": "Settings",
-    "templates": "Treatment templates"
+    "templates": "Treatment templates",
+    "textBlocks": "Text blocks"
   },
   "login": {
     "expired": "Your session has expired. Please sign in again.",
@@ -29,7 +30,7 @@
   },
   "save": {
     "failed": "Not saved",
-    "hint": "Everything you type is saved automatically.",
+    "hint": "Saves automatically",
     "retry": "Try again",
     "saved": "Saved",
     "saving": "Saving …"
@@ -40,6 +41,9 @@
     "incomplete": "Incomplete",
     "incompleteWithFields": "Incomplete — missing: {{fields}}",
     "notBilled": "Not billed",
+    "notFound": "Record not found",
+    "notInvoiceable": "Invoice data missing",
+    "notInvoiceableWithFields": "An invoice would still be missing: {{fields}}",
     "notSent": "Not sent",
     "showArchived": "Show archived",
     "unarchive": "Restore",
@@ -53,6 +57,7 @@
     "city": "City",
     "colour": "Colour",
     "company": "Company",
+    "content": "Content",
     "country": "Country",
     "date": "Date",
     "dateOfBirth": "Date of birth",
@@ -62,12 +67,21 @@
     "euPassportNumber": "EU passport number",
     "expirationDate": "Expiry date",
     "factor": "Factor",
-    "finding": "Finding",
+    "finding": "Treatment and next steps",
     "firstName": "First name",
     "gotNumber": "GOT no.",
     "homeAddress": "Address",
+    "homeCity": "City",
+    "homeCountry": "Country",
+    "homeStreet": "Street and number",
+    "homeZip": "ZIP code",
     "insured": "Insured",
     "invoiceAddress": "Invoice address",
+    "invoiceCity": "City (invoice address)",
+    "invoiceFirstName": "First name (invoice address)",
+    "invoiceLastName": "Last name (invoice address)",
+    "invoiceStreet": "Street and number (invoice address)",
+    "invoiceZip": "ZIP code (invoice address)",
     "km": "Kilometres",
     "kmMultiplier": "Multiplier (travel conditions)",
     "lastName": "Last name",
@@ -79,6 +93,7 @@
     "note": "Note",
     "packagesReceived": "Packages received",
     "patient": "Patient",
+    "patients": "Animals",
     "phone": "Phone",
     "price": "Price",
     "priceGross": "Price (gross)",
@@ -99,7 +114,7 @@
     "street": "Street and number",
     "supplier": "Supplier",
     "time": "Time",
-    "treatmentReason": "Reason for treatment",
+    "treatmentReason": "History and examination",
     "unit": "Unit",
     "vat": "VAT",
     "warningRemark": "Warning",
@@ -157,7 +172,8 @@
     "mustNotBeZero": "Must not be 0",
     "notADate": "Not a valid date",
     "notANumber": "Not a valid number",
-    "notATime": "Not a valid time"
+    "notATime": "Not a valid time",
+    "tooPrecise": "Too many decimal places"
   },
   "list": {
     "empty": "Nothing here yet",
@@ -177,7 +193,8 @@
     "files": "Files",
     "new": "New patient",
     "photo": "Photo",
-    "title": "Patients"
+    "title": "Patients",
+    "treatments": "Treatments"
   },
   "appointments": {
     "addTreatment": "Add treatment",
@@ -193,11 +210,12 @@
     "addItem": "Add line",
     "files": "Files",
     "groupAdded": "{{count}} positions added from “{{name}}”",
+    "itemAdded": "“{{name}}” added",
     "items": "Lines",
     "kmHint": "One-way distance; billed per double kilometre.",
     "lotSelection": "Lot selection",
     "lots": "Lots",
-    "noReason": "No reason recorded",
+    "noReason": "No history recorded",
     "pickerItemsOnly": "Search drug or service …",
     "pickerPlaceholder": "Search drug, service or group …",
     "redesignation": "Redesignation",
@@ -210,6 +228,7 @@
   "invoices": {
     "accept": "Accept invoice",
     "acceptedWillCancel": "This invoice is accepted. Updating cancels it and burns its number.",
+    "additionalEmail": "Additional e-mail address",
     "all": "All invoices",
     "bulkDownload": "Download all PDFs",
     "bulkSubmit": "Mark all as submitted",
@@ -217,13 +236,17 @@
     "cancel": "Cancel invoice",
     "cancelConfirm": "Cancel this invoice? Its number will never be reused.",
     "create": "Create invoice",
+    "createAnyway": "Create anyway",
     "date": "Invoice date",
-    "includesFinding": "Include finding",
+    "includesFinding": "Print treatment and next steps",
     "liveInvoiceExists": "This treatment has an invoice — cancel it first.",
     "markPosted": "Sent by post",
     "markPostedHint": "Records that the customer has the invoice on paper. Only then does it go to bookkeeping.",
+    "missingCustomerData": "Customer invoice data incomplete",
+    "missingCustomerDataBody": "This customer is missing: {{fields}}. The invoice can still be created.",
     "noInvoice": "No invoice yet",
     "notSent": "Not sent yet",
+    "noteInternal": "Note (internal)",
     "nothingPending": "Nothing pending — all handed over",
     "nothingToAccept": "This treatment has no invoice to release.",
     "number": "Invoice number",
@@ -231,6 +254,10 @@
     "pdfStale": "The positions changed after the PDF was made — create the invoice again.",
     "pending": "Not yet submitted to bookkeeping",
     "recipients": "Recipients",
+    "saveEmailBody": "“{{email}}” is not stored with the customer yet. Add it to their contact details?",
+    "saveEmailConfirm": "Save and release",
+    "saveEmailDecline": "Use just this once",
+    "saveEmailTitle": "Save this e-mail address?",
     "searchPlaceholder": "Search invoice number or customer …",
     "send": "Send e-mail",
     "sendTitle": "Send the invoice by e-mail",
@@ -362,6 +389,7 @@
   "item": {
     "drugShapeInvalid": "Invalid values for a drug line",
     "kmInvalid": "Kilometres and multiplier belong together",
+    "patientNotInTreatment": "This animal is not part of this treatment",
     "patientRequired": "Drug lines need a patient"
   },
   "packaging": {
@@ -372,6 +400,8 @@
     "gotFieldsRequired": "GOT number and factor are required"
   },
   "lot": {
+    "noOriginalPackaging": "This drug has no original packaging",
+    "notForThisPackaging": "This lot does not belong to this packaging",
     "originalPackagingOnly": "Stock exists for original packagings only"
   },
   "movement": {
@@ -379,11 +409,24 @@
     "dispenseShapeInvalid": "Invalid dispense movement"
   },
   "invoice": {
-    "liveInvoiceExists": "This treatment already has an invoice"
+    "liveInvoiceExists": "This treatment already has an invoice",
+    "noLines": "The treatment has no positions yet",
+    "noPatient": "No animal is attached to the treatment yet"
   },
   "patient": {
     "sex": {
       "invalid": "Invalid sex"
     }
+  },
+  "textBlocks": {
+    "empty": "No text blocks yet",
+    "insert": "Insert text block",
+    "new": "New text block",
+    "pickerTitle": "Choose a text block",
+    "searchPlaceholder": "Search name or content …",
+    "title": "Text blocks"
+  },
+  "treatment": {
+    "patientOtherCustomer": "This animal belongs to a different customer"
   }
 }

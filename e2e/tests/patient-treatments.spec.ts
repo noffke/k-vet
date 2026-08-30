@@ -54,9 +54,9 @@ test.describe('patient treatments', () => {
     // Reason and finding are the animal's, on its own page.
     await page.getByRole('link', { name: 'Eddie' }).first().click()
     await expect(page).toHaveURL(/\/patient-treatments\/\d+$/)
-    await page.getByLabel('Behandlungsgrund').fill('Verbandswechsel')
-    await page.getByLabel('Befund').fill('Wunde sauber und trocken.')
-    await page.getByLabel('Befund').blur()
+    await page.getByLabel('Vorbericht und Untersuchung').fill('Verbandswechsel')
+    await page.getByLabel('Therapie und weiteres Vorgehen').fill('Wunde sauber und trocken.')
+    await page.getByLabel('Therapie und weiteres Vorgehen').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     // That page shows this animal's positions, not the other's.
