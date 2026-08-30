@@ -110,6 +110,9 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByRole('button', { name: 'Rechnung freigeben' }).click()
   await expect(page).toHaveURL(/\/treatments\/\d+\/invoice\/accept$/)
   await expect(page.getByLabel('erika@example.com')).toBeChecked()
+  // Each address is named by its type here too, not only on the send screen: choosing between
+  // a private and a practice address is the same decision on both.
+  await expect(page.getByText('erika@example.com').first()).toContainText('privat')
   await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()
 
   await expect(page.getByText('Freigegeben').first()).toBeVisible()

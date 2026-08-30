@@ -15,6 +15,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextField } from '@/components/ui/field'
+import { useRecipientLabel } from '@/features/treatments/useRecipientLabel'
 
 /**
  * Releasing the invoice: it gets its timestamp, the treatment freezes, and the document goes
@@ -28,6 +29,7 @@ export function InvoiceAcceptPage() {
   const client = useQueryClient()
 
   const treatment = useGetTreatment(treatmentId)
+  const recipientLabel = useRecipientLabel(treatment.data?.customer_id)
   const [chosen, setChosen] = useState<string[] | null>(null)
   const [extra, setExtra] = useState('')
   const [confirmSaveEmail, setConfirmSaveEmail] = useState(false)
@@ -131,7 +133,7 @@ export function InvoiceAcceptPage() {
             {record.customer_emails.map((email) => (
               <CheckboxField
                 key={email}
-                label={email}
+                label={recipientLabel(email)}
                 checked={recipients.includes(email)}
                 onChange={() => toggle(email)}
               />

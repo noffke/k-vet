@@ -7,7 +7,6 @@ import { ApiError } from '@/api/fetcher'
 import {
   getGetInvoiceQueryKey,
   getGetTreatmentQueryKey,
-  useGetCustomer,
   useGetInvoice,
   useGetTreatment,
   useSendInvoice,
@@ -16,6 +15,7 @@ import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CheckboxField, TextField } from '@/components/ui/field'
+import { useRecipientLabel } from '@/features/treatments/useRecipientLabel'
 
 /** The problem detail the server sends when the SMTP relay did not answer. */
 const MAIL_UNREACHABLE = 'invoice.mailUnreachable'
@@ -43,10 +43,7 @@ export function InvoiceSendPage() {
   const treatment = useGetTreatment(treatmentId)
   const invoiceId = treatment.data?.invoice?.id
   const invoice = useGetInvoice(invoiceId ?? 0, { query: { enabled: Boolean(invoiceId) } })
-  // Only for the type beside each address — which of three addresses is the practice one is
-  // the thing being decided on this page.
-  const customerId = treatment.data?.customer_id
-  const customer = useGetCustomer(customerId ?? 0, { query: { enabled: Boolean(customerId) } })
+  const recipientLabel = useRecipientLabel(treatment.data?.customer_id)
   const [chosen, setChosen] = useState<string[] | null>(null)
   const [extra, setExtra] = useState('')
 
@@ -109,13 +106,6 @@ export function InvoiceSendPage() {
     )
   const addresses = [...recipients, extra].filter((email) => email.trim() !== '')
 
-  /**
-   * The address's type, when the customer has it stored. An address the invoice went to once
-   * but which was since removed from the customer has none, and simply shows without one.
-   */
-  const typeOf = (email: string) =>
-    customer.data?.emails.find((stored) => stored.email === email)?.email_type
-
   return (
     <div className="mx-auto max-w-2xl">
       {header}
@@ -126,17 +116,14 @@ export function InvoiceSendPage() {
         {known.length > 0 ? (
           <fieldset className="flex flex-col gap-1 border-0 p-0">
             <legend className="text-xs font-semibold text-ink-soft">{t('customers.emails')}</legend>
-            {known.map((email) => {
-              const type = typeOf(email)
-              return (
-                <CheckboxField
-                  key={email}
-                  label={type ? `${email} · ${t(`emailType.${type}`)}` : email}
-                  checked={recipients.includes(email)}
-                  onChange={() => toggle(email)}
-                />
-              )
-            })}
+            {known.map((email) => (
+              <CheckboxField
+                key={email}
+                label={recipientLabel(email)}
+                checked={recipients.includes(email)}
+                onChange={() => toggle(email)}
+              />
+            ))}
           </fieldset>
         ) : null}
         <TextField
