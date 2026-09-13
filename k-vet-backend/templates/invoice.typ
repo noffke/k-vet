@@ -23,15 +23,34 @@
 // Joins the parts that are actually filled — empty settings must not leave stray separators.
 #let joined(parts, sep: " · ") = parts.filter(part => part != none and part != "").join(sep)
 
+// The header band is `margin.top - header-ascent` tall, so a page with a letterhead needs a
+// deeper top margin than one without — at 15mm the logo was taller than the band it sat in and
+// ran off the top of the sheet, which is how it came to print cut in half (issues.md 9). A
+// page with no logo keeps the tighter margin rather than carrying an empty strip around.
+#let logo-height = 22mm
+#let logo-band = logo-height + 4mm
+#let header-gap = 8mm
+
 #set page(
   paper: "a4",
-  margin: (left: 25mm, right: 20mm, top: 15mm, bottom: 32mm),
+  margin: (
+    left: 25mm,
+    right: 20mm,
+    top: if practice.logo_present { logo-band + header-gap } else { 15mm },
+    bottom: 32mm,
+  ),
   header: [
     #if practice.logo_present [
-      #align(right)[#image(bytes(inputs.logo), height: 22mm)]
+      // Bounded on both axes and scaled to fit: the practice uploads whatever shape it has,
+      // and a tall or very wide one must still land inside the band.
+      #align(right)[
+        #box(width: 60mm, height: logo-height)[
+          #image(bytes(inputs.logo), width: 100%, height: 100%, fit: "contain")
+        ]
+      ]
     ]
   ],
-  header-ascent: 6mm,
+  header-ascent: header-gap,
   footer: context [
     #set text(7.5pt, fill: muted)
     #align(center)[

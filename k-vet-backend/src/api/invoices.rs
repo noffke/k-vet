@@ -636,8 +636,17 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
 }
 
 /// Renders the PDF and links it to the invoice as a content-addressed attachment.
-async fn attach_pdf(state: &AppState, invoice_id: i64, document: InvoiceDocument) -> AppResult<()> {
+async fn attach_pdf(
+    state: &AppState,
+    invoice_id: i64,
+    mut document: InvoiceDocument,
+) -> AppResult<()> {
     let logo = load_logo(state).await?;
+    // The flag comes off the settings row, but the bytes come off the disk, and those can
+    // disagree — `load_logo` warns and carries on when the file has gone. Believing the row
+    // then hands the template a `logo_present` with nothing behind it, and Typst stops on
+    // "unknown image format", so a missing file would take every invoice down with it.
+    document.practice.logo_present = logo.is_some();
     let config = std::sync::Arc::clone(&state.config);
     let qr = document.invoice.qr_payload.as_deref().and_then(giro_svg);
 
