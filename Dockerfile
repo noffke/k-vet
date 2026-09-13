@@ -24,7 +24,7 @@ COPY k-vet-web/ ./
 RUN npm run build
 
 # ── Backend ───────────────────────────────────────────────────────────────────────────
-FROM rust:1.97.1-bookworm AS backend
+FROM rust:1.98.0-bookworm AS backend
 WORKDIR /build
 
 # No database is reachable during the build, so sqlx uses the committed `.sqlx/` metadata.
