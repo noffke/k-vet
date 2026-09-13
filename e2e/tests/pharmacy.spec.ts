@@ -35,6 +35,11 @@ test.describe('pharmacy', () => {
 
     // A 10 ml subset takes its price from § 4: basis 1.00 → 2.00 net → 2.38 gross.
     await page.getByRole('button', { name: 'Teilmenge' }).click()
+    // Wait for the row before reaching for `.last()`. The packaging is created on the server,
+    // and until its refetch lands `.last()` is still the *original* — `fill` does not retry
+    // itself onto the right element, so it would quietly rewrite the original's 100 ml to 10
+    // and leave the subset with no quantity, hence no computed price for the assertion below.
+    await expect(page.getByLabel('Menge')).toHaveCount(2)
     const subsetUnit = page.getByLabel('Einheit').last()
     await subsetUnit.fill('ml')
     await page.getByLabel('Menge').last().fill('10')
@@ -82,6 +87,9 @@ test.describe('pharmacy', () => {
     await page.getByLabel('Einheit').first().waitFor()
 
     await page.getByRole('button', { name: 'Teilmenge' }).click()
+    // The original is already `ml`, so waiting for the second row is what makes this an
+    // assertion about the subset rather than one that passes on the original by coincidence.
+    await expect(page.getByLabel('Einheit')).toHaveCount(2)
     // 10 ml out of a 100 ml bottle: the same unit, so it is not retyped every time.
     await expect(page.getByLabel('Einheit').last()).toHaveValue('ml')
 
