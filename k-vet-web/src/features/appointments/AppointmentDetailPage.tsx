@@ -17,6 +17,7 @@ import {
 } from '@/api/generated/endpoints'
 import type { Appointment, PriceMode } from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge, NotBilledBadge, NotSentBadge } from '@/components/RecordBadges'
@@ -47,6 +48,7 @@ export function AppointmentDetailPage() {
   const treatments = useListTreatments(appointmentId)
   const patchAppointment = usePatchAppointment()
   const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   // A typed date has nowhere to go until a time exists — a timestamp needs both halves.
   const [typedDate, setTypedDate] = useState<string | null>(null)
 
@@ -137,12 +139,22 @@ export function AppointmentDetailPage() {
             </Button>
             <Button
               variant="danger"
-              onClick={() => removeAppointment.mutate({ id: appointmentId })}
+              onClick={() => setDeleteOpen(true)}
               disabled={removeAppointment.isPending}
             >
               <Trash2 className="size-4" />
               <span className="sr-only sm:not-sr-only">{t('action.delete')}</span>
             </Button>
+            <ConfirmDialog
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              title={t('appointments.delete')}
+              confirmLabel={t('action.delete')}
+              busy={removeAppointment.isPending}
+              onConfirm={() => removeAppointment.mutate({ id: appointmentId })}
+            >
+              {t('appointments.deleteConfirm')}
+            </ConfirmDialog>
           </>
         }
       >

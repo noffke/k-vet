@@ -127,7 +127,10 @@ test.describe('dashboard and settings', () => {
 
     await expect(page.getByRole('img', { name: 'Logo' })).toBeVisible()
 
+    // Taking the logo off asks first (issues.md 2). The trigger and the confirm share the
+    // label, so the confirm is taken from inside the dialog.
     await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
     await expect(page.getByText('Kein Logo hinterlegt')).toBeVisible()
   })
 })

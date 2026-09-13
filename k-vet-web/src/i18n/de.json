@@ -163,6 +163,11 @@
     "undo": "Rückgängig",
     "upload": "Datei hochladen"
   },
+  "confirm": {
+    "archiveBody": "„{{name}}“ verschwindet aus Suche und Auswahllisten. Rechnungen und Behandlungen bleiben unverändert, und Wiederherstellen ist jederzeit möglich.",
+    "archiveBodyNoRestore": "„{{name}}“ verschwindet aus Suche und Auswahllisten. Rechnungen und Behandlungen bleiben unverändert; auf dieser Seite lässt es sich aber nicht wieder einblenden.",
+    "archiveTitle": "Archivieren?"
+  },
   "value": {
     "invalidBic": "Kein gültiger BIC (8 oder 11 Zeichen).",
     "invalidCountry": "Kein gültiger Ländercode (ISO 3166-1, z. B. DE).",
@@ -200,6 +205,8 @@
   },
   "appointments": {
     "addTreatment": "Behandlung hinzufügen",
+    "delete": "Termin löschen",
+    "deleteConfirm": "Diesen Termin wirklich löschen? Seine Behandlungen und deren Positionen werden mitgelöscht.",
     "duplicate": "Termin duplizieren",
     "new": "Neuer Termin",
     "priceMode": "Preise",
@@ -225,6 +232,8 @@
     "removeItem": "Position entfernen",
     "removeItemConfirm": "„{{name}}“ wirklich von dieser Behandlung entfernen?",
     "removeItemReturnsStock": "Die abgegebene Menge geht zurück in den Bestand.",
+    "removePatient": "Tier entfernen",
+    "removePatientConfirm": "„{{name}}“ wirklich von dieser Behandlung nehmen? Die Positionen dieses Tieres gehen mit.",
     "shortfallWarning": "Bestand reicht nicht aus — Abgabe wird trotzdem gebucht.",
     "title": "Behandlung",
     "total": "Summe",
@@ -338,6 +347,8 @@
     "itemCount": "{{count}} Pos.",
     "items": "Positionen",
     "new": "Neue Behandlungsgruppe",
+    "removeItem": "Position entfernen",
+    "removeItemConfirm": "„{{name}}“ wirklich aus dieser Behandlungsgruppe entfernen?",
     "title": "Behandlungsgruppen"
   },
   "masterData": {
@@ -385,6 +396,8 @@
     "practiceName": "Name der Praxis",
     "practiceStreet": "Straße und Hausnummer",
     "practiceZip": "PLZ",
+    "removeLogo": "Logo entfernen",
+    "removeLogoConfirm": "Logo wirklich entfernen? Neue Rechnungen werden dann ohne Logo gedruckt.",
     "title": "Einstellungen",
     "ustid": "USt-IdNr."
   },

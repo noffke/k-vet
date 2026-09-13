@@ -163,6 +163,11 @@
     "undo": "Undo",
     "upload": "Upload file"
   },
+  "confirm": {
+    "archiveBody": "“{{name}}” disappears from search and the pickers. Invoices and treatments are untouched, and it can be restored at any time.",
+    "archiveBodyNoRestore": "“{{name}}” disappears from search and the pickers. Invoices and treatments are untouched, but this page offers no way to bring it back.",
+    "archiveTitle": "Archive?"
+  },
   "value": {
     "invalidBic": "Not a valid BIC (8 or 11 characters).",
     "invalidCountry": "Not a valid country code (ISO 3166-1, e.g. DE).",
@@ -200,6 +205,8 @@
   },
   "appointments": {
     "addTreatment": "Add treatment",
+    "delete": "Delete appointment",
+    "deleteConfirm": "Really delete this appointment? Its treatments and their positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
     "priceMode": "Prices",
@@ -225,6 +232,8 @@
     "removeItem": "Remove position",
     "removeItemConfirm": "Really remove “{{name}}” from this treatment?",
     "removeItemReturnsStock": "The dispensed quantity goes back into stock.",
+    "removePatient": "Remove animal",
+    "removePatientConfirm": "Really take “{{name}}” off this treatment? This animal’s positions go with it.",
     "shortfallWarning": "Stock is not sufficient — the dispense is recorded anyway.",
     "title": "Treatment",
     "total": "Total",
@@ -338,6 +347,8 @@
     "itemCount": "{{count}} pos.",
     "items": "Lines",
     "new": "New template",
+    "removeItem": "Remove position",
+    "removeItemConfirm": "Really remove “{{name}}” from this group?",
     "title": "Treatment templates"
   },
   "masterData": {
@@ -385,6 +396,8 @@
     "practiceName": "Practice name",
     "practiceStreet": "Street and number",
     "practiceZip": "Postcode",
+    "removeLogo": "Remove logo",
+    "removeLogoConfirm": "Really remove the logo? New invoices will then print without it.",
     "title": "Settings",
     "ustid": "VAT ID"
   },
