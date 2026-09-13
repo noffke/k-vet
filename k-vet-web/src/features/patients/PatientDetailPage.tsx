@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
 import {
   getAttachmentThumbnailUrl,
+  getDownloadAttachmentUrl,
   getGetPatientQueryKey,
   getListPatientFilesQueryKey,
   getListPatientsQueryKey,
@@ -292,7 +293,16 @@ export function PatientDetailPage() {
               key={file.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-surface px-3 py-2"
             >
-              <span className="min-w-0 truncate">{file.orig_name}</span>
+              {/* The server sends these inline with their own content type, so the browser
+                  shows a PDF or a photo rather than downloading it. */}
+              <a
+                href={getDownloadAttachmentUrl(file.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 truncate text-rust hover:underline"
+              >
+                {file.orig_name}
+              </a>
               <span className="text-xs text-ink-faint">
                 {file.reference_date ? date(file.reference_date) : date(file.created_at)}
                 {file.note ? ` · ${file.note}` : ''}
