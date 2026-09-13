@@ -152,7 +152,7 @@
             "description": "Deleted"
           },
           "409": {
-            "description": "An invoice exists for one of its treatments"
+            "description": "An invoice was written for one of its treatments"
           }
         }
       },

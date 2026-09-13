@@ -206,6 +206,7 @@
   "appointments": {
     "addTreatment": "Add treatment",
     "delete": "Delete appointment",
+    "deleteBlocked": "An invoice has already been written for this appointment. It stays on record and cannot be deleted.",
     "deleteConfirm": "Really delete this appointment? Its treatments and their positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
@@ -253,7 +254,6 @@
     "createAnyway": "Create anyway",
     "date": "Invoice date",
     "includesFinding": "Print treatment and next steps",
-    "liveInvoiceExists": "This treatment has an invoice — cancel it first.",
     "mailUnreachable": "The mail server cannot be reached. The invoice was not sent — check the mail settings, or print it and mark it as sent by post.",
     "markPosted": "Sent by post",
     "markPostedHint": "Records that the customer has the invoice on paper. Only then does it go to bookkeeping.",

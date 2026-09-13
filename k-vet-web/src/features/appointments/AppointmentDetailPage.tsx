@@ -122,8 +122,16 @@ export function AppointmentDetailPage() {
   }
 
   // The generated hook types the error as `void`; the fetcher throws `ApiError`.
+  //
+  // Every failure is shown, not only the one that was anticipated. Rendering the 409 alone is
+  // how deleting came to look broken: anything else left the button doing nothing, silently.
   const deleteError: unknown = removeAppointment.error
-  const deleteBlocked = deleteError instanceof ApiError && deleteError.status === 409
+  const deleteMessage =
+    deleteError instanceof ApiError && deleteError.status === 409
+      ? t('appointments.deleteBlocked')
+      : deleteError
+        ? t('error.generic')
+        : null
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -161,9 +169,9 @@ export function AppointmentDetailPage() {
         <IncompleteBadge missing={record.missing_fields} />
       </PageHeader>
 
-      {deleteBlocked ? (
+      {deleteMessage ? (
         <p className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
-          {t('invoices.liveInvoiceExists')}
+          {deleteMessage}
         </p>
       ) : null}
 

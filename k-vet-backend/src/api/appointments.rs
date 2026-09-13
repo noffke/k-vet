@@ -260,20 +260,32 @@ pub async fn patch(
     params(("id" = i64, Path,)),
     responses(
         (status = 204, description = "Deleted"),
-        (status = 409, description = "An invoice exists for one of its treatments")
+        (status = 409, description = "An invoice was written for one of its treatments")
     )
 )]
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
-    // Appointments become permanent records once billed (FR-025).
+    let mut transaction = state.pool.begin().await?;
+
+    // Appointments become permanent records once billed (FR-025). *Any* invoice counts, a
+    // cancelled one included: cancelling burns the number instead of releasing it, so that row
+    // is the only evidence the number was ever used, and `requirements/datamodel.md` is explicit
+    // that data an invoiced treatment refers to is never hard-deleted.
+    //
+    // Excluding cancelled invoices used to let the delete through to the database, which refused
+    // it anyway — `invoice.treatment_id` has no ON DELETE, so the cascade from `appointment` hit
+    // a foreign key and came back as a 422 the screen had no branch for. The button did nothing
+    // and said nothing. Asking the right question here is also what keeps
+    // `drug_stock_movement.reverses_movement_id` out of it: those compensating rows only exist
+    // once an invoice has been cancelled, which no longer reaches the delete at all.
     let invoiced: Option<bool> = sqlx::query_scalar!(
         "SELECT EXISTS (
              SELECT 1 FROM invoice
              JOIN treatment ON treatment.id = invoice.treatment_id
-             WHERE treatment.appointment_id = $1 AND invoice.status <> 'cancelled'
+             WHERE treatment.appointment_id = $1
          )",
         id,
     )
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *transaction)
     .await?;
     if invoiced.unwrap_or(false) {
         return Err(AppError::Conflict(
@@ -282,11 +294,14 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
     }
 
     let deleted = sqlx::query!("DELETE FROM appointment WHERE id = $1", id)
-        .execute(&state.pool)
+        .execute(&mut *transaction)
         .await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
+    // One transaction so the check and the delete see the same appointment; the foreign key
+    // remains the backstop if an invoice is written between them.
+    transaction.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 

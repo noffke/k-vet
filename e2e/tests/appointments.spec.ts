@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { seedAcceptedInvoice } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -6,6 +7,43 @@ import { navigate, signIn } from './helpers'
  * to be lost — kept while the appointment is still waiting for its time.
  */
 test.describe('appointments', () => {
+  test('a Termin is only deleted once, and never after it has been billed', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page)
+    await navigate(page, 'Termine')
+    await page.getByRole('button', { name: 'Neuer Termin' }).click()
+    // "Neuer Termin" creates the record and routes to it; read the URL once that has happened,
+    // not before, or this captures the list it is still leaving.
+    await expect(page).toHaveURL(/\/appointments\/\d+$/)
+    const url = page.url()
+
+    // Asked first (issues.md 2): a dismissed dialog leaves the appointment alone.
+    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen' }).click()
+    await expect(page).toHaveURL(url)
+
+    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
+    await expect(page).toHaveURL(/\/appointments$/)
+
+    // Billed, then cancelled. The number is burned either way, so the Termin stays — and the
+    // screen has to say so rather than leaving a dead button (issues.md 1).
+    const invoice = await seedAcceptedInvoice(request)
+    const cancel = await request.post(`/api/invoices/${invoice.invoiceId}/cancel`)
+    expect(cancel.ok()).toBeTruthy()
+
+    const appointment = await request.get(`/api/treatments/${invoice.treatmentId}`)
+    const appointmentId = ((await appointment.json()) as { appointment_id: number }).appointment_id
+    await page.goto(`/appointments/${appointmentId}`)
+
+    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
+    await expect(page).toHaveURL(new RegExp(`/appointments/${appointmentId}$`))
+    await expect(page.getByText(/bereits eine Rechnung geschrieben/)).toBeVisible()
+  })
+
   test('a date typed before the time survives and is expanded', async ({ page }) => {
     await signIn(page)
     await navigate(page, 'Termine')

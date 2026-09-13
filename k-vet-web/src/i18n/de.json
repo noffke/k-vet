@@ -206,6 +206,7 @@
   "appointments": {
     "addTreatment": "Behandlung hinzufügen",
     "delete": "Termin löschen",
+    "deleteBlocked": "Zu diesem Termin wurde bereits eine Rechnung geschrieben. Er bleibt als Beleg erhalten und lässt sich nicht löschen.",
     "deleteConfirm": "Diesen Termin wirklich löschen? Seine Behandlungen und deren Positionen werden mitgelöscht.",
     "duplicate": "Termin duplizieren",
     "new": "Neuer Termin",
@@ -253,7 +254,6 @@
     "createAnyway": "Trotzdem erstellen",
     "date": "Rechnungsdatum",
     "includesFinding": "Therapie und weiteres Vorgehen aufführen",
-    "liveInvoiceExists": "Zu dieser Behandlung gibt es eine Rechnung — sie muss erst storniert werden.",
     "mailUnreachable": "Der Mailserver ist nicht erreichbar. Die Rechnung wurde nicht versendet — bitte die Mail-Einstellungen prüfen, oder die Rechnung ausdrucken und als „Per Post versendet“ markieren.",
     "markPosted": "Per Post versendet",
     "markPostedHint": "Hält fest, dass die Rechnung auf Papier beim Kunden ist. Erst danach geht sie an die Buchhaltung.",

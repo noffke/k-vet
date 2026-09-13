@@ -184,13 +184,14 @@ pub async fn detail(
     responses((status = 204), (status = 409))
 )]
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+
+    // Any invoice at all, cancelled ones included — see the note on deleting an appointment.
     let invoiced: Option<bool> = sqlx::query_scalar!(
-        "SELECT EXISTS (
-             SELECT 1 FROM invoice WHERE treatment_id = $1 AND status <> 'cancelled'
-         )",
+        "SELECT EXISTS (SELECT 1 FROM invoice WHERE treatment_id = $1)",
         id,
     )
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *transaction)
     .await?;
     if invoiced.unwrap_or(false) {
         return Err(AppError::Conflict(
@@ -199,11 +200,12 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
     }
 
     let deleted = sqlx::query!("DELETE FROM treatment WHERE id = $1", id)
-        .execute(&state.pool)
+        .execute(&mut *transaction)
         .await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
+    transaction.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
