@@ -98,9 +98,12 @@ export function PatientTreatmentPage() {
     const at = caret.current[field] ?? element.value.length
     const before = element.value.slice(0, at)
     const after = element.value.slice(at)
-    // A block is a paragraph, not a word: separate it from text it lands next to.
+    // A block is a paragraph, not a word: separate it from text it lands next to, on both
+    // sides (issues.md 3). The trailing newline is what the vet asked for — after inserting,
+    // the caret sits on a fresh line, ready for the next block or for typing.
     const lead = before !== '' && !before.endsWith('\n') ? '\n' : ''
-    const insert = lead + text
+    const trail = text.endsWith('\n') ? '' : '\n'
+    const insert = lead + text + trail
     element.value = before + insert + after
 
     const caretAfter = at + insert.length

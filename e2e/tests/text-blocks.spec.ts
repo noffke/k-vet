@@ -52,14 +52,15 @@ test.describe('text blocks', () => {
     await page.getByPlaceholder('Name oder Inhalt suchen …').fill(blockName)
     await page.getByRole('button', { name: new RegExp(blockName) }).click()
 
-    // Landed at the caret, on a line of its own, and saved without a save button.
-    await expect(reason).toHaveValue(`Anfang\n${blockText}Ende`)
+    // Landed at the caret, on a line of its own — separated on both sides, so what follows
+    // starts fresh (issues.md 3) — and saved without a save button.
+    await expect(reason).toHaveValue(`Anfang\n${blockText}\nEnde`)
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     // And it survives a reload, which is the only proof auto-save actually wrote it.
     await page.reload()
     await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveValue(
-      `Anfang\n${blockText}Ende`,
+      `Anfang\n${blockText}\nEnde`,
     )
   })
 })
