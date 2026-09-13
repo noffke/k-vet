@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count,\n                  (SELECT count(*) FROM treatment\n                   WHERE treatment.appointment_id = appointment.id\n                     AND EXISTS (SELECT 1 FROM treatment_item\n                                 WHERE treatment_item.treatment_id = treatment.id)\n                     AND NOT EXISTS (SELECT 1 FROM invoice\n                                     WHERE invoice.treatment_id = treatment.id\n                                       AND invoice.status <> 'cancelled'))\n                      AS unbilled_treatment_count\n           FROM appointment WHERE appointment.id = $1",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count,\n                  (SELECT count(*) FROM treatment\n                   WHERE treatment.appointment_id = appointment.id\n                     AND EXISTS (SELECT 1 FROM treatment_item\n                                 WHERE treatment_item.treatment_id = treatment.id)\n                     AND NOT EXISTS (SELECT 1 FROM invoice\n                                     WHERE invoice.treatment_id = treatment.id\n                                       AND invoice.status <> 'cancelled'))\n                      AS unbilled_treatment_count\n           FROM appointment\n           LEFT JOIN customer ON customer.id = appointment.customer_id WHERE appointment.id = $1",
   "describe": {
     "columns": [
       {
@@ -49,6 +49,23 @@
       },
       {
         "ordinal": 4,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "customer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "customer_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -59,7 +76,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 7,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -70,13 +87,13 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "unbilled_treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
@@ -92,11 +109,13 @@
       true,
       true,
       false,
+      true,
+      null,
       false,
       false,
       null,
       null
     ]
   },
-  "hash": "101ab9af0d8f754dc06a6ac97c4aef8800b9f24cb7e3d4470836d3522aabc1eb"
+  "hash": "c9db17b6b03ef6db759a06e05012ad46d776e8321b2a577aab3a81e709d1bb9c"
 }

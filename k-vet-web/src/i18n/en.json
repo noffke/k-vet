@@ -205,11 +205,14 @@
   },
   "appointments": {
     "addTreatment": "Add treatment",
+    "customer": "Customer",
+    "customerHint": "Decides which animals are on offer.",
     "delete": "Delete appointment",
     "deleteBlocked": "An invoice has already been written for this appointment. It stays on record and cannot be deleted.",
     "deleteConfirm": "Really delete this appointment? Its treatments and their positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
+    "pickCustomer": "Search customers …",
     "priceMode": "Prices",
     "priceModeRefresh": "Refresh prices",
     "priceModeVerbatim": "Copy prices",
@@ -448,6 +451,7 @@
     "title": "Text blocks"
   },
   "treatment": {
+    "customerRequired": "Choose the appointment’s customer first.",
     "patientOtherCustomer": "This animal belongs to a different customer"
   }
 }

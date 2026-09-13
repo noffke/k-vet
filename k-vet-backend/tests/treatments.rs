@@ -581,6 +581,92 @@ async fn patients_of_a_treatment_must_share_one_customer(pool: PgPool) {
     assert!(response.error_fields().contains(&"patient_id".to_owned()));
 }
 
+/// The same rule, asked of the database rather than the handler.
+///
+/// It lived only in `attach_patient` before, so it held exactly as long as every write went
+/// through that function — and it engaged only once a first animal was attached, which is the
+/// gap that let an empty treatment offer the whole practice. Composite keys close both.
+#[sqlx::test]
+async fn the_database_refuses_a_mixed_customer_treatment(pool: PgPool) {
+    let (treatment_id, _) = treatment(&pool).await;
+    let other_customer = common::seed_customer(&pool).await;
+    let other_patient = common::seed_patient(&pool, other_customer).await;
+
+    // Honest about the owner: caught by the key tying the record to its treatment's customer.
+    let honest = sqlx::query(
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id)
+         VALUES ($1, $2, $3)",
+    )
+    .bind(treatment_id)
+    .bind(other_patient)
+    .bind(other_customer)
+    .execute(&pool)
+    .await;
+    assert!(
+        honest.is_err(),
+        "an animal of another customer cannot be attached"
+    );
+
+    // Claiming this treatment's customer instead: caught by the key tying the record to the
+    // animal's own owner. Between them there is no value that would be accepted.
+    let treatment_customer: i64 =
+        sqlx::query_scalar("SELECT customer_id FROM treatment WHERE id = $1")
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the treatment has a customer");
+    let dishonest = sqlx::query(
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id)
+         VALUES ($1, $2, $3)",
+    )
+    .bind(treatment_id)
+    .bind(other_patient)
+    .bind(treatment_customer)
+    .execute(&pool)
+    .await;
+    assert!(dishonest.is_err(), "nor by mislabelling whose animal it is");
+}
+
+/// A treatment cannot be started until the appointment says whose visit it is — that answer is
+/// what the animal picker is filtered by (issues.md 7).
+#[sqlx::test]
+async fn a_treatment_needs_the_appointments_customer(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+
+    let refused = app
+        .post(
+            &format!("/api/appointments/{appointment_id}/treatments"),
+            json!({ "patient_ids": [] }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(refused.error_fields().contains(&"customer_id".to_owned()));
+
+    let customer_id = common::seed_customer(&pool).await;
+    let named = app
+        .patch(
+            &format!("/api/appointments/{appointment_id}"),
+            json!({ "customer_id": customer_id }),
+        )
+        .await;
+    assert_eq!(named.status, StatusCode::OK);
+    assert_eq!(named.json()["customer_id"], customer_id);
+
+    let created = app
+        .post(
+            &format!("/api/appointments/{appointment_id}/treatments"),
+            json!({ "patient_ids": [] }),
+        )
+        .await;
+    assert_eq!(created.status, StatusCode::OK);
+    assert_eq!(
+        created.json()["customer_id"],
+        customer_id,
+        "the treatment inherits it rather than waiting for an animal to imply it",
+    );
+}
+
 #[sqlx::test]
 async fn lines_can_be_reordered(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

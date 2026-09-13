@@ -18,6 +18,7 @@ import {
 import type { Appointment, PriceMode } from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { CustomerPicker } from '@/components/CustomerPicker'
 import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge, NotBilledBadge, NotSentBadge } from '@/components/RecordBadges'
@@ -195,6 +196,26 @@ export function AppointmentDetailPage() {
           onChange={(event) => autoSave.set({ note: event.target.value || null })}
           onBlur={() => void autoSave.flush()}
         />
+
+        <div className="sm:col-span-2">
+          <p className="eyebrow">{t('appointments.customer')}</p>
+          <p className="mt-0.5 mb-2 text-xs text-ink-faint">{t('appointments.customerHint')}</p>
+          {/* Locked once a treatment hangs off it: its animals belong to this customer, and
+              moving the appointment would strand them. */}
+          <CustomerPicker
+            customerId={record.customer_id ?? null}
+            customerName={record.customer_name ?? null}
+            locked={(treatments.data ?? []).length > 0}
+            onPick={(customerId) => {
+              autoSave.set({ customer_id: customerId })
+              void autoSave.flush()
+            }}
+            onClear={() => {
+              autoSave.set({ customer_id: null })
+              void autoSave.flush()
+            }}
+          />
+        </div>
       </section>
 
       <section className="mt-6">
@@ -203,7 +224,9 @@ export function AppointmentDetailPage() {
           <Button
             variant="accent"
             size="small"
-            disabled={record.draft || createTreatment.isPending}
+            // Without a customer there is nothing to limit the animals to, which is the whole
+            // point of asking (issues.md 7); the server refuses it too.
+            disabled={record.draft || !record.customer_id || createTreatment.isPending}
             title={record.draft ? t('record.incomplete') : undefined}
             onClick={() => createTreatment.mutate({ id: appointmentId, data: { patient_ids: [] } })}
           >
@@ -218,6 +241,9 @@ export function AppointmentDetailPage() {
               fields: t('field.time'),
             })}
           </p>
+        ) : null}
+        {!record.draft && !record.customer_id ? (
+          <p className="mt-2 text-xs text-ink-faint">{t('treatment.customerRequired')}</p>
         ) : null}
 
         <ul className="mt-3 flex flex-col gap-2">

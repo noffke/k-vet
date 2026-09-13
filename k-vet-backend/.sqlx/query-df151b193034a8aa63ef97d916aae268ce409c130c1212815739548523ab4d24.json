@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT treatment.id, treatment.appointment_id,\n                  treatment.created_at, treatment.updated_at,\n                  appointment.starts_at\n           FROM treatment\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE treatment.id = $1",
+  "query": "SELECT treatment.id, treatment.appointment_id, treatment.customer_id,\n                  treatment.created_at, treatment.updated_at,\n                  appointment.starts_at\n           FROM treatment\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE treatment.id = $1",
   "describe": {
     "columns": [
       {
@@ -27,6 +27,17 @@
       },
       {
         "ordinal": 2,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "customer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -37,7 +48,7 @@
         }
       },
       {
-        "ordinal": 3,
+        "ordinal": 4,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -48,7 +59,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "starts_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -67,10 +78,11 @@
     "nullable": [
       false,
       false,
+      true,
       false,
       false,
       true
     ]
   },
-  "hash": "95845dfe5c69ca6cd7c52414e2f50b2216bfbb7094c7cf97c360c3ff8b6ce9a1"
+  "hash": "df151b193034a8aa63ef97d916aae268ce409c130c1212815739548523ab4d24"
 }

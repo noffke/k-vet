@@ -205,11 +205,14 @@
   },
   "appointments": {
     "addTreatment": "Behandlung hinzufügen",
+    "customer": "Kunde",
+    "customerHint": "Bestimmt, welche Tiere zur Auswahl stehen.",
     "delete": "Termin löschen",
     "deleteBlocked": "Zu diesem Termin wurde bereits eine Rechnung geschrieben. Er bleibt als Beleg erhalten und lässt sich nicht löschen.",
     "deleteConfirm": "Diesen Termin wirklich löschen? Seine Behandlungen und deren Positionen werden mitgelöscht.",
     "duplicate": "Termin duplizieren",
     "new": "Neuer Termin",
+    "pickCustomer": "Kunde suchen …",
     "priceMode": "Preise",
     "priceModeRefresh": "Preise aktualisieren",
     "priceModeVerbatim": "Preise übernehmen",
@@ -448,6 +451,7 @@
     "title": "Textbausteine"
   },
   "treatment": {
+    "customerRequired": "Bitte zuerst den Kunden des Termins wählen.",
     "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden"
   }
 }

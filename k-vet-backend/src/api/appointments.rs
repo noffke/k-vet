@@ -20,6 +20,11 @@ pub struct Appointment {
     /// Minute-resolution start; the date defaults to today in the UI, the time is typed.
     pub starts_at: Option<DateTime<Utc>>,
     pub note: Option<String>,
+    /// Whose visit this is. Chosen here and carried down to the treatments, which is what
+    /// limits the animals on offer to that customer's (FR-027).
+    pub customer_id: Option<i64>,
+    /// For the header, so the appointment says whose it is without a second request.
+    pub customer_name: Option<String>,
     /// `true` while mandatory fields are missing — excluded from billing flows.
     pub draft: bool,
     /// Mandatory fields still empty, for the "incomplete — missing: …" hint.
@@ -36,6 +41,7 @@ pub struct Appointment {
 pub struct CreateAppointment {
     pub starts_at: Option<DateTime<Utc>>,
     pub note: Option<String>,
+    pub customer_id: Option<i64>,
 }
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
@@ -44,6 +50,8 @@ pub struct PatchAppointment {
     pub starts_at: Option<Option<DateTime<Utc>>>,
     #[serde(default, deserialize_with = "double_option")]
     pub note: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
+    pub customer_id: Option<Option<i64>>,
 }
 
 /// Row shape shared by the queries below.
@@ -51,6 +59,8 @@ struct Row {
     id: i64,
     starts_at: Option<DateTime<Utc>>,
     note: Option<String>,
+    customer_id: Option<i64>,
+    customer_name: Option<String>,
     draft: bool,
     treatment_count: Option<i64>,
     unbilled_treatment_count: Option<i64>,
@@ -64,6 +74,8 @@ impl From<Row> for Appointment {
             id: row.id,
             starts_at: row.starts_at,
             note: row.note,
+            customer_id: row.customer_id,
+            customer_name: row.customer_name,
             draft: row.draft,
             missing_fields: missing(row.starts_at.is_some()),
             treatment_count: row.treatment_count.unwrap_or(0),
@@ -98,6 +110,8 @@ pub async fn list(
     let rows = sqlx::query_as!(
         Row,
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,
+                  appointment.customer_id,
+                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
                   appointment.created_at, appointment.updated_at,
                   (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
                       AS treatment_count,
@@ -110,6 +124,7 @@ pub async fn list(
                                        AND invoice.status <> 'cancelled'))
                       AS unbilled_treatment_count
            FROM appointment
+           LEFT JOIN customer ON customer.id = appointment.customer_id
            WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')
            ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC
            LIMIT $2 OFFSET $3"#,
@@ -139,12 +154,15 @@ pub async fn create(
     let draft = body.starts_at.is_none();
     let row = sqlx::query_as!(
         Row,
-        r#"INSERT INTO appointment (starts_at, note, draft)
-           VALUES ($1, $2, $3)
-           RETURNING id, starts_at, note, draft, created_at, updated_at,
+        r#"INSERT INTO appointment (starts_at, note, customer_id, draft)
+           VALUES ($1, $2, $3, $4)
+           RETURNING id, starts_at, note, draft, created_at, updated_at, customer_id,
+                     (SELECT concat_ws(' ', first_name, last_name) FROM customer
+                      WHERE customer.id = appointment.customer_id) AS customer_name,
                      0::bigint AS treatment_count, 0::bigint AS unbilled_treatment_count"#,
         body.starts_at,
         body.note,
+        body.customer_id,
         draft,
     )
     .fetch_one(&state.pool)
@@ -172,6 +190,8 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
     let row = sqlx::query_as!(
         Row,
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,
+                  appointment.customer_id,
+                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
                   appointment.created_at, appointment.updated_at,
                   (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
                       AS treatment_count,
@@ -183,7 +203,8 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
                                      WHERE invoice.treatment_id = treatment.id
                                        AND invoice.status <> 'cancelled'))
                       AS unbilled_treatment_count
-           FROM appointment WHERE appointment.id = $1"#,
+           FROM appointment
+           LEFT JOIN customer ON customer.id = appointment.customer_id WHERE appointment.id = $1"#,
         id,
     )
     .fetch_optional(pool)
@@ -209,7 +230,7 @@ pub async fn patch(
     let mut transaction = state.pool.begin().await?;
 
     let current = sqlx::query!(
-        "SELECT starts_at, draft FROM appointment WHERE id = $1 FOR UPDATE",
+        "SELECT starts_at, draft, customer_id FROM appointment WHERE id = $1 FOR UPDATE",
         id
     )
     .fetch_optional(&mut *transaction)
@@ -223,11 +244,14 @@ pub async fn patch(
     let row = sqlx::query_as!(
         Row,
         r#"UPDATE appointment SET
-               starts_at = CASE WHEN $2 THEN $3 ELSE starts_at END,
-               note      = CASE WHEN $4 THEN $5 ELSE note END,
-               draft     = $6
+               starts_at   = CASE WHEN $2 THEN $3 ELSE starts_at END,
+               note        = CASE WHEN $4 THEN $5 ELSE note END,
+               customer_id = CASE WHEN $7 THEN $8 ELSE customer_id END,
+               draft       = $6
            WHERE id = $1
-           RETURNING id, starts_at, note, draft, created_at, updated_at,
+           RETURNING id, starts_at, note, draft, created_at, updated_at, customer_id,
+                     (SELECT concat_ws(' ', first_name, last_name) FROM customer
+                      WHERE customer.id = appointment.customer_id) AS customer_name,
                      (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
                          AS treatment_count,
                      (SELECT count(*) FROM treatment
@@ -244,6 +268,8 @@ pub async fn patch(
         body.note.is_some(),
         body.note.flatten(),
         draft,
+        body.customer_id.is_some(),
+        body.customer_id.flatten(),
     )
     .fetch_one(&mut *transaction)
     .await?;
@@ -321,17 +347,22 @@ pub async fn duplicate(
 ) -> AppResult<Json<Appointment>> {
     let mut transaction = state.pool.begin().await?;
 
-    let source = sqlx::query!("SELECT starts_at, note FROM appointment WHERE id = $1", id)
-        .fetch_optional(&mut *transaction)
-        .await?
-        .ok_or(AppError::NotFound)?;
+    let source = sqlx::query!(
+        "SELECT starts_at, note, customer_id FROM appointment WHERE id = $1",
+        id
+    )
+    .fetch_optional(&mut *transaction)
+    .await?
+    .ok_or(AppError::NotFound)?;
 
     // The copy lands today, keeping the time of day (FR-026).
     let starts_at = source.starts_at.map(today_with_time_of);
     let new_id: i64 = sqlx::query_scalar!(
-        "INSERT INTO appointment (starts_at, note, draft) VALUES ($1, $2, $3) RETURNING id",
+        "INSERT INTO appointment (starts_at, note, customer_id, draft)
+         VALUES ($1, $2, $3, $4) RETURNING id",
         starts_at,
         source.note,
+        source.customer_id,
         starts_at.is_none(),
     )
     .fetch_one(&mut *transaction)

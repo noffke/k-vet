@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "UPDATE appointment SET\n               starts_at = CASE WHEN $2 THEN $3 ELSE starts_at END,\n               note      = CASE WHEN $4 THEN $5 ELSE note END,\n               draft     = $6\n           WHERE id = $1\n           RETURNING id, starts_at, note, draft, created_at, updated_at,\n                     (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                         AS treatment_count,\n                     (SELECT count(*) FROM treatment\n                      WHERE treatment.appointment_id = appointment.id\n                        AND EXISTS (SELECT 1 FROM treatment_item\n                                    WHERE treatment_item.treatment_id = treatment.id)\n                        AND NOT EXISTS (SELECT 1 FROM invoice\n                                        WHERE invoice.treatment_id = treatment.id\n                                          AND invoice.status <> 'cancelled'))\n                         AS unbilled_treatment_count",
+  "query": "UPDATE appointment SET\n               starts_at   = CASE WHEN $2 THEN $3 ELSE starts_at END,\n               note        = CASE WHEN $4 THEN $5 ELSE note END,\n               customer_id = CASE WHEN $7 THEN $8 ELSE customer_id END,\n               draft       = $6\n           WHERE id = $1\n           RETURNING id, starts_at, note, draft, created_at, updated_at, customer_id,\n                     (SELECT concat_ws(' ', first_name, last_name) FROM customer\n                      WHERE customer.id = appointment.customer_id) AS customer_name,\n                     (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                         AS treatment_count,\n                     (SELECT count(*) FROM treatment\n                      WHERE treatment.appointment_id = appointment.id\n                        AND EXISTS (SELECT 1 FROM treatment_item\n                                    WHERE treatment_item.treatment_id = treatment.id)\n                        AND NOT EXISTS (SELECT 1 FROM invoice\n                                        WHERE invoice.treatment_id = treatment.id\n                                          AND invoice.status <> 'cancelled'))\n                         AS unbilled_treatment_count",
   "describe": {
     "columns": [
       {
@@ -71,12 +71,29 @@
       },
       {
         "ordinal": 6,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "customer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "customer_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "unbilled_treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
@@ -89,7 +106,9 @@
         "Timestamptz",
         "Bool",
         "Text",
-        "Bool"
+        "Bool",
+        "Bool",
+        "Int8"
       ]
     },
     "nullable": [
@@ -99,9 +118,11 @@
       false,
       false,
       false,
+      true,
+      null,
       null,
       null
     ]
   },
-  "hash": "7476693ba27527fbe8abaf0afc0ebfdc5c6c16a1599ef941f47135a6364405dd"
+  "hash": "3eab87b90636a284e0fe341933d9d52dc2968678177aab7e1f01b2be8e00523a"
 }

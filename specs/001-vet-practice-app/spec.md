@@ -372,9 +372,11 @@ reflected on the next generated invoice.
   today and the vet chooses whether prices are copied verbatim or refreshed from the current
   drug/service data.
 - **FR-027**: A treatment MUST reference its appointment, one or more patients, an optional
-  treatment reason and finding, and any number of attached files. All patients of a treatment
-  MUST belong to the same customer — that customer is the treatment's (and its invoice's)
-  customer; adding a patient of a different customer is rejected.
+  treatment reason and finding, and any number of attached files. The customer is chosen on the
+  appointment and inherited by its treatments — it is not inferred from whichever patient was
+  attached first. All patients of a treatment MUST belong to that customer; adding a patient of
+  a different customer is rejected, and the constraint is enforced in the database so that no
+  code path can write a mixed treatment.
 - **FR-028**: Treatment lines MUST be either a drug packaging (quantity, unit, name override
   allowed, patient mandatory) or a service (quantity, factor, GOT number carried over, name
   override allowed, patient optional); when the treatment has exactly one patient it is

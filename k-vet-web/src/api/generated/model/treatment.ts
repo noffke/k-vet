@@ -16,7 +16,8 @@ export interface Treatment {
   /** One record per animal, each with its own reason, finding and positions. */
   patients: TreatmentPatient[];
   /**
-     * Derived from the patients — the invoice's customer.
+     * Whose visit this is, inherited from the appointment — the invoice's customer, and what
+     * limits which animals may be attached (FR-027).
      * @nullable
      */
   customer_id?: number | null;

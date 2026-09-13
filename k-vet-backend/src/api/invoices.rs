@@ -755,10 +755,16 @@ async fn build_document(
     .fetch_all(&mut *connection)
     .await?;
 
-    let customer_id = patients
-        .first()
-        .and_then(|patient| patient.customer_id)
-        .ok_or_else(|| AppError::field("patients", "invoice.noPatient"))?;
+    // The treatment says whose visit it was; it no longer has to be guessed from whichever
+    // animal sorted first by name, which was wrong the moment a treatment held two owners.
+    let customer_id = sqlx::query_scalar!(
+        "SELECT customer_id FROM treatment WHERE id = $1",
+        invoice.treatment_id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .flatten()
+    .ok_or_else(|| AppError::field("patients", "invoice.noPatient"))?;
     let recipient = recipient_lines(&mut *connection, customer_id).await?;
     let greeting = recipient.greeting.clone();
 

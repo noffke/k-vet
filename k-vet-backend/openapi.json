@@ -4461,6 +4461,21 @@
               "null"
             ]
           },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer's (FR-027)."
+          },
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "For the header, so the appointment says whose it is without a second request."
+          },
           "draft": {
             "type": "boolean",
             "description": "`true` while mandatory fields are missing — excluded from billing flows."
@@ -4687,6 +4702,13 @@
               "string",
               "null"
             ]
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -5979,6 +6001,13 @@
               "string",
               "null"
             ]
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
           }
         }
       },
@@ -7579,7 +7608,7 @@
               "null"
             ],
             "format": "int64",
-            "description": "Derived from the patients — the invoice's customer."
+            "description": "Whose visit this is, inherited from the appointment — the invoice's customer, and what\nlimits which animals may be attached (FR-027)."
           },
           "customer_emails": {
             "type": "array",
