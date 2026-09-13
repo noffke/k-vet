@@ -1,0 +1,22 @@
+# Advisories `cargo audit` may pass over, each with the reason it is tolerable here.
+# This file is what makes the CI advisory gate meaningful: everything not listed
+# fails the build, so a new advisory forces a decision instead of scrolling past.
+#
+# Review these whenever `typst` is bumped — all three arrive through it, and an
+# upstream release is how they go away.
+
+[advisories]
+ignore = [
+    # quick-xml 0.38.4 via citationberg -> hayagriva -> typst-library.
+    # Both are availability-only (CVSS C:N/I:N/A:H) in Typst's bibliography
+    # reader. k-vet renders one invoice template it ships itself; no attacker
+    # supplies XML to it. Fixed in quick-xml >= 0.41, which needs hayagriva to
+    # move first.
+    "RUSTSEC-2026-0194",
+    "RUSTSEC-2026-0195",
+
+    # rkyv 0.7.46 via typst's font/asset cache. Out-of-bounds reads on a
+    # malformed archive; the only archives read are the ones the binary wrote
+    # into its own cache. Fixed in rkyv >= 0.8.17, again upstream of us.
+    "RUSTSEC-2026-0235",
+]

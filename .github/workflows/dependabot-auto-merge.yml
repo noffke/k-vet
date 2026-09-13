@@ -1,0 +1,53 @@
+# Turns on GitHub's auto-merge for routine Dependabot pull requests, so a single
+# maintainer is not the bottleneck for a weekly patch bump. The merge still waits
+# for every required status check — the point is that nobody has to click.
+#
+# Two deliberate limits:
+#
+#   * Major versions are never auto-merged. The grouping in dependabot.yml already
+#     splits them out because they usually need a code change.
+#   * This workflow never checks out the pull request. It only talks to the API,
+#     so the dependency it is about to merge never executes here. That is what
+#     makes the write permissions below safe.
+#
+# CI passing is not proof a release is trustworthy — a supply-chain compromise is
+# built not to break tests. Two other things carry that weight: the cooldown in
+# dependabot.yml (a malicious release is usually yanked within hours), and the
+# fact that nothing deploys itself — the image is built on the Pi by hand, so read
+# `git log <last deployed tag>..main` before rebuilding.
+name: Dependabot auto-merge
+
+on: pull_request
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  auto-merge:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.user.login == 'dependabot[bot]'
+    steps:
+      - name: Read what Dependabot is proposing
+        id: meta
+        uses: dependabot/fetch-metadata@25dd0e34f4fe68f24cc83900b1fe3fe149efef98 # v3.1.0
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+
+      # For a grouped pull request this reports the largest bump in the group, so
+      # a group carrying any major update is held back whole.
+      - name: Queue patch and minor updates
+        if: steps.meta.outputs.update-type != 'version-update:semver-major'
+        run: gh pr merge --auto --squash "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Leave a note on major updates
+        if: steps.meta.outputs.update-type == 'version-update:semver-major'
+        run: |
+          gh pr comment "$PR_URL" --body \
+            "Held for review: this is a major update, so it is not auto-merged."
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

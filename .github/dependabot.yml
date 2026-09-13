@@ -8,6 +8,13 @@
 # Patch and minor updates are grouped per ecosystem to keep the queue short for a single
 # maintainer. Majors arrive as their own pull request, because they usually need a code change.
 #
+# Patch and minor pull requests merge themselves once CI is green (see
+# .github/workflows/dependabot-auto-merge.yml), which is why every ecosystem carries a `cooldown`:
+# a release has to age before Dependabot will propose it, and a compromised or simply broken
+# version is usually yanked within hours. Dependabot applies 3 days by default even with no
+# `cooldown` block; these lengthen it. Cargo and npm are semver ecosystems, so they can grade the
+# wait by bump size; Actions tags and Docker tags are not, so those get a flat `default-days`.
+#
 # Two pins Dependabot cannot see, so bump them by hand:
 #   * `cargo install sqlx-cli --version 0.9.0` in .github/workflows/ci.yml — keep it equal to the
 #     `sqlx` version in k-vet-backend/Cargo.toml, or `cargo sqlx prepare --check` drifts.
@@ -24,6 +31,11 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
+      semver-patch-days: 5
+      semver-minor-days: 7
+      semver-major-days: 30
     open-pull-requests-limit: 5
     commit-message:
       prefix: "cargo"
@@ -40,6 +52,11 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
+      semver-patch-days: 5
+      semver-minor-days: 7
+      semver-major-days: 30
     open-pull-requests-limit: 5
     # The pins stay exact; only the pinned number moves.
     versioning-strategy: "increase"
@@ -59,6 +76,11 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
+      semver-patch-days: 5
+      semver-minor-days: 7
+      semver-major-days: 30
     open-pull-requests-limit: 3
     versioning-strategy: "increase"
     commit-message:
@@ -76,6 +98,8 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: "ci"
@@ -92,6 +116,8 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: "docker"
@@ -107,6 +133,8 @@ updates:
       day: "monday"
       time: "06:00"
       timezone: "Europe/Berlin"
+    cooldown:
+      default-days: 7
     open-pull-requests-limit: 3
     commit-message:
       prefix: "docker"

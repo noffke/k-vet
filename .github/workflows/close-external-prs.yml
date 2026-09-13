@@ -1,0 +1,43 @@
+# A public repository cannot refuse pull requests — forking and opening one is
+# always available, and there is no setting that turns it off. This closes the
+# ones that arrive from a fork, with an explanation, so nobody is left waiting on
+# a review that was never coming.
+#
+# `pull_request_target` rather than `pull_request` is deliberate and is the safe
+# choice *here specifically*: a fork's `pull_request` run gets a read-only token
+# and could not close anything. `pull_request_target` runs the workflow as it
+# exists on the base branch and hands it a writable token — dangerous in general,
+# because the usual mistake is to then check out and build the pull request. This
+# workflow has no checkout step and runs no code from the fork, which is what
+# makes it sound. Do not add one.
+#
+# Dependabot's own pull requests come from a branch in this repository, not a
+# fork, so they do not match the condition below.
+name: Close external pull requests
+
+on:
+  pull_request_target:
+    types: [opened, reopened]
+
+permissions:
+  pull-requests: write
+
+jobs:
+  close:
+    runs-on: ubuntu-latest
+    if: github.event.pull_request.head.repo.full_name != github.repository
+    steps:
+      - name: Explain and close
+        run: |
+          gh pr comment "$PR_URL" --body \
+            "Thanks for the interest. k-vet is the practice-management system for a single
+          veterinary practice, published so the approach can be read and reused rather than
+          developed collaboratively, so pull requests are not accepted and this one is being
+          closed automatically — it is not a judgement on the change.
+
+          Bug reports and questions are welcome as issues, and the licence (GPL-3.0) lets you
+          fork and take it wherever you need."
+          gh pr close "$PR_URL"
+        env:
+          PR_URL: ${{ github.event.pull_request.html_url }}
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}

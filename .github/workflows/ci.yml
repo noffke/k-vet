@@ -6,6 +6,11 @@ on:
     tags: ["v*"]
   pull_request:
 
+# The UI default (Settings -> Actions -> General -> Workflow permissions) is a
+# fallback; declaring it here keeps this workflow correct regardless of it.
+permissions:
+  contents: read
+
 env:
   CARGO_TERM_COLOR: always
   RUSTFLAGS: -D warnings
@@ -32,11 +37,12 @@ jobs:
       run:
         working-directory: k-vet-backend
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
         with:
+          toolchain: stable
           components: rustfmt, clippy
-      - uses: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: k-vet-backend
       - name: Install sqlx-cli
@@ -54,8 +60,8 @@ jobs:
       run:
         working-directory: k-vet-web
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-node@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22.12"
           cache: npm
@@ -88,12 +94,14 @@ jobs:
       DATABASE_URL: postgres://kvet:kvet@localhost:5432/kvet_e2e
       SQLX_OFFLINE: "true"
     steps:
-      - uses: actions/checkout@v4
-      - uses: dtolnay/rust-toolchain@stable
-      - uses: Swatinem/rust-cache@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: k-vet-backend
-      - uses: actions/setup-node@v4
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: "22.12"
           cache: npm
@@ -113,7 +121,7 @@ jobs:
         working-directory: e2e
         run: npm ci
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:
           path: ~/.cache/ms-playwright
           key: playwright-${{ hashFiles('e2e/package-lock.json') }}
@@ -123,12 +131,54 @@ jobs:
       - name: Run E2E (desktop + pixel-9a)
         working-directory: e2e
         run: npx playwright test
-      - uses: actions/upload-artifact@v4
+      - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         if: failure()
         with:
           name: playwright-report
           path: e2e/test-results
           retention-days: 7
+
+  # Known advisories against the dependency tree. This is the gate that gives
+  # auto-merged Dependabot pull requests a meaning beyond "the tests still pass":
+  # a bump into a version with a published advisory fails here and stops the merge.
+  #
+  # What ships is gated; what only ever runs in CI is reported. A DoS advisory in
+  # a bundler cannot reach the practice, and blocking every merge on one would only
+  # teach us to ignore the job.
+  audit:
+    name: Advisories
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: dtolnay/rust-toolchain@6bed0761d98439e5a578e2877258200ad565ba87 # stable
+        with:
+          toolchain: stable
+      # cache-bin (on by default) keeps cargo-audit itself out of the critical
+      # path after the first run.
+      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
+        with:
+          workspaces: k-vet-backend
+      - name: Install cargo-audit
+        run: cargo install cargo-audit --locked
+      - name: Rust advisories
+        working-directory: k-vet-backend
+        # Tolerated advisories, each with its reason, live in
+        # k-vet-backend/.cargo/audit.toml. Revisit that list when typst moves.
+        run: cargo audit
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: "22.12"
+      - name: Frontend advisories (what reaches the browser)
+        working-directory: k-vet-web
+        run: npm audit --omit=dev --audit-level=high
+      - name: Build-tooling advisories (reported, not gated)
+        working-directory: k-vet-web
+        continue-on-error: true
+        run: npm audit --audit-level=high
+      - name: E2E tooling advisories (reported, not gated)
+        working-directory: e2e
+        continue-on-error: true
+        run: npm audit --audit-level=high
 
   # The release image is built on the Pi itself (docs/installation.md) and never pushed to a
   # registry. This job only proves the Dockerfile still builds, so a broken image is not
@@ -138,7 +188,7 @@ jobs:
     needs: [backend, frontend, e2e]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - run: docker build -t k-vet:ci .
       - name: The entrypoint refuses to start without a configuration
         run: |
