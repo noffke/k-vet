@@ -736,7 +736,7 @@ async fn build_document(
         r#"SELECT patient_treatment.id, patient_treatment.treatment_reason,
                   patient_treatment.finding,
                   patient.name, patient.customer_id, patient.species, patient.race,
-                  patient.date_of_birth
+                  patient.date_of_birth, patient.chip_number
            FROM patient_treatment
            JOIN patient ON patient.id = patient_treatment.patient_id
            WHERE patient_treatment.treatment_id = $1
@@ -844,6 +844,7 @@ async fn build_document(
                     patient.species.as_deref(),
                     patient.race.as_deref(),
                     patient.date_of_birth,
+                    patient.chip_number.as_deref(),
                 ),
             )
         })
@@ -956,11 +957,18 @@ struct PackagingDetail {
     approval_number: Option<String>,
 }
 
-/// `Hund, Havaneser, Geburtsdatum: 01.01.2021` — empty parts are simply left out.
+/// `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333` — empty parts are
+/// simply left out.
+///
+/// The chip goes last, after the date of birth, and that position is load-bearing:
+/// [`treatment_heading`] takes this same string apart again by splitting on `, Geburtsdatum:`
+/// and keeping the head, so anything appended after the date stays out of the heading. Put
+/// between the race and the date it would leak into it.
 fn patient_description(
     species: Option<&str>,
     race: Option<&str>,
     date_of_birth: Option<chrono::NaiveDate>,
+    chip_number: Option<&str>,
 ) -> String {
     let mut parts: Vec<String> = Vec::new();
     parts.extend(
@@ -975,6 +983,12 @@ fn patient_description(
             .map(str::to_owned),
     );
     parts.extend(date_of_birth.map(|date| format!("Geburtsdatum: {}", date_de(date))));
+    parts.extend(
+        chip_number
+            .map(str::trim)
+            .filter(|s| !s.is_empty())
+            .map(|chip| format!("Chipnummer: {chip}")),
+    );
     parts.join(", ")
 }
 
@@ -1432,4 +1446,73 @@ pub fn routes() -> Router<AppState> {
         .route("/invoices/{id}/mark-posted", post(mark_posted))
         .route("/invoices/{id}/cancel", post(cancel))
         .route("/invoices/{id}/submit", post(submit))
+}
+
+#[cfg(test)]
+#[allow(clippy::unwrap_used, clippy::expect_used)]
+mod tests {
+    use super::*;
+    use chrono::NaiveDate;
+
+    fn dob() -> Option<NaiveDate> {
+        NaiveDate::from_ymd_opt(2021, 1, 1)
+    }
+
+    #[test]
+    fn the_chip_number_follows_the_date_of_birth() {
+        assert_eq!(
+            patient_description(
+                Some("Hund"),
+                Some("Havaneser"),
+                dob(),
+                Some("276098106222333")
+            ),
+            "Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333",
+        );
+    }
+
+    #[test]
+    fn an_animal_without_a_chip_reads_as_before() {
+        assert_eq!(
+            patient_description(Some("Hund"), Some("Havaneser"), dob(), None),
+            "Hund, Havaneser, Geburtsdatum: 01.01.2021",
+        );
+        // A column that exists but holds blanks must not print an empty label.
+        assert_eq!(
+            patient_description(Some("Katze"), None, None, Some("   ")),
+            "Katze",
+        );
+    }
+
+    #[test]
+    fn a_chip_only_animal_still_reads_properly() {
+        assert_eq!(
+            patient_description(None, None, None, Some("276098106222333")),
+            "Chipnummer: 276098106222333",
+        );
+    }
+
+    /// Why the chip goes *after* the date and not next to the race: the heading is built by
+    /// splitting this same string on the date and keeping the head. Anything before the date
+    /// ends up in the heading of the Behandlungsbericht, where the chip has no business.
+    #[test]
+    fn the_heading_leaves_the_chip_out() {
+        let description = patient_description(
+            Some("Hund"),
+            Some("Havaneser"),
+            dob(),
+            Some("276098106222333"),
+        );
+        let descriptions = std::collections::HashMap::from([(1, description)]);
+        let heading = treatment_heading(&[(1, "Eddie".to_owned())], &descriptions, "03.05.2026");
+
+        assert_eq!(
+            heading,
+            "Behandlung/Konsultation Eddie (Hund – Havaneser) am 03.05.2026"
+        );
+        assert!(
+            !heading.contains("Chipnummer"),
+            "the chip belongs on the position table only"
+        );
+    }
 }
