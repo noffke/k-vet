@@ -20,7 +20,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TextBlockPicker } from '@/components/TextBlockPicker'
 import { Button } from '@/components/ui/button'
-import { TextAreaField } from '@/components/ui/field'
+import { autoGrow, TextAreaField } from '@/components/ui/field'
 import { InvoicePanel } from '@/features/treatments/InvoicePanel'
 import { PositionGroup } from '@/features/treatments/LineEditor'
 import { useAutoSave } from '@/lib/autosave'
@@ -110,6 +110,9 @@ export function PatientTreatmentPage() {
     caret.current[field] = caretAfter
     element.focus()
     element.setSelectionRange(caretAfter, caretAfter)
+    // Assigning `value` fires no input event, so the field would keep the height it had and
+    // hide the block that was just put in it.
+    autoGrow(element)
 
     autoSave.set({ [field]: element.value || null })
     void autoSave.flush()
