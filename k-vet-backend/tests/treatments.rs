@@ -234,24 +234,48 @@ async fn changing_the_quantity_recalculates_the_draft_dispense(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn insufficient_stock_still_books_the_dispense(pool: PgPool) {
+async fn a_dispense_the_stock_cannot_cover_is_refused(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("10"), None).await;
 
-    app.post(
-        &format!("/api/treatments/{treatment_id}/items"),
-        json!({
-            "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "3"
-        }),
-    )
-    .await;
+    // Three 10 ml subsets off a lot holding 10 ml.
+    let refused = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "drug_packaging",
+                "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "3"
+            }),
+        )
+        .await;
 
-    // The shelf is the truth: the shortfall is booked and the lot goes negative.
-    assert_eq!(common::lot_remaining(&pool, lot).await, dec("-20"));
+    // Reversed deliberately (FR-018, issues.md 8): this used to assert the lot went to -20 on
+    // the reasoning that the shelf is the truth. A negative remainder is not the shelf, it is
+    // a record that the books were already wrong, and FEFO then keeps offering an empty lot.
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(refused.error_fields().contains(&"quantity".to_owned()));
+    assert_eq!(
+        common::lot_remaining(&pool, lot).await,
+        dec("10"),
+        "a refused line leaves the stock alone",
+    );
+
+    // What the lot can cover still goes through, so the vet is not blocked from dispensing.
+    let allowed = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "drug_packaging",
+                "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "1"
+            }),
+        )
+        .await;
+    assert_eq!(allowed.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
 
 #[sqlx::test]
@@ -319,6 +343,9 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, record_id) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
+    // Stock to dispense from: a line the lots cannot cover is refused now (FR-018), and this
+    // test is about which animal the line lands on.
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
     let service_id = common::seed_got_service(&pool).await;
 
     let drug_line = app
@@ -385,6 +412,9 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
         .and_then(|patient| patient["id"].as_i64())
         .expect("the attached animal has a record");
     let drug = common::seed_drug(&pool).await;
+    // Stock to dispense from — this test is about which animal a drug line belongs to, not
+    // about what the lots can cover.
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
 
     let without_patient = app
         .post(
@@ -784,7 +814,9 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
-    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+    // The template's drug line is five of the 100 ml original, so the lot has to hold 500 —
+    // a line the stock cannot cover is refused now (FR-018) and this test is about ordering.
+    common::seed_lot(&pool, drug.packaging_id, 5, dec("500"), None).await;
 
     let template_id: i64 = sqlx::query_scalar(
         "INSERT INTO treatment_template (name, draft) VALUES ('Impfung', false) RETURNING id",

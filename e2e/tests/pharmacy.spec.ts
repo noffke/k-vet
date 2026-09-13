@@ -138,6 +138,33 @@ test.describe('pharmacy', () => {
     await expect(page.getByText('-12', { exact: false }).first()).toBeVisible()
   })
 
+  test('a stocktake cannot count a lot below zero', async ({ page, request }) => {
+    const { drugId, packagingId } = await seedDrug(request)
+    await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
+      data: { packages_received: 1, batch_number: `CH-MINUS-${Date.now() % 1e6}` },
+    })
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}`)
+    await page.getByText('CH-MINUS-', { exact: false }).filter({ visible: true }).first().click()
+    await page.getByRole('button', { name: 'Korrektur' }).click()
+    await expect(page).toHaveURL(/\/lots\/\d+\/correction$/)
+
+    // A count of what is on the shelf cannot be below zero (issues.md 8).
+    const counted = page.getByLabel('Restbestand').last()
+    await counted.fill('-5')
+    await page.getByRole('button', { name: 'Bestätigen' }).click()
+
+    // Refused, and said so in its own words rather than the old catch-all "must not be 0".
+    await expect(page.getByText('Darf nicht negativ sein')).toBeVisible()
+    await expect(page).toHaveURL(/\/lots\/\d+\/correction$/)
+
+    // Emptying it is fine: zero is a stock, below zero is not.
+    await counted.fill('0')
+    await page.getByLabel('Grund').fill('Aufgebraucht')
+    await page.getByRole('button', { name: 'Bestätigen' }).click()
+    await expect(page.getByText('Aufgebraucht').filter({ visible: true }).first()).toBeVisible()
+  })
+
   test('dispensing splits FEFO across lots and cancelling returns the stock', async ({
     page,
     request,
@@ -195,8 +222,10 @@ test.describe('pharmacy', () => {
     request,
   }) => {
     const { packagingId, subsetPackagingId } = await seedDrug(request)
+    // Dated, so FEFO reaches for this lot rather than the undated one the drug was seeded
+    // with — undated lots sort last, and the history asserted below is this lot's.
     const intake = await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
-      data: { packages_received: 1, batch_number: 'CH-TRACE' },
+      data: { packages_received: 1, batch_number: 'CH-TRACE', expiration_date: '2026-12-31' },
     })
     const lotId = (await intake.json()).id
 

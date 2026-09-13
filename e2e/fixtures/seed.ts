@@ -136,6 +136,15 @@ export async function seedDrug(request: APIRequestContext): Promise<SeededDrug> 
   })
   await patch(request, `/api/packagings/${subset.id}`, { unit: 'ml', quantity: '10' })
 
+  // Stock to dispense from. A dispense the lots cannot cover is refused now (FR-018,
+  // issues.md 8) rather than booked against a lot that has nothing, so a drug the specs
+  // dispense has to have arrived first — which is what happens in the practice too. Ten
+  // bottles is well clear of the largest line any spec writes (a template's five).
+  await post(request, `/api/packagings/${original.id}/stock-intakes`, {
+    packages_received: 10,
+    batch_number: `CH-SEED-${Date.now().toString().slice(-8)}`,
+  })
+
   return { drugId: drug.id, drugName, packagingId: original.id, subsetPackagingId: subset.id }
 }
 

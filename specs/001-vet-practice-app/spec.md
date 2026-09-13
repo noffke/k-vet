@@ -332,10 +332,14 @@ reflected on the next generated invoice.
 - **FR-017**: A lot detail view MUST show all movements chronologically, each linking to the
   treatment/invoice/customer that received a dispense, or showing the correction reason.
 - **FR-018**: Remaining stock MUST always be derived from initial quantity plus the sum of
-  movements — never stored or directly editable.
+  movements — never stored or directly editable. It MUST never be negative: any movement that
+  would take a lot below zero is rejected, whether it is a stocktake correction or a dispense.
+  The invariant is enforced in the database, so no code path can write past it.
 - **FR-019**: When dispensing, the system MUST suggest the lot with the earliest expiration
   date that has stock (FEFO) and let the vet confirm or override; a single treatment line may
-  split across several lots.
+  split across several lots. When the lots cannot cover the quantity the dispense is refused
+  rather than booked against a lot that cannot supply it, and the vet is pointed at the remedy:
+  a stocktake correction (FR-016).
 - **FR-020**: Dispense movements MUST remain drafts (freely recalculated on treatment edits)
   until the treatment's invoice is Accepted, at which point they are frozen; after freezing,
   the movement history is append-only and cancellations write compensating counter-movements

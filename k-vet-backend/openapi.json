@@ -1648,7 +1648,7 @@
             }
           },
           "422": {
-            "description": "The correction would not change anything"
+            "description": "The correction would not change anything, or is below zero"
           }
         }
       }

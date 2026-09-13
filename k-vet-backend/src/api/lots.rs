@@ -272,7 +272,7 @@ pub async fn detail(
     request_body = CreateCorrection,
     responses(
         (status = 200, body = LotDetail),
-        (status = 422, description = "The correction would not change anything")
+        (status = 422, description = "The correction would not change anything, or is below zero")
     )
 )]
 pub async fn create_correction(
@@ -280,11 +280,25 @@ pub async fn create_correction(
     Path(id): Path<i64>,
     Json(body): Json<CreateCorrection>,
 ) -> AppResult<Json<LotDetail>> {
+    // A count of what is physically there cannot be negative (FR-018, issues.md 8). Caught
+    // here rather than left to the trigger, so it reads as the field error it is.
+    if body.new_remaining.is_sign_negative() {
+        return Err(AppError::field("new_remaining", "value.mustNotBeNegative"));
+    }
+
+    // One transaction, and the lot locked: the stocktake is a read of the current stock
+    // followed by a write of the difference, and a dispense landing in between would otherwise
+    // be silently undone by the delta computed before it.
+    let mut transaction = state.pool.begin().await?;
+    sqlx::query_scalar!("SELECT id FROM drug_stock_lot WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?
+        .ok_or(AppError::NotFound)?;
+
     let remaining: Option<Decimal> =
         sqlx::query_scalar!("SELECT remaining FROM lot_remaining WHERE lot_id = $1", id)
-            .fetch_optional(&state.pool)
-            .await?
-            .ok_or(AppError::NotFound)?;
+            .fetch_one(&mut *transaction)
+            .await?;
     let remaining = remaining.unwrap_or_default();
 
     // The vet states the counted stock; the ledger records the difference.
@@ -305,8 +319,9 @@ pub async fn create_correction(
         delta,
         reason,
     )
-    .execute(&state.pool)
+    .execute(&mut *transaction)
     .await?;
+    transaction.commit().await?;
 
     detail(State(state), Path(id)).await
 }
