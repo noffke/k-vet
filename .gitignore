@@ -157,3 +157,7 @@ attachments/
 # Deployment mounts and secrets next to docker-compose.deploy.yml
 /templates/
 /.env
+
+# Source documents that are not ours to redistribute (the GOT catalogue is
+# extracted once by scripts/extract-got.py into migration 0008)
+requirements/*.pdf

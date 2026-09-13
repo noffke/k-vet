@@ -16,6 +16,12 @@ Table extraction from a PDF is never exact, which is why this script writes a mi
 that is **reviewed by hand** before it is committed, and prints the spot checks the
 reviewer should confirm.
 
+The PDF itself is deliberately not committed — it is the Bundesanzeiger typesetting of the
+GOT and not ours to redistribute. The extracted fees live in migration `0008_got_import.sql`,
+which every database already has, so this script only needs to run again if the fee schedule
+changes. Put a copy of the catalogue at `requirements/GOT_2022.pdf` (git ignores it) or pass
+`--pdf`.
+
 Usage:
     scripts/extract-got.py [--pdf requirements/GOT_2022.pdf] [--out k-vet-backend/migrations/0008_got_import.sql]
 
