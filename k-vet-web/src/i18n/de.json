@@ -163,12 +163,18 @@
     "undo": "Rückgängig",
     "upload": "Datei hochladen"
   },
+  "confirm": {
+    "archiveBody": "„{{name}}“ verschwindet aus Suche und Auswahllisten. Rechnungen und Behandlungen bleiben unverändert, und Wiederherstellen ist jederzeit möglich.",
+    "archiveBodyNoRestore": "„{{name}}“ verschwindet aus Suche und Auswahllisten. Rechnungen und Behandlungen bleiben unverändert; auf dieser Seite lässt es sich aber nicht wieder einblenden.",
+    "archiveTitle": "Archivieren?"
+  },
   "value": {
     "invalidBic": "Kein gültiger BIC (8 oder 11 Zeichen).",
     "invalidCountry": "Kein gültiger Ländercode (ISO 3166-1, z. B. DE).",
     "invalidEmail": "Keine gültige E-Mail-Adresse",
     "invalidPhone": "Keine gültige Telefonnummer",
     "mustBePositive": "Muss größer als 0 sein",
+    "mustNotBeNegative": "Darf nicht negativ sein",
     "mustNotBeZero": "Darf nicht 0 sein",
     "notADate": "Kein gültiges Datum",
     "notANumber": "Keine gültige Zahl",
@@ -200,8 +206,14 @@
   },
   "appointments": {
     "addTreatment": "Behandlung hinzufügen",
+    "customer": "Kunde",
+    "customerHint": "Bestimmt, welche Tiere zur Auswahl stehen.",
+    "delete": "Termin löschen",
+    "deleteBlocked": "Zu diesem Termin wurde bereits eine Rechnung geschrieben. Er bleibt als Beleg erhalten und lässt sich nicht löschen.",
+    "deleteConfirm": "Diesen Termin wirklich löschen? Seine Behandlungen und deren Positionen werden mitgelöscht.",
     "duplicate": "Termin duplizieren",
     "new": "Neuer Termin",
+    "pickCustomer": "Kunde suchen …",
     "priceMode": "Preise",
     "priceModeRefresh": "Preise aktualisieren",
     "priceModeVerbatim": "Preise übernehmen",
@@ -225,7 +237,8 @@
     "removeItem": "Position entfernen",
     "removeItemConfirm": "„{{name}}“ wirklich von dieser Behandlung entfernen?",
     "removeItemReturnsStock": "Die abgegebene Menge geht zurück in den Bestand.",
-    "shortfallWarning": "Bestand reicht nicht aus — Abgabe wird trotzdem gebucht.",
+    "removePatient": "Tier entfernen",
+    "removePatientConfirm": "„{{name}}“ wirklich von dieser Behandlung nehmen? Die Positionen dieses Tieres gehen mit.",
     "title": "Behandlung",
     "total": "Summe",
     "withoutPatient": "Ohne Tier"
@@ -244,7 +257,6 @@
     "createAnyway": "Trotzdem erstellen",
     "date": "Rechnungsdatum",
     "includesFinding": "Therapie und weiteres Vorgehen aufführen",
-    "liveInvoiceExists": "Zu dieser Behandlung gibt es eine Rechnung — sie muss erst storniert werden.",
     "mailUnreachable": "Der Mailserver ist nicht erreichbar. Die Rechnung wurde nicht versendet — bitte die Mail-Einstellungen prüfen, oder die Rechnung ausdrucken und als „Per Post versendet“ markieren.",
     "markPosted": "Per Post versendet",
     "markPostedHint": "Hält fest, dass die Rechnung auf Papier beim Kunden ist. Erst danach geht sie an die Buchhaltung.",
@@ -338,6 +350,8 @@
     "itemCount": "{{count}} Pos.",
     "items": "Positionen",
     "new": "Neue Behandlungsgruppe",
+    "removeItem": "Position entfernen",
+    "removeItemConfirm": "„{{name}}“ wirklich aus dieser Behandlungsgruppe entfernen?",
     "title": "Behandlungsgruppen"
   },
   "masterData": {
@@ -385,6 +399,8 @@
     "practiceName": "Name der Praxis",
     "practiceStreet": "Straße und Hausnummer",
     "practiceZip": "PLZ",
+    "removeLogo": "Logo entfernen",
+    "removeLogoConfirm": "Logo wirklich entfernen? Neue Rechnungen werden dann ohne Logo gedruckt.",
     "title": "Einstellungen",
     "ustid": "USt-IdNr."
   },
@@ -397,7 +413,8 @@
     "drugShapeInvalid": "Ungültige Angaben für eine Medikamentenposition",
     "kmInvalid": "Kilometer und Faktor müssen zusammen angegeben werden",
     "patientNotInTreatment": "Dieses Tier gehört nicht zu dieser Behandlung",
-    "patientRequired": "Für Medikamente ist ein Patient erforderlich"
+    "patientRequired": "Für Medikamente ist ein Patient erforderlich",
+    "stockShort": "Der Bestand dieser Charge reicht für diese Menge nicht aus. Bitte zuerst eine Inventur für die Charge erfassen."
   },
   "packaging": {
     "originalAlreadyExists": "Es gibt bereits eine Originalpackung",
@@ -413,7 +430,8 @@
   },
   "movement": {
     "correctionShapeInvalid": "Ungültige Korrekturbuchung",
-    "dispenseShapeInvalid": "Ungültige Abgabebuchung"
+    "dispenseShapeInvalid": "Ungültige Abgabebuchung",
+    "wouldGoNegative": "Der Bestand der Charge würde dadurch unter null fallen."
   },
   "invoice": {
     "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung",
@@ -435,6 +453,7 @@
     "title": "Textbausteine"
   },
   "treatment": {
+    "customerRequired": "Bitte zuerst den Kunden des Termins wählen.",
     "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden"
   }
 }

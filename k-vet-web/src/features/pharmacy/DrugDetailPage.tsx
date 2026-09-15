@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { Archive, ArchiveRestore } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetDrugQueryKey,
@@ -15,11 +14,11 @@ import {
   useUnarchiveDrug,
 } from '@/api/generated/endpoints'
 import type { Drug } from '@/api/generated/model'
+import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
-import { Button } from '@/components/ui/button'
 import { CheckboxField, SelectField, TextField } from '@/components/ui/field'
 import { VatSelect } from '@/components/VatSelect'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
@@ -85,17 +84,12 @@ export function DrugDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            {record.archived ? (
-              <Button onClick={() => unarchive.mutate({ id: drugId }, { onSuccess: store })}>
-                <ArchiveRestore className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
-              </Button>
-            ) : (
-              <Button onClick={() => archive.mutate({ id: drugId }, { onSuccess: store })}>
-                <Archive className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
-              </Button>
-            )}
+            <ArchiveButton
+              archived={record.archived}
+              name={record.name ?? t('pharmacy.newDrug')}
+              onArchive={() => archive.mutate({ id: drugId }, { onSuccess: store })}
+              onUnarchive={() => unarchive.mutate({ id: drugId }, { onSuccess: store })}
+            />
           </>
         }
       >

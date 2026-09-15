@@ -1,3 +1,5 @@
+# WORK IN PROGRESS!
+
 # k-vet
 
 Practice management for a one-vet veterinary practice: appointments, patients, treatments,

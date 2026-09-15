@@ -36,7 +36,7 @@ updates:
       semver-patch-days: 5
       semver-minor-days: 7
       semver-major-days: 30
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 30
     commit-message:
       prefix: "cargo"
     groups:
@@ -57,7 +57,7 @@ updates:
       semver-patch-days: 5
       semver-minor-days: 7
       semver-major-days: 30
-    open-pull-requests-limit: 5
+    open-pull-requests-limit: 30
     # The pins stay exact; only the pinned number moves.
     versioning-strategy: "increase"
     commit-message:
@@ -81,7 +81,7 @@ updates:
       semver-patch-days: 5
       semver-minor-days: 7
       semver-major-days: 30
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 30
     versioning-strategy: "increase"
     commit-message:
       prefix: "e2e"
@@ -100,7 +100,7 @@ updates:
       timezone: "Europe/Berlin"
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 30
     commit-message:
       prefix: "ci"
     groups:
@@ -118,7 +118,7 @@ updates:
       timezone: "Europe/Berlin"
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 30
     commit-message:
       prefix: "docker"
 
@@ -135,7 +135,7 @@ updates:
       timezone: "Europe/Berlin"
     cooldown:
       default-days: 7
-    open-pull-requests-limit: 3
+    open-pull-requests-limit: 30
     commit-message:
       prefix: "docker"
     ignore:
