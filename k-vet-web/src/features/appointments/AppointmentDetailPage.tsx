@@ -17,6 +17,8 @@ import {
 } from '@/api/generated/endpoints'
 import type { Appointment, PriceMode } from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { CustomerPicker } from '@/components/CustomerPicker'
 import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge, NotBilledBadge, NotSentBadge } from '@/components/RecordBadges'
@@ -47,6 +49,7 @@ export function AppointmentDetailPage() {
   const treatments = useListTreatments(appointmentId)
   const patchAppointment = usePatchAppointment()
   const [duplicateOpen, setDuplicateOpen] = useState(false)
+  const [deleteOpen, setDeleteOpen] = useState(false)
   // A typed date has nowhere to go until a time exists — a timestamp needs both halves.
   const [typedDate, setTypedDate] = useState<string | null>(null)
 
@@ -120,8 +123,16 @@ export function AppointmentDetailPage() {
   }
 
   // The generated hook types the error as `void`; the fetcher throws `ApiError`.
+  //
+  // Every failure is shown, not only the one that was anticipated. Rendering the 409 alone is
+  // how deleting came to look broken: anything else left the button doing nothing, silently.
   const deleteError: unknown = removeAppointment.error
-  const deleteBlocked = deleteError instanceof ApiError && deleteError.status === 409
+  const deleteMessage =
+    deleteError instanceof ApiError && deleteError.status === 409
+      ? t('appointments.deleteBlocked')
+      : deleteError
+        ? t('error.generic')
+        : null
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -137,21 +148,31 @@ export function AppointmentDetailPage() {
             </Button>
             <Button
               variant="danger"
-              onClick={() => removeAppointment.mutate({ id: appointmentId })}
+              onClick={() => setDeleteOpen(true)}
               disabled={removeAppointment.isPending}
             >
               <Trash2 className="size-4" />
               <span className="sr-only sm:not-sr-only">{t('action.delete')}</span>
             </Button>
+            <ConfirmDialog
+              open={deleteOpen}
+              onOpenChange={setDeleteOpen}
+              title={t('appointments.delete')}
+              confirmLabel={t('action.delete')}
+              busy={removeAppointment.isPending}
+              onConfirm={() => removeAppointment.mutate({ id: appointmentId })}
+            >
+              {t('appointments.deleteConfirm')}
+            </ConfirmDialog>
           </>
         }
       >
         <IncompleteBadge missing={record.missing_fields} />
       </PageHeader>
 
-      {deleteBlocked ? (
+      {deleteMessage ? (
         <p className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">
-          {t('invoices.liveInvoiceExists')}
+          {deleteMessage}
         </p>
       ) : null}
 
@@ -175,6 +196,26 @@ export function AppointmentDetailPage() {
           onChange={(event) => autoSave.set({ note: event.target.value || null })}
           onBlur={() => void autoSave.flush()}
         />
+
+        <div className="sm:col-span-2">
+          <p className="eyebrow">{t('appointments.customer')}</p>
+          <p className="mt-0.5 mb-2 text-xs text-ink-faint">{t('appointments.customerHint')}</p>
+          {/* Locked once a treatment hangs off it: its animals belong to this customer, and
+              moving the appointment would strand them. */}
+          <CustomerPicker
+            customerId={record.customer_id ?? null}
+            customerName={record.customer_name ?? null}
+            locked={(treatments.data ?? []).length > 0}
+            onPick={(customerId) => {
+              autoSave.set({ customer_id: customerId })
+              void autoSave.flush()
+            }}
+            onClear={() => {
+              autoSave.set({ customer_id: null })
+              void autoSave.flush()
+            }}
+          />
+        </div>
       </section>
 
       <section className="mt-6">
@@ -183,7 +224,9 @@ export function AppointmentDetailPage() {
           <Button
             variant="accent"
             size="small"
-            disabled={record.draft || createTreatment.isPending}
+            // Without a customer there is nothing to limit the animals to, which is the whole
+            // point of asking (issues.md 7); the server refuses it too.
+            disabled={record.draft || !record.customer_id || createTreatment.isPending}
             title={record.draft ? t('record.incomplete') : undefined}
             onClick={() => createTreatment.mutate({ id: appointmentId, data: { patient_ids: [] } })}
           >
@@ -198,6 +241,9 @@ export function AppointmentDetailPage() {
               fields: t('field.time'),
             })}
           </p>
+        ) : null}
+        {!record.draft && !record.customer_id ? (
+          <p className="mt-2 text-xs text-ink-faint">{t('treatment.customerRequired')}</p>
         ) : null}
 
         <ul className="mt-3 flex flex-col gap-2">

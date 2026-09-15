@@ -11,4 +11,6 @@ export interface CreateAppointment {
   starts_at?: string | null;
   /** @nullable */
   note?: string | null;
+  /** @nullable */
+  customer_id?: number | null;
 }

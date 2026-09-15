@@ -441,6 +441,51 @@ async fn a_dispensed_treatment_cannot_be_deleted_once_invoiced(pool: PgPool) {
     assert!(billed.packaging_id > 0);
 }
 
+/// The case that made "delete" look broken: the guard used to ignore cancelled invoices, so
+/// the delete went through to the database, hit `invoice.treatment_id` (no ON DELETE) and came
+/// back as a foreign-key 422 the screen had no branch for — nothing happened and nothing was
+/// said. A burned invoice number is a record in its own right, so the answer is a plain 409.
+#[sqlx::test]
+async fn a_cancelled_invoice_still_keeps_its_treatment_and_appointment(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let invoice = create_invoice(&app, billed.treatment_id).await;
+    let invoice_id = invoice["id"].as_i64().unwrap_or_default();
+
+    let cancelled = app
+        .post_empty(&format!("/api/invoices/{invoice_id}/cancel"))
+        .await;
+    assert_eq!(cancelled.status, StatusCode::OK);
+    assert_eq!(cancelled.json()["status"], "cancelled");
+
+    let rejected = app
+        .delete(&format!("/api/treatments/{}", billed.treatment_id))
+        .await;
+    assert_eq!(
+        rejected.status,
+        StatusCode::CONFLICT,
+        "a cancelled invoice is still an invoice; the treatment stays",
+    );
+
+    let appointment: i64 = sqlx::query_scalar("SELECT appointment_id FROM treatment WHERE id = $1")
+        .bind(billed.treatment_id)
+        .fetch_one(&pool)
+        .await
+        .expect("appointment id");
+    let rejected = app
+        .delete(&format!("/api/appointments/{appointment}"))
+        .await;
+    assert_eq!(rejected.status, StatusCode::CONFLICT);
+
+    // Refused, not half-done: both rows are still there.
+    assert_eq!(
+        app.get(&format!("/api/appointments/{appointment}"))
+            .await
+            .status,
+        StatusCode::OK,
+    );
+}
+
 #[sqlx::test]
 async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

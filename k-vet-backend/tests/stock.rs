@@ -437,3 +437,74 @@ async fn the_movement_shape_checks_hold_at_the_database_level(pool: PgPool) {
     .await;
     assert!(result.is_err());
 }
+
+/// A lot's derived stock must never be negative (FR-018, issues.md 8), on every path.
+///
+/// The stocktake is refused in the handler, so it reads as a field error rather than a
+/// database failure; the trigger underneath is what makes the rule hold for writes that never
+/// reach a handler at all.
+#[sqlx::test]
+async fn a_stocktake_cannot_count_below_zero(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+
+    let refused = app
+        .post(
+            &format!("/api/lots/{lot}/corrections"),
+            json!({ "new_remaining": "-1", "reason": "Vertippt" }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(refused.error_fields().contains(&"new_remaining".to_owned()));
+
+    // Nothing was written: a refused stocktake leaves the ledger as it was.
+    let movements: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM drug_stock_movement WHERE lot_id = $1")
+            .bind(lot)
+            .fetch_one(&pool)
+            .await
+            .expect("count");
+    assert_eq!(movements, 0);
+
+    // Counting it empty is fine — zero is a stock, below zero is not.
+    let emptied = app
+        .post(
+            &format!("/api/lots/{lot}/corrections"),
+            json!({ "new_remaining": "0", "reason": "Aufgebraucht" }),
+        )
+        .await;
+    assert_eq!(emptied.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
+}
+
+/// The same rule asked of the database, which is where it has to hold: the handler can only
+/// speak for the paths that go through it.
+#[sqlx::test]
+async fn the_database_refuses_a_movement_that_would_go_below_zero(pool: PgPool) {
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+
+    let too_much = sqlx::query(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason)
+         VALUES ($1, 'correction', -101, 'Direkt in die Datenbank')",
+    )
+    .bind(lot)
+    .execute(&pool)
+    .await;
+    assert!(too_much.is_err(), "101 cannot come off a lot of 100");
+
+    // Exactly the stock there is still goes through; the boundary is inclusive.
+    let all_of_it = sqlx::query(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason)
+         VALUES ($1, 'correction', -100, 'Aufgebraucht')",
+    )
+    .bind(lot)
+    .execute(&pool)
+    .await;
+    assert!(
+        all_of_it.is_ok(),
+        "a lot may be emptied, just not overdrawn"
+    );
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
+}

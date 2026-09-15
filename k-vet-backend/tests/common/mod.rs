@@ -495,18 +495,37 @@ pub async fn seed_patient_treatment(
     appointment_id: i64,
     patient_id: i64,
 ) -> (i64, i64) {
-    let treatment_id: i64 =
-        sqlx::query_scalar("INSERT INTO treatment (appointment_id) VALUES ($1) RETURNING id")
-            .bind(appointment_id)
-            .fetch_one(pool)
-            .await
-            .expect("seed treatment");
+    // The customer travels appointment -> treatment -> record, and the composite keys hold it
+    // to one all the way down, so the seed has to set it at every level rather than leave the
+    // NULLs a foreign key would simply skip over.
+    let customer_id: i64 = sqlx::query_scalar("SELECT customer_id FROM patient WHERE id = $1")
+        .bind(patient_id)
+        .fetch_one(pool)
+        .await
+        .expect("the seeded animal has an owner");
+
+    sqlx::query("UPDATE appointment SET customer_id = $2 WHERE id = $1 AND customer_id IS NULL")
+        .bind(appointment_id)
+        .bind(customer_id)
+        .execute(pool)
+        .await
+        .expect("give the appointment its customer");
+
+    let treatment_id: i64 = sqlx::query_scalar(
+        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
+    )
+    .bind(appointment_id)
+    .bind(customer_id)
+    .fetch_one(pool)
+    .await
+    .expect("seed treatment");
     let record_id: i64 = sqlx::query_scalar(
-        "INSERT INTO patient_treatment (treatment_id, patient_id, treatment_reason)
-         VALUES ($1, $2, 'Routinekontrolle') RETURNING id",
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id, treatment_reason)
+         VALUES ($1, $2, $3, 'Routinekontrolle') RETURNING id",
     )
     .bind(treatment_id)
     .bind(patient_id)
+    .bind(customer_id)
     .fetch_one(pool)
     .await
     .expect("seed patient treatment");

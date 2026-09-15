@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT EXISTS (\n             SELECT 1 FROM invoice WHERE treatment_id = $1 AND status <> 'cancelled'\n         )",
+  "query": "SELECT EXISTS (SELECT 1 FROM invoice WHERE treatment_id = $1)",
   "describe": {
     "columns": [
       {
@@ -19,5 +19,5 @@
       null
     ]
   },
-  "hash": "92321434309a2116b3a8d96ba6fb87a9c5461b4197b237c304ef7e4ea40b43be"
+  "hash": "d7d601f77d486808ca9a5e5ec46f35b6b4fa1d7b6e311a2737395e3b059c5177"
 }

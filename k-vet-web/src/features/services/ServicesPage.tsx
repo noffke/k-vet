@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, EyeOff, Plus, Route } from 'lucide-react'
+import { EyeOff, Plus, Route } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -14,6 +14,7 @@ import {
   useUnarchiveService,
 } from '@/api/generated/endpoints'
 import type { Service } from '@/api/generated/model'
+import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { NumberInput } from '@/components/NumberInput'
@@ -211,17 +212,12 @@ export function ServiceDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            {record.archived ? (
-              <Button onClick={() => unarchive.mutate({ id: serviceId }, { onSuccess: store })}>
-                <ArchiveRestore className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
-              </Button>
-            ) : (
-              <Button onClick={() => archive.mutate({ id: serviceId }, { onSuccess: store })}>
-                <Archive className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
-              </Button>
-            )}
+            <ArchiveButton
+              archived={record.archived}
+              name={record.name ?? t('services.new')}
+              onArchive={() => archive.mutate({ id: serviceId }, { onSuccess: store })}
+              onUnarchive={() => unarchive.mutate({ id: serviceId }, { onSuccess: store })}
+            />
           </>
         }
       >
