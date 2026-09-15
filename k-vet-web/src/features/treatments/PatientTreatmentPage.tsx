@@ -5,6 +5,7 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
 import {
+  getDownloadAttachmentUrl,
   getGetPatientTreatmentQueryKey,
   getGetTreatmentQueryKey,
   getListPatientTreatmentFilesQueryKey,
@@ -20,7 +21,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TextBlockPicker } from '@/components/TextBlockPicker'
 import { Button } from '@/components/ui/button'
-import { TextAreaField } from '@/components/ui/field'
+import { autoGrow, TextAreaField } from '@/components/ui/field'
 import { InvoicePanel } from '@/features/treatments/InvoicePanel'
 import { PositionGroup } from '@/features/treatments/LineEditor'
 import { useAutoSave } from '@/lib/autosave'
@@ -98,15 +99,21 @@ export function PatientTreatmentPage() {
     const at = caret.current[field] ?? element.value.length
     const before = element.value.slice(0, at)
     const after = element.value.slice(at)
-    // A block is a paragraph, not a word: separate it from text it lands next to.
+    // A block is a paragraph, not a word: separate it from text it lands next to, on both
+    // sides (issues.md 3). The trailing newline is what the vet asked for — after inserting,
+    // the caret sits on a fresh line, ready for the next block or for typing.
     const lead = before !== '' && !before.endsWith('\n') ? '\n' : ''
-    const insert = lead + text
+    const trail = text.endsWith('\n') ? '' : '\n'
+    const insert = lead + text + trail
     element.value = before + insert + after
 
     const caretAfter = at + insert.length
     caret.current[field] = caretAfter
     element.focus()
     element.setSelectionRange(caretAfter, caretAfter)
+    // Assigning `value` fires no input event, so the field would keep the height it had and
+    // hide the block that was just put in it.
+    autoGrow(element)
 
     autoSave.set({ [field]: element.value || null })
     void autoSave.flush()
@@ -221,7 +228,14 @@ export function PatientTreatmentPage() {
               key={file.id}
               className="flex items-center justify-between gap-3 rounded-card border border-line bg-surface px-3 py-2 text-sm"
             >
-              <a href={`/api/attachments/${file.id}`} className="text-rust hover:underline">
+              {/* A new tab, so opening a scan does not navigate away from the record the vet
+                  is in the middle of writing. */}
+              <a
+                href={getDownloadAttachmentUrl(file.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="text-rust hover:underline"
+              >
                 {file.orig_name}
               </a>
               <span className="numeric text-xs text-ink-faint">{date(file.created_at)}</span>

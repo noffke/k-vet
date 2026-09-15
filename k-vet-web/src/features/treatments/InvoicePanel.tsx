@@ -12,9 +12,9 @@ import {
   useMarkInvoicePosted,
 } from '@/api/generated/endpoints'
 import type { Treatment } from '@/api/generated/model'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { NotSentBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { useLocaleFormat } from '@/lib/locale'
 
 interface InvoicePanelProps {
@@ -187,28 +187,19 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
         </p>
       ) : null}
 
-      <Dialog
+      {/* The number is burned on cancellation, so name the invoice being cancelled. */}
+      <ConfirmDialog
         open={cancelOpen}
         onOpenChange={setCancelOpen}
         title={t('invoices.cancel')}
-        description={t('invoices.cancelConfirm')}
-        footer={
-          <>
-            <Button onClick={() => setCancelOpen(false)}>{t('action.cancel')}</Button>
-            <Button
-              variant="danger"
-              disabled={cancelInvoice.isPending}
-              onClick={() =>
-                treatment.invoice && cancelInvoice.mutate({ id: treatment.invoice.id })
-              }
-            >
-              {t('action.confirm')}
-            </Button>
-          </>
-        }
+        description={treatment.invoice?.invoice_number}
+        busy={cancelInvoice.isPending}
+        onConfirm={() => {
+          if (treatment.invoice) cancelInvoice.mutate({ id: treatment.invoice.id })
+        }}
       >
-        <p className="text-sm text-ink-soft">{t('invoices.cancelConfirm')}</p>
-      </Dialog>
+        {t('invoices.cancelConfirm')}
+      </ConfirmDialog>
     </section>
   )
 }
