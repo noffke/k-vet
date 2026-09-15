@@ -18,6 +18,8 @@ export const ListAppointmentsResponseItem = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
@@ -30,13 +32,16 @@ export const ListAppointmentsResponse = zod.array(ListAppointmentsResponseItem)
 
 export const CreateAppointmentBody = zod.object({
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "note": zod.string().nullish()
+  "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish()
 })
 
 export const CreateAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
@@ -54,6 +59,8 @@ export const GetAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
@@ -76,13 +83,16 @@ export const PatchAppointmentParams = zod.object({
 
 export const PatchAppointmentBody = zod.object({
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "note": zod.string().nullish()
+  "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish()
 })
 
 export const PatchAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
@@ -104,6 +114,8 @@ export const DuplicateAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the \"incomplete — missing: …\" hint.'),
   "treatment_count": zod.int(),
@@ -130,7 +142,7 @@ export const ListTreatmentsResponseItem = zod.object({
   "treatment_reason": zod.string().nullish(),
   "finding": zod.string().nullish()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -168,7 +180,7 @@ export const CreateTreatmentResponse = zod.object({
   "treatment_reason": zod.string().nullish(),
   "finding": zod.string().nullish()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -2619,7 +2631,7 @@ export const GetTreatmentResponse = zod.object({
   "treatment_reason": zod.string().nullish(),
   "finding": zod.string().nullish()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -2706,7 +2718,7 @@ export const DuplicateTreatmentResponse = zod.object({
   "treatment_reason": zod.string().nullish(),
   "finding": zod.string().nullish()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -2903,7 +2915,7 @@ export const AddTreatmentPatientResponse = zod.object({
   "treatment_reason": zod.string().nullish(),
   "finding": zod.string().nullish()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -2937,7 +2949,7 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "treatment_reason": zod.string().nullish(),
   "finding": zod.string().nullish()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Derived from the patients — the invoice\'s customer.'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
   "invoice": zod.union([zod.null(),zod.object({
   "id": zod.int(),

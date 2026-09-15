@@ -34,6 +34,11 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByLabel('Uhrzeit').fill('09:30')
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
+  // Whose visit it is, before anything can be billed against it — and what limits the animals
+  // the picker offers further down (issues.md 7).
+  await page.getByPlaceholder('Kunde suchen …').fill(lastName)
+  await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
+
   // ── A treatment, with the patient attached on its page ──────────────────────
   await page.getByRole('button', { name: 'Behandlung hinzufügen' }).click()
   await expect(page).toHaveURL(/\/treatments\/\d+$/)

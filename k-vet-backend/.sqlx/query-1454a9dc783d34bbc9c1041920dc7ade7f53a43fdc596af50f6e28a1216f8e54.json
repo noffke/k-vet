@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT draft FROM appointment WHERE id = $1",
+  "query": "SELECT id FROM drug_stock_lot WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "draft",
-        "type_info": "Bool",
+        "name": "id",
+        "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "appointment",
-            "name": "draft"
+            "table": "drug_stock_lot",
+            "name": "id"
           }
         }
       }
@@ -24,5 +24,5 @@
       false
     ]
   },
-  "hash": "f0c8d024f34f46c44f2cc9b7a0958715ab53951814d6d67446fbdb6869c84a63"
+  "hash": "1454a9dc783d34bbc9c1041920dc7ade7f53a43fdc596af50f6e28a1216f8e54"
 }

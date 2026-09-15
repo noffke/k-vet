@@ -1,27 +1,27 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT starts_at, draft FROM appointment WHERE id = $1 FOR UPDATE",
+  "query": "SELECT draft, customer_id FROM appointment WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "starts_at",
-        "type_info": "Timestamptz",
-        "origin": {
-          "Table": {
-            "table": "appointment",
-            "name": "starts_at"
-          }
-        }
-      },
-      {
-        "ordinal": 1,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "appointment",
             "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "customer_id"
           }
         }
       }
@@ -32,9 +32,9 @@
       ]
     },
     "nullable": [
-      true,
-      false
+      false,
+      true
     ]
   },
-  "hash": "a04565e87f54c29010f43ebd113f20e084b187afc267e8cb435d50db9bc068eb"
+  "hash": "ff14d1c087c1017cb8cd99286ab74fcfc056fe4a1a6fd79a4ee0d3d53ef4eca2"
 }

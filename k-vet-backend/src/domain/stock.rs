@@ -27,15 +27,31 @@ pub struct LotAllocation {
     pub quantity: Decimal,
 }
 
+/// How much of a dispense the lots could not cover.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Shortfall {
+    pub needed: Decimal,
+    pub available: Decimal,
+}
+
 /// Splits `needed` across lots, earliest expiration first (FR-019).
 ///
-/// `lots` must already be ordered FEFO (expiration date ascending, undated last). When the
-/// lots cannot cover the quantity, the shortfall is added to the first lot — the physical
-/// shelf is the truth, so the dispense is recorded and that lot's derived stock goes
-/// negative until a correction reconciles it (spec edge case).
-pub fn allocate_fefo(lots: &[LotAvailability], needed: Decimal) -> Vec<LotAllocation> {
+/// `lots` must already be ordered FEFO (expiration date ascending, undated last). When they
+/// cannot cover the quantity the dispense is refused with what is missing, rather than booked
+/// against a lot that cannot supply it (FR-018, issues.md 8).
+///
+/// This used to add the shortfall to the first lot and let its derived stock go negative, on
+/// the reasoning that the physical shelf is the truth. A negative remainder is not the shelf,
+/// though — it says the books were already wrong, and it spreads quietly, because FEFO goes on
+/// offering lots that hold nothing. The remedy is the stocktake correction, entered against
+/// what is actually on the shelf; refusing here is what sends the vet to it, at the moment the
+/// discrepancy shows up and can still be counted.
+pub fn allocate_fefo(
+    lots: &[LotAvailability],
+    needed: Decimal,
+) -> Result<Vec<LotAllocation>, Shortfall> {
     if needed <= Decimal::ZERO {
-        return Vec::new();
+        return Ok(Vec::new());
     }
     let mut allocations: Vec<LotAllocation> = Vec::new();
     let mut rest = needed;
@@ -56,20 +72,12 @@ pub fn allocate_fefo(lots: &[LotAvailability], needed: Decimal) -> Vec<LotAlloca
     }
 
     if rest > Decimal::ZERO {
-        match allocations.first_mut() {
-            // Book the shortfall against the FEFO-suggested lot.
-            Some(first) => first.quantity += rest,
-            None => {
-                if let Some(lot) = lots.first() {
-                    allocations.push(LotAllocation {
-                        lot_id: lot.lot_id,
-                        quantity: rest,
-                    });
-                }
-            }
-        }
+        return Err(Shortfall {
+            needed,
+            available: needed - rest,
+        });
     }
-    allocations
+    Ok(allocations)
 }
 
 /// Lots of a packaging in FEFO order, with their derived remaining quantity.
@@ -200,7 +208,18 @@ pub async fn rewrite_draft_dispenses(
     };
     let needed = billed_quantity * target.base_units;
     let lots = lot_availability(&mut *connection, target.packaging_id).await?;
-    let allocations = allocate_fefo(&lots, needed);
+    // Refused rather than booked against a lot that cannot supply it. The message points at
+    // the stocktake, because that is the thing the vet has to do next — the numbers themselves
+    // are on the lot page she is being sent to, and field errors carry no interpolation.
+    let allocations = allocate_fefo(&lots, needed).map_err(|short| {
+        tracing::info!(
+            needed = %short.needed,
+            available = %short.available,
+            packaging_id = target.packaging_id,
+            "dispense refused: the lots cannot cover it",
+        );
+        AppError::field("quantity", "item.stockShort")
+    })?;
     write_dispenses(connection, treatment_item_id, &allocations).await?;
     Ok(allocations)
 }
@@ -334,7 +353,7 @@ mod tests {
 
     #[test]
     fn takes_the_lot_expiring_first() {
-        let allocations = allocate_fefo(&lots(), dec("5"));
+        let allocations = allocate_fefo(&lots(), dec("5")).expect("one lot covers it");
         assert_eq!(
             allocations,
             vec![LotAllocation {
@@ -346,7 +365,7 @@ mod tests {
 
     #[test]
     fn splits_across_lots_when_the_first_is_too_small() {
-        let allocations = allocate_fefo(&lots(), dec("30"));
+        let allocations = allocate_fefo(&lots(), dec("30")).expect("two lots cover it");
         assert_eq!(
             allocations,
             vec![
@@ -364,7 +383,7 @@ mod tests {
 
     #[test]
     fn undated_lots_are_used_last() {
-        let allocations = allocate_fefo(&lots(), dec("130"));
+        let allocations = allocate_fefo(&lots(), dec("130")).expect("three lots cover it");
         assert_eq!(
             allocations,
             vec![
@@ -384,46 +403,52 @@ mod tests {
         );
     }
 
+    /// Reversed deliberately (FR-018, issues.md 8): this used to assert that the full dispense
+    /// was always recorded and the lot allowed to go negative.
     #[test]
-    fn shortfall_is_booked_against_the_first_lot() {
-        // 200 needed, 170 available: the missing 30 go to the FEFO-suggested lot, whose
-        // derived stock goes negative until a correction reconciles it.
-        let allocations = allocate_fefo(&lots(), dec("200"));
-        assert_eq!(allocations.len(), 3);
+    fn a_dispense_the_lots_cannot_cover_is_refused() {
+        // 200 needed, 170 on the books.
+        let short = allocate_fefo(&lots(), dec("200")).expect_err("more than the lots hold");
+        assert_eq!(short.needed, dec("200"));
         assert_eq!(
-            allocations[0],
-            LotAllocation {
-                lot_id: 1,
-                quantity: dec("50")
-            }
+            short.available,
+            dec("170"),
+            "how much there is, so the vet knows what to count",
         );
-        let booked: Decimal = allocations
-            .iter()
-            .map(|allocation| allocation.quantity)
-            .sum();
-        assert_eq!(booked, dec("200"), "the full dispense is always recorded");
     }
 
     #[test]
-    fn dispensing_without_any_stock_still_books_the_quantity() {
+    fn dispensing_without_any_stock_is_refused_too() {
         let empty = vec![LotAvailability {
             lot_id: 9,
             remaining: Decimal::ZERO,
             expiration_date: None,
         }];
-        let allocations = allocate_fefo(&empty, dec("7"));
-        assert_eq!(
-            allocations,
-            vec![LotAllocation {
-                lot_id: 9,
-                quantity: dec("7")
-            }]
-        );
+        let short = allocate_fefo(&empty, dec("7")).expect_err("an empty lot supplies nothing");
+        assert_eq!(short.available, Decimal::ZERO);
+    }
+
+    /// Exactly the stock there is has to go through — the boundary is where an off-by-one in
+    /// the comparison would show up, and a refusal here would stop the vet dispensing the last
+    /// of a bottle.
+    #[test]
+    fn the_last_of_the_stock_can_still_be_dispensed() {
+        let allocations = allocate_fefo(&lots(), dec("170")).expect("exactly what is there");
+        let booked: Decimal = allocations
+            .iter()
+            .map(|allocation| allocation.quantity)
+            .sum();
+        assert_eq!(booked, dec("170"));
     }
 
     #[test]
     fn nothing_is_allocated_without_lots_or_quantity() {
-        assert!(allocate_fefo(&lots(), Decimal::ZERO).is_empty());
-        assert!(allocate_fefo(&[], dec("5")).is_empty());
+        assert!(
+            allocate_fefo(&lots(), Decimal::ZERO)
+                .expect("nothing needed, nothing taken")
+                .is_empty()
+        );
+        // No lots at all and a quantity wanted is a shortfall like any other.
+        assert!(allocate_fefo(&[], dec("5")).is_err());
     }
 }

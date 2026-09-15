@@ -445,10 +445,9 @@ pub async fn patch(
 
     // Re-price a travel line whenever its distance or multiplier changes.
     let travel_price = if travel_service {
-        let km = body.km.map_or(current.km, |value| value);
-        let multiplier = body
-            .km_multiplier
-            .map_or(current.km_multiplier, |value| value);
+        // `double_option`: absent keeps what is stored, an explicit null clears it.
+        let km = body.km.unwrap_or(current.km);
+        let multiplier = body.km_multiplier.unwrap_or(current.km_multiplier);
         km.map(|km| {
             money::travel_expense(
                 km,
