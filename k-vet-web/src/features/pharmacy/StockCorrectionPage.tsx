@@ -3,6 +3,7 @@ import { useNavigate, useParams } from '@tanstack/react-router'
 import { SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/api/fetcher'
 import {
   getGetDrugQueryKey,
   getGetLotQueryKey,
@@ -55,6 +56,15 @@ export function StockCorrectionPage() {
   if (!lot.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = lot.data
 
+  // The server names the field and the reason; show that rather than assuming which it was.
+  const failure: unknown = correct.error
+  const correctionError = correct.isError
+    ? t(
+        (failure instanceof ApiError ? failure.errorFor('new_remaining') : undefined) ??
+          'error.generic',
+      )
+    : undefined
+
   return (
     <div className="mx-auto max-w-2xl">
       <PageHeader
@@ -81,7 +91,11 @@ export function StockCorrectionPage() {
           label={t('pharmacy.remaining')}
           value={counted}
           unit={record.unit ?? undefined}
-          error={correct.isError ? t('value.mustNotBeZero') : undefined}
+          // A count of what is on the shelf cannot be below zero (issues.md 8).
+          min={0}
+          // Every failure used to read "must not be 0", whatever it actually was — including
+          // the refusal of a negative count, which then looked like the wrong complaint.
+          error={correctionError}
           onChange={setNewRemaining}
         />
         {/* An editable select: previous reasons, alphabetical, or new free text. */}

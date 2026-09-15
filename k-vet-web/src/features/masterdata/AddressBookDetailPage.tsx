@@ -1,6 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { Archive, ArchiveRestore } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetManufacturerQueryKey,
@@ -17,11 +16,11 @@ import {
   useUnarchiveSupplier,
 } from '@/api/generated/endpoints'
 import type { AddressBookEntry } from '@/api/generated/model'
+import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
-import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
 
@@ -113,17 +112,12 @@ function AddressBookDetail({
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            {record.archived ? (
-              <Button onClick={() => unarchive.mutate({ id: entryId }, { onSuccess: store })}>
-                <ArchiveRestore className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
-              </Button>
-            ) : (
-              <Button onClick={() => archive.mutate({ id: entryId }, { onSuccess: store })}>
-                <Archive className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
-              </Button>
-            )}
+            <ArchiveButton
+              archived={record.archived}
+              name={record.name ?? newLabel}
+              onArchive={() => archive.mutate({ id: entryId }, { onSuccess: store })}
+              onUnarchive={() => unarchive.mutate({ id: entryId }, { onSuccess: store })}
+            />
           </>
         }
       >

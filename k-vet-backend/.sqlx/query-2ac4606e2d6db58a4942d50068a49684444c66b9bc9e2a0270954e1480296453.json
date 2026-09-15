@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count,\n                  (SELECT count(*) FROM treatment\n                   WHERE treatment.appointment_id = appointment.id\n                     AND EXISTS (SELECT 1 FROM treatment_item\n                                 WHERE treatment_item.treatment_id = treatment.id)\n                     AND NOT EXISTS (SELECT 1 FROM invoice\n                                     WHERE invoice.treatment_id = treatment.id\n                                       AND invoice.status <> 'cancelled'))\n                      AS unbilled_treatment_count\n           FROM appointment\n           WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')\n           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC\n           LIMIT $2 OFFSET $3",
+  "query": "INSERT INTO appointment (starts_at, note, customer_id, draft)\n           VALUES ($1, $2, $3, $4)\n           RETURNING id, starts_at, note, draft, created_at, updated_at, customer_id,\n                     (SELECT concat_ws(' ', first_name, last_name) FROM customer\n                      WHERE customer.id = appointment.customer_id) AS customer_name,\n                     0::bigint AS treatment_count, 0::bigint AS unbilled_treatment_count",
   "describe": {
     "columns": [
       {
@@ -71,12 +71,29 @@
       },
       {
         "ordinal": 6,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "customer_id"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "customer_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
         "name": "treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "unbilled_treatment_count",
         "type_info": "Int8",
         "origin": "Expression"
@@ -84,9 +101,10 @@
     ],
     "parameters": {
       "Left": [
+        "Timestamptz",
         "Text",
         "Int8",
-        "Int8"
+        "Bool"
       ]
     },
     "nullable": [
@@ -96,9 +114,11 @@
       false,
       false,
       false,
+      true,
+      null,
       null,
       null
     ]
   },
-  "hash": "064e72a3f12c531d32bd0a8ba38b502b2646ba060b9e4839714cdcf8443ea5b0"
+  "hash": "2ac4606e2d6db58a4942d50068a49684444c66b9bc9e2a0270954e1480296453"
 }

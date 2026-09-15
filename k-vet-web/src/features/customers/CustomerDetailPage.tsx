@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -18,12 +18,13 @@ import {
   useUnarchiveCustomer,
 } from '@/api/generated/endpoints'
 import type { Customer, CustomerEmail, EmailType, Salutation } from '@/api/generated/model'
+import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/field'
 import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
@@ -162,27 +163,23 @@ export function CustomerDetailPage() {
     />
   )
 
+  const displayName =
+    [record.first_name, record.last_name].filter(Boolean).join(' ') || t('customers.new')
+
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
         back={<BackLink to="/customers" label={t('customers.title')} />}
-        title={
-          [record.first_name, record.last_name].filter(Boolean).join(' ') || t('customers.new')
-        }
+        title={displayName}
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            {record.archived ? (
-              <Button onClick={() => unarchive.mutate({ id: customerId }, { onSuccess: store })}>
-                <ArchiveRestore className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
-              </Button>
-            ) : (
-              <Button onClick={() => archive.mutate({ id: customerId }, { onSuccess: store })}>
-                <Archive className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
-              </Button>
-            )}
+            <ArchiveButton
+              archived={record.archived}
+              name={displayName}
+              onArchive={() => archive.mutate({ id: customerId }, { onSuccess: store })}
+              onUnarchive={() => unarchive.mutate({ id: customerId }, { onSuccess: store })}
+            />
           </>
         }
       >
@@ -418,42 +415,28 @@ export function CustomerDetailPage() {
           {t('customers.addEmail')}
         </Button>
 
-        <Dialog
+        <ConfirmDialog
           open={pendingEmailRemoval !== null}
           onOpenChange={(open) => {
             if (!open) setPendingEmailRemoval(null)
           }}
           title={t('customers.removeEmail')}
-          footer={
-            <>
-              <Button onClick={() => setPendingEmailRemoval(null)}>{t('action.cancel')}</Button>
-              <Button
-                variant="danger"
-                disabled={deleteEmail.isPending}
-                onClick={() => {
-                  if (pendingEmailRemoval) {
-                    deleteEmail.mutate(
-                      { id: pendingEmailRemoval.id },
-                      {
-                        onSuccess: () =>
-                          client.invalidateQueries({
-                            queryKey: getGetCustomerQueryKey(customerId),
-                          }),
-                      },
-                    )
-                  }
-                  setPendingEmailRemoval(null)
-                }}
-              >
-                {t('action.delete')}
-              </Button>
-            </>
-          }
+          confirmLabel={t('action.delete')}
+          busy={deleteEmail.isPending}
+          onConfirm={() => {
+            if (pendingEmailRemoval) {
+              deleteEmail.mutate(
+                { id: pendingEmailRemoval.id },
+                {
+                  onSuccess: () =>
+                    client.invalidateQueries({ queryKey: getGetCustomerQueryKey(customerId) }),
+                },
+              )
+            }
+          }}
         >
-          <p className="text-sm text-ink-soft">
-            {t('customers.removeEmailConfirm', { email: pendingEmailRemoval?.email ?? '' })}
-          </p>
-        </Dialog>
+          <p>{t('customers.removeEmailConfirm', { email: pendingEmailRemoval?.email ?? '' })}</p>
+        </ConfirmDialog>
       </section>
 
       <section className="mt-6">

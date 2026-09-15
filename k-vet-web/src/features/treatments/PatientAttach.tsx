@@ -11,6 +11,7 @@ import {
   useRemoveTreatmentPatient,
 } from '@/api/generated/endpoints'
 import type { Treatment } from '@/api/generated/model'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 
@@ -37,6 +38,11 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
 
   const addPatient = useAddTreatmentPatient({ mutation: { onSuccess: refresh } })
   const removePatient = useRemoveTreatmentPatient({ mutation: { onSuccess: refresh } })
+  /**
+   * The animal a removal is being confirmed for. Its lines go with it, and the × sits inside
+   * a small chip — an easy mis-tap on a phone.
+   */
+  const [pendingPatient, setPendingPatient] = useState<Treatment['patients'][number] | null>(null)
 
   const candidates = useListPatients(
     {
@@ -72,9 +78,7 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
                 variant="ghost"
                 aria-label={t('action.delete')}
                 className="size-7 sm:size-7"
-                onClick={() =>
-                  removePatient.mutate({ id: treatment.id, patientId: patient.patient_id })
-                }
+                onClick={() => setPendingPatient(patient)}
               >
                 <X className="size-3.5" />
               </Button>
@@ -91,6 +95,23 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
           {t('item.patientRequired')}
         </p>
       ) : null}
+
+      <ConfirmDialog
+        open={pendingPatient !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingPatient(null)
+        }}
+        title={t('treatments.removePatient')}
+        confirmLabel={t('action.delete')}
+        busy={removePatient.isPending}
+        onConfirm={() => {
+          if (pendingPatient) {
+            removePatient.mutate({ id: treatment.id, patientId: pendingPatient.patient_id })
+          }
+        }}
+      >
+        {t('treatments.removePatientConfirm', { name: pendingPatient?.name ?? '' })}
+      </ConfirmDialog>
 
       {treatment.frozen ? null : (
         <Command
