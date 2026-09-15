@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT starts_at, note FROM appointment WHERE id = $1",
+  "query": "SELECT starts_at, note, customer_id FROM appointment WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,17 @@
             "name": "note"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "customer_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "customer_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       true,
+      true,
       true
     ]
   },
-  "hash": "d0fb41e85542eec7911e55392006166863e0af332187fb55137738c35e8d4241"
+  "hash": "89362eff4e04493da13462faa64870e1e652123b933d9b3474e65e947dbaf790"
 }

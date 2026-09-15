@@ -35,6 +35,11 @@ test.describe('pharmacy', () => {
 
     // A 10 ml subset takes its price from § 4: basis 1.00 → 2.00 net → 2.38 gross.
     await page.getByRole('button', { name: 'Teilmenge' }).click()
+    // Wait for the row before reaching for `.last()`. The packaging is created on the server,
+    // and until its refetch lands `.last()` is still the *original* — `fill` does not retry
+    // itself onto the right element, so it would quietly rewrite the original's 100 ml to 10
+    // and leave the subset with no quantity, hence no computed price for the assertion below.
+    await expect(page.getByLabel('Menge')).toHaveCount(2)
     const subsetUnit = page.getByLabel('Einheit').last()
     await subsetUnit.fill('ml')
     await page.getByLabel('Menge').last().fill('10')
@@ -82,6 +87,9 @@ test.describe('pharmacy', () => {
     await page.getByLabel('Einheit').first().waitFor()
 
     await page.getByRole('button', { name: 'Teilmenge' }).click()
+    // The original is already `ml`, so waiting for the second row is what makes this an
+    // assertion about the subset rather than one that passes on the original by coincidence.
+    await expect(page.getByLabel('Einheit')).toHaveCount(2)
     // 10 ml out of a 100 ml bottle: the same unit, so it is not retyped every time.
     await expect(page.getByLabel('Einheit').last()).toHaveValue('ml')
 
@@ -128,6 +136,33 @@ test.describe('pharmacy', () => {
 
     await expect(page.getByText('Bruch').filter({ visible: true }).first()).toBeVisible()
     await expect(page.getByText('-12', { exact: false }).first()).toBeVisible()
+  })
+
+  test('a stocktake cannot count a lot below zero', async ({ page, request }) => {
+    const { drugId, packagingId } = await seedDrug(request)
+    await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
+      data: { packages_received: 1, batch_number: `CH-MINUS-${Date.now() % 1e6}` },
+    })
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}`)
+    await page.getByText('CH-MINUS-', { exact: false }).filter({ visible: true }).first().click()
+    await page.getByRole('button', { name: 'Korrektur' }).click()
+    await expect(page).toHaveURL(/\/lots\/\d+\/correction$/)
+
+    // A count of what is on the shelf cannot be below zero (issues.md 8).
+    const counted = page.getByLabel('Restbestand').last()
+    await counted.fill('-5')
+    await page.getByRole('button', { name: 'Bestätigen' }).click()
+
+    // Refused, and said so in its own words rather than the old catch-all "must not be 0".
+    await expect(page.getByText('Darf nicht negativ sein')).toBeVisible()
+    await expect(page).toHaveURL(/\/lots\/\d+\/correction$/)
+
+    // Emptying it is fine: zero is a stock, below zero is not.
+    await counted.fill('0')
+    await page.getByLabel('Grund').fill('Aufgebraucht')
+    await page.getByRole('button', { name: 'Bestätigen' }).click()
+    await expect(page.getByText('Aufgebraucht').filter({ visible: true }).first()).toBeVisible()
   })
 
   test('dispensing splits FEFO across lots and cancelling returns the stock', async ({
@@ -187,8 +222,10 @@ test.describe('pharmacy', () => {
     request,
   }) => {
     const { packagingId, subsetPackagingId } = await seedDrug(request)
+    // Dated, so FEFO reaches for this lot rather than the undated one the drug was seeded
+    // with — undated lots sort last, and the history asserted below is this lot's.
     const intake = await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
-      data: { packages_received: 1, batch_number: 'CH-TRACE' },
+      data: { packages_received: 1, batch_number: 'CH-TRACE', expiration_date: '2026-12-31' },
     })
     const lotId = (await intake.json()).id
 

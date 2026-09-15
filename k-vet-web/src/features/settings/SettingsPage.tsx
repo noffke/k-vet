@@ -1,10 +1,11 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Trash2, Upload } from 'lucide-react'
-import { useRef } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
 import { getGetSettingsQueryKey, useGetSettings, usePatchSettings } from '@/api/generated/endpoints'
 import type { Attachment, Settings } from '@/api/generated/model'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
@@ -28,6 +29,7 @@ export function SettingsPage() {
   const { t } = useTranslation()
   const client = useQueryClient()
   const fileInput = useRef<HTMLInputElement>(null)
+  const [removeLogoOpen, setRemoveLogoOpen] = useState(false)
 
   const { default_country } = useOperatorConfig()
   const settings = useGetSettings()
@@ -191,15 +193,25 @@ export function SettingsPage() {
             <Button
               variant="ghost"
               aria-label={t('action.delete')}
-              onClick={() => {
-                autoSave.set({ logo_attachment_id: null })
-                void autoSave.flush()
-              }}
+              onClick={() => setRemoveLogoOpen(true)}
             >
               <Trash2 className="size-4 text-danger" />
             </Button>
           ) : null}
         </div>
+
+        <ConfirmDialog
+          open={removeLogoOpen}
+          onOpenChange={setRemoveLogoOpen}
+          title={t('settings.removeLogo')}
+          confirmLabel={t('action.delete')}
+          onConfirm={() => {
+            autoSave.set({ logo_attachment_id: null })
+            void autoSave.flush()
+          }}
+        >
+          {t('settings.removeLogoConfirm')}
+        </ConfirmDialog>
       </section>
 
       <section className="mt-4 rounded-card border border-line bg-surface p-4">

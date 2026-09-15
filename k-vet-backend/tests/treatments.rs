@@ -234,24 +234,48 @@ async fn changing_the_quantity_recalculates_the_draft_dispense(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn insufficient_stock_still_books_the_dispense(pool: PgPool) {
+async fn a_dispense_the_stock_cannot_cover_is_refused(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("10"), None).await;
 
-    app.post(
-        &format!("/api/treatments/{treatment_id}/items"),
-        json!({
-            "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "3"
-        }),
-    )
-    .await;
+    // Three 10 ml subsets off a lot holding 10 ml.
+    let refused = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "drug_packaging",
+                "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "3"
+            }),
+        )
+        .await;
 
-    // The shelf is the truth: the shortfall is booked and the lot goes negative.
-    assert_eq!(common::lot_remaining(&pool, lot).await, dec("-20"));
+    // Reversed deliberately (FR-018, issues.md 8): this used to assert the lot went to -20 on
+    // the reasoning that the shelf is the truth. A negative remainder is not the shelf, it is
+    // a record that the books were already wrong, and FEFO then keeps offering an empty lot.
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(refused.error_fields().contains(&"quantity".to_owned()));
+    assert_eq!(
+        common::lot_remaining(&pool, lot).await,
+        dec("10"),
+        "a refused line leaves the stock alone",
+    );
+
+    // What the lot can cover still goes through, so the vet is not blocked from dispensing.
+    let allowed = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "drug_packaging",
+                "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "1"
+            }),
+        )
+        .await;
+    assert_eq!(allowed.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
 
 #[sqlx::test]
@@ -319,6 +343,9 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, record_id) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
+    // Stock to dispense from: a line the lots cannot cover is refused now (FR-018), and this
+    // test is about which animal the line lands on.
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
     let service_id = common::seed_got_service(&pool).await;
 
     let drug_line = app
@@ -385,6 +412,9 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
         .and_then(|patient| patient["id"].as_i64())
         .expect("the attached animal has a record");
     let drug = common::seed_drug(&pool).await;
+    // Stock to dispense from — this test is about which animal a drug line belongs to, not
+    // about what the lots can cover.
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
 
     let without_patient = app
         .post(
@@ -581,6 +611,92 @@ async fn patients_of_a_treatment_must_share_one_customer(pool: PgPool) {
     assert!(response.error_fields().contains(&"patient_id".to_owned()));
 }
 
+/// The same rule, asked of the database rather than the handler.
+///
+/// It lived only in `attach_patient` before, so it held exactly as long as every write went
+/// through that function — and it engaged only once a first animal was attached, which is the
+/// gap that let an empty treatment offer the whole practice. Composite keys close both.
+#[sqlx::test]
+async fn the_database_refuses_a_mixed_customer_treatment(pool: PgPool) {
+    let (treatment_id, _) = treatment(&pool).await;
+    let other_customer = common::seed_customer(&pool).await;
+    let other_patient = common::seed_patient(&pool, other_customer).await;
+
+    // Honest about the owner: caught by the key tying the record to its treatment's customer.
+    let honest = sqlx::query(
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id)
+         VALUES ($1, $2, $3)",
+    )
+    .bind(treatment_id)
+    .bind(other_patient)
+    .bind(other_customer)
+    .execute(&pool)
+    .await;
+    assert!(
+        honest.is_err(),
+        "an animal of another customer cannot be attached"
+    );
+
+    // Claiming this treatment's customer instead: caught by the key tying the record to the
+    // animal's own owner. Between them there is no value that would be accepted.
+    let treatment_customer: i64 =
+        sqlx::query_scalar("SELECT customer_id FROM treatment WHERE id = $1")
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the treatment has a customer");
+    let dishonest = sqlx::query(
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id)
+         VALUES ($1, $2, $3)",
+    )
+    .bind(treatment_id)
+    .bind(other_patient)
+    .bind(treatment_customer)
+    .execute(&pool)
+    .await;
+    assert!(dishonest.is_err(), "nor by mislabelling whose animal it is");
+}
+
+/// A treatment cannot be started until the appointment says whose visit it is — that answer is
+/// what the animal picker is filtered by (issues.md 7).
+#[sqlx::test]
+async fn a_treatment_needs_the_appointments_customer(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+
+    let refused = app
+        .post(
+            &format!("/api/appointments/{appointment_id}/treatments"),
+            json!({ "patient_ids": [] }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(refused.error_fields().contains(&"customer_id".to_owned()));
+
+    let customer_id = common::seed_customer(&pool).await;
+    let named = app
+        .patch(
+            &format!("/api/appointments/{appointment_id}"),
+            json!({ "customer_id": customer_id }),
+        )
+        .await;
+    assert_eq!(named.status, StatusCode::OK);
+    assert_eq!(named.json()["customer_id"], customer_id);
+
+    let created = app
+        .post(
+            &format!("/api/appointments/{appointment_id}/treatments"),
+            json!({ "patient_ids": [] }),
+        )
+        .await;
+    assert_eq!(created.status, StatusCode::OK);
+    assert_eq!(
+        created.json()["customer_id"],
+        customer_id,
+        "the treatment inherits it rather than waiting for an animal to imply it",
+    );
+}
+
 #[sqlx::test]
 async fn lines_can_be_reordered(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
@@ -698,7 +814,9 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
-    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+    // The template's drug line is five of the 100 ml original, so the lot has to hold 500 —
+    // a line the stock cannot cover is refused now (FR-018) and this test is about ordering.
+    common::seed_lot(&pool, drug.packaging_id, 5, dec("500"), None).await;
 
     let template_id: i64 = sqlx::query_scalar(
         "INSERT INTO treatment_template (name, draft) VALUES ('Impfung', false) RETURNING id",

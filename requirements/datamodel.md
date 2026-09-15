@@ -138,10 +138,15 @@ Fields:
 * Appointment
   * Date + Time (minute resolution)
   * Note (optional)
+  * Relation: 1 Customer (optional while the appointment is still a draft; required before a
+    treatment can be started). Whose visit it is, chosen rather than inferred — it is what the
+    animal picker is filtered by, so it has to be known before the first animal is attached.
   * Relation: n Treatment
 * Treatment
   * Relation: 1 Appointment
-  * Relation: n Patient (all patients of a treatment must belong to the same customer — the invoice's customer derives from it; enforced when adding patients)
+  * Relation: 1 Customer, inherited from the appointment — the invoice's customer
+  * Relation: n Patient (all patients of a treatment belong to that customer; enforced by
+    composite foreign keys, so no code path can write a mixed treatment)
   * Treatment Reason (Vorstellungsgrund) (optional)
   * Finding (Diagnosis) (optional)
   * Relation: n Attachment (treatment files)

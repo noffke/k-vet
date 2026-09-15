@@ -15,6 +15,17 @@ export interface Appointment {
   starts_at?: string | null;
   /** @nullable */
   note?: string | null;
+  /**
+     * Whose visit this is. Chosen here and carried down to the treatments, which is what
+     * limits the animals on offer to that customer's (FR-027).
+     * @nullable
+     */
+  customer_id?: number | null;
+  /**
+     * For the header, so the appointment says whose it is without a second request.
+     * @nullable
+     */
+  customer_name?: string | null;
   /** `true` while mandatory fields are missing — excluded from billing flows. */
   draft: boolean;
   /** Mandatory fields still empty, for the "incomplete — missing: …" hint. */

@@ -163,12 +163,18 @@
     "undo": "Undo",
     "upload": "Upload file"
   },
+  "confirm": {
+    "archiveBody": "“{{name}}” disappears from search and the pickers. Invoices and treatments are untouched, and it can be restored at any time.",
+    "archiveBodyNoRestore": "“{{name}}” disappears from search and the pickers. Invoices and treatments are untouched, but this page offers no way to bring it back.",
+    "archiveTitle": "Archive?"
+  },
   "value": {
     "invalidBic": "Not a valid BIC (8 or 11 characters).",
     "invalidCountry": "Not a valid country code (ISO 3166-1, e.g. DE).",
     "invalidEmail": "Not a valid email address",
     "invalidPhone": "Not a valid phone number",
     "mustBePositive": "Must be greater than 0",
+    "mustNotBeNegative": "Must not be negative",
     "mustNotBeZero": "Must not be 0",
     "notADate": "Not a valid date",
     "notANumber": "Not a valid number",
@@ -200,8 +206,14 @@
   },
   "appointments": {
     "addTreatment": "Add treatment",
+    "customer": "Customer",
+    "customerHint": "Decides which animals are on offer.",
+    "delete": "Delete appointment",
+    "deleteBlocked": "An invoice has already been written for this appointment. It stays on record and cannot be deleted.",
+    "deleteConfirm": "Really delete this appointment? Its treatments and their positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
+    "pickCustomer": "Search customers …",
     "priceMode": "Prices",
     "priceModeRefresh": "Refresh prices",
     "priceModeVerbatim": "Copy prices",
@@ -225,7 +237,8 @@
     "removeItem": "Remove position",
     "removeItemConfirm": "Really remove “{{name}}” from this treatment?",
     "removeItemReturnsStock": "The dispensed quantity goes back into stock.",
-    "shortfallWarning": "Stock is not sufficient — the dispense is recorded anyway.",
+    "removePatient": "Remove animal",
+    "removePatientConfirm": "Really take “{{name}}” off this treatment? This animal’s positions go with it.",
     "title": "Treatment",
     "total": "Total",
     "withoutPatient": "No animal"
@@ -244,7 +257,6 @@
     "createAnyway": "Create anyway",
     "date": "Invoice date",
     "includesFinding": "Print treatment and next steps",
-    "liveInvoiceExists": "This treatment has an invoice — cancel it first.",
     "mailUnreachable": "The mail server cannot be reached. The invoice was not sent — check the mail settings, or print it and mark it as sent by post.",
     "markPosted": "Sent by post",
     "markPostedHint": "Records that the customer has the invoice on paper. Only then does it go to bookkeeping.",
@@ -338,6 +350,8 @@
     "itemCount": "{{count}} pos.",
     "items": "Lines",
     "new": "New template",
+    "removeItem": "Remove position",
+    "removeItemConfirm": "Really remove “{{name}}” from this group?",
     "title": "Treatment templates"
   },
   "masterData": {
@@ -385,6 +399,8 @@
     "practiceName": "Practice name",
     "practiceStreet": "Street and number",
     "practiceZip": "Postcode",
+    "removeLogo": "Remove logo",
+    "removeLogoConfirm": "Really remove the logo? New invoices will then print without it.",
     "title": "Settings",
     "ustid": "VAT ID"
   },
@@ -397,7 +413,8 @@
     "drugShapeInvalid": "Invalid values for a drug line",
     "kmInvalid": "Kilometres and multiplier belong together",
     "patientNotInTreatment": "This animal is not part of this treatment",
-    "patientRequired": "Drug lines need a patient"
+    "patientRequired": "Drug lines need a patient",
+    "stockShort": "This lot does not hold enough for that quantity. Record a stocktake for the lot first."
   },
   "packaging": {
     "originalAlreadyExists": "This drug already has an original packaging",
@@ -413,7 +430,8 @@
   },
   "movement": {
     "correctionShapeInvalid": "Invalid correction movement",
-    "dispenseShapeInvalid": "Invalid dispense movement"
+    "dispenseShapeInvalid": "Invalid dispense movement",
+    "wouldGoNegative": "That would take the lot below zero."
   },
   "invoice": {
     "liveInvoiceExists": "This treatment already has an invoice",
@@ -435,6 +453,7 @@
     "title": "Text blocks"
   },
   "treatment": {
+    "customerRequired": "Choose the appointment’s customer first.",
     "patientOtherCustomer": "This animal belongs to a different customer"
   }
 }
