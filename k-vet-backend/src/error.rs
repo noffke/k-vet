@@ -221,6 +221,9 @@ fn constraint_field_message(constraint: &str) -> Option<(&'static str, &'static 
         "drug_stock_movement_dispense_shape" => ("quantity", "movement.dispenseShapeInvalid"),
         "drug_stock_movement_correction_shape" => ("reason", "movement.correctionShapeInvalid"),
         "drug_stock_movement_quantity_nonzero" => ("quantity", "value.mustNotBeZero"),
+        // The trigger that keeps a lot's derived stock at or above zero (FR-018). It is the
+        // backstop under every write path, including ones that never go through a handler.
+        "drug_stock_movement_lot_not_negative" => ("new_remaining", "movement.wouldGoNegative"),
         "invoice_one_live_per_treatment_idx" => ("treatment_id", "invoice.liveInvoiceExists"),
         _ => return None,
     };

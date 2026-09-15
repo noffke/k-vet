@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
 import {
-  Archive,
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
@@ -28,8 +27,10 @@ import {
   usePatchTemplate,
   usePatchTemplateItem,
 } from '@/api/generated/endpoints'
-import type { MoveDirection, PickerItem, Template } from '@/api/generated/model'
+import type { MoveDirection, PickerItem, Template, TemplateItem } from '@/api/generated/model'
+import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
@@ -141,6 +142,8 @@ export function TemplateDetailPage() {
   const patchItem = usePatchTemplateItem({ mutation: { onSuccess: afterItemChange } })
   const moveItem = useMoveTemplateItem({ mutation: { onSuccess: afterItemChange } })
   const deleteItem = useDeleteTemplateItem({ mutation: { onSuccess: afterItemChange } })
+  /** The line a removal is being confirmed for — the bin sits beside the reorder arrows. */
+  const [pendingItem, setPendingItem] = useState<TemplateItem | null>(null)
 
   const autoSave = useAutoSave<Template>({
     save: (patch) =>
@@ -179,17 +182,18 @@ export function TemplateDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <Button
-              onClick={() =>
+            {/* No unarchive here: archiving leaves the page, so there is nothing to come
+                back to. The confirmation says as much rather than promising a restore. */}
+            <ArchiveButton
+              archived={record.archived}
+              name={record.name ?? t('templates.new')}
+              onArchive={() =>
                 archive.mutate(
                   { id: templateId },
                   { onSuccess: () => void navigate({ to: '/templates' }) },
                 )
               }
-            >
-              <Archive className="size-4" />
-              <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
-            </Button>
+            />
           </>
         }
       >
@@ -277,7 +281,7 @@ export function TemplateDetailPage() {
                   size="icon"
                   variant="ghost"
                   aria-label={t('action.delete')}
-                  onClick={() => deleteItem.mutate({ id: item.id })}
+                  onClick={() => setPendingItem(item)}
                 >
                   <Trash2 className="size-4 text-danger" />
                 </Button>
@@ -291,6 +295,21 @@ export function TemplateDetailPage() {
           ) : null}
         </ul>
       </section>
+
+      <ConfirmDialog
+        open={pendingItem !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingItem(null)
+        }}
+        title={t('templates.removeItem')}
+        confirmLabel={t('action.delete')}
+        busy={deleteItem.isPending}
+        onConfirm={() => {
+          if (pendingItem) deleteItem.mutate({ id: pendingItem.id })
+        }}
+      >
+        {t('templates.removeItemConfirm', { name: pendingItem?.name ?? '' })}
+      </ConfirmDialog>
     </div>
   )
 }

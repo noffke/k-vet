@@ -14,10 +14,10 @@ import {
   useSubmitInvoice,
 } from '@/api/generated/endpoints'
 import type { Invoice } from '@/api/generated/model'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
@@ -239,48 +239,32 @@ export function InvoicesPage() {
         />
       </section>
 
-      <Dialog
+      <ConfirmDialog
         open={handOverOpen}
         onOpenChange={setHandOverOpen}
         title={t('invoices.bulkSubmit')}
-        footer={
-          <>
-            <Button onClick={() => setHandOverOpen(false)}>{t('action.cancel')}</Button>
-            <Button
-              variant="primary"
-              disabled={bulkSubmit.isPending}
-              onClick={() => bulkSubmit.mutate()}
-            >
-              {t('invoices.bulkSubmit')}
-            </Button>
-          </>
-        }
+        confirmLabel={t('invoices.bulkSubmit')}
+        variant="primary"
+        busy={bulkSubmit.isPending}
+        onConfirm={() => bulkSubmit.mutate()}
       >
-        <p className="text-sm text-ink-soft">
-          {t('invoices.bulkSubmitConfirm', { count: pendingCount })}
-        </p>
-      </Dialog>
+        {t('invoices.bulkSubmitConfirm', { count: pendingCount })}
+      </ConfirmDialog>
 
-      <Dialog
+      <ConfirmDialog
         open={cancelling !== null}
-        onOpenChange={(open) => !open && setCancelling(null)}
+        onOpenChange={(open) => {
+          if (!open) setCancelling(null)
+        }}
         title={t('invoices.cancel')}
         description={cancelling?.invoice_number}
-        footer={
-          <>
-            <Button onClick={() => setCancelling(null)}>{t('action.cancel')}</Button>
-            <Button
-              variant="danger"
-              disabled={cancel.isPending}
-              onClick={() => cancelling && cancel.mutate({ id: cancelling.id })}
-            >
-              {t('action.confirm')}
-            </Button>
-          </>
-        }
+        busy={cancel.isPending}
+        onConfirm={() => {
+          if (cancelling) cancel.mutate({ id: cancelling.id })
+        }}
       >
-        <p className="text-sm text-ink-soft">{t('invoices.cancelConfirm')}</p>
-      </Dialog>
+        {t('invoices.cancelConfirm')}
+      </ConfirmDialog>
     </div>
   )
 }

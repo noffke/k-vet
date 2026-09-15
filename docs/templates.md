@@ -96,7 +96,7 @@ section:
 | Field | Notes |
 | --- | --- |
 | `patient` | Animal name. |
-| `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`; empty parts are left out. |
+| `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333`; empty parts are left out. |
 | `treatment_reason` | Why the animal was seen and what the examination showed — printed under *Vorbericht und Untersuchung*; may be empty. The wire name predates that heading. |
 | `finding` | What was treated and what happens next — printed under *Therapie und weiteres Vorgehen*. Only filled when the invoice was created with that box ticked; otherwise empty. |
 
@@ -110,7 +110,7 @@ A patient group (`invoice.patient_groups[]`):
 | Field | Notes |
 | --- | --- |
 | `patient` | Animal name. **Empty** for lines the vet did not attribute to an animal — print those without a heading. Such a group always comes last. |
-| `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021`; empty parts are left out. |
+| `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333`; empty parts are left out. |
 | `service_date` | Treatment date, repeated per group. |
 | `items` | The group's lines, in the vet's order. |
 

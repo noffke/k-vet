@@ -99,12 +99,13 @@ test.describe('bookkeeping hand-off', () => {
     await signIn(page)
     await page.goto('/invoices')
 
+    // Wait for *this* invoice's link, not for any link called PDF: the header's "Alle PDFs
+    // herunterladen" also matches that name (Playwright matches accessible names as a
+    // case-insensitive substring) and it is on screen before the list query has resolved. The
+    // old assertion settled on it and then read the hrefs in one non-retrying pass, so on a
+    // loaded runner it snapshotted the page before a single row existed.
     const href = `/api/invoices/${invoice.invoiceId}/pdf`
-    const link = page.getByRole('link', { name: 'PDF' }).filter({ visible: true })
-    await expect(link.first()).toBeVisible()
-    expect(await link.evaluateAll((nodes) => nodes.map((node) => node.getAttribute('href')))).toContain(
-      href,
-    )
+    await expect(page.locator(`a[href="${href}"]`).filter({ visible: true })).toBeVisible()
 
     const pdf = await page.request.get(href)
     expect(pdf.status()).toBe(200)

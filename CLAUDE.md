@@ -187,7 +187,11 @@ overflow sheet).
   format is always dot-decimal strings via `toWire`; never `toFixed`/`toLocaleString` in a
   component.
 - i18n: no hardcoded user-facing strings — `src/i18n/de.json` and `en.json` must stay key-for-key
-  identical (248 keys today), de-DE is the default.
+  identical, de-DE is the default. `k-vet-web/tests/i18n.test.ts` is what holds that: the two
+  files must match key for key and placeholder for placeholder with no empty values, and every
+  key the code asks for must exist. That includes the ones the *backend* returns — it greps the
+  Rust source for `AppError::field(…, "key")`, so a new field error needs its entry in both
+  files or the frontend suite fails.
 - Visual identity is extracted from the practice's website into CSS custom properties in
   `src/index.css` (paper/cream/ink/rust/sage/blush/line, `.numeric` tabular figures, `.eyebrow`).
   Use the tokens, not raw hex. Touch targets stay ≥ 44 px on phones.

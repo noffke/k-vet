@@ -1,11 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
-import { Archive, ArchiveRestore, PawPrint, Upload } from 'lucide-react'
+import { PawPrint, Upload } from 'lucide-react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
 import {
   getAttachmentThumbnailUrl,
+  getDownloadAttachmentUrl,
   getGetPatientQueryKey,
   getListPatientFilesQueryKey,
   getListPatientsQueryKey,
@@ -18,6 +19,7 @@ import {
   useUnarchivePatient,
 } from '@/api/generated/endpoints'
 import type { Attachment, Patient } from '@/api/generated/model'
+import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
 import { NumberInput } from '@/components/NumberInput'
@@ -111,17 +113,12 @@ export function PatientDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            {record.archived ? (
-              <Button onClick={() => unarchive.mutate({ id: patientId }, { onSuccess: store })}>
-                <ArchiveRestore className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.unarchive')}</span>
-              </Button>
-            ) : (
-              <Button onClick={() => archive.mutate({ id: patientId }, { onSuccess: store })}>
-                <Archive className="size-4" />
-                <span className="sr-only sm:not-sr-only">{t('record.archive')}</span>
-              </Button>
-            )}
+            <ArchiveButton
+              archived={record.archived}
+              name={record.name ?? t('patients.new')}
+              onArchive={() => archive.mutate({ id: patientId }, { onSuccess: store })}
+              onUnarchive={() => unarchive.mutate({ id: patientId }, { onSuccess: store })}
+            />
           </>
         }
       >
@@ -296,7 +293,16 @@ export function PatientDetailPage() {
               key={file.id}
               className="flex flex-wrap items-center justify-between gap-2 rounded-card border border-line bg-surface px-3 py-2"
             >
-              <span className="min-w-0 truncate">{file.orig_name}</span>
+              {/* The server sends these inline with their own content type, so the browser
+                  shows a PDF or a photo rather than downloading it. */}
+              <a
+                href={getDownloadAttachmentUrl(file.id)}
+                target="_blank"
+                rel="noreferrer"
+                className="min-w-0 truncate text-rust hover:underline"
+              >
+                {file.orig_name}
+              </a>
               <span className="text-xs text-ink-faint">
                 {file.reference_date ? date(file.reference_date) : date(file.created_at)}
                 {file.note ? ` · ${file.note}` : ''}
