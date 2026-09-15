@@ -73,7 +73,13 @@ test.describe('master data', () => {
     await page.getByLabel('Name').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
+    // Archiving asks first now (issues.md 2), and names the record so it is obvious which
+    // one is about to leave the lists. Both the trigger and the confirm are called
+    // "Archivieren", so the confirm has to be taken from inside the dialog.
     await page.getByRole('button', { name: 'Archivieren' }).click()
+    const confirm = page.getByRole('dialog')
+    await expect(confirm.getByText(new RegExp(name))).toBeVisible()
+    await confirm.getByRole('button', { name: 'Archivieren' }).click()
     await expect(page.getByText('Archiviert').first()).toBeVisible()
 
     await page.getByRole('link', { name: 'Zurück: Stammdaten' }).click()

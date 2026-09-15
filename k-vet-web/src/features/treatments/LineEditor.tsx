@@ -25,10 +25,10 @@ import {
   usePatchTreatmentItem,
 } from '@/api/generated/endpoints'
 import type { MoveDirection, PickerItem, Treatment, TreatmentItem } from '@/api/generated/model'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
-import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
 
@@ -452,37 +452,25 @@ export function PositionGroup({
         ) : null}
       </ul>
 
-      <Dialog
+      <ConfirmDialog
         open={pendingRemoval !== null}
         onOpenChange={(open) => {
           if (!open) setPendingRemoval(null)
         }}
         title={t('treatments.removeItem')}
-        footer={
-          <>
-            <Button onClick={() => setPendingRemoval(null)}>{t('action.cancel')}</Button>
-            <Button
-              variant="danger"
-              disabled={deleteItem.isPending}
-              onClick={() => {
-                if (pendingRemoval) deleteItem.mutate({ id: pendingRemoval.id })
-                setPendingRemoval(null)
-              }}
-            >
-              {t('action.delete')}
-            </Button>
-          </>
-        }
+        confirmLabel={t('action.delete')}
+        busy={deleteItem.isPending}
+        onConfirm={() => {
+          if (pendingRemoval) deleteItem.mutate({ id: pendingRemoval.id })
+        }}
       >
-        <p className="text-sm text-ink-soft">
-          {t('treatments.removeItemConfirm', { name: pendingRemoval?.name ?? '' })}
-        </p>
+        <p>{t('treatments.removeItemConfirm', { name: pendingRemoval?.name ?? '' })}</p>
         {/* A drug line holds a dispense; removing it books the quantity back. Worth saying, so
             the vet is not left wondering what happened to the stock. */}
         {pendingRemoval?.lots.length ? (
-          <p className="mt-2 text-sm text-ink-faint">{t('treatments.removeItemReturnsStock')}</p>
+          <p className="mt-2 text-ink-faint">{t('treatments.removeItemReturnsStock')}</p>
         ) : null}
-      </Dialog>
+      </ConfirmDialog>
     </div>
   )
 }

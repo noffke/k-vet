@@ -247,6 +247,37 @@ test.describe('customers and patients', () => {
       .not.toContain(race)
   })
 
+  test("a file uploaded on an animal can actually be opened", async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId, `Datei-${Date.now() % 1e6}`)
+
+    await signIn(page)
+    await page.goto(`/patients/${patientId}`)
+
+    // The files section has its own hidden input; the photo picker above it has another, so
+    // take the one inside this section rather than the first on the page.
+    const section = page.locator('section').filter({ hasText: 'Dateien' }).last()
+    await section.locator('input[type=file]').setInputFiles({
+      name: 'befund.pdf',
+      mimeType: 'application/pdf',
+      buffer: Buffer.from('%PDF-1.4\n1 0 obj<</Type/Catalog>>endobj\ntrailer<</Root 1 0 R>>'),
+    })
+
+    // It was listed before this change too — what was missing was any way to open it
+    // (issues.md 6), so the assertion is about the link, not the row.
+    const link = page.getByRole('link', { name: 'befund.pdf' })
+    await expect(link).toBeVisible()
+    await expect(link).toHaveAttribute('target', '_blank')
+
+    const href = await link.getAttribute('href')
+    expect(href).toBeTruthy()
+    const served = await page.request.get(href as string)
+    expect(served.status()).toBe(200)
+    expect(served.headers()['content-type']).toBe('application/pdf')
+    // Inline, so the browser shows it instead of downloading it.
+    expect(served.headers()['content-disposition']).toContain('inline')
+  })
+
   test("a date of death archives the patient and takes it off the customer", async ({
     page,
     request,

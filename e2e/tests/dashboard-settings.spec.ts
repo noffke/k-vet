@@ -5,7 +5,7 @@ import {
   seedDrug,
   seedSentInvoice,
 } from '../fixtures/seed'
-import { navigate, pdfText, signIn } from './helpers'
+import { hasColourNearTop, navigate, pdfFirstPage, pdfText, signIn } from './helpers'
 
 /**
  * Dashboard widgets and practice settings (T075): each widget leads to the work it
@@ -111,6 +111,46 @@ test.describe('dashboard and settings', () => {
     )
   })
 
+  test('the practice logo prints whole, not cropped at the top of the sheet', async ({
+    page,
+    request,
+  }) => {
+    // Three bands. The bug printed only the bottom one, clipped at the paper edge, so asking
+    // for the *top* band is what tells the two apart (issues.md 9).
+    const logo = Buffer.from(
+      `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200">
+         <rect width="600" height="67" fill="rgb(220,60,40)"/>
+         <rect y="67" width="600" height="66" fill="rgb(60,160,80)"/>
+         <rect y="133" width="600" height="67" fill="rgb(40,80,200)"/>
+       </svg>`,
+    )
+
+    await signIn(page)
+    await navigate(page, 'Einstellungen')
+    await page.locator('input[type=file]').setInputFiles({
+      name: 'logo.svg',
+      mimeType: 'image/svg+xml',
+      buffer: logo,
+    })
+    await expect(page.getByRole('img', { name: 'Logo' })).toBeVisible()
+
+    const invoice = await seedAcceptedInvoice(request)
+    const response = await page.request.get(`/api/invoices/${invoice.invoiceId}/pdf`)
+    expect(response.status()).toBe(200)
+    const raster = await pdfFirstPage(Buffer.from(await response.body()))
+
+    expect(hasColourNearTop(raster, [220, 60, 40]), 'the top band of the logo is on the page')
+      .toBeTruthy()
+    expect(hasColourNearTop(raster, [60, 160, 80]), 'the middle band too').toBeTruthy()
+    expect(hasColourNearTop(raster, [40, 80, 200]), 'and the bottom band').toBeTruthy()
+
+    // Put the practice back as it was, since the specs share one database and the rest of them
+    // do not expect a letterhead.
+    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
+    await expect(page.getByText('Kein Logo hinterlegt')).toBeVisible()
+  })
+
   test('the logo is uploaded, shown, and can be taken off again', async ({ page }) => {
     await signIn(page)
     await navigate(page, 'Einstellungen')
@@ -127,7 +167,10 @@ test.describe('dashboard and settings', () => {
 
     await expect(page.getByRole('img', { name: 'Logo' })).toBeVisible()
 
+    // Taking the logo off asks first (issues.md 2). The trigger and the confirm share the
+    // label, so the confirm is taken from inside the dialog.
     await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
     await expect(page.getByText('Kein Logo hinterlegt')).toBeVisible()
   })
 })

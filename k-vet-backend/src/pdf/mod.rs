@@ -692,7 +692,15 @@ mod tests {
     #[test]
     fn renders_with_everything_the_practice_has_not_filled_in_yet() {
         let config = empty_config();
-        let document = InvoiceDocument {
+        let document = minimal_document();
+
+        let pdf = render_invoice(&config, &document, None, None).expect("the template compiles");
+        assert!(pdf.starts_with(b"%PDF-"), "output is a PDF");
+    }
+
+    /// The least an invoice can be: one line, one VAT group, nothing optional filled in.
+    fn minimal_document() -> InvoiceDocument {
+        InvoiceDocument {
             practice: PracticeBlock {
                 name: "Praxis".to_owned(),
                 address: String::new(),
@@ -746,9 +754,45 @@ mod tests {
                 qr_present: false,
                 qr_payload: None,
             },
-        };
-
-        let pdf = render_invoice(&config, &document, None, None).expect("the template compiles");
-        assert!(pdf.starts_with(b"%PDF-"), "output is a PDF");
+        }
     }
+
+    /// A practice logo, which until now no render test passed at all — which is why it shipped
+    /// printing off the top of the page (issues.md 9).
+    ///
+    /// The geometry itself is checked end to end, where the page can be rasterised and looked
+    /// at; what is worth pinning here is that a logo renders at all and reaches the output.
+    /// `KVET_PDF_DUMP=/tmp/logo.pdf` writes the result out to be inspected by eye.
+    #[test]
+    fn renders_a_letterhead_logo() {
+        let config = empty_config();
+        let bare = render_invoice(&config, &minimal_document(), None, None)
+            .expect("renders without a logo");
+
+        let mut document = minimal_document();
+        document.practice.logo_present = true;
+        let with_logo = render_invoice(&config, &document, Some(BANDED_LOGO.to_vec()), None)
+            .expect("the template compiles with a logo");
+
+        assert!(with_logo.starts_with(b"%PDF-"), "output is a PDF");
+        assert!(
+            with_logo.len() > bare.len(),
+            "the logo has to reach the document: {} bytes with it, {} without",
+            with_logo.len(),
+            bare.len(),
+        );
+
+        if let Ok(path) = std::env::var("KVET_PDF_DUMP") {
+            std::fs::write(&path, &with_logo).expect("dump the pdf");
+        }
+    }
+
+    /// Three colour bands, so a vertical crop is unmistakable in a dump. SVG because the
+    /// settings page accepts one and it needs no image crate to build here; `rgb()` rather than
+    /// hex because `"#` would close the raw string.
+    const BANDED_LOGO: &[u8] = br#"<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 600 200">
+        <rect width="600" height="67" fill="rgb(220,60,40)"/>
+        <rect y="67" width="600" height="66" fill="rgb(60,160,80)"/>
+        <rect y="133" width="600" height="67" fill="rgb(40,80,200)"/>
+    </svg>"#;
 }

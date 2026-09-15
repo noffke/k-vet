@@ -5,7 +5,7 @@ import type {
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
-import { useId } from 'react'
+import { useCallback, useId, useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 const controlClasses =
@@ -100,14 +100,46 @@ export type TextAreaFieldProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement
   ref?: Ref<HTMLTextAreaElement> | undefined
 }
 
+/**
+ * Sizes a textarea to its content, up to the cap the class list sets.
+ *
+ * Exported because a field written to directly — the text-block picker assigns `value` and no
+ * input event follows — has to say so; everything typed goes through `onInput` below.
+ */
+export function autoGrow(element: HTMLTextAreaElement | null) {
+  if (!element) return
+  // Collapse first: without this the box can only ever get taller, never shorter again.
+  element.style.height = 'auto'
+  element.style.height = `${element.scrollHeight}px`
+}
+
 export function TextAreaField({
   label,
   error,
   hint,
   className,
   wrapperClassName,
+  ref,
+  onInput,
   ...props
 }: TextAreaFieldProps) {
+  const inner = useRef<HTMLTextAreaElement | null>(null)
+
+  const attach = useCallback(
+    (node: HTMLTextAreaElement | null) => {
+      inner.current = node
+      if (typeof ref === 'function') ref(node)
+      else if (ref) ref.current = node
+    },
+    [ref],
+  )
+
+  // After every render, so a record arriving from the server opens at its full height rather
+  // than three rows with the rest hidden.
+  useLayoutEffect(() => {
+    autoGrow(inner.current)
+  })
+
   return (
     <Field label={label} error={error} hint={hint} className={wrapperClassName}>
       {(id) => (
@@ -115,8 +147,20 @@ export function TextAreaField({
           id={id}
           rows={props.rows ?? 3}
           aria-invalid={error ? true : undefined}
-          className={cn(controlClasses, 'min-h-20 resize-y', error && invalidClasses, className)}
+          className={cn(
+            controlClasses,
+            // Grows with the text and stops at two thirds of the viewport, after which it
+            // scrolls — a long note must not push the rest of the page out of reach.
+            'min-h-20 max-h-[60vh] resize-y overflow-y-auto',
+            error && invalidClasses,
+            className,
+          )}
           {...props}
+          ref={attach}
+          onInput={(event) => {
+            autoGrow(event.currentTarget)
+            onInput?.(event)
+          }}
         />
       )}
     </Field>

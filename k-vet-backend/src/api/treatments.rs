@@ -28,7 +28,8 @@ pub struct Treatment {
     pub starts_at: Option<DateTime<Utc>>,
     /// One record per animal, each with its own reason, finding and positions.
     pub patients: Vec<TreatmentPatient>,
-    /// Derived from the patients — the invoice's customer.
+    /// Whose visit this is, inherited from the appointment — the invoice's customer, and what
+    /// limits which animals may be attached (FR-027).
     pub customer_id: Option<i64>,
     /// The customer's email addresses, offered as invoice recipients (FR-031).
     pub customer_emails: Vec<String>,
@@ -133,7 +134,7 @@ pub async fn create_for_appointment(
 
     // Treatments hang off a *complete* appointment (data-model.md "Draft rows").
     let appointment = sqlx::query!(
-        "SELECT draft FROM appointment WHERE id = $1",
+        "SELECT draft, customer_id FROM appointment WHERE id = $1",
         appointment_id
     )
     .fetch_optional(&mut *transaction)
@@ -142,10 +143,16 @@ pub async fn create_for_appointment(
     if appointment.draft {
         return Err(AppError::field("appointment_id", "record.incomplete"));
     }
+    // Whose visit this is has to be settled before anything is billed against it, and the
+    // animals on offer are the ones this answer allows (issues.md 7).
+    let customer_id = appointment
+        .customer_id
+        .ok_or_else(|| AppError::field("customer_id", "treatment.customerRequired"))?;
 
     let id: i64 = sqlx::query_scalar!(
-        "INSERT INTO treatment (appointment_id) VALUES ($1) RETURNING id",
+        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
         appointment_id,
+        customer_id,
     )
     .fetch_one(&mut *transaction)
     .await?;
@@ -184,13 +191,14 @@ pub async fn detail(
     responses((status = 204), (status = 409))
 )]
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+
+    // Any invoice at all, cancelled ones included — see the note on deleting an appointment.
     let invoiced: Option<bool> = sqlx::query_scalar!(
-        "SELECT EXISTS (
-             SELECT 1 FROM invoice WHERE treatment_id = $1 AND status <> 'cancelled'
-         )",
+        "SELECT EXISTS (SELECT 1 FROM invoice WHERE treatment_id = $1)",
         id,
     )
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *transaction)
     .await?;
     if invoiced.unwrap_or(false) {
         return Err(AppError::Conflict(
@@ -199,11 +207,12 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
     }
 
     let deleted = sqlx::query!("DELETE FROM treatment WHERE id = $1", id)
-        .execute(&state.pool)
+        .execute(&mut *transaction)
         .await?;
     if deleted.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
+    transaction.commit().await?;
     Ok(StatusCode::NO_CONTENT)
 }
 
@@ -275,8 +284,12 @@ pub async fn remove_patient(
     Ok(Json(load(&mut connection, id).await?))
 }
 
-/// Attaches a patient, enforcing that every patient of a treatment shares one customer
-/// (FR-027) — the invoice's customer is derived from that.
+/// Attaches a patient to a treatment.
+///
+/// That every animal on a treatment belongs to one customer (FR-027) is now the database's
+/// job: `patient_treatment` carries the customer and composite foreign keys tie it to both the
+/// treatment's and the animal's. What is left here is turning the resulting constraint error
+/// into something the screen can say, and refusing a draft animal, which no key can express.
 async fn attach_patient(
     transaction: &mut Transaction<'_, Postgres>,
     treatment_id: i64,
@@ -297,17 +310,18 @@ async fn attach_patient(
         .customer_id
         .ok_or_else(|| AppError::field("patient_id", "record.incomplete"))?;
 
-    let existing = sqlx::query_scalar!(
-        "SELECT DISTINCT patient.customer_id
-         FROM patient_treatment record
-         JOIN patient ON patient.id = record.patient_id
-         WHERE record.treatment_id = $1",
-        treatment_id,
+    // Read the treatment's own customer rather than the first animal already on it: an empty
+    // treatment has no animal to read, and that gap is what let the picker offer the whole
+    // practice until the first one was attached.
+    let treatment_customer: Option<i64> = sqlx::query_scalar!(
+        "SELECT customer_id FROM treatment WHERE id = $1",
+        treatment_id
     )
-    .fetch_all(&mut **transaction)
-    .await?;
+    .fetch_optional(&mut **transaction)
+    .await?
+    .ok_or(AppError::NotFound)?;
 
-    if existing.iter().flatten().any(|other| *other != customer_id) {
+    if treatment_customer.is_some_and(|owner| owner != customer_id) {
         return Err(AppError::field(
             "patient_id",
             "treatment.patientOtherCustomer",
@@ -315,10 +329,12 @@ async fn attach_patient(
     }
 
     sqlx::query!(
-        "INSERT INTO patient_treatment (treatment_id, patient_id) VALUES ($1, $2)
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id)
+         VALUES ($1, $2, $3)
          ON CONFLICT DO NOTHING",
         treatment_id,
         patient_id,
+        customer_id,
     )
     .execute(&mut **transaction)
     .await?;
@@ -530,7 +546,7 @@ pub async fn copy_treatment(
 /// Loads a treatment with its patients, live invoice and total.
 pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment> {
     let row = sqlx::query!(
-        r#"SELECT treatment.id, treatment.appointment_id,
+        r#"SELECT treatment.id, treatment.appointment_id, treatment.customer_id,
                   treatment.created_at, treatment.updated_at,
                   appointment.starts_at
            FROM treatment
@@ -581,7 +597,9 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
             .collect::<Vec<_>>(),
     );
 
-    let customer_id = patients.first().and_then(|patient| patient.customer_id);
+    // Read, no longer guessed: it used to be `patients.first()` after ordering by name, which
+    // silently picked an owner when a treatment held more than one.
+    let customer_id = row.customer_id;
     let customer_emails = match customer_id {
         Some(customer_id) => {
             sqlx::query_scalar!(

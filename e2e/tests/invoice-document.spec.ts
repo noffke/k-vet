@@ -12,6 +12,45 @@ import { pdfText, signIn } from './helpers'
 const INTERNAL_NOTE = 'Interner Vermerk: Halterin telefonisch erinnern'
 
 test.describe('the invoice document', () => {
+  test("an animal's chip number is on the invoice, after its date of birth", async ({
+    page,
+    request,
+  }) => {
+    const chip = `2760981${Date.now().toString().slice(-8)}`
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId, `Chip-${Date.now() % 1e6}`)
+    // The chip lives on the animal's master data; the invoice only reads it (issues.md 5).
+    const stored = await request.patch(`/api/patients/${patientId}`, {
+      data: { chip_number: chip, race: 'Havaneser', date_of_birth: '2021-01-01' },
+    })
+    expect(stored.status()).toBe(200)
+
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const { serviceName } = await seedService(request)
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
+    await picker.fill(serviceName)
+    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await expect(page.getByText(serviceName).filter({ visible: true }).first()).toBeVisible()
+
+    await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
+    await page.getByRole('button', { name: 'Rechnung erstellen', exact: true }).last().click()
+    await expect(page).toHaveURL(/\/treatments\/\d+$/)
+
+    const pdfUrl = await page
+      .getByRole('link', { name: 'PDF' })
+      .first()
+      .getAttribute('href')
+    expect(pdfUrl).toBeTruthy()
+    const text = await pdfText(Buffer.from(await (await request.get(pdfUrl as string)).body()))
+
+    expect(text).toContain(`Chipnummer: ${chip}`)
+    // After the date of birth, which is what keeps it out of the Behandlungsbericht heading.
+    expect(text.indexOf('Geburtsdatum')).toBeLessThan(text.indexOf('Chipnummer'))
+  })
+
   test('prices the unit with the factor, and closes with the payment details', async ({
     page,
     request,

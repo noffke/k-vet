@@ -13,6 +13,13 @@ Recording a stock intake (Wareneingang) creates a new lot for an original packag
 For a drug stock lot, we need the option to do a correction movement. The default quantity should be the remainder of the stock of the lot. The reason should be an editable
 select that gives previous reasons (alphabetically sorted) with the option to clear and add a new reason.
 
+Decision (revised): a lot's remaining stock must never go below zero, and no movement may take it there — neither a correction nor a dispense. Earlier this held only for what was
+counted: a dispense that exceeded the books was recorded in full and the lot's derived stock went negative, on the grounds that the physical shelf is the truth. In practice a negative
+remainder is not a record of reality, it is a record that the books were already wrong, and it propagates silently — FEFO then picks lots that hold nothing. So a dispense that a lot
+cannot cover is refused and the vet is pointed at the remedy: the stocktake correction that already exists, entered against what is physically on the shelf. The message names the
+remedy rather than the shortfall — field errors carry no interpolated values, and the numbers are on the lot page she is being sent to anyway; the shortfall is logged. The cost is
+an interruption mid-consultation, accepted deliberately: it lands at the moment the discrepancy is discovered, which is when it can still be counted.
+
 For batch traceability, a lot detail view must show all movements of the lot chronologically, each linking to the corresponding treatment/invoice/customer (dispenses) or showing the reason (corrections).
 
 Decision: in v1 the Narcotic (BTM) and Submission Receipt (Abgabebeleg) flags are informational only — no reminders, no receipt generation, no BTM ledger; the existing paper processes continue. Revisit after v1.

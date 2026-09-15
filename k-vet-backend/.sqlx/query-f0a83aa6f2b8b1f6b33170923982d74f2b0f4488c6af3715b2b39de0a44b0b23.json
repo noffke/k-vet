@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id)\n         VALUES ($1, $2, $3)\n         ON CONFLICT DO NOTHING",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "f0a83aa6f2b8b1f6b33170923982d74f2b0f4488c6af3715b2b39de0a44b0b23"
+}
