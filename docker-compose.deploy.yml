@@ -36,6 +36,9 @@ services:
       # en-US: Must match the password in the config file's `database.url`.
       POSTGRES_PASSWORD: ${KVET_DB_PASSWORD:?set KVET_DB_PASSWORD in .env}
       POSTGRES_DB: kvet
+      # de-DE: Zeitzone für die Log-Zeitstempel des Servers.
+      # en-US: The time zone the server stamps its log lines with.
+      TZ: ${KVET_TZ:-Europe/Berlin}
     volumes:
       - kvet-db-data:/var/lib/postgresql/data
     healthcheck:
@@ -55,6 +58,12 @@ services:
         condition: service_healthy
     # de-DE: Schema-Migrationen laufen beim Start automatisch.
     # en-US: Schema migrations run automatically at start.
+    environment:
+      # de-DE: Die Anwendung fragt das System nach dem Datum — Rechnungsdatum, Zugangsdatum,
+      #        heutige Termine, nächtlicher Lauf. Ohne dies läuft der Container in UTC.
+      # en-US: The application asks the system what day it is — invoice date, intake date,
+      #        today's Termine, the nightly job. Without this the container runs in UTC.
+      TZ: ${KVET_TZ:-Europe/Berlin}
     ports:
       - "8080:8080"
     volumes:

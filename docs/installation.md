@@ -93,6 +93,16 @@ an `.env` file next to the compose file so the second copy is not in the shell h
 echo "KVET_DB_PASSWORD=$(openssl rand -hex 16)" > .env
 ```
 
+The same file sets the time zone, which defaults to `Europe/Berlin`. It is not cosmetic: the
+application asks the system what day it is for the **invoice date**, an intake's arrival date,
+today's Termine and the nightly job, so a container left on UTC dates an invoice written after
+midnight to the previous day — and, if `invoice.number_pattern` carries date parts, to that
+day's counter. Add `KVET_TZ=…` for a practice somewhere else:
+
+```bash
+echo "KVET_TZ=Europe/Vienna" >> .env
+```
+
 Practice name, address, e-mail, bank details (IBAN, BIC, bank name), VAT ID, logo and the global
 CC/BCC addresses are **not** in this file — the vet edits them in the application under
 *Einstellungen*.

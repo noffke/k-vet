@@ -50,10 +50,23 @@ RUN --mount=type=cache,target=/usr/local/cargo/registry,sharing=locked \
 # way round would not work.
 FROM ubuntu:noble
 
-# ca-certificates for outgoing SMTP over TLS, curl only for the health check below. The
-# invoice PDF fonts are compiled into the binary, so no font packages are needed.
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends ca-certificates curl \
+# The practice is in Germany and the application asks the *system* what day it is: the invoice
+# date, the intake's arrival date, today's Termine and the nightly job all read `Local::now()`.
+# Without this the container is UTC, and an invoice written after midnight German time carries
+# the previous day's date — and, if the number pattern has date parts, that day's counter.
+# Overridable from the compose file for a practice that is somewhere else.
+#
+# Set before tzdata is installed, and with the noninteractive frontend: tzdata's configuration
+# otherwise asks which part of the world this is, and the build stops on the Pi waiting for an
+# answer nobody is there to give.
+ENV TZ=Europe/Berlin
+
+# ca-certificates for outgoing SMTP over TLS, curl only for the health check below, tzdata so
+# the zone above resolves. The invoice PDF fonts are compiled into the binary, so no font
+# packages are needed.
+RUN DEBIAN_FRONTEND=noninteractive apt-get update \
+    && DEBIAN_FRONTEND=noninteractive apt-get install -y --no-install-recommends \
+       ca-certificates curl tzdata \
     && rm -rf /var/lib/apt/lists/*
 
 COPY --from=backend /out/k-vet-backend /usr/local/bin/k-vet-backend
