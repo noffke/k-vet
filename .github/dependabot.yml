@@ -141,3 +141,8 @@ updates:
     ignore:
       # Built locally by docker-compose.deploy.yml; there is no registry to check.
       - dependency-name: "k-vet"
+      # Held at 16 for now. A major Postgres release will not start on the previous release's
+      # data directory, so the bump is not a bump: it is a pg_upgrade, done by hand on the Pi
+      # with a backup in reach. Lift this when that has been scheduled.
+      - dependency-name: "postgres"
+        update-types: ["version-update:semver-major"]
