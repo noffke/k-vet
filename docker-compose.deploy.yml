@@ -29,7 +29,7 @@
 
 services:
   db:
-    image: postgres:16-alpine
+    image: postgres:18-alpine
     environment:
       POSTGRES_USER: kvet
       # de-DE: Muss mit dem Passwort in `database.url` der config.toml übereinstimmen.
