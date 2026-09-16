@@ -55,10 +55,13 @@ export function CustomerPicker({
           <UserRound className="size-3.5 text-rust" aria-hidden />
           <span className="text-sm text-ink">{customerName ?? '—'}</span>
           {locked ? null : (
+            // It takes the customer off the record; it does not delete the customer. Calling
+            // it "Löschen" told a screen reader otherwise, and put a second button of that
+            // name beside the one that really does delete.
             <Button
               size="icon"
               variant="ghost"
-              aria-label={t('action.delete')}
+              aria-label={t('action.remove')}
               className="size-7 sm:size-7"
               onClick={onClear}
             >

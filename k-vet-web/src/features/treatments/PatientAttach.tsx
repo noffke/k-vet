@@ -76,7 +76,7 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
               <Button
                 size="icon"
                 variant="ghost"
-                aria-label={t('action.delete')}
+                aria-label={t('action.remove')}
                 className="size-7 sm:size-7"
                 onClick={() => setPendingPatient(patient)}
               >
@@ -102,7 +102,7 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
           if (!open) setPendingPatient(null)
         }}
         title={t('treatments.removePatient')}
-        confirmLabel={t('action.delete')}
+        confirmLabel={t('action.remove')}
         busy={removePatient.isPending}
         onConfirm={() => {
           if (pendingPatient) {

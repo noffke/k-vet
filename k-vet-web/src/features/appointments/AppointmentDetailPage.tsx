@@ -201,11 +201,13 @@ export function AppointmentDetailPage() {
           <p className="eyebrow">{t('appointments.customer')}</p>
           <p className="mt-0.5 mb-2 text-xs text-ink-faint">{t('appointments.customerHint')}</p>
           {/* Locked once a treatment hangs off it: its animals belong to this customer, and
-              moving the appointment would strand them. */}
+              moving the appointment would strand them. Locked while that is still being
+              loaded, too — an empty list is not yet an answer, and for those first frames the
+              picker was offering to strand them. */}
           <CustomerPicker
             customerId={record.customer_id ?? null}
             customerName={record.customer_name ?? null}
-            locked={(treatments.data ?? []).length > 0}
+            locked={treatments.isPending || (treatments.data ?? []).length > 0}
             onPick={(customerId) => {
               autoSave.set({ customer_id: customerId })
               void autoSave.flush()

@@ -85,6 +85,47 @@ test.describe('appointments', () => {
     await expect(page.getByText(/bereits eine Rechnung geschrieben/)).toBeVisible()
   })
 
+  test('a locked customer is not offered for removal before the treatments arrive', async ({
+    page,
+    request,
+  }) => {
+    await signIn(page)
+
+    // A Termin that already carries a treatment: its customer is locked, because moving it
+    // would strand the animals that hang off it. Whether it is locked is only known once the
+    // treatment list is in, and an empty list is what the page holds until then — so the
+    // picker offered to take the customer off. Long enough to be clicked, and long enough to
+    // put a second button on the page beside the one that deletes the Termin.
+    const invoice = await seedAcceptedInvoice(request)
+    const treatment = await request.get(`/api/treatments/${invoice.treatmentId}`)
+    const { appointment_id: appointmentId } = (await treatment.json()) as {
+      appointment_id: number
+    }
+    const appointment = await request.get(`/api/appointments/${appointmentId}`)
+    const { customer_name: customerName } = (await appointment.json()) as {
+      customer_name: string
+    }
+
+    let arrive = () => {}
+    const held = new Promise<void>((resolve) => {
+      arrive = resolve
+    })
+    await page.route(`**/api/appointments/${appointmentId}/treatments`, async (route) => {
+      await held
+      await route.continue()
+    })
+
+    await page.goto(`/appointments/${appointmentId}`)
+    // The customer is on screen, so the picker has rendered the branch that holds the button —
+    // the assertion below is about its absence, not about a page that has not arrived yet.
+    await expect(page.getByText(customerName, { exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+
+    arrive()
+    await expect(page.getByText(invoice.invoiceNumber)).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+  })
+
   test('a date typed before the time survives and is expanded', async ({ page }) => {
     await signIn(page)
     await navigate(page, 'Termine')
