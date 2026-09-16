@@ -56,6 +56,54 @@ UPDATE treatment
         LIMIT 1
    );
 
+-- A Termin could hold treatments for more than one customer, and that was never wrong: the
+-- rule was only ever that one *treatment* has one customer (FR-027), and nothing tied a Termin
+-- to anybody. These are real visits, so refusing them would strand the practice on the old
+-- schema for records it was right to have. A Termin carries one customer from here on, so the
+-- ones that carry several are split instead: the first customer keeps the Termin, every other
+-- one gets a copy of it, and their treatments move across. Time, note and draft state are
+-- copied, so the day's list still shows every visit — as two entries where it showed one.
+DO $$
+DECLARE
+    shared  RECORD;
+    moved   BIGINT;
+    copy_id BIGINT;
+BEGIN
+    FOR shared IN
+        SELECT appointment_id, min(customer_id) AS keeps
+          FROM treatment
+         WHERE customer_id IS NOT NULL
+         GROUP BY appointment_id
+        HAVING count(DISTINCT customer_id) > 1
+    LOOP
+        FOR moved IN
+            SELECT DISTINCT customer_id
+              FROM treatment
+             WHERE appointment_id = shared.appointment_id
+               AND customer_id IS NOT NULL
+               AND customer_id <> shared.keeps
+             ORDER BY 1
+        LOOP
+            INSERT INTO appointment (starts_at, note, draft, created_at, updated_at)
+            SELECT starts_at, note, draft, created_at, updated_at
+              FROM appointment
+             WHERE id = shared.appointment_id
+            RETURNING id INTO copy_id;
+
+            UPDATE treatment
+               SET appointment_id = copy_id
+             WHERE appointment_id = shared.appointment_id
+               AND customer_id = moved;
+
+            -- Named in the start-up log, because this is the one thing the migration changes
+            -- that the vet would otherwise discover by finding a second Termin in her day.
+            RAISE NOTICE 'Termin % also held customer %; moved those treatments to Termin %',
+                shared.appointment_id, moved, copy_id;
+        END LOOP;
+    END LOOP;
+END
+$$;
+
 UPDATE appointment
    SET customer_id = (
        SELECT treatment.customer_id
