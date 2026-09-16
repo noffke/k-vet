@@ -1,7 +1,26 @@
-import { type ColumnDef, flexRender, getCoreRowModel, useReactTable } from '@tanstack/react-table'
+import {
+  type ColumnDef,
+  coreFeatures,
+  createCoreRowModel,
+  flexRender,
+  type RowData,
+  useTable,
+} from '@tanstack/react-table'
+
 import type { MouseEvent, ReactNode } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/lib/utils'
+
+/**
+ * v9 makes the table's capabilities explicit: only the features registered here exist on the
+ * instance, and the set is part of the type. This list renders rows and a flat header — no
+ * sorting, filtering, paging or selection — so the core set plus the row model is all of it.
+ */
+const TABLE_FEATURES = {
+  ...coreFeatures,
+  rowModels: { coreRowModel: createCoreRowModel() },
+} as const
+type TableFeatures = typeof TABLE_FEATURES
 
 export interface DataListColumn<T> {
   id: string
@@ -21,7 +40,7 @@ export interface DataListColumn<T> {
   width?: string
 }
 
-export interface DataListProps<T> {
+export interface DataListProps<T extends RowData> {
   data: T[]
   columns: DataListColumn<T>[]
   getRowId: (row: T) => string
@@ -50,7 +69,7 @@ export interface DataListProps<T> {
  * on a phone (Constitution III — both are first-class targets). The headless table keeps
  * a single column definition driving both layouts.
  */
-export function DataList<T>({
+export function DataList<T extends RowData>({
   data,
   columns,
   getRowId,
@@ -65,16 +84,16 @@ export function DataList<T>({
 }: DataListProps<T>) {
   const { t } = useTranslation()
 
-  const tableColumns: ColumnDef<T>[] = columns.map((column) => ({
+  const tableColumns: ColumnDef<TableFeatures, T, unknown>[] = columns.map((column) => ({
     id: column.id,
     header: column.header,
     cell: (context) => column.cell(context.row.original),
   }))
 
-  const table = useReactTable({
+  const table = useTable({
+    features: TABLE_FEATURES,
     data,
     columns: tableColumns,
-    getCoreRowModel: getCoreRowModel(),
     getRowId,
   })
 
@@ -155,7 +174,7 @@ export function DataList<T>({
                   onRowClick && 'cursor-pointer group-hover:bg-cream-soft',
                 )}
               >
-                {row.getVisibleCells().map((cell, index) => {
+                {row.getAllCells().map((cell, index) => {
                   const column = columns[index]
                   return (
                     <td
