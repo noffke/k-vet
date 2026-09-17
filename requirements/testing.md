@@ -23,6 +23,6 @@ On PR / push, three jobs:
 - **frontend**: biome, knip, `tsc --noEmit`, vitest, OpenAPI/codegen drift check.
 - **e2e**: build the binary, spawn with Postgres service container, run Playwright (desktop + Pixel 9a projects).
 
-On tag/release: cross-compile aarch64 with cargo-zigbuild, upload the binary as release artifact.
+On a `v*` tag: the same three jobs, plus **image** (the Dockerfile still builds) and **release** (publish the GitHub release with generated notes). Nothing is cross-compiled and no binary is uploaded — the image is built on the Pi from the tag.
 
 Caching: `Swatinem/rust-cache` + npm cache; Playwright browser cache keyed on the Playwright version.

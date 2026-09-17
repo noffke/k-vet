@@ -50,8 +50,29 @@ Single-user, records/billing-centric practice management app, self-hosted on a R
 ## Deployment
 - **One container image**, assembled on `ubuntu:noble`: the backend binary plus the built frontend as files, API and static assets on one port.
 - Multi-stage `Dockerfile` at the repo root: Node stage builds `k-vet-web`, Rust stage builds the backend (`SQLX_OFFLINE=true` against the committed `.sqlx/`), runtime stage copies both onto Ubuntu.
-- **Built on the target machine** (the Pi, natively for aarch64) with `docker compose -f docker-compose.deploy.yml build`. No registry, no cross-compilation, no release artefacts to publish; CI only verifies on a `v*` tag that the image still builds.
+- **Built on the target machine** (the Pi, natively for aarch64) with `docker build`. No registry, no cross-compilation, no release artefacts to publish; CI only verifies on a `v*` tag that the image still builds, and publishes a GitHub release as the record of what that tag contains.
+- **The image is tagged with its release version, never a moving tag.** `docker build --build-arg KVET_VERSION=1.2.3 -t k-vet:1.2.3 .` The version is the git tag; it is deliberately *not* taken from `Cargo.toml`, because that value is baked into the committed `openapi.json` and bumping it would make every release a codegen-drift commit.
 - The frontend is *not* embedded in the binary: the backend serves it from `server.web_dir`, which the image points at `/usr/share/k-vet/web`.
 - Runtime state is host-mounted: `config.toml`, the templates directory and the attachments directory. The container runs as the image's `ubuntu` user (uid/gid 1000), so those paths must be accessible to that uid/gid; the entrypoint checks this and seeds missing templates.
 - **rustls** everywhere (not openssl) — keeps the build free of system TLS libraries; the invoice PDF fonts are compiled in, so the runtime image needs no font packages.
-- Compose service instead of a systemd unit; hooks into the existing Prometheus monitoring via `/metrics`, health via `/healthz`.
+- **PostgreSQL is the Pi's own server**, not a container: the appliance already runs one. Containers reach it over the docker bridge (`--add-host=host.docker.internal:host-gateway`), which needs a `listen_addresses` and a `pg_hba.conf` entry — see `docs/installation.md`.
+- **A systemd template unit, `k-vet@.service`, instead of a Compose service** — because there is more than one instance. Hooks into the existing Prometheus monitoring via `/metrics`, health via `/healthz`.
+
+### Two environments
+
+Production and staging run on the same Pi, from one image and one Postgres server, as
+`k-vet@prod` and `k-vet@staging`. Each instance owns its `config.toml`, templates directory,
+**attachments directory** and database; `KVET_VERSION` in `/etc/k-vet/<instance>.env` is the
+only thing that decides which image it runs, so production never moves because something else
+was built.
+
+This is a deliberate exception to Constitution V's YAGNI clause, and the justification is
+narrow: the practice bills from this application, and migrations are forward-only. There is no
+undo for a schema change that turns out wrong, so there has to be somewhere to meet it first.
+The cost is bounded — one extra systemd instance and one extra database, no new runtime
+services, and the image, the build and the artefact are unchanged.
+
+Separate attachments directories are a **correctness** requirement rather than tidiness:
+attachment storage is content-addressed and deduplicated, and `jobs::sweep_orphan_attachments`
+decides what to unlink by querying its own database alone. Two instances sharing a directory
+would let one delete blobs the other still references.
