@@ -43,7 +43,7 @@ cargo sqlx prepare --check -- --all-targets     # committed .sqlx/ must match th
 cargo test                                      # unit + integration, real Postgres
 cargo run                                       # API on :8080 (KVET_CONFIG or ./config.toml)
 cargo run -- --hash-password                    # argon2id hash for [auth] password_hash
-cargo run -- --reset-database                   # needs KVET_ALLOW_DB_RESET=1
+# no reset flag: drop and recreate the database in Postgres, migrations run at start
 
 cargo test --test invoices                                  # one integration test binary
 cargo test --test invoices creating_an_invoice_allocates     # one test by name substring

@@ -3,7 +3,6 @@
 //! Usage:
 //!   k-vet-backend [CONFIG_PATH]      serve (config from arg, `KVET_CONFIG`, or /etc/k-vet)
 //!   k-vet-backend --hash-password    print an argon2id hash for `[auth] password_hash`
-//!   k-vet-backend --reset-database   drop the schema and re-migrate (needs KVET_ALLOW_DB_RESET=1)
 
 use std::io::{IsTerminal, Write};
 use std::process::ExitCode;
@@ -34,12 +33,10 @@ async fn main() -> ExitCode {
 async fn run() -> Result<(), String> {
     let mut config_path_argument = None;
     let mut hash_password = false;
-    let mut reset_database = false;
 
     for argument in std::env::args().skip(1) {
         match argument.as_str() {
             "--hash-password" => hash_password = true,
-            "--reset-database" => reset_database = true,
             "--help" | "-h" => {
                 print_usage();
                 return Ok(());
@@ -66,10 +63,6 @@ async fn run() -> Result<(), String> {
         .connect(&config.database.url)
         .await
         .map_err(|error| format!("cannot connect to the database: {error}"))?;
-
-    if reset_database {
-        return reset(&pool).await;
-    }
 
     tokio::fs::create_dir_all(&config.storage.attachments_dir)
         .await
@@ -117,7 +110,6 @@ k-vet backend
 USAGE:
     k-vet-backend [CONFIG_PATH]      serve the application
     k-vet-backend --hash-password    print an argon2id hash for the config file
-    k-vet-backend --reset-database   drop the schema and re-migrate (KVET_ALLOW_DB_RESET=1)
 
 The configuration path is taken from the argument, then KVET_CONFIG, then /etc/k-vet/config.toml.
 ";
@@ -139,28 +131,6 @@ fn print_password_hash() -> Result<(), String> {
     }
     let hash = auth::hash_password(password).map_err(|error| error.to_string())?;
     let _ = writeln!(std::io::stdout(), "{hash}");
-    Ok(())
-}
-
-/// Development/test helper: wipes the schema, then re-applies the migrations.
-async fn reset(pool: &sqlx::PgPool) -> Result<(), String> {
-    if std::env::var("KVET_ALLOW_DB_RESET").unwrap_or_default() != "1" {
-        return Err("--reset-database requires KVET_ALLOW_DB_RESET=1".to_owned());
-    }
-    for statement in [
-        "DROP SCHEMA IF EXISTS tower_sessions CASCADE",
-        "DROP SCHEMA public CASCADE",
-        "CREATE SCHEMA public",
-    ] {
-        sqlx::query(statement)
-            .execute(pool)
-            .await
-            .map_err(|error| format!("cannot reset the database ({statement}): {error}"))?;
-    }
-    run_migrations(pool)
-        .await
-        .map_err(|error| error.to_string())?;
-    tracing::info!("database reset and migrated");
     Ok(())
 }
 

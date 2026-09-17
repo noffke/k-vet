@@ -212,16 +212,22 @@ The GOT fee schedule is imported by a migration, so a fresh database already has
 
 ### Starting over
 
-`--reset-database` **drops the schema and every row in it**, then re-migrates. It is guarded by an
-environment variable so it cannot happen by accident:
+The application cannot drop its own schema, deliberately — emptying a database is the database's
+job, and a flag inside the application knows only *that* a reset was allowed, never *which*
+database it was aimed at. Stop the instance and use PostgreSQL:
 
 ```bash
-docker compose -f docker-compose.deploy.yml run --rm \
-  -e KVET_ALLOW_DB_RESET=1 app --reset-database
+sudo systemctl stop k-vet@staging
+sudo -u postgres dropdb kvet_staging
+sudo -u postgres createdb -O kvet_staging kvet_staging --encoding=UTF8
+sudo systemctl start k-vet@staging          # migrations run at start, as always
 ```
 
-This is a development and commissioning tool. Once the practice has billed anything, restore from a
-backup instead — see [Backups](#backups).
+The attachments directory is not touched by this, so clear it in the same breath if you want a
+clean slate — otherwise its files stay while the rows that pointed at them are gone.
+
+This is a commissioning and test-environment tool. **Check the database name twice**, and once the
+practice has billed anything, restore from a backup instead — see [Backups](#backups).
 
 ## 5. Build and start
 

@@ -1,8 +1,9 @@
-import { spawn, spawnSync } from 'node:child_process'
+import { spawn } from 'node:child_process'
 import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { Client } from 'pg'
 import { E2E_PASSWORD_HASH, E2E_USERNAME } from './fixtures/credentials'
 
 const port = Number(process.env.KVET_PORT ?? 8081)
@@ -88,13 +89,21 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   }
   const { configPath } = writeConfig()
 
-  // Deterministic start: drop the schema, re-run migrations, exit.
-  const reset = spawnSync(binary, ['--reset-database'], {
-    env: { ...process.env, KVET_CONFIG: configPath, KVET_ALLOW_DB_RESET: '1' },
-    encoding: 'utf8',
-  })
-  if (reset.status !== 0) {
-    throw new Error(`database reset failed: ${reset.stderr || reset.stdout}`)
+  // Deterministic start: empty the database and let the binary's own migrations rebuild it.
+  //
+  // Done here rather than by the application, which no longer knows how to drop its own
+  // schema. An appliance that can do that is a liability once two instances share a machine:
+  // the guard could say *that* a reset was allowed but never *which* database it was pointed
+  // at. Emptying a database is the database's job, and doing it here also works against a
+  // release binary, which a debug-only flag would not have.
+  const client = new Client({ connectionString: databaseUrl })
+  await client.connect()
+  try {
+    await client.query('DROP SCHEMA IF EXISTS tower_sessions CASCADE')
+    await client.query('DROP SCHEMA IF EXISTS public CASCADE')
+    await client.query('CREATE SCHEMA public')
+  } finally {
+    await client.end()
   }
 
   const child = spawn(binary, [], {
