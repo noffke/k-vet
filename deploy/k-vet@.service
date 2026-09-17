@@ -1,0 +1,56 @@
+# k-vet, one instance per environment — `k-vet@prod`, `k-vet@staging`.
+#
+#   sudo cp deploy/k-vet@.service /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now k-vet@prod
+#
+# `%i` is the instance name, and it is the whole mechanism: it picks the environment file, the
+# container name and the state directory, so a second environment costs one more file and no
+# more moving parts.
+#
+# Everything that differs between environments lives in /etc/k-vet/%i.env (see env.example).
+# `KVET_VERSION` there is the only thing that decides which image runs, which is the point of
+# the exercise: production moves when that line is edited and at no other time — never because
+# something else was built on this machine.
+
+[Unit]
+Description=k-vet (%i)
+Documentation=https://github.com/noffke/k-vet/blob/main/docs/releasing.md
+# PostgreSQL is the Pi's own server, not a container, so the unit waits for both.
+After=docker.service postgresql.service network-online.target
+Requires=docker.service
+Wants=postgresql.service
+
+[Service]
+EnvironmentFile=/etc/k-vet/%i.env
+
+# A crash or a hard reboot can leave the name taken; `-` means a failure here is not fatal.
+ExecStartPre=-/usr/bin/docker rm -f k-vet-%i
+
+# Runs in the foreground so systemd supervises the container rather than the client.
+#
+#   --pull=never   nothing is fetched from a registry; the image is built on this machine
+#   --add-host     how the container reaches the Pi's own PostgreSQL (see docs/installation.md)
+#   -p             only the *host* port differs per environment; inside it is always 8080, so
+#                  the image's HEALTHCHECK on 127.0.0.1:8080 stays correct
+ExecStart=/usr/bin/docker run --rm --name k-vet-%i \
+    --pull=never \
+    --add-host=host.docker.internal:host-gateway \
+    -p ${KVET_HTTP_BIND}:${KVET_HTTP_PORT}:8080 \
+    -e TZ=${KVET_TZ} \
+    -v /srv/k-vet/%i/config.toml:/etc/k-vet/config.toml:ro \
+    -v /srv/k-vet/%i/templates:/etc/k-vet/templates \
+    -v /srv/k-vet/%i/attachments:/var/lib/k-vet/attachments \
+    k-vet:${KVET_VERSION}
+
+ExecStop=/usr/bin/docker stop k-vet-%i
+
+# Migrations run at start and the database may not be ready on the first try after a reboot.
+Restart=on-failure
+RestartSec=5s
+# Give up rather than loop for ever on a configuration mistake; the logs will say what it was.
+StartLimitBurst=5
+StartLimitIntervalSec=120
+
+[Install]
+WantedBy=multi-user.target
