@@ -115,7 +115,7 @@ publishes the release notes. The Pi then builds that tag once and runs it — fi
 instance, then, unchanged, on the practice's own:
 
 ```bash
-scripts/cut-release.sh 1.2.3        # here
+scripts/cut-release.sh              # here — next patch; pass 1.3.0 for a bigger bump
 deploy/promote.sh staging 1.2.3     # on the Pi
 deploy/promote.sh prod    1.2.3     # the same image, once it has been tried
 ```

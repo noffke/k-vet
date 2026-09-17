@@ -23,8 +23,12 @@ and never because something else was built on the machine.
 On the development machine, with `main` green:
 
 ```bash
-scripts/cut-release.sh 1.2.3
+scripts/cut-release.sh          # the next patch release
+scripts/cut-release.sh 1.3.0    # a minor or major bump
 ```
+
+With no argument it takes the highest `v*` tag on the remote and bumps the patch, which is what
+most releases are. A minor or major bump says something about the change, so it is typed out.
 
 It refuses to tag a dirty tree, a branch other than `main`, a `main` that is not level with the
 remote, a tag that already exists, or a commit CI has not already passed — then tags and pushes.

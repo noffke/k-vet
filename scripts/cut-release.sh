@@ -3,7 +3,8 @@
 # Cuts a release: checks, tags, pushes. CI does the rest — it re-runs every gate on the tagged
 # commit, verifies the image builds, and publishes the GitHub release.
 #
-#   scripts/cut-release.sh 1.2.3
+#   scripts/cut-release.sh          the next patch release, worked out from the latest tag
+#   scripts/cut-release.sh 1.3.0    a minor or major bump, which is always deliberate
 #
 # Run on the development machine, never on the Pi. The Pi consumes tags; it does not make them.
 #
@@ -18,16 +19,17 @@ die() {
     exit 1
 }
 
+# The version is optional: with no argument this is the next patch release, which is what most
+# of them are. A minor or major bump is the deliberate act, so that one is typed out.
 version="${1:-}"
-[ -n "$version" ] || die "usage: scripts/cut-release.sh 1.2.3"
-# Accept 1.2.3 or v1.2.3; the tag is always the v form.
-version="${version#v}"
-tag="v${version}"
-
-case "$version" in
-    [0-9]*.[0-9]*.[0-9]*) ;;
-    *) die "'$version' is not a semver version — expected something like 1.2.3" ;;
-esac
+if [ -n "$version" ]; then
+    # Accept 1.2.3 or v1.2.3; the tag is always the v form.
+    version="${version#v}"
+    case "$version" in
+        [0-9]*.[0-9]*.[0-9]*) ;;
+        *) die "'$version' is not a semver version — expected something like 1.2.3" ;;
+    esac
+fi
 
 cd "$(dirname "$0")/.."
 
@@ -37,15 +39,37 @@ cd "$(dirname "$0")/.."
 branch="$(git rev-parse --abbrev-ref HEAD)"
 [ "$branch" = "main" ] || die "on branch '$branch'; releases are cut from main"
 
-git rev-parse -q --verify "refs/tags/$tag" >/dev/null &&
-    die "tag $tag already exists locally"
-
 # The remote is asked first and its failure is fatal. Every check below reads the remote's
 # answer, and an unreachable remote answers "no" to all of them — "that tag does not exist yet"
-# is indistinguishable from "I could not ask", and only one of those is safe to act on.
+# is indistinguishable from "I could not ask", and only one of those is safe to act on. Tags
+# come with it, so the version below is derived from what the remote has and not from a stale
+# local list.
 echo "fetching…"
-git fetch --quiet origin main ||
+git fetch --quiet --tags origin main ||
     die "cannot reach origin; a release is checked against the remote, so this is not skippable"
+
+if [ -z "$version" ]; then
+    # Sorted as versions, not as text, so v1.10.0 beats v1.9.0 — which `git describe` would not
+    # give us either, since it answers with the nearest reachable tag rather than the highest.
+    latest="$(git tag -l 'v*.*.*' --sort=-v:refname | head -1)"
+    if [ -z "$latest" ]; then
+        version="1.0.0"
+        echo "no releases yet — starting at $version"
+    else
+        major="${latest#v}"
+        patch="${major##*.}"
+        major="${major%.*}"
+        minor="${major#*.}"
+        major="${major%.*}"
+        version="${major}.${minor}.$((patch + 1))"
+        echo "$latest -> $version"
+    fi
+fi
+
+tag="v${version}"
+
+git rev-parse -q --verify "refs/tags/$tag" >/dev/null &&
+    die "tag $tag already exists locally"
 
 [ -z "$(git ls-remote --tags origin "refs/tags/$tag")" ] ||
     die "tag $tag already exists on the remote"
