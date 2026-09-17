@@ -106,17 +106,23 @@ cd ../k-vet-web && npm run generate:api            # src/api/generated/
 
 The deployment artefact is a container image, built on the machine that runs it — no registry is
 involved. `Dockerfile` has three stages (Node builds the frontend, Rust builds the backend, the
-result is assembled on `ubuntu:noble`), and `docker-compose.deploy.yml` runs it next to
-PostgreSQL with the configuration, the templates and the uploaded files mounted from the host:
+result is assembled on `ubuntu:noble`), and a systemd template unit runs it against the host's
+own PostgreSQL, with the configuration, the templates and the uploaded files mounted from the
+host.
+
+A release is a pushed `v*` tag: CI re-runs every gate on it, proves the image builds, and
+publishes the release notes. The Pi then builds that tag once and runs it — first on the staging
+instance, then, unchanged, on the practice's own:
 
 ```bash
-docker compose -f docker-compose.deploy.yml build
-docker compose -f docker-compose.deploy.yml up -d
+scripts/cut-release.sh 1.2.3        # here
+deploy/promote.sh staging 1.2.3     # on the Pi
+deploy/promote.sh prod    1.2.3     # the same image, once it has been tried
 ```
 
 The container runs as uid/gid 1000, so those three mounted paths must be accessible to that
-uid/gid. Full walkthrough in [docs/installation.md](docs/installation.md). Tagging `v*` only makes
-CI verify that the image still builds.
+uid/gid. Full walkthrough in [docs/installation.md](docs/installation.md), the release process in
+[docs/releasing.md](docs/releasing.md).
 
 ## Documentation
 

@@ -1,14 +1,19 @@
 # Installing k-vet
 
 k-vet is deployed as a container image holding the backend binary and the built web interface,
-plus a PostgreSQL container. The image is **built on the machine that runs it** — nothing is
-pulled from a registry.
+against the PostgreSQL server the host already runs. The image is **built on the machine that
+runs it** — nothing is pulled from a registry.
+
+Instances are systemd units, `k-vet@prod` and `k-vet@staging`, so the same machine can run the
+practice's own installation and a place to try a release first. Everything below is written for
+one instance called `prod`; a second is the same steps with a different name, a different port
+and a different database. If you only ever want one, use `prod` and ignore the rest.
 
 This guide assumes a 64-bit Raspberry Pi OS or any Linux host with Docker Engine 23 or newer
-(for BuildKit) and the compose plugin:
+(for BuildKit), systemd, and PostgreSQL 15 or newer:
 
 ```bash
-docker --version && docker compose version
+docker --version && systemctl --version | head -1 && psql --version
 ```
 
 ## 1. Get the sources
@@ -17,8 +22,11 @@ docker --version && docker compose version
 git clone <this repository> k-vet && cd k-vet
 ```
 
-Everything below runs from that directory. The two files that matter for a deployment are
-`Dockerfile` and `docker-compose.deploy.yml`.
+Everything below runs from that directory. The files that matter for a deployment are
+`Dockerfile`, `deploy/k-vet@.service`, `deploy/env.example` and `deploy/promote.sh`.
+
+Keep the checkout somewhere stable — `deploy/promote.sh` builds from it, checking out the tag
+it was asked for.
 
 ## 2. Prepare the host files
 
@@ -27,19 +35,27 @@ database:
 
 | Host path | Container path | Contents | Access needed |
 | --- | --- | --- | --- |
-| `./config.toml` | `/etc/k-vet/config.toml` | operator configuration | read |
-| `./templates/` | `/etc/k-vet/templates` | invoice PDF and email templates | read + write |
-| `./attachments/` | `/var/lib/k-vet/attachments` | uploaded files, invoice PDFs, logo | read + write |
+| `/srv/k-vet/prod/config.toml` | `/etc/k-vet/config.toml` | operator configuration | read |
+| `/srv/k-vet/prod/templates/` | `/etc/k-vet/templates` | invoice PDF and email templates | read + write |
+| `/srv/k-vet/prod/attachments/` | `/var/lib/k-vet/attachments` | uploaded files, invoice PDFs, logo | read + write |
+
+Put them on the USB SSD, not the SD card — the same rule as the database.
+
+**A second instance gets its own three, under `/srv/k-vet/staging/`, and the attachments
+directory in particular must not be shared.** That is not tidiness: attachment storage is
+content-addressed and deduplicated, and the nightly sweep decides what to delete by asking its
+*own* database what is still referenced. Two instances over one directory would let the test one
+quietly delete files the practice's invoices point at.
 
 **The container runs as the image's `ubuntu` user — uid 1000 and gid 1000 — so all three paths
 must be accessible to that uid and gid.** On Raspberry Pi OS the first login user is already
 1000:1000, so a checkout made by that user needs nothing further. Otherwise:
 
 ```bash
-mkdir -p templates attachments
-cp config.example.toml config.toml
-sudo chown -R 1000:1000 config.toml templates attachments
-ls -n                # owner and group of all three must read 1000 1000
+sudo mkdir -p /srv/k-vet/prod/templates /srv/k-vet/prod/attachments
+sudo cp config.example.toml /srv/k-vet/prod/config.toml
+sudo chown -R 1000:1000 /srv/k-vet/prod
+ls -n /srv/k-vet/prod    # owner and group of all three must read 1000 1000
 ```
 
 Getting this wrong shows up as one of three things, all of them loud except the last:
@@ -52,7 +68,7 @@ Getting this wrong shows up as one of three things, all of them loud except the 
   container then exits naming the missing file; with those keys empty the compiled-in templates
   are used and only your ability to edit them is lost.
 
-A `user:` override in the compose service works if 1000 is taken on your host, but then the same
+Adding `--user` to the unit's `docker run` works if 1000 is taken on your host, but then the same
 ownership rule applies to whichever uid/gid you substitute.
 
 ## 3. Write the configuration
@@ -62,10 +78,10 @@ bare-metal setup and must be right for the container:
 
 ```toml
 [server]
-listen_address = "0.0.0.0"          # the port is published by compose, so bind all interfaces
+listen_address = "0.0.0.0"          # inside the container; the unit publishes the host port
 
 [database]
-url = "postgres://kvet:PASSWORD@db:5432/kvet"   # `db` is the compose service name
+url = "postgres://kvet:PASSWORD@host.docker.internal:5432/kvet"   # the host's own server
 
 [storage]
 attachments_dir = "/var/lib/k-vet/attachments"  # the mount, not a host path
@@ -78,7 +94,7 @@ The remaining decisions:
 | `[server]` | `port`, `base_url` | Keep 8080 (the published port) and set `base_url` to the URL the vet types. An `https://` value also switches the session cookie to `Secure`. |
 | | `web_dir` | Leave at `/usr/share/k-vet/web` — that is where the image puts the built interface. |
 | | `log_level` | `info`; `debug` adds request and SQL detail. |
-| `[auth]` | `username`, `password_hash` | The single login. Generate the hash after the first build: `docker run --rm -i k-vet:local --hash-password` (type the password, it prints an argon2id hash). Never store the plain password. |
+| `[auth]` | `username`, `password_hash` | The single login. Generate the hash after the first build: `docker run --rm -i k-vet:1.0.0 --hash-password` (type the password, it prints an argon2id hash). Never store the plain password. |
 | `[database]` | `max_connections` | 5 is plenty for one user. |
 | `[storage]` | `max_upload_mb` | Larger uploads are rejected with 413. |
 | `[mail]` | `smtp_*`, `from_*` | The practice's own mail server; `smtp_tls` is `starttls`, `tls` or `none`. |
@@ -86,22 +102,19 @@ The remaining decisions:
 | | `typst_template`, `email_template` | Empty uses the compiled-in templates and leaves the mount inert. To edit them, point at `/etc/k-vet/templates/invoice.typ` and `/etc/k-vet/templates/invoice-email.txt` — the entrypoint seeds both files on first start. See [templates.md](templates.md). |
 | `[travel_expenses]` | `rate_per_double_km`, `minimum` | GOT § 10 values: `3.50` per double kilometre, `13.00` minimum. Update when the fee schedule changes. |
 
-The database password appears twice — in `config.toml` and in the compose environment. Put it in
-an `.env` file next to the compose file so the second copy is not in the shell history:
+The database password lives here and nowhere else — it is the role's password from
+[section 4](#4-the-database), and this file is the only copy. `chmod 600` it; the container
+reads it as uid 1000.
 
-```bash
-echo "KVET_DB_PASSWORD=$(openssl rand -hex 16)" > .env
-```
+The instance's **time zone** is not in this file but in `/etc/k-vet/<instance>.env`, and it
+defaults to `Europe/Berlin`. It is not cosmetic: the application asks the system what day it is
+for the **invoice date**, an intake's arrival date, today's Termine and the nightly job, so a
+container left on UTC dates an invoice written after midnight to the previous day — and, if
+`invoice.number_pattern` carries date parts, to that day's counter. Set `KVET_TZ=` there for a
+practice somewhere else.
 
-The same file sets the time zone, which defaults to `Europe/Berlin`. It is not cosmetic: the
-application asks the system what day it is for the **invoice date**, an intake's arrival date,
-today's Termine and the nightly job, so a container left on UTC dates an invoice written after
-midnight to the previous day — and, if `invoice.number_pattern` carries date parts, to that
-day's counter. Add `KVET_TZ=…` for a practice somewhere else:
-
-```bash
-echo "KVET_TZ=Europe/Vienna" >> .env
-```
+A staging instance also sets `environment_label` (a banner, so it cannot be mistaken for the
+practice's own) and should point `[mail] smtp_host` at something dead.
 
 Practice name, address, e-mail, bank details (IBAN, BIC, bank name), VAT ID, logo and the global
 CC/BCC addresses are **not** in this file — the vet edits them in the application under
@@ -109,27 +122,10 @@ CC/BCC addresses are **not** in this file — the vet edits them in the applicat
 
 ## 4. The database
 
-**Using the bundled compose file? Skip this section.** The `db` service creates the role, the
-database and the data volume on first start, and the application applies its own migrations. Read
-on only if you point k-vet at a PostgreSQL server you already run.
+k-vet uses the PostgreSQL server the host already runs; it does not bring one. Put its data
+directory on the **USB SSD, never the SD card** — write-ahead logging destroys SD cards.
 
-### What the bundled service does
-
-```yaml
-image: postgres:16-alpine
-environment:
-  POSTGRES_USER: kvet
-  POSTGRES_PASSWORD: ${KVET_DB_PASSWORD:?set KVET_DB_PASSWORD in .env}
-  POSTGRES_DB: kvet
-volumes:
-  - kvet-db-data:/var/lib/postgresql/data
-```
-
-The official image creates role `kvet` as the **owner** of database `kvet`, which is all the
-application needs. The data lives in the named volume `kvet-db-data`, not in the bind mounts of
-section 2 — `docker compose down -v` deletes it, `docker compose down` does not.
-
-### Pointing at your own server
+### The role and the database
 
 Create a login role and a database it owns. Ownership is the simplest way to give the application
 the rights it needs; the alternative is two explicit grants, below.
@@ -138,6 +134,40 @@ the rights it needs; the alternative is two explicit grants, below.
 CREATE ROLE kvet LOGIN PASSWORD 'the-password-from-your-config';
 CREATE DATABASE kvet OWNER kvet ENCODING 'UTF8';
 ```
+
+**One role per instance, each owning its own database**, so a mistake in one instance's
+`config.toml` cannot open the other's data:
+
+```sql
+CREATE ROLE kvet_staging LOGIN PASSWORD 'the-password-from-the-staging-config';
+CREATE DATABASE kvet_staging OWNER kvet_staging ENCODING 'UTF8';
+```
+
+Invoice numbers are allocated per database and never reused, so two instances must never share
+one — quite apart from the test one then billing against the practice's counter.
+
+### Letting the container in
+
+The application runs in a container and PostgreSQL does not, so the connection arrives over the
+Docker bridge — which a default installation does not accept. Two edits, then a reload:
+
+```conf
+# postgresql.conf — confirm the address with `ip addr show docker0`
+listen_addresses = 'localhost,172.17.0.1'
+```
+
+```conf
+# pg_hba.conf — role and database names match, so neither instance can reach the other's
+host  kvet          kvet          172.16.0.0/12  scram-sha-256
+host  kvet_staging  kvet_staging  172.16.0.0/12  scram-sha-256
+```
+
+```bash
+sudo systemctl reload postgresql
+```
+
+Keep 5432 off the network itself; `listen_addresses` above is the loopback and the bridge, not
+`*`.
 
 **The encoding must be UTF-8.** Every practice name, patient name and clinical note is German text,
 and the invoice PDF is rendered from what the database returns.
@@ -175,9 +205,13 @@ developed and tested against PostgreSQL 16.
 
 ```toml
 [database]
-url = "postgres://kvet:PASSWORD@db:5432/kvet"
+url = "postgres://kvet:PASSWORD@host.docker.internal:5432/kvet"
 max_connections = 5
 ```
+
+`host.docker.internal` is the host itself; the unit supplies it with
+`--add-host=host.docker.internal:host-gateway`. A staging instance points at
+`kvet_staging` with its own role and password.
 
 `db` is the compose service name; for an external server use its host name or address. **Percent-encode
 any special character in the password** — `@`, `/`, `:`, `?`, `#` and `%` all mean something in a
@@ -231,19 +265,41 @@ practice has billed anything, restore from a backup instead — see [Backups](#b
 
 ## 5. Build and start
 
+Install the unit and the environment file once:
+
 ```bash
-docker compose -f docker-compose.deploy.yml build      # first build on a Pi: expect 30–60 min
-docker compose -f docker-compose.deploy.yml up -d
-docker compose -f docker-compose.deploy.yml ps         # app must become healthy
-curl -fsS localhost:8080/healthz                       # → ok
+sudo cp deploy/k-vet@.service /etc/systemd/system/
+sudo systemctl daemon-reload
+sudo mkdir -p /etc/k-vet
+sudo cp deploy/env.example /etc/k-vet/prod.env
+sudoedit /etc/k-vet/prod.env          # KVET_VERSION, and the port if this is not prod
 ```
+
+Build the image and start the instance:
+
+```bash
+git checkout v1.0.0                                          # a released tag
+docker build --build-arg KVET_VERSION=1.0.0 -t k-vet:1.0.0 . # first build on a Pi: 30–60 min
+sudo systemctl enable --now k-vet@prod
+systemctl status k-vet@prod
+curl -fsS localhost:8080/healthz                             # → ok
+```
+
+After the first time, `deploy/promote.sh prod 1.0.1` does all of that — see
+[releasing.md](releasing.md).
 
 The first build compiles the whole Rust dependency tree, Typst included; give the Pi swap
 headroom (2 GB is comfortable) and let it run. Rebuilds reuse BuildKit's cargo and target caches
 and take minutes. Schema migrations run automatically every time the container starts, so there
 is no separate migration step.
 
-Logs: `docker compose -f docker-compose.deploy.yml logs -f app`.
+Logs: `journalctl -u k-vet@prod -f`.
+
+A second instance is the same three commands with `staging` in place of `prod`, a different
+`KVET_HTTP_PORT`, and its own `config.toml` pointing at `kvet_staging`. Give it an
+`environment_label` so it cannot be mistaken for the real one, and point its `[mail] smtp_host`
+somewhere dead — an instance holding copied data and a working mail server will send real
+invoices to real customers.
 
 ## 6. First login
 
@@ -279,26 +335,34 @@ content, the directory holds the bytes of the PDFs and patient files they point 
 `config.toml` and `templates/` are worth keeping too — they are small and hold your setup.
 
 ```bash
-docker compose -f docker-compose.deploy.yml exec -T db \
-  pg_dump -U kvet --format=custom kvet > kvet-$(date +%F).dump
-tar -czf kvet-files-$(date +%F).tar.gz attachments templates config.toml
+sudo -u postgres pg_dump --format=custom kvet > kvet-$(date +%F).dump
+sudo tar -czf kvet-files-$(date +%F).tar.gz -C /srv/k-vet/prod attachments templates config.toml
 ```
 
-Restoring: start only the database (`up -d db`), `pg_restore` into it, unpack the files
-alongside the compose file, then `up -d app`. Verify a restore before you need it — open an old
-invoice's PDF and check a patient file opens.
+Restoring: stop the instance (`sudo systemctl stop k-vet@prod`), `pg_restore` into the database,
+unpack the files into `/srv/k-vet/prod`, then start it again. Verify a restore before you need
+it — open an old invoice's PDF and check a patient file opens.
+
+Back up the practice's instance. A test instance holds nothing worth keeping, and including it
+would double the archive for data you are happy to drop.
 
 ## Upgrading
 
+Upgrades go through a release, so this has its own guide: **[releasing.md](releasing.md)**. The
+short version, on the Pi:
+
 ```bash
-git pull
-docker compose -f docker-compose.deploy.yml build
-docker compose -f docker-compose.deploy.yml up -d
+deploy/promote.sh staging 1.2.3     # try it here first
+deploy/promote.sh prod    1.2.3     # then the identical image
 ```
 
-Migrations run at start and are forward-only; take a backup first (see above) and watch
-`docker compose -f docker-compose.deploy.yml logs -f app` on the first start after an upgrade.
-Old images can be cleaned up with `docker image prune`.
+Migrations run at start and are forward-only, so an older image will not run against a newer
+schema. `promote.sh` dumps the production database before touching it, because that dump — not
+the previous image — is what a rollback actually needs. Watch `journalctl -u k-vet@prod -f` on
+the first start after an upgrade.
+
+`docker image prune` cleans up untagged layers; leave the tags production is on and the one
+before it, or there is nothing to go back to.
 
 ## Running without Docker
 
@@ -308,5 +372,5 @@ needs the built interface on disk and the paths above, which is exactly what the
 
 A development setup still needs a database, and the rules are the same as in
 [section 4](#4-the-database): a role that owns a UTF-8 database, no superuser. The quickest one is
-`docker compose up -d db` from the repository root, which gives
-`postgres://kvet:kvet@localhost:5432/kvet`.
+`docker compose up -d db` from the repository root — `docker-compose.yml` is the development
+database and is not used for deployment — which gives `postgres://kvet:kvet@localhost:5432/kvet`.

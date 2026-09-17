@@ -122,10 +122,10 @@ updates:
     commit-message:
       prefix: "docker"
 
-  # ── Images referenced by the compose files (postgres) ──────────────────────────────────
-  # `docker-compose.yml` is a standard name and is scanned; whether the non-standard
-  # `docker-compose.deploy.yml` is picked up too is not documented, so check that both files
-  # still name the same `postgres:` tag when a bump arrives.
+  # ── Images referenced by the compose file (postgres) ───────────────────────────────────
+  # Only `docker-compose.yml` is left, and it is the *development* database — deployment does
+  # not use Compose. Keep its `postgres:` tag in step with the server running on the Pi, which
+  # Dependabot cannot see at all.
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:
@@ -139,8 +139,6 @@ updates:
     commit-message:
       prefix: "docker"
     ignore:
-      # Built locally by docker-compose.deploy.yml; there is no registry to check.
-      - dependency-name: "k-vet"
       # Held at 16 for now. A major Postgres release will not start on the previous release's
       # data directory, so the bump is not a bump: it is a pg_upgrade, done by hand on the Pi
       # with a backup in reach. Lift this when that has been scheduled.

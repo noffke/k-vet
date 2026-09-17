@@ -154,7 +154,8 @@ attachments/
 /e2e/test-results/
 /e2e/playwright-report/
 
-# Deployment mounts and secrets next to docker-compose.deploy.yml
+# Local runtime directories a hand-run container may create in the checkout. A real
+# deployment mounts these from /srv/k-vet/<instance>/ instead — see docs/installation.md.
 /templates/
 /.env
 

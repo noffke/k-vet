@@ -7,7 +7,7 @@
 #        runtime image on Ubuntu. The frontend ships as files and is served by the backend
 #        (`server.web_dir`) instead of being embedded in the binary.
 #
-#   docker compose -f docker-compose.deploy.yml build
+#   docker build --build-arg KVET_VERSION=1.2.3 -t k-vet:1.2.3 .
 #
 # BuildKit is required for the cache mounts below (default in Docker 23+).
 

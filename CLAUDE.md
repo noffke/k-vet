@@ -73,11 +73,11 @@ KVET_BINARY=../k-vet-backend/target/release/k-vet-backend npx playwright test   
 `k-vet-web/dist`, and fails fast when that directory has no `index.html` — so a stale or missing
 frontend build is reported instead of serving 404s. `KVET_WEB_DIR` overrides it.
 
-The deployment image (`Dockerfile`, `docker-compose.deploy.yml`) is a separate path: three stages
+The deployment image (`Dockerfile`, `deploy/`) is a separate path: three stages
 (node → rust → `ubuntu:noble`), built on the Pi, with `config.toml`, the templates dir and the
 attachments dir bind-mounted. It runs as uid/gid 1000 (noble's own `ubuntu` user), and
 `docker-entrypoint.sh` preflights those mounts and seeds missing templates before exec'ing the
-binary.
+binary. `docker-compose.yml` is the development database only — nothing deploys with Compose.
 
 ## The contract pipeline (never edit generated files)
 
@@ -223,8 +223,12 @@ Node version, which must match the `node:` tag in the `Dockerfile` and `engines`
 
 ## Release
 
-`docker compose -f docker-compose.deploy.yml build && … up -d`, run on the Pi. CI only verifies
-on a `v*` tag that the image still builds — nothing is pushed anywhere. Practice name, structured
+A release is a pushed `v*` tag (`scripts/cut-release.sh`): CI re-runs every gate on the tagged
+commit, verifies the image builds and publishes the GitHub release — nothing is pushed to a
+registry. The Pi builds that tag once and `deploy/promote.sh` puts it on `k-vet@staging`, then
+the identical image on `k-vet@prod`; `KVET_VERSION` in `/etc/k-vet/<instance>.env` is the only
+thing that decides what an instance runs. Migrations are forward-only, so rollback is a restore,
+not a restart — see [docs/releasing.md](docs/releasing.md). Practice name, structured
 address, e-mail, IBAN, BIC, bank name, VAT ID, logo and CC/BCC live in the database (settings page);
 mail server, invoice number pattern, currency, VAT choices, default country, payment term, `web_dir`
 and the template paths are operator configuration in `config.toml` (`config.example.toml` is
