@@ -49,6 +49,17 @@ log_level = "info"
 #        server serves the interface and this path is unused.
 web_dir = "/usr/share/k-vet/web"
 
+# de-DE: Kennzeichnet diese Instanz in der Oberfläche, wenn sie nicht die echte
+#        Praxisinstanz ist — z. B. "TEST" auf der Staging-Instanz. Leer lassen
+#        (oder weglassen) für die Produktion: dann wird nichts angezeigt. Ohne
+#        Kennzeichnung sehen zwei Instanzen identisch aus, und eine im falschen
+#        Fenster geschriebene Rechnung existiert nirgends.
+# en-US: Names this instance in the interface when it is not the practice's real
+#        one — e.g. "TEST" on the staging instance. Leave empty (or omit) in
+#        production and nothing is drawn. Without it two instances look alike, and
+#        an invoice written in the wrong window exists nowhere.
+# environment_label = "TEST"
+
 [auth]
 # de-DE: Der einzige Benutzer der Anwendung. Das Passwort wird ausschließlich
 #        als argon2id-Hash gespeichert — niemals im Klartext.

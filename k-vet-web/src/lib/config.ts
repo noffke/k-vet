@@ -11,6 +11,11 @@ const FALLBACK: OperatorConfig = {
   currency: 'EUR',
   vat_rates: ['19.000', '7.000'],
   default_country: 'DE',
+  // Before the answer arrives we do not know which instance this is, and guessing would be the
+  // wrong way round: an unlabelled fallback on staging is exactly the confusion the label
+  // exists to prevent. The banner simply waits.
+  version: '',
+  environment_label: null,
 }
 
 export function useOperatorConfig(): OperatorConfig {

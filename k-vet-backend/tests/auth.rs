@@ -124,4 +124,14 @@ async fn health_and_metrics_answer_without_a_session(pool: PgPool) {
         body.contains("route=\"/healthz\""),
         "the route label is the pattern, not the path: {body}"
     );
+    // Which build answered the scrape. Two instances are scraped off one Pi, so a graph that
+    // cannot tell them apart cannot say which one a change landed on.
+    assert!(
+        body.contains("kvet_build_info"),
+        "the scrape carries the build it came from: {body}"
+    );
+    assert!(
+        body.contains("version=\"dev\""),
+        "outside an image the version is `dev`: {body}"
+    );
 }

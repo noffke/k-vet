@@ -94,7 +94,12 @@ async fn run() -> Result<(), String> {
         .await
         .map_err(|error| format!("cannot bind {socket}: {error}"))?;
 
-    tracing::info!(%socket, config = %path.display(), "k-vet backend started");
+    tracing::info!(
+        version = k_vet_backend::version(),
+        %socket,
+        config = %path.display(),
+        "k-vet backend started"
+    );
 
     let served = axum::serve(listener, app)
         .with_graceful_shutdown(shutdown_signal())

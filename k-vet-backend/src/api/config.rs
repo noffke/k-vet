@@ -31,6 +31,11 @@ pub struct OperatorConfig {
     pub vat_rates: Vec<Decimal>,
     /// ISO 3166-1 alpha-2, filled into a country field that has none.
     pub default_country: String,
+    /// The release this instance runs, from `KVET_VERSION` in the image; `dev` outside one.
+    pub version: String,
+    /// Set on every instance that is not the practice's own, and drawn as a banner. `None` on
+    /// production.
+    pub environment_label: Option<String>,
 }
 
 #[utoipa::path(
@@ -55,6 +60,15 @@ pub async fn get_config(State(state): State<AppState>) -> AppResult<Json<Operato
         currency: invoice.currency.clone(),
         vat_rates,
         default_country: invoice.default_country.to_uppercase(),
+        version: crate::version().to_owned(),
+        // An empty string in the file means the same as no key at all: this is production.
+        environment_label: state
+            .config
+            .server
+            .environment_label
+            .as_deref()
+            .filter(|label| !label.trim().is_empty())
+            .map(str::to_owned),
     }))
 }
 

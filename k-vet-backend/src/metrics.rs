@@ -11,7 +11,7 @@ use axum::extract::{MatchedPath, Request};
 use axum::http::{StatusCode, header};
 use axum::middleware::Next;
 use axum::response::{IntoResponse, Response};
-use metrics::{counter, histogram};
+use metrics::{counter, gauge, histogram};
 use metrics_exporter_prometheus::{PrometheusBuilder, PrometheusHandle};
 
 /// The recorder is process-global: installed once, however many apps the tests build.
@@ -32,6 +32,10 @@ fn handle() -> Option<&'static PrometheusHandle> {
 /// Installs the recorder at startup so the first scrape already has data.
 pub fn install() {
     let _ = handle();
+    // The Prometheus idiom for "which build is this": a gauge that is always 1, carrying the
+    // answer in a label. With two instances scraped off one Pi it is how a graph says which
+    // of them moved.
+    gauge!("kvet_build_info", "version" => crate::version()).set(1.0);
 }
 
 /// Counts requests and records their duration, labelled by method, route and status.

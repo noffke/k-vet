@@ -17,4 +17,12 @@ export interface OperatorConfig {
   vat_rates: string[];
   /** ISO 3166-1 alpha-2, filled into a country field that has none. */
   default_country: string;
+  /** The release this instance runs, from `KVET_VERSION` in the image; `dev` outside one. */
+  version: string;
+  /**
+     * Set on every instance that is not the practice's own, and drawn as a banner. `None` on
+     * production.
+     * @nullable
+     */
+  environment_label?: string | null;
 }

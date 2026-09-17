@@ -63,6 +63,14 @@ pub struct ServerConfig {
     /// In development the Vite dev server serves the UI instead and this path is unused.
     #[serde(default = "default_web_dir")]
     pub web_dir: PathBuf,
+    /// Names this instance in the interface when it is not the practice's real one.
+    ///
+    /// Empty or absent on production, so nothing is drawn. Anywhere else — the staging
+    /// instance on the same Pi, a laptop — it is what stops an invoice being written in the
+    /// wrong window, which is a mistake with no trace afterwards because the record does not
+    /// exist in the database anyone looks at.
+    #[serde(default)]
+    pub environment_label: Option<String>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

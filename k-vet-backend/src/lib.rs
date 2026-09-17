@@ -3,7 +3,7 @@
 //! The binary in `main.rs` is a thin wrapper; everything lives here so integration tests
 //! can drive the real router in-process against a `#[sqlx::test]` database.
 
-use std::sync::Arc;
+use std::sync::{Arc, OnceLock};
 
 use axum::http::StatusCode;
 use axum::routing::get;
@@ -15,6 +15,19 @@ use tower_http::trace::TraceLayer;
 use tower_sessions::cookie::SameSite;
 use tower_sessions::cookie::time::Duration as CookieDuration;
 use tower_sessions::{Expiry, SessionManagerLayer};
+
+/// The release this build is running as.
+///
+/// Set as `ENV KVET_VERSION` by the image, from the `--build-arg` the release was built with,
+/// so the running container can be asked what it is rather than inferred from the tag someone
+/// typed. Outside an image — `cargo run`, the tests, the E2E binary — it is `dev`.
+///
+/// Deliberately not `CARGO_PKG_VERSION`: that value is baked into the committed `openapi.json`,
+/// so tying it to the release would turn every release into a codegen-drift commit.
+pub fn version() -> &'static str {
+    static VERSION: OnceLock<String> = OnceLock::new();
+    VERSION.get_or_init(|| std::env::var("KVET_VERSION").unwrap_or_else(|_| "dev".to_owned()))
+}
 
 pub mod api;
 pub mod auth;

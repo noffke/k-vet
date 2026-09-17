@@ -254,7 +254,9 @@ export const SessionInfoResponse = zod.object({
 export const GetConfigResponse = zod.object({
   "currency": zod.string().describe('ISO 4217, used for every amount the app formats.'),
   "vat_rates": zod.array(zod.string()).describe('The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on. Scaled like the `vat_percent` columns, so a rate can\nbe compared with a stored one as the string it is on the wire.'),
-  "default_country": zod.string().describe('ISO 3166-1 alpha-2, filled into a country field that has none.')
+  "default_country": zod.string().describe('ISO 3166-1 alpha-2, filled into a country field that has none.'),
+  "version": zod.string().describe('The release this instance runs, from `KVET_VERSION` in the image; `dev` outside one.'),
+  "environment_label": zod.string().nullish().describe('Set on every instance that is not the practice\'s own, and drawn as a banner. `None` on\nproduction.')
 })
 
 

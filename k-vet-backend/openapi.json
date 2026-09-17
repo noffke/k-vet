@@ -5829,7 +5829,8 @@
         "required": [
           "currency",
           "vat_rates",
-          "default_country"
+          "default_country",
+          "version"
         ],
         "properties": {
           "currency": {
@@ -5846,6 +5847,17 @@
           "default_country": {
             "type": "string",
             "description": "ISO 3166-1 alpha-2, filled into a country field that has none."
+          },
+          "version": {
+            "type": "string",
+            "description": "The release this instance runs, from `KVET_VERSION` in the image; `dev` outside one."
+          },
+          "environment_label": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Set on every instance that is not the practice's own, and drawn as a banner. `None` on\nproduction."
           }
         }
       },

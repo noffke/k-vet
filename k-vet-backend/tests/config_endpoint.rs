@@ -40,6 +40,44 @@ async fn it_reports_what_the_operator_configured(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn an_unlabelled_instance_is_the_practice_s_own(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+
+    let body = app.get("/api/config").await.json();
+
+    // Production sets nothing, so the browser has nothing to draw.
+    assert!(body["environment_label"].is_null());
+    // Outside an image there is no `KVET_VERSION`, and saying so beats inventing one.
+    assert_eq!(body["version"], "dev");
+}
+
+#[sqlx::test]
+async fn a_labelled_instance_says_which_one_it_is(pool: PgPool) {
+    let app = TestApp::with_config(pool, |config| {
+        config.server.environment_label = Some("TEST".to_owned());
+    })
+    .await;
+
+    let body = app.get("/api/config").await.json();
+
+    assert_eq!(body["environment_label"], "TEST");
+}
+
+#[sqlx::test]
+async fn a_blank_label_is_no_label(pool: PgPool) {
+    // `environment_label = ""` is what an operator writes when they mean production, and it
+    // must not draw an empty banner.
+    let app = TestApp::with_config(pool, |config| {
+        config.server.environment_label = Some("   ".to_owned());
+    })
+    .await;
+
+    let body = app.get("/api/config").await.json();
+
+    assert!(body["environment_label"].is_null());
+}
+
+#[sqlx::test]
 async fn it_needs_a_session(pool: PgPool) {
     let app = TestApp::anonymous(pool).await;
 

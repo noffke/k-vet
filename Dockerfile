@@ -69,6 +69,13 @@ RUN DEBIAN_FRONTEND=noninteractive apt-get update \
        ca-certificates curl tzdata \
     && rm -rf /var/lib/apt/lists/*
 
+# The release this image is. Passed as `--build-arg KVET_VERSION=1.2.3` by the build; `dev`
+# when someone builds the image by hand. It is read at runtime, not compiled in, so the binary
+# the tests run is the binary the image ships — and the container can be asked what it is
+# rather than trusted to match the tag it was started under.
+ARG KVET_VERSION=dev
+ENV KVET_VERSION=${KVET_VERSION}
+
 COPY --from=backend /out/k-vet-backend /usr/local/bin/k-vet-backend
 COPY --from=web /build/dist /usr/share/k-vet/web
 # Shipped defaults. The entrypoint seeds the mounted templates directory from here.
