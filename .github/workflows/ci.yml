@@ -189,10 +189,67 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-      - run: docker build -t k-vet:ci .
+      # Built the way a release is, so the build argument is exercised rather than assumed.
+      - run: docker build --build-arg KVET_VERSION=ci -t k-vet:ci .
+      - name: The image knows which build it is
+        run: |
+          version="$(docker run --rm --entrypoint printenv k-vet:ci KVET_VERSION)"
+          if [ "$version" != "ci" ]; then
+            echo "expected KVET_VERSION=ci in the image, got '$version'" >&2
+            exit 1
+          fi
       - name: The entrypoint refuses to start without a configuration
         run: |
           if docker run --rm k-vet:ci; then
             echo "expected a non-zero exit without /etc/k-vet/config.toml" >&2
             exit 1
           fi
+
+  # The record of what a tag contains. `git log <last deployed tag>..main` is how anyone works
+  # out what the practice has not seen yet — SECURITY.md and the Dependabot auto-merge workflow
+  # both already say to read exactly that, and until this repository had tags, neither could.
+  #
+  # It runs behind `image`, so a release that exists is a release whose every gate passed on the
+  # tagged commit. Nothing is uploaded: the artefact is still built on the Pi.
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [image]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          # Generating notes means diffing against the previous tag, which needs the history.
+          fetch-depth: 0
+      - name: Publish the release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAG: ${{ github.ref_name }}
+        run: |
+          set -euo pipefail
+
+          # Whether this release can be rolled back by restarting the previous image, or needs a
+          # restore first. Migrations are forward-only and run at start, so this is the single
+          # most useful line in the notes for whoever is standing at the Pi.
+          previous="$(git describe --tags --abbrev=0 "$TAG^" 2>/dev/null || true)"
+          if [ -n "$previous" ]; then
+            migrations="$(git diff --name-only "$previous..$TAG" -- k-vet-backend/migrations/)"
+          else
+            migrations="$(git ls-files k-vet-backend/migrations/)"
+          fi
+
+          if [ -n "$migrations" ]; then
+            header="**Contains migrations.** Rolling back needs a restore, not just the previous"
+            header="$header image — take the dump before promoting (\`deploy/promote.sh\` does)."
+            header="$header"$'\n'
+            header="$header$(echo "$migrations" | sed 's|k-vet-backend/migrations/|- |')"
+          else
+            header="No migrations. Rollback is an edit to \`KVET_VERSION\` and a restart."
+          fi
+
+          generated="$(gh api "repos/$GITHUB_REPOSITORY/releases/generate-notes" \
+            -f tag_name="$TAG" --jq .body)"
+
+          printf '%s\n\n%s\n' "$header" "$generated" \
+            | gh release create "$TAG" --title "$TAG" --notes-file -
