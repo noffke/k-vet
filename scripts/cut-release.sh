@@ -19,6 +19,13 @@ die() {
     exit 1
 }
 
+# The conclusion of the latest *finished* CI run for a commit, or nothing if none has finished.
+finished_ci_for() {
+    gh run list --workflow=ci.yml --limit 40 \
+        --json headSha,status,conclusion \
+        --jq "[.[] | select(.headSha == \"$1\" and .status == \"completed\")] | .[0].conclusion // empty"
+}
+
 # The version is optional: with no argument this is the next patch release, which is what most
 # of them are. A minor or major bump is the deliberate act, so that one is typed out.
 version="${1:-}"
@@ -81,11 +88,42 @@ head="$(git rev-parse HEAD)"
 # The tag must land on a commit CI has already judged. Without this the first anyone hears of a
 # failure is the tag's own run, by which point the tag is public and immutable.
 echo "checking CI for ${head:0:8}…"
-conclusion="$(gh run list --workflow=ci.yml --branch main --limit 30 \
-    --json headSha,conclusion --jq "[.[] | select(.headSha == \"$head\")] | .[0].conclusion")"
+conclusion="$(finished_ci_for "$head")"
+
+if [ -z "$conclusion" ]; then
+    # Usually a Dependabot pull request that auto-merged. That merge is made with GITHUB_TOKEN,
+    # and GitHub starts no workflow for a push made with it, so main's tip has no run of its
+    # own — and because the merge is a squash, the commit here is a new SHA that nothing has
+    # ever built. The pull request's checks were real but they were about a different commit.
+    cat >&2 <<EOF
+
+No finished CI run for ${head:0:8}.
+
+If this commit arrived by auto-merge that is expected rather than broken: the pull request was
+checked, but what landed on main is a new commit nobody has built.
+
+EOF
+    printf 'run CI on main now and wait for it? [y/N] '
+    read -r answer
+    case "$answer" in [yY]*) ;; *) die "nothing done" ;; esac
+
+    gh workflow run ci.yml --ref main ||
+        die "could not start a run — does ci.yml still have a workflow_dispatch trigger?"
+
+    echo "waiting for CI; this takes about ten minutes"
+    for _ in $(seq 1 80); do
+        sleep 15
+        conclusion="$(finished_ci_for "$head")"
+        [ -n "$conclusion" ] && break
+        printf '.'
+    done
+    printf '\n'
+    [ -n "$conclusion" ] ||
+        die "CI has not finished; watch it with: gh run watch"
+fi
+
 case "$conclusion" in
     success) ;;
-    "" | null) die "no finished CI run for ${head:0:8} — wait for it, or check with: gh run list" ;;
     *) die "CI concluded '$conclusion' for ${head:0:8}; fix that before tagging" ;;
 esac
 

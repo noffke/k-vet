@@ -5,6 +5,13 @@ on:
     branches: ["**"]
     tags: ["v*"]
   pull_request:
+  # Run on demand against a branch. Needed because a Dependabot pull request that auto-merges
+  # leaves main's tip with no run of its own: the merge is made with GITHUB_TOKEN, and GitHub
+  # starts no workflow for a push made with that token. The pull request's own checks ran
+  # against a different SHA — a squash merge creates a commit nothing has built. This is how
+  # that commit gets tested, and `scripts/cut-release.sh` offers it when a tag would otherwise
+  # land on something unverified.
+  workflow_dispatch:
 
 # The UI default (Settings -> Actions -> General -> Workflow permissions) is a
 # fallback; declaring it here keeps this workflow correct regardless of it.

@@ -36,6 +36,16 @@ CI re-runs every gate on the tagged commit, proves the image builds, and publish
 release. **A release that exists is one that was verified**, which is what makes a tag safe to
 build from later.
 
+### When it says there is no CI run
+
+Expect this whenever the newest commit on `main` arrived by Dependabot auto-merge. The merge is
+performed with `GITHUB_TOKEN`, and GitHub deliberately starts no workflow for a push made with
+that token — so `main`'s tip has no run of its own. The pull request's checks were real, but a
+squash merge creates a **new commit** that nothing has built.
+
+The script offers to run CI on `main` and wait. That is the honest fix: the commit a tag is
+about to name gets built, rather than the check being relaxed to accept a neighbour's result.
+
 The release notes open with the line that decides what you can do next: whether the release
 contains migrations.
 
