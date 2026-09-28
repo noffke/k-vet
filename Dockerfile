@@ -12,7 +12,7 @@
 # BuildKit is required for the cache mounts below (default in Docker 23+).
 
 # ── Frontend ──────────────────────────────────────────────────────────────────────────
-FROM node:26.8-bookworm-slim AS web
+FROM node:26.9-bookworm-slim AS web
 WORKDIR /build
 
 # Dependencies first: they only change when the lockfile does.
