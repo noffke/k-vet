@@ -115,7 +115,10 @@ container left on UTC dates an invoice written after midnight to the previous da
 practice somewhere else.
 
 A staging instance also sets `environment_label` (a banner, so it cannot be mistaken for the
-practice's own) and should point `[mail] smtp_host` at something dead.
+practice's own) and `session_cookie = "kvet.sid.staging"`, and should point `[mail] smtp_host` at
+something dead. The cookie name matters because browsers keep cookies per host, not per port: with
+both instances answering on the Pi's address and the same name, signing in to one signs the other
+out.
 
 Practice name, address, e-mail, bank details (IBAN, BIC, bank name), VAT ID, logo and the global
 CC/BCC addresses are **not** in this file — the vet edits them in the application under
@@ -298,7 +301,8 @@ Logs: `journalctl -u k-vet@prod -f`.
 
 A second instance is the same three commands with `staging` in place of `prod`, a different
 `KVET_HTTP_PORT`, and its own `config.toml` pointing at `kvet_staging`. Give it an
-`environment_label` so it cannot be mistaken for the real one, and point its `[mail] smtp_host`
+`environment_label` so it cannot be mistaken for the real one and its own `session_cookie` so the
+two can be open side by side, and point its `[mail] smtp_host`
 somewhere dead — an instance holding copied data and a working mail server will send real
 invoices to real customers.
 

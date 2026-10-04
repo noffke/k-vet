@@ -101,6 +101,26 @@ async fn session_survives_a_restart_of_the_binary(pool: PgPool) {
 }
 
 #[sqlx::test]
+async fn two_instances_on_one_host_keep_separate_logins(pool: PgPool) {
+    // Browsers scope cookies by host, not port: prod on :8080 and staging on :8081 share one
+    // jar, so the instances must not share a cookie name or one login evicts the other.
+    let staging = TestApp::with_config(pool, |config| {
+        config.server.session_cookie = "kvet.sid.staging".to_owned();
+    })
+    .await;
+    let own = staging.session_cookie().expect("a session cookie was set");
+    assert!(
+        own.starts_with("kvet.sid.staging="),
+        "the configured name is used, got {own}"
+    );
+
+    // The browser sends prod's cookie along with staging's; staging must read only its own.
+    staging.set_session_cookie(&format!("kvet.sid=from-the-other-instance; {own}"));
+    let session = staging.get("/api/auth/session").await;
+    assert_eq!(session.json()["authenticated"], true);
+}
+
+#[sqlx::test]
 async fn health_and_metrics_answer_without_a_session(pool: PgPool) {
     let app = TestApp::anonymous(pool).await;
 

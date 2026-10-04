@@ -66,6 +66,18 @@ web_dir = "/usr/share/k-vet/web"
 #        an invoice written in the wrong window exists nowhere.
 # environment_label = "TEST"
 
+# de-DE: Name des Anmelde-Cookies. Browser trennen Cookies nach Rechnername,
+#        nicht nach Port: Laufen Produktion und Staging auf demselben Pi, muss
+#        jede Instanz einen eigenen Namen haben, sonst meldet die Anmeldung in
+#        der einen die andere ab. Die Produktion behält den Standard, Staging
+#        setzt z. B. "kvet.sid.staging". Eine Änderung meldet einmal ab.
+# en-US: Name of the login cookie. Browsers separate cookies by host name, not
+#        by port: with production and staging on the same Pi each instance needs
+#        its own name, or signing in to one signs the other out. Production keeps
+#        the default, staging sets e.g. "kvet.sid.staging". Changing it signs the
+#        browser out once.
+# session_cookie = "kvet.sid"
+
 [auth]
 # de-DE: Der einzige Benutzer der Anwendung. Das Passwort wird ausschließlich
 #        als argon2id-Hash gespeichert — niemals im Klartext.

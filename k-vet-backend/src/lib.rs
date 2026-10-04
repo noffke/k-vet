@@ -240,7 +240,7 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
     let store = session_store::PostgresSessionStore::new(state.pool.clone());
 
     let session_layer = SessionManagerLayer::new(store)
-        .with_name("kvet.sid")
+        .with_name(state.config.server.session_cookie.clone())
         .with_http_only(true)
         .with_same_site(SameSite::Lax)
         // The Pi is reached over TLS in production; behind plain HTTP the cookie must still work.

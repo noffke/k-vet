@@ -115,5 +115,6 @@ the environment file.
 - Both instances installed and starting, per [installation.md](installation.md).
 - The staging instance has an `environment_label` and a dead `[mail] smtp_host`. An instance
   with real-looking data and a working mail server will send real invoices to real customers.
+- The staging instance has its own `session_cookie`, or the two cannot be signed in to at once.
 - A restore has been rehearsed once, from a real dump, with an old invoice's PDF opened
   afterwards. An untested backup is not a rollback plan.

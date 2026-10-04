@@ -84,6 +84,12 @@ pub struct ServerConfig {
     /// exist in the database anyone looks at.
     #[serde(default)]
     pub environment_label: Option<String>,
+    /// Name of the session cookie.
+    ///
+    /// Browsers keep cookies per host, not per port, so two instances on the same Pi — prod
+    /// on :8080, staging on :8081 — overwrite each other's login unless their names differ.
+    #[serde(default = "default_session_cookie")]
+    pub session_cookie: String,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -288,6 +294,13 @@ impl Config {
                 "travel_expenses rates must not be negative".into(),
             ));
         }
+        if !is_cookie_name(&self.server.session_cookie) {
+            return Err(ConfigError::Invalid(format!(
+                "server.session_cookie must be a non-empty cookie name without spaces or any of \
+                 ()<>@,;:\\\"/[]?={{}}, got `{}`",
+                self.server.session_cookie,
+            )));
+        }
         if self.storage.max_upload_mb == 0 {
             return Err(ConfigError::Invalid(
                 "storage.max_upload_mb must be greater than zero".into(),
@@ -321,6 +334,16 @@ fn default_port() -> u16 {
 }
 fn default_base_url() -> String {
     "http://localhost:8080".to_owned()
+}
+fn default_session_cookie() -> String {
+    "kvet.sid".to_owned()
+}
+/// An RFC 6265 cookie name: an HTTP token, so visible ASCII without separators.
+fn is_cookie_name(name: &str) -> bool {
+    !name.is_empty()
+        && name
+            .bytes()
+            .all(|byte| byte.is_ascii_graphic() && !b"()<>@,;:\\\"/[]?={}".contains(&byte))
 }
 fn default_log_level() -> String {
     "info".to_owned()
@@ -517,6 +540,34 @@ mod tests {
         let raw = MINIMAL.replace("[server]", "[server]\nweb_dir = \"/srv/k-vet/dist\"");
         let config = parse(&raw).expect("web_dir is a plain path");
         assert_eq!(config.server.web_dir, PathBuf::from("/srv/k-vet/dist"));
+    }
+
+    #[test]
+    fn the_session_cookie_is_named_per_instance() {
+        let config = parse(MINIMAL).expect("config parses");
+        assert_eq!(config.server.session_cookie, "kvet.sid");
+
+        let raw = MINIMAL.replace(
+            "[server]",
+            "[server]\nsession_cookie = \"kvet.sid.staging\"",
+        );
+        let config = parse(&raw).expect("a dotted name is a valid cookie name");
+        assert_eq!(config.server.session_cookie, "kvet.sid.staging");
+    }
+
+    #[test]
+    fn rejects_a_session_cookie_name_a_browser_would_not_keep() {
+        for name in ["", "kvet sid", "kvet;sid", "kvet=sid", "kvet.süd"] {
+            let raw = MINIMAL.replace(
+                "[server]",
+                &format!("[server]\nsession_cookie = \"{name}\""),
+            );
+            let error = parse(&raw).expect_err("not an RFC 6265 token");
+            assert!(
+                matches!(error, ConfigError::Invalid(_)),
+                "{name:?}: got {error:?}"
+            );
+        }
     }
 
     #[test]
