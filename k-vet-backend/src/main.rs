@@ -9,6 +9,7 @@ use std::process::ExitCode;
 use std::sync::Arc;
 
 use k_vet_backend::config::Config;
+use k_vet_backend::domain::files::AttachmentStore;
 use k_vet_backend::{AppState, auth, build_app, jobs, run_migrations};
 use sqlx::postgres::PgPoolOptions;
 use tracing_subscriber::EnvFilter;
@@ -58,20 +59,24 @@ async fn run() -> Result<(), String> {
 
     init_tracing(&config.server.log_level)?;
 
+    // Checked before the database, so a fresh install reports its filesystem mistakes first.
+    AttachmentStore::new(config.storage.attachments_dir.clone())
+        .ensure_writable()
+        .await
+        .map_err(|error| {
+            format!(
+                "attachments directory {} is not writable: {error} — uploads and invoice PDFs are \
+                 stored there, so it must be writable by the user this runs as (uid/gid 1000 in \
+                 the container image: chown -R 1000:1000 on the host)",
+                config.storage.attachments_dir.display()
+            )
+        })?;
+
     let pool = PgPoolOptions::new()
         .max_connections(config.database.max_connections)
         .connect(&config.database.url)
         .await
         .map_err(|error| format!("cannot connect to the database: {error}"))?;
-
-    tokio::fs::create_dir_all(&config.storage.attachments_dir)
-        .await
-        .map_err(|error| {
-            format!(
-                "cannot create attachments directory {}: {error}",
-                config.storage.attachments_dir.display()
-            )
-        })?;
 
     run_migrations(&pool)
         .await

@@ -60,9 +60,10 @@ ls -n /srv/k-vet/prod    # owner and group of all three must read 1000 1000
 
 Getting this wrong shows up as one of three things, all of them loud except the last:
 
-- the container exits at startup saying `config.toml` is not readable by uid:gid 1000:1000,
+- the container exits at startup saying it cannot read the configuration — permission denied,
+  with the `chown` to run,
 - it exits saying the attachments directory is not writable — uploads and invoice PDFs would
-  fail at the first use,
+  otherwise fail at the first use, so this is checked before anything else starts,
 - `templates/` stays empty and a warning says seeding was skipped. What happens next depends on
   the configuration: with `typst_template`/`email_template` pointing into that directory the
   container then exits naming the missing file; with those keys empty the compiled-in templates

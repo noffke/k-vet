@@ -1,70 +1,34 @@
 #!/bin/sh
 # Entrypoint of the k-vet container image.
 #
-# de-DE: Prüft die eingebundenen Pfade, bevor der Dienst startet, und legt fehlende
-#        Vorlagen an. Alle drei Einbindungen (Konfiguration, Vorlagen, Dateien) müssen für
-#        die UID/GID des Containers zugänglich sein — sonst scheitert es hier mit einer
-#        klaren Meldung statt später beim ersten Upload.
-# en-US: Checks the mounted paths before the service starts and seeds missing templates.
-#        All three mounts (config, templates, uploaded files) must be accessible to the
-#        container's uid/gid — otherwise this fails here with a clear message instead of
-#        later at the first upload.
+# de-DE: Legt fehlende Vorlagen im eingebundenen Vorlagenverzeichnis an und startet dann die
+#        Anwendung. Geprüft wird hier nichts: Konfiguration, Dateiverzeichnis und Datenbank
+#        prüft die Anwendung selbst, mit demselben Parser, mit dem sie sie auch benutzt.
+# en-US: Seeds missing templates into the mounted templates directory, then starts the
+#        application. Nothing is checked here: the configuration, the attachments directory and
+#        the database are checked by the application itself, with the same parser it uses them
+#        with.
+#
+# That last point is deliberate. This script used to preflight the configuration and the
+# attachments directory too, which made it a second implementation of "what does startup
+# need" — and it drifted: it demanded a configuration before `--hash-password`, the command
+# that helps write one, and it found `attachments_dir` with `sed`, which reads a valid
+# single-quoted TOML path as no path at all and so checked the wrong directory. One owner, in
+# the binary, cannot disagree with itself.
 set -eu
 
-CONFIG="${KVET_CONFIG:-/etc/k-vet/config.toml}"
 TEMPLATES_DIR="${KVET_TEMPLATES_DIR:-/etc/k-vet/templates}"
 DEFAULT_TEMPLATES="/usr/share/k-vet/templates"
-EXAMPLE_CONFIG="/usr/share/k-vet/config.example.toml"
-# The image runs as `ubuntu` (1000:1000); a compose `user:` override lands here too.
-OWNER="$(id -u):$(id -g)"
 
-fail() {
-    printf 'k-vet: %s\n' "$1" >&2
-    exit 1
-}
-
-warn() {
-    printf 'k-vet: %s\n' "$1" >&2
-}
-
-# ── One-shot commands ────────────────────────────────────────────────────────────────
-# These answer and exit without touching the configuration, the database or any mount, so
-# they are not held to the preflight below. Otherwise the command that makes the very first
-# password hash would demand the configuration file that hash is needed to fill in.
-case "${1:-}" in
-    --hash-password | --help | -h) exec /usr/local/bin/k-vet-backend "$@" ;;
-esac
-
-# ── Configuration ────────────────────────────────────────────────────────────────────
-[ -e "$CONFIG" ] || fail "no configuration at $CONFIG — copy $EXAMPLE_CONFIG to the host \
-file mounted there and fill it in (see docs/installation.md)"
-[ -r "$CONFIG" ] || fail "$CONFIG is not readable by uid:gid $OWNER (the image's 'ubuntu' \
-user) — on the host run: chown $OWNER config.toml"
-
-# ── Templates ────────────────────────────────────────────────────────────────────────
-# Seed what is missing, never overwrite what the operator edited.
+# Seed what is missing, never overwrite what the operator edited. This copies files out of the
+# image into a mount and decides nothing, which is why it is the one job that stays here.
 if [ -d "$TEMPLATES_DIR" ] && [ -w "$TEMPLATES_DIR" ]; then
     for name in invoice.typ invoice-email.txt; do
         [ -e "$TEMPLATES_DIR/$name" ] || cp "$DEFAULT_TEMPLATES/$name" "$TEMPLATES_DIR/$name"
     done
 else
-    warn "$TEMPLATES_DIR is missing or not writable by uid:gid $OWNER — templates were not \
-seeded. Startup fails if [invoice] typst_template/email_template point into that directory; \
-leave those keys empty to use the built-in templates. On the host run: chown -R $OWNER templates"
+    printf 'k-vet: %s is missing or not writable by uid:gid %s — templates were not seeded; on the host run: chown -R %s templates\n' \
+        "$TEMPLATES_DIR" "$(id -u):$(id -g)" "$(id -u):$(id -g)" >&2
 fi
-
-# ── Uploaded files ───────────────────────────────────────────────────────────────────
-# Fatal: without this directory no attachment and no invoice PDF can be stored.
-attachments="$(sed -n 's/^[[:space:]]*attachments_dir[[:space:]]*=[[:space:]]*"\(.*\)".*$/\1/p' \
-    "$CONFIG" | tail -n 1)"
-: "${attachments:=/var/lib/k-vet/attachments}"
-
-# The application creates the directory itself, so check the nearest existing ancestor.
-probe="$attachments"
-while [ ! -e "$probe" ] && [ "$probe" != "/" ]; do
-    probe="$(dirname "$probe")"
-done
-[ -w "$probe" ] || fail "$attachments is not writable by uid:gid $OWNER (the image's \
-'ubuntu' user) — on the host run: chown -R $OWNER attachments"
 
 exec /usr/local/bin/k-vet-backend "$@"

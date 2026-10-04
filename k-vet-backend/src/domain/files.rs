@@ -34,6 +34,21 @@ impl AttachmentStore {
         Self { root: root.into() }
     }
 
+    /// Creates the directory if it is missing and proves it can be written to, by writing and
+    /// removing a probe file. Called once at startup.
+    ///
+    /// Creating it is not enough: `create_dir_all` succeeds on a directory that already exists
+    /// read-only, and then the application starts cleanly and fails at the first upload or the
+    /// first invoice PDF — in front of the vet rather than in front of the operator.
+    pub async fn ensure_writable(&self) -> std::io::Result<()> {
+        tokio::fs::create_dir_all(&self.root).await?;
+        let probe = self
+            .root
+            .join(format!(".write-probe-{}", std::process::id()));
+        tokio::fs::write(&probe, b"").await?;
+        tokio::fs::remove_file(&probe).await
+    }
+
     /// `attachments/ab/cd/<sha256>`
     pub fn content_path(&self, sha256: &str) -> PathBuf {
         let (first, second) = shard(sha256);
@@ -213,6 +228,45 @@ impl ChunkSource for BytesSource {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[tokio::test]
+    async fn a_missing_directory_is_created_and_left_clean() {
+        let root = tempfile::tempdir().expect("temp dir");
+        let store = AttachmentStore::new(root.path().join("nested/attachments"));
+
+        store.ensure_writable().await.expect("writable");
+
+        let entries: Vec<_> = std::fs::read_dir(root.path().join("nested/attachments"))
+            .expect("created")
+            .collect();
+        assert!(
+            entries.is_empty(),
+            "the probe is removed again: {entries:?}"
+        );
+    }
+
+    #[tokio::test]
+    async fn a_read_only_directory_is_refused_at_startup() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let root = tempfile::tempdir().expect("temp dir");
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o555))
+            .expect("chmod");
+        // Root writes through any mode; there is nothing to observe then.
+        if std::fs::write(root.path().join("x"), b"").is_ok() {
+            return;
+        }
+
+        // Exactly the case `create_dir_all` alone lets through: the directory exists.
+        let error = AttachmentStore::new(root.path())
+            .ensure_writable()
+            .await
+            .expect_err("read-only");
+
+        assert_eq!(error.kind(), std::io::ErrorKind::PermissionDenied);
+        std::fs::set_permissions(root.path(), std::fs::Permissions::from_mode(0o755))
+            .expect("restore, so the temp dir can be removed");
+    }
 
     #[test]
     fn content_path_is_sharded_by_the_first_two_byte_pairs() {

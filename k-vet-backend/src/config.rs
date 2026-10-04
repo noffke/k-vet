@@ -17,6 +17,19 @@ pub const DEFAULT_CONFIG_PATH: &str = "/etc/k-vet/config.toml";
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
+    /// The two causes an operator meets on a first install get their own wording, because the
+    /// fix for each is a different command on the host — and because this message is the only
+    /// check there is: the container's entrypoint no longer looks at the file itself.
+    #[error(
+        "no configuration at {path} — start from config.example.toml (in the container image: \
+         /usr/share/k-vet/config.example.toml), fill it in, and see docs/installation.md"
+    )]
+    Missing { path: PathBuf },
+    #[error(
+        "cannot read the configuration at {path}: permission denied — it must be readable by the \
+         user this runs as (uid/gid 1000 in the container image: chown 1000:1000 on the host)"
+    )]
+    Unreadable { path: PathBuf },
     #[error("cannot read configuration file {path}: {source}")]
     Read {
         path: PathBuf,
@@ -176,9 +189,17 @@ impl Config {
     /// Reads and validates the configuration file at `path`.
     pub fn load(path: impl AsRef<Path>) -> Result<Self, ConfigError> {
         let path = path.as_ref();
-        let raw = std::fs::read_to_string(path).map_err(|source| ConfigError::Read {
-            path: path.to_path_buf(),
-            source,
+        let raw = std::fs::read_to_string(path).map_err(|source| match source.kind() {
+            std::io::ErrorKind::NotFound => ConfigError::Missing {
+                path: path.to_path_buf(),
+            },
+            std::io::ErrorKind::PermissionDenied => ConfigError::Unreadable {
+                path: path.to_path_buf(),
+            },
+            _ => ConfigError::Read {
+                path: path.to_path_buf(),
+                source,
+            },
         })?;
         Self::parse(&raw, path)
     }
@@ -348,6 +369,38 @@ where
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn a_missing_file_says_where_to_start() {
+        let error = Config::load("/nonexistent/k-vet/config.toml").expect_err("no file there");
+
+        assert!(matches!(error, ConfigError::Missing { .. }), "{error:?}");
+        let message = error.to_string();
+        assert!(
+            message.contains("/nonexistent/k-vet/config.toml"),
+            "{message}"
+        );
+        assert!(message.contains("config.example.toml"), "{message}");
+    }
+
+    #[test]
+    fn an_unreadable_file_says_whose_it_must_be() {
+        use std::os::unix::fs::PermissionsExt;
+
+        let dir = tempfile::tempdir().expect("temp dir");
+        let path = dir.path().join("config.toml");
+        std::fs::write(&path, MINIMAL).expect("write config");
+        std::fs::set_permissions(&path, std::fs::Permissions::from_mode(0o000)).expect("chmod");
+        // Root reads through any mode; there is nothing to observe then.
+        if std::fs::read(&path).is_ok() {
+            return;
+        }
+
+        let error = Config::load(&path).expect_err("unreadable");
+
+        assert!(matches!(error, ConfigError::Unreadable { .. }), "{error:?}");
+        assert!(error.to_string().contains("chown 1000:1000"), "{error}");
+    }
 
     const MINIMAL: &str = r#"
         [auth]

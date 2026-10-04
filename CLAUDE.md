@@ -76,8 +76,10 @@ frontend build is reported instead of serving 404s. `KVET_WEB_DIR` overrides it.
 The deployment image (`Dockerfile`, `deploy/`) is a separate path: three stages
 (node → rust → `ubuntu:noble`), built on the Pi, with `config.toml`, the templates dir and the
 attachments dir bind-mounted. It runs as uid/gid 1000 (noble's own `ubuntu` user), and
-`docker-entrypoint.sh` preflights those mounts and seeds missing templates before exec'ing the
-binary. `docker-compose.yml` is the development database only — nothing deploys with Compose.
+`docker-entrypoint.sh` only seeds missing templates and execs the binary. Every startup check
+(config present and readable, attachments dir writable) lives in the binary, with the real
+config parser — keep it that way; a shell copy of those checks drifted once already.
+`docker-compose.yml` is the development database only — nothing deploys with Compose.
 
 ## The contract pipeline (never edit generated files)
 
