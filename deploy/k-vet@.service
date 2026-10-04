@@ -4,9 +4,15 @@
 #   sudo systemctl daemon-reload
 #   sudo systemctl enable --now k-vet@prod
 #
-# `%i` is the instance name, and it is the whole mechanism: it picks the environment file, the
-# container name and the state directory, so a second environment costs one more file and no
-# more moving parts.
+# `%i` is the instance name, and it is the whole mechanism: it picks the environment file and the
+# container name, and the environment file says where the instance's state lives
+# (`KVET_DATA_DIR`), so a second environment costs one more file and no more moving parts.
+#
+# If that state is on a disk mounted at boot, say so in a drop-in rather than here, so the next
+# `cp` of this file does not lose it (`RequiresMountsFor=` takes no environment variables):
+#
+#   sudo systemctl edit k-vet@.service       →   [Unit]
+#                                                RequiresMountsFor=/mnt/ssd
 #
 # Everything that differs between environments lives in /etc/k-vet/%i.env (see env.example).
 # `KVET_VERSION` there is the only thing that decides which image runs, which is the point of
@@ -37,14 +43,17 @@ ExecStartPre=-/usr/bin/docker rm -f k-vet-%i
 #   --add-host     how the container reaches the Pi's own PostgreSQL (see docs/installation.md)
 #   -p             only the *host* port differs per environment; inside it is always 8080, so
 #                  the image's HEALTHCHECK on 127.0.0.1:8080 stays correct
+#   --mount        not -v: a missing source is an error here, where -v would quietly create an
+#                  empty root-owned directory in its place — a typo in KVET_DATA_DIR, or a disk
+#                  that is not mounted, would start an instance with no configuration and no files
 ExecStart=/usr/bin/docker run --rm --name k-vet-%i \
     --pull=never \
     --add-host=host.docker.internal:host-gateway \
     -p ${KVET_HTTP_BIND}:${KVET_HTTP_PORT}:8080 \
     -e TZ=${KVET_TZ} \
-    -v /srv/k-vet/%i/config.toml:/etc/k-vet/config.toml:ro \
-    -v /srv/k-vet/%i/templates:/etc/k-vet/templates \
-    -v /srv/k-vet/%i/attachments:/var/lib/k-vet/attachments \
+    --mount type=bind,source=${KVET_DATA_DIR}/config.toml,target=/etc/k-vet/config.toml,readonly \
+    --mount type=bind,source=${KVET_DATA_DIR}/templates,target=/etc/k-vet/templates \
+    --mount type=bind,source=${KVET_DATA_DIR}/attachments,target=/var/lib/k-vet/attachments \
     k-vet:${KVET_VERSION}
 
 ExecStop=/usr/bin/docker stop k-vet-%i

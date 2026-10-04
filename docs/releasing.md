@@ -10,9 +10,13 @@ Two instances run on the one Pi:
 | | `k-vet@prod` | `k-vet@staging` |
 | --- | --- | --- |
 | port | 8080 | 8081 |
-| state | `/srv/k-vet/prod/` | `/srv/k-vet/staging/` |
+| state (`KVET_DATA_DIR`) | `/srv/k-vet/prod/` | `/srv/k-vet/staging/` |
 | database | `kvet` | `kvet_staging` |
 | version | `/etc/k-vet/prod.env` | `/etc/k-vet/staging.env` |
+
+The names and paths are the defaults, not fixed: an instance is whatever has an
+`/etc/k-vet/<instance>.env`, so the test one may be `k-vet@stg`, and `promote.sh` takes that name.
+Only `prod` is special — it is the instance `promote.sh` dumps before touching.
 
 **`KVET_VERSION` in those two files is the only thing that decides what each instance runs.**
 That is the point of the whole arrangement: production changes version when that line changes,
@@ -67,7 +71,7 @@ deploy/promote.sh prod 1.2.3
 
 The image is already built, so this does not build again: **production runs the identical image
 staging ran**, not a second build of the same source. It dumps the database first, to
-`/srv/k-vet/backups/`, and tells you where.
+`backups/` next to prod's `KVET_DATA_DIR` (`/srv/k-vet/backups/` by default), and tells you where.
 
 ## Rolling back
 

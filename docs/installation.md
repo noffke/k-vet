@@ -39,7 +39,10 @@ database:
 | `/srv/k-vet/prod/templates/` | `/etc/k-vet/templates` | invoice PDF and email templates | read + write |
 | `/srv/k-vet/prod/attachments/` | `/var/lib/k-vet/attachments` | uploaded files, invoice PDFs, logo | read + write |
 
-Put them on the USB SSD, not the SD card — the same rule as the database.
+Put them on the USB SSD, not the SD card — the same rule as the database. `/srv/k-vet/<instance>`
+is only the default: the instance's directory is `KVET_DATA_DIR` in its environment file
+([section 5](#5-build-and-start)), so `/mnt/ssd/k-vet/prod` works just as well. The paths below
+are the default.
 
 **A second instance gets its own three, under `/srv/k-vet/staging/`, and the attachments
 directory in particular must not be shared.** That is not tidiness: attachment storage is
@@ -276,8 +279,26 @@ sudo cp deploy/k-vet@.service /etc/systemd/system/
 sudo systemctl daemon-reload
 sudo mkdir -p /etc/k-vet
 sudo cp deploy/env.example /etc/k-vet/prod.env
-sudoedit /etc/k-vet/prod.env          # KVET_VERSION, and the port if this is not prod
+sudoedit /etc/k-vet/prod.env          # KVET_VERSION, KVET_DATA_DIR, and the port if not prod
 ```
+
+If `KVET_DATA_DIR` is on a disk mounted at boot — the USB SSD — tell systemd, so the instance
+waits for the disk and is stopped before it goes away. A drop-in keeps this out of the unit file,
+which you will copy over again on upgrades:
+
+```bash
+sudo systemctl edit k-vet@.service    # add the two lines below, save
+```
+
+```ini
+[Unit]
+RequiresMountsFor=/mnt/ssd
+```
+
+Without it, a disk that is late or missing at boot makes the instance fail to start with
+`bind source path does not exist` — loud, but only after the fact. The unit uses `--mount`
+rather than `-v` precisely so that it fails there, instead of starting on empty directories
+Docker would create in the disk's place.
 
 Build the image and start the instance:
 
@@ -300,7 +321,7 @@ is no separate migration step.
 Logs: `journalctl -u k-vet@prod -f`.
 
 A second instance is the same three commands with `staging` in place of `prod`, a different
-`KVET_HTTP_PORT`, and its own `config.toml` pointing at `kvet_staging`. Give it an
+`KVET_HTTP_PORT`, its own `KVET_DATA_DIR`, and a `config.toml` there pointing at `kvet_staging`. Give it an
 `environment_label` so it cannot be mistaken for the real one and its own `session_cookie` so the
 two can be open side by side, and point its `[mail] smtp_host`
 somewhere dead — an instance holding copied data and a working mail server will send real
@@ -341,11 +362,11 @@ content, the directory holds the bytes of the PDFs and patient files they point 
 
 ```bash
 sudo -u postgres pg_dump --format=custom kvet > kvet-$(date +%F).dump
-sudo tar -czf kvet-files-$(date +%F).tar.gz -C /srv/k-vet/prod attachments templates config.toml
+sudo tar -czf kvet-files-$(date +%F).tar.gz -C /srv/k-vet/prod attachments templates config.toml  # KVET_DATA_DIR
 ```
 
 Restoring: stop the instance (`sudo systemctl stop k-vet@prod`), `pg_restore` into the database,
-unpack the files into `/srv/k-vet/prod`, then start it again. Verify a restore before you need
+unpack the files into its `KVET_DATA_DIR`, then start it again. Verify a restore before you need
 it — open an old invoice's PDF and check a patient file opens.
 
 ### Restoring into another instance

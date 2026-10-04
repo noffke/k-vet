@@ -5,6 +5,9 @@
 #   deploy/promote.sh staging 1.2.3      try it
 #   deploy/promote.sh prod    1.2.3      then the same image, unchanged
 #
+# An instance is whatever has an /etc/k-vet/<instance>.env, so the test one may be called
+# anything. `prod` is the one name that means something: it is the instance that gets dumped.
+#
 # The image is built once and both instances run that one build, so what the practice gets is
 # what was tried — not a rebuild of the same source. Building is the slow part on a Pi; this
 # skips it when the image is already there, which is exactly the case when promoting staging
@@ -23,19 +26,23 @@ die() {
 instance="${1:-}"
 version="${2:-}"
 [ -n "$instance" ] && [ -n "$version" ] ||
-    die "usage: deploy/promote.sh <prod|staging> <version>"
+    die "usage: deploy/promote.sh <instance> <version>    e.g. prod 1.2.3"
 version="${version#v}"
 
-case "$instance" in
-    prod | staging) ;;
-    *) die "'$instance' is not an instance — expected prod or staging" ;;
-esac
+# The name ends up in a path and a unit name; keep it to what systemd and a file name agree on.
+[[ "$instance" =~ ^[a-z0-9][a-z0-9_-]*$ ]] ||
+    die "'$instance' is not an instance name — lower-case letters, digits, - and _"
 
 repo="$(cd "$(dirname "$0")/.." && pwd)"
 env_file="/etc/k-vet/${instance}.env"
 image="k-vet:${version}"
 
-[ -f "$env_file" ] || die "no environment file at $env_file"
+[ -f "$env_file" ] ||
+    die "no environment file at $env_file — instances here: $(
+        cd /etc/k-vet 2>/dev/null && ls -- *.env 2>/dev/null | sed 's/\.env$//' | tr '\n' ' '
+    )"
+
+setting() { grep "^$1=" "$env_file" | cut -d= -f2- || true; }
 
 # ── the image ────────────────────────────────────────────────────────────────────────────────
 if docker image inspect "$image" >/dev/null 2>&1; then
@@ -53,7 +60,9 @@ fi
 
 # ── the safety net, for production only ──────────────────────────────────────────────────────
 if [ "$instance" = "prod" ]; then
-    dump="/srv/k-vet/backups/kvet-$(date +%Y%m%dT%H%M%S)-before-${version}.dump"
+    data_dir="$(setting KVET_DATA_DIR)"
+    [ -n "$data_dir" ] || die "KVET_DATA_DIR is not set in $env_file"
+    dump="$(dirname "$data_dir")/backups/kvet-$(date +%Y%m%dT%H%M%S)-before-${version}.dump"
     mkdir -p "$(dirname "$dump")"
     echo "==> dumping the production database first"
     sudo -u postgres pg_dump --format=custom kvet >"$dump"
@@ -61,7 +70,7 @@ if [ "$instance" = "prod" ]; then
 fi
 
 # ── the one line that decides what runs ──────────────────────────────────────────────────────
-previous="$(grep '^KVET_VERSION=' "$env_file" | cut -d= -f2- || true)"
+previous="$(setting KVET_VERSION)"
 echo "==> $instance: ${previous:-unset} -> ${version}"
 sudo sed -i "s|^KVET_VERSION=.*|KVET_VERSION=${version}|" "$env_file"
 grep -q "^KVET_VERSION=${version}$" "$env_file" || die "could not rewrite $env_file"
@@ -69,7 +78,7 @@ grep -q "^KVET_VERSION=${version}$" "$env_file" || die "could not rewrite $env_f
 sudo systemctl restart "k-vet@${instance}"
 
 # ── did it come back ─────────────────────────────────────────────────────────────────────────
-port="$(grep '^KVET_HTTP_PORT=' "$env_file" | cut -d= -f2-)"
+port="$(setting KVET_HTTP_PORT)"
 port="${port:-8080}"
 echo "==> waiting for http://127.0.0.1:${port}/healthz"
 for _ in $(seq 1 60); do
