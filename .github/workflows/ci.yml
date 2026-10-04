@@ -211,6 +211,15 @@ jobs:
             echo "expected a non-zero exit without /etc/k-vet/config.toml" >&2
             exit 1
           fi
+      # The other half of the same rule: the documented way to make the first password hash
+      # runs before any configuration exists, so the preflight must not stand in its way.
+      - name: Hashing a password needs no configuration
+        run: |
+          hash="$(echo changeme | docker run --rm -i k-vet:ci --hash-password)"
+          case "$hash" in
+            '$argon2id$'*) ;;
+            *) echo "expected an argon2id hash without a config, got: $hash" >&2; exit 1 ;;
+          esac
 
   # The record of what a tag contains. `git log <last deployed tag>..main` is how anyone works
   # out what the practice has not seen yet — SECURITY.md and the Dependabot auto-merge workflow

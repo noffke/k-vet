@@ -27,6 +27,14 @@ warn() {
     printf 'k-vet: %s\n' "$1" >&2
 }
 
+# ── One-shot commands ────────────────────────────────────────────────────────────────
+# These answer and exit without touching the configuration, the database or any mount, so
+# they are not held to the preflight below. Otherwise the command that makes the very first
+# password hash would demand the configuration file that hash is needed to fill in.
+case "${1:-}" in
+    --hash-password | --help | -h) exec /usr/local/bin/k-vet-backend "$@" ;;
+esac
+
 # ── Configuration ────────────────────────────────────────────────────────────────────
 [ -e "$CONFIG" ] || fail "no configuration at $CONFIG — copy $EXAMPLE_CONFIG to the host \
 file mounted there and fill it in (see docs/installation.md)"
