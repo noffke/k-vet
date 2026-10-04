@@ -344,6 +344,39 @@ Restoring: stop the instance (`sudo systemctl stop k-vet@prod`), `pg_restore` in
 unpack the files into `/srv/k-vet/prod`, then start it again. Verify a restore before you need
 it — open an old invoice's PDF and check a patient file opens.
 
+### Restoring into another instance
+
+A dump remembers who owned every table, and `pg_restore` puts that owner back. Restored into the
+database it came from, that is exactly right. Restored anywhere else — production data into
+staging, a dump from a development machine — the tables end up owned by the *source* role (or by
+`postgres`, if that role does not exist here), and the instance fails on its first start with:
+
+```text
+applying migrations: … permission denied for table _sqlx_migrations
+```
+
+If the source role *does* exist here, it is worse than an error: staging's tables now belong to
+production's role. Restore into a fresh database and let the target role create everything:
+
+```bash
+sudo systemctl stop k-vet@staging
+sudo -u postgres dropdb kvet_staging
+sudo -u postgres createdb -O kvet_staging -E UTF8 kvet_staging
+sudo -u postgres pg_restore -d kvet_staging --no-owner --no-acl --role=kvet_staging kvet-….dump
+sudo systemctl start k-vet@staging          # migrations newer than the dump run now
+```
+
+`--no-owner` skips the dump's `ALTER … OWNER TO`, `--role` runs the restore as the instance's
+role so it owns what it creates, and `--no-acl` leaves the source machine's grants behind. To check
+an existing database, every row here should name the instance's role:
+
+```bash
+sudo -u postgres psql -d kvet_staging -c "
+  SELECT n.nspname, pg_get_userbyid(c.relowner) AS owner, count(*)
+  FROM pg_class c JOIN pg_namespace n ON n.oid = c.relnamespace
+  WHERE n.nspname IN ('public', 'tower_sessions') GROUP BY 1, 2 ORDER BY 1, 2;"
+```
+
 Back up the practice's instance. A test instance holds nothing worth keeping, and including it
 would double the archive for data you are happy to drop.
 
