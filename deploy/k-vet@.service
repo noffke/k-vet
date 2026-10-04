@@ -20,6 +20,10 @@ Documentation=https://github.com/noffke/k-vet/blob/main/docs/releasing.md
 After=docker.service postgresql.service network-online.target
 Requires=docker.service
 Wants=postgresql.service
+# Give up rather than loop for ever on a configuration mistake; the logs will say what it was.
+# These two belong in [Unit]: systemd ignores StartLimitIntervalSec under [Service].
+StartLimitBurst=5
+StartLimitIntervalSec=120
 
 [Service]
 EnvironmentFile=/etc/k-vet/%i.env
@@ -48,9 +52,6 @@ ExecStop=/usr/bin/docker stop k-vet-%i
 # Migrations run at start and the database may not be ready on the first try after a reboot.
 Restart=on-failure
 RestartSec=5s
-# Give up rather than loop for ever on a configuration mistake; the logs will say what it was.
-StartLimitBurst=5
-StartLimitIntervalSec=120
 
 [Install]
 WantedBy=multi-user.target
