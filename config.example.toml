@@ -30,8 +30,14 @@
 listen_address = "127.0.0.1"
 port = 8080
 
-# de-DE: Öffentliche Basis-URL (für Links in E-Mails).
-# en-US: Public base URL (used for links in emails).
+# de-DE: Die Adresse, die die Praxis im Browser eintippt. Beginnt sie mit
+#        https://, wird das Anmelde-Cookie als `Secure` markiert – nur dann
+#        setzen, wenn k-vet tatsächlich über HTTPS erreicht wird, sonst
+#        schlägt die Anmeldung fehl. Sonst wird der Wert nirgends verwendet.
+# en-US: The address the practice types into the browser. Starting with
+#        https:// marks the login cookie `Secure` – only use it when k-vet is
+#        really reached over HTTPS, or signing in fails. The value is used for
+#        nothing else.
 base_url = "http://localhost:8080"
 
 # de-DE: Log-Level: error, warn, info, debug, trace. Zur Laufzeit über die
