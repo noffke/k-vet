@@ -203,7 +203,7 @@ pub async fn list(
 
     let mut customers = Vec::with_capacity(ids.len());
     for id in ids {
-        customers.push(load(&state.pool, id).await?);
+        customers.push(load(&state, id).await?);
     }
     Ok(Json(customers))
 }
@@ -225,7 +225,7 @@ pub async fn create(State(state): State<AppState>) -> AppResult<Json<Customer>> 
     )
     .fetch_one(&state.pool)
     .await?;
-    Ok(Json(load(&state.pool, id).await?))
+    Ok(Json(load(&state, id).await?))
 }
 
 #[utoipa::path(
@@ -240,7 +240,7 @@ pub async fn detail(
     State(state): State<AppState>,
     Path(id): Path<i64>,
 ) -> AppResult<Json<Customer>> {
-    Ok(Json(load(&state.pool, id).await?))
+    Ok(Json(load(&state, id).await?))
 }
 
 #[utoipa::path(
@@ -271,7 +271,7 @@ pub async fn patch(
 
     let current = sqlx::query!(
         r#"SELECT salutation AS "salutation?: Salutation", last_name, home_street, home_zip,
-                  home_city, draft
+                  home_city, home_country, draft
            FROM customer WHERE id = $1 FOR UPDATE"#,
         id,
     )
@@ -279,9 +279,22 @@ pub async fn patch(
     .await?
     .ok_or(AppError::NotFound)?;
 
-    // Invalid phone numbers are never stored; the last valid value stays (R14).
+    // Invalid phone numbers are never stored; the last valid value stays (R14). One without a
+    // country code is read in the customer's country — the one this very patch sets, if it sets
+    // one — and in the configured default when there is none.
+    let default_country = &state.config.invoice.default_country;
+    let region = match &home_country {
+        Some(Some(code)) => code.clone(),
+        Some(None) => default_country.clone(),
+        None => current
+            .home_country
+            .clone()
+            .unwrap_or_else(|| default_country.clone()),
+    };
     let phone = match &body.phone {
-        Some(Some(raw)) if !raw.trim().is_empty() => Some(Some(validate_phone("phone", raw)?.e164)),
+        Some(Some(raw)) if !raw.trim().is_empty() => {
+            Some(Some(validate_phone("phone", raw, &region)?.e164))
+        }
         other => other.clone(),
     };
 
@@ -390,7 +403,7 @@ pub async fn patch(
     .await?;
 
     transaction.commit().await?;
-    Ok(Json(load(&state.pool, id).await?))
+    Ok(Json(load(&state, id).await?))
 }
 
 /// An emptied text field means "no value", not an empty string.
@@ -443,7 +456,7 @@ async fn set_archived(state: &AppState, id: i64, archived: bool) -> AppResult<Js
     if updated.rows_affected() == 0 {
         return Err(AppError::NotFound);
     }
-    Ok(Json(load(&state.pool, id).await?))
+    Ok(Json(load(state, id).await?))
 }
 
 #[utoipa::path(
@@ -469,7 +482,7 @@ pub async fn add_email(
     )
     .execute(&state.pool)
     .await?;
-    Ok(Json(load(&state.pool, id).await?))
+    Ok(Json(load(&state, id).await?))
 }
 
 #[utoipa::path(
@@ -504,7 +517,7 @@ pub async fn patch_email(
     .await?
     .ok_or(AppError::NotFound)?;
 
-    Ok(Json(load(&state.pool, customer_id).await?))
+    Ok(Json(load(&state, customer_id).await?))
 }
 
 #[utoipa::path(
@@ -529,7 +542,8 @@ pub async fn delete_email(
 }
 
 /// Loads a customer with its email addresses and the derived display fields.
-pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
+pub async fn load(state: &AppState, id: i64) -> AppResult<Customer> {
+    let pool = &state.pool;
     let row = sqlx::query!(
         r#"SELECT id, salutation AS "salutation?: Salutation", first_name, last_name,
                   second_salutation AS "second_salutation?: Salutation", second_first_name,
@@ -611,6 +625,18 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
     .flatten()
     .collect();
 
+    // National form only where the customer's country is the configured one, so the field the
+    // vet edits always reads back as the same number (see `display_phone`).
+    let default_country = &state.config.invoice.default_country;
+    let customer_country = row.home_country.as_deref().unwrap_or(default_country);
+    let national_in = customer_country
+        .eq_ignore_ascii_case(default_country)
+        .then_some(default_country.as_str());
+    let phone_display = row
+        .phone
+        .as_deref()
+        .map(|phone| display_phone(phone, national_in));
+
     Ok(Customer {
         id: row.id,
         salutation: row.salutation,
@@ -634,7 +660,7 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Customer> {
         invoice_zip: row.invoice_zip,
         invoice_city: row.invoice_city,
         invoice_country: row.invoice_country,
-        phone_display: row.phone.as_deref().map(display_phone),
+        phone_display,
         phone: row.phone,
         warning_remark: row.warning_remark,
         archived: row.archived,

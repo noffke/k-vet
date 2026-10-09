@@ -94,6 +94,53 @@ async fn phone_numbers_are_normalised_and_redisplayed_nationally(pool: PgPool) {
     );
 }
 
+/// A customer abroad: digits typed without a country code are read in the customer's country,
+/// and the number keeps its code on screen — so saving the field as shown changes nothing.
+#[sqlx::test]
+async fn a_customer_abroad_has_numbers_read_in_their_country(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+    let uri = format!("/api/customers/{id}");
+
+    // Country and number in one patch: the number is read in the new country.
+    let saved = app
+        .patch(
+            &uri,
+            json!({ "home_country": "PL", "phone": "512 345 678" }),
+        )
+        .await
+        .json();
+    assert_eq!(
+        saved["phone"], "+48512345678",
+        "a Polish number, not a German one"
+    );
+    assert_eq!(
+        saved["phone_display"], "+48 512 345 678",
+        "shown with its country code"
+    );
+
+    let resaved = app
+        .patch(&uri, json!({ "phone": saved["phone_display"] }))
+        .await
+        .json();
+    assert_eq!(
+        resaved["phone"], "+48512345678",
+        "the display form reads back unchanged"
+    );
+
+    // A German number for this customer is shown with its code as well, for the same reason.
+    let german = app
+        .patch(&uri, json!({ "phone": "+49 30 12345678" }))
+        .await
+        .json();
+    assert_eq!(german["phone_display"], "+49 30 12345678");
+    let resaved = app
+        .patch(&uri, json!({ "phone": german["phone_display"] }))
+        .await
+        .json();
+    assert_eq!(resaved["phone"], "+493012345678");
+}
+
 #[sqlx::test]
 async fn an_invalid_phone_number_is_never_persisted(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT salutation AS \"salutation?: Salutation\", last_name, home_street, home_zip,\n                  home_city, draft\n           FROM customer WHERE id = $1 FOR UPDATE",
+  "query": "SELECT salutation AS \"salutation?: Salutation\", last_name, home_street, home_zip,\n                  home_city, home_country, draft\n           FROM customer WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -71,6 +71,17 @@
       },
       {
         "ordinal": 5,
+        "name": "home_country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_country"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -92,8 +103,9 @@
       true,
       true,
       true,
+      true,
       false
     ]
   },
-  "hash": "b60d419994e55d1b8e540b707dc723c9b74c48e1ab8acdf7f8e536b56d51aac4"
+  "hash": "ecb58aa7a0b037b44d75db1380b730d83ea4c3431f21ff906bb40598afa5cc76"
 }
