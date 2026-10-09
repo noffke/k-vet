@@ -212,8 +212,10 @@ overflow sheet).
 - `tests/helpers.ts::navigate()` clicks the right chrome for the viewport and asserts the page
   does not scroll sideways; horizontal overflow on a phone also shrinks Chrome's page scale and
   makes fixed-tab-bar clicks miss, so keep that assertion.
-- The GOT 2022 catalogue (931 services, surgical positions hidden) is imported by migration
-  `0008`, so every test database has it — pick fixtures that cannot collide with it.
+- The GOT 2022 catalogue (1006 positions, surgical ones hidden) is imported by migration `0008`
+  and corrected by `0021`, so every test database has it — pick fixtures that cannot collide
+  with it. `scripts/extract-got.py` checks the catalogue against the published schedule and
+  writes such corrections; migrations only go forward, so it never rewrites `0008`.
 - `docs`/spec claims are verified, not assumed: the settings E2E reads the generated invoice PDF
   back with `pdftotext` (needs `poppler-utils`).
 

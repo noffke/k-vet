@@ -246,10 +246,10 @@ psql "postgres://kvet:PASSWORD@localhost:5432/kvet" -c "\dt"        # 22 tables
 psql "postgres://kvet:PASSWORD@localhost:5432/kvet" \
      -c "select count(*) from _sqlx_migrations;"                   # one row per migration
 psql "postgres://kvet:PASSWORD@localhost:5432/kvet" \
-     -c "select count(*) from service where type = 'got';"          # 931 GOT positions
+     -c "select count(*) from service where type = 'got';"          # 1006 GOT positions
 ```
 
-The GOT fee schedule is imported by a migration, so a fresh database already has all 931 positions.
+The GOT fee schedule is imported by migrations, so a fresh database already has all 1006 positions.
 
 ### Starting over
 

@@ -77,23 +77,37 @@ der Einzelpreis inklusive Faktor?
 Die chirurgischen GOT-Positionen sind zwar vorhanden, tauchen aber in der Suche und in den Listen
 **nicht** auf, weil die Praxis keine Chirurgie anbietet.
 
-**Frage:** Soll das so bleiben? Falls Sie doch gelegentlich eine chirurgische Position abrechnen,
-schalten wir sie wieder ein.
+Beim ersten Einlesen war diese Auswahl verrutscht: Ausgeblendet waren auch alltägliche Leistungen
+wie Analbeutelbehandlung (455/456), Blutprobenentnahme (627), Zecken entfernen (404) oder
+Harnkatheter (985 ff.), sichtbar dagegen viele Operationen. Das ist korrigiert. Ausgeblendet ist
+jetzt alles aus den Abschnitten „Chirurgische Behandlungen“ und den Operationen der GOT — dazu
+gehören auch **Zahnextraktion (951–956)**, Hornhaut-Abrasion (806/807) und die Lidkorrekturen.
+Was Sie bereits einmal abgerechnet oder in eine Vorlage übernommen haben, bleibt sichtbar.
+
+**Frage:** Soll das so bleiben? Falls Sie doch gelegentlich eine dieser Positionen abrechnen — etwa
+eine Zahnextraktion —, schalten Sie sie unter *Leistungen* mit „Ausgeblendete anzeigen“ wieder ein,
+oder sagen Sie uns, welche.
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
-*Fundstelle: `migrations/0008_got_import.sql:7-8`*
+*Fundstelle: `migrations/0021_got_corrections.sql`*
 
 ### GOT-04 · Stichprobe aus dem Gebührenverzeichnis
 
-Wir haben beim Einlesen der 931 GOT-Positionen stichprobenartig geprüft. Bitte lesen Sie diese
-fünf gegen Ihr GOT-Heft gegen (die Beträge sind **netto**, wie im Heft):
+Das Programm enthält alle **1006** Positionen des Gebührenverzeichnisses. Beim ersten Einlesen
+fehlten 75 davon, fünf trugen eine falsche Nummer (z. B. stand „Bestandsuntersuchung Kalb, 101 bis
+zu 150 Tieren“ unter Nr. 101 statt Nr. 46), und Nr. 193 hatte einen falschen Betrag. Das ist
+korrigiert; alle Nummern und Beträge sind jetzt mit dem amtlichen Verzeichnis abgeglichen
+(gesetze-im-internet.de). Bitte lesen Sie trotzdem diese Stichprobe gegen Ihr GOT-Heft gegen (die
+Beträge sind **netto**, wie im Heft):
 
 | GOT-Nr. | Leistung                                       | hinterlegt netto |
 | ------- | ---------------------------------------------- | ---------------- |
 | 1       | Beratung im einzelnen Fall ohne Untersuchung    | 11,26 €          |
 | 3       | Dokumentation aufgrund gesetzlicher Vorgaben    | 11,20 €          |
 | 20      | Allgemeine Untersuchung, nicht domestizierte …  | 36,94 €          |
+| 101     | Punktion, Abszess, Zyste                        | 15,39 €          |
+| 175     | CT-Untersuchung eines Körperteils               | 350,00 €         |
 | 411     | Chirurgische Entfernung einer Warze             | 32,99 €          |
 | 1005    | Nephrotomie                                     | siehe Programm   |
 
@@ -102,7 +116,7 @@ häufig abrechnen.
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
-*Fundstelle: `migrations/0008_got_import.sql:10-16`*
+*Fundstelle: `migrations/0008_got_import.sql`, `migrations/0021_got_corrections.sql`*
 
 ### GOT-05 · Mehrwertsteuersatz auf Leistungen
 

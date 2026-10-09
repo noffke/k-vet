@@ -27,15 +27,13 @@ fn names(services: &Value) -> Vec<String> {
 async fn the_got_2022_catalog_is_imported_with_surgery_hidden(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
 
-    // The one-time import migration provisions the whole fee schedule (FR-022).
+    // The import migrations provision the whole fee schedule (FR-022); `got_catalogue.rs`
+    // holds it against the published one in detail.
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM service WHERE type = 'got'")
         .fetch_one(&pool)
         .await
         .expect("count");
-    assert!(
-        total > 900,
-        "the GOT 2022 schedule has ~930 positions, found {total}"
-    );
+    assert_eq!(total, 1006, "the GOT 2022 schedule has 1006 positions");
 
     let complete: i64 =
         sqlx::query_scalar("SELECT count(*) FROM service WHERE type = 'got' AND draft")

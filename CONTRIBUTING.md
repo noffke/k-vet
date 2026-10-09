@@ -31,8 +31,9 @@ The licence is [GPL-3.0](LICENSE), so forking and taking this wherever you need 
 fine — that is the point of publishing it. Two things to know before you run it:
 
 - The GOT 2022 fee catalogue PDF is deliberately not in the repository; the extracted fees are in
-  migration `0008_got_import.sql`, and `scripts/extract-got.py` documents where the source came
-  from. The fees are a federal regulation; the typeset PDF is not ours to redistribute.
+  migrations `0008_got_import.sql` and `0021_got_corrections.sql`, and `scripts/extract-got.py`
+  documents where the source comes from (the consolidated GOT on gesetze-im-internet.de). The
+  fees are a federal regulation; the typeset PDF is not ours to redistribute.
 - Practice identity, bank details and tax numbers are configuration, not code. Everything you
   will find in the tests and in `review.md` is placeholder data.
 
