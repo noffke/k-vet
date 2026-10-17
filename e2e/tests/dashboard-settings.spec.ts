@@ -43,7 +43,11 @@ test.describe('dashboard and settings', () => {
     const unsentCard = page.locator('section').filter({ hasText: 'Nicht versendet' }).first()
     await expect(unsentCard.getByText('1', { exact: true })).toBeVisible()
     await unsentCard.getByRole('link').first().click()
-    await expect(page).toHaveURL(new RegExp(`/treatments/${unsent.treatmentId}$`))
+    // It leads to the visit itself: the treatment is part of its appointment's page.
+    const { appointment_id: unsentAppointment } = (await (
+      await request.get(`/api/treatments/${unsent.treatmentId}`)
+    ).json()) as { appointment_id: number }
+    await expect(page).toHaveURL(new RegExp(`/appointments/${unsentAppointment}$`))
 
     await navigate(page, 'Übersicht')
     await expect(page.getByText(batchNumber, { exact: false })).toBeVisible()

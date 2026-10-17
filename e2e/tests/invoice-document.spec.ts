@@ -37,7 +37,8 @@ test.describe('the invoice document', () => {
 
     await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
     await page.getByRole('button', { name: 'Rechnung erstellen', exact: true }).last().click()
-    await expect(page).toHaveURL(/\/treatments\/\d+$/)
+    // Back on the appointment, which the treatment is part of.
+    await expect(page).toHaveURL(/\/appointments\/\d+$/)
 
     const pdfUrl = await page
       .getByRole('link', { name: 'PDF' })
@@ -100,7 +101,7 @@ test.describe('the invoice document', () => {
     const openedTab = page.context().waitForEvent('page')
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
     await (await openedTab).close()
-    await expect(page).toHaveURL(/\/treatments\/\d+$/)
+    await expect(page).toHaveURL(/\/appointments\/\d+$/)
 
     const created = await (await request.get(`/api/treatments/${treatmentId}`)).json()
     const pdf = await page.request.get(`/api/invoices/${created.invoice.id}/pdf`)
