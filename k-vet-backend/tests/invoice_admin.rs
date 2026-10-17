@@ -100,7 +100,9 @@ fn zip_entries(response: &TestResponse) -> Vec<String> {
             archive
                 .by_index(index)
                 .expect("entry")
+                // zip 9 validates the name, so reading it can fail.
                 .name()
+                .expect("entry name")
                 .trim_start_matches('/')
                 .to_owned()
         })

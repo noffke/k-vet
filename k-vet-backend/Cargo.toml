@@ -41,7 +41,7 @@ typst-as-lib = { version = "0.16.0", features = ["typst-kit-fonts", "typst-kit-e
 typst-layout = "0.15.1"
 typst-pdf = "0.15.1"
 utoipa = { version = "5.5.0", features = ["axum_extras", "chrono", "decimal", "preserve_order"] }
-zip = { version = "8.6.0", default-features = false, features = ["deflate"] }
+zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
 http-body-util = "0.1.4"
