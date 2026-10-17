@@ -4290,6 +4290,7 @@
         "type": "object",
         "required": [
           "id",
+          "patient_names",
           "draft",
           "missing_fields",
           "treatment_id",
@@ -4329,7 +4330,14 @@
               "string",
               "null"
             ],
-            "description": "For the header, so the appointment says whose it is without a second request."
+            "description": "For the header and the list, so the appointment says whose it is without a second\nrequest."
+          },
+          "patient_names": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died."
           },
           "draft": {
             "type": "boolean",

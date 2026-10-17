@@ -401,3 +401,40 @@ async fn the_migration_splits_and_backfills(pool: PgPool) {
             .expect("count");
     assert_eq!(backfilled, 1, "every appointment has its treatment");
 }
+
+/// The list says whose visit it is and which animals came (issues.md, 2026-10-17), and can be
+/// searched by both — the note is no longer a column.
+#[sqlx::test]
+async fn the_list_names_customer_and_animals_and_finds_them(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let appointment = common::seed_appointment(&pool, Utc::now()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let bello = common::seed_patient(&pool, customer_id).await;
+    let minka = common::seed_patient(&pool, customer_id).await;
+    sqlx::query("UPDATE patient SET name = 'Minka' WHERE id = $1")
+        .bind(minka)
+        .execute(&pool)
+        .await
+        .expect("rename");
+    common::seed_treatment(&pool, appointment, bello).await;
+    common::seed_treatment(&pool, appointment, minka).await;
+    common::seed_appointment(&pool, Utc::now()).await;
+
+    let list = app.get("/api/appointments").await.json();
+    let row = list
+        .as_array()
+        .and_then(|rows| rows.iter().find(|row| row["id"] == appointment))
+        .expect("the appointment is listed");
+    assert_eq!(row["customer_name"], "Erika Mustermann");
+    assert_eq!(row["patient_names"], json!(["Bello", "Minka"]));
+
+    for term in ["minka", "Musterm"] {
+        let found = app.get(&format!("/api/appointments?q={term}")).await.json();
+        assert_eq!(
+            found.as_array().map(Vec::len),
+            Some(1),
+            "searching {term:?} finds the one appointment"
+        );
+        assert_eq!(found[0]["id"], appointment);
+    }
+}

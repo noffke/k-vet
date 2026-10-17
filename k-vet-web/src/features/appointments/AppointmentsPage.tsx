@@ -44,7 +44,18 @@ export function AppointmentsPage() {
       primary: true,
       cell: (row) => dateTime(row.starts_at) || '—',
     },
-    { id: 'note', header: t('field.note'), cell: (row) => row.note ?? '' },
+    // Whose visit and which animals: what the vet looks for in the list. The note is on the
+    // appointment itself (and still found by the search).
+    {
+      id: 'customer',
+      header: t('appointments.customer'),
+      cell: (row) => row.customer_name || '—',
+    },
+    {
+      id: 'patients',
+      header: t('field.patients'),
+      cell: (row) => row.patient_names.join(', ') || '—',
+    },
   ]
 
   return (

@@ -23,10 +23,16 @@ export interface Appointment {
      */
   customer_id?: number | null;
   /**
-     * For the header, so the appointment says whose it is without a second request.
+     * For the header and the list, so the appointment says whose it is without a second
+     * request.
      * @nullable
      */
   customer_name?: string | null;
+  /**
+     * The animals on its treatment, by name — what tells two appointments of one customer
+     * apart in the list. A past visit keeps naming an animal that has since died.
+     */
+  patient_names: string[];
   /** `true` while mandatory fields are missing — excluded from billing flows. */
   draft: boolean;
   /** Mandatory fields still empty, for the "incomplete — missing: …" hint. */

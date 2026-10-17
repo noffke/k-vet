@@ -6,6 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/fetcher'
 import {
   getGetTreatmentQueryKey,
+  getListAppointmentsQueryKey,
   useAddTreatmentPatient,
   useListPatients,
   useRemoveTreatmentPatient,
@@ -33,8 +34,13 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
     return () => clearTimeout(timer)
   }, [term])
 
+  // The appointments list names the animals too; without this it would show the old ones for
+  // as long as its cache is fresh.
   const refresh = () =>
-    client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatment.id) })
+    Promise.all([
+      client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatment.id) }),
+      client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() }),
+    ])
 
   const addPatient = useAddTreatmentPatient({ mutation: { onSuccess: refresh } })
   const removePatient = useRemoveTreatmentPatient({ mutation: { onSuccess: refresh } })

@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seedAcceptedInvoice, seedCustomer, seedPatient } from '../fixtures/seed'
+import { seedAcceptedInvoice, seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -123,6 +123,19 @@ test.describe('appointments', () => {
     arrive()
     await expect(page.getByText(invoice.invoiceNumber)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+  })
+
+  test('the list names whose visit it is and which animals came', async ({ page, request }) => {
+    const { customerId, lastName } = await seedCustomer(request)
+    const animal = `Liste-${Date.now() % 1e6}`
+    await seedTreatment(request, await seedPatient(request, customerId, animal))
+
+    await signIn(page)
+    await navigate(page, 'Termine')
+    // Found by the animal's name, now that the list is about customer and animals, not notes.
+    await page.getByPlaceholder('Suchen …').fill(animal)
+    await expect(page.getByText(animal, { exact: true }).filter({ visible: true })).toBeVisible()
+    await expect(page.getByText(new RegExp(lastName)).filter({ visible: true }).first()).toBeVisible()
   })
 
   test('a date typed before the time survives and is expanded', async ({ page }) => {

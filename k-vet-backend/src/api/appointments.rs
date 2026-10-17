@@ -28,8 +28,12 @@ pub struct Appointment {
     /// limits the animals on offer to that customer's (FR-027). It can change until an animal
     /// is attached.
     pub customer_id: Option<i64>,
-    /// For the header, so the appointment says whose it is without a second request.
+    /// For the header and the list, so the appointment says whose it is without a second
+    /// request.
     pub customer_name: Option<String>,
+    /// The animals on its treatment, by name — what tells two appointments of one customer
+    /// apart in the list. A past visit keeps naming an animal that has since died.
+    pub patient_names: Vec<String>,
     /// `true` while mandatory fields are missing — excluded from billing flows.
     pub draft: bool,
     /// Mandatory fields still empty, for the "incomplete — missing: …" hint.
@@ -67,6 +71,7 @@ struct Row {
     note: Option<String>,
     customer_id: Option<i64>,
     customer_name: Option<String>,
+    patient_names: Vec<String>,
     draft: bool,
     treatment_id: i64,
     unbilled: bool,
@@ -82,6 +87,7 @@ impl From<Row> for Appointment {
             note: row.note,
             customer_id: row.customer_id,
             customer_name: row.customer_name,
+            patient_names: row.patient_names,
             draft: row.draft,
             missing_fields: missing(row.starts_at.is_some()),
             treatment_id: row.treatment_id,
@@ -120,6 +126,11 @@ pub async fn list(
                   concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
                   appointment.created_at, appointment.updated_at,
                   treatment.id AS treatment_id,
+                  ARRAY(SELECT patient.name FROM patient_treatment
+                        JOIN patient ON patient.id = patient_treatment.patient_id
+                        WHERE patient_treatment.treatment_id = treatment.id
+                          AND patient.name IS NOT NULL
+                        ORDER BY patient.name) AS "patient_names!",
                   (EXISTS (SELECT 1 FROM treatment_item
                            WHERE treatment_item.treatment_id = treatment.id)
                    AND NOT EXISTS (SELECT 1 FROM invoice
@@ -128,7 +139,15 @@ pub async fn list(
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id
-           WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')
+           -- Whose visit and which animals, now that the list shows those instead of the note;
+           -- the note is still searched.
+           WHERE ($1::text IS NULL
+                  OR appointment.note ILIKE '%' || $1 || '%'
+                  OR concat_ws(' ', customer.first_name, customer.last_name) ILIKE '%' || $1 || '%'
+                  OR EXISTS (SELECT 1 FROM patient_treatment
+                             JOIN patient ON patient.id = patient_treatment.patient_id
+                             WHERE patient_treatment.treatment_id = treatment.id
+                               AND patient.name ILIKE '%' || $1 || '%'))
            ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC
            LIMIT $2 OFFSET $3"#,
         query.search(),
@@ -202,6 +221,11 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
                   concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
                   appointment.created_at, appointment.updated_at,
                   treatment.id AS treatment_id,
+                  ARRAY(SELECT patient.name FROM patient_treatment
+                        JOIN patient ON patient.id = patient_treatment.patient_id
+                        WHERE patient_treatment.treatment_id = treatment.id
+                          AND patient.name IS NOT NULL
+                        ORDER BY patient.name) AS "patient_names!",
                   (EXISTS (SELECT 1 FROM treatment_item
                            WHERE treatment_item.treatment_id = treatment.id)
                    AND NOT EXISTS (SELECT 1 FROM invoice
