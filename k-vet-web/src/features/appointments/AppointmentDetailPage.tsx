@@ -143,6 +143,9 @@ export function AppointmentDetailPage() {
             </Button>
             <Button
               variant="danger"
+              // Named for what it deletes: on a phone it is an icon, and the treatment's lines
+              // on the same page carry delete buttons of their own.
+              aria-label={t('appointments.delete')}
               onClick={() => setDeleteOpen(true)}
               disabled={removeAppointment.isPending}
             >

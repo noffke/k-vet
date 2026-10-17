@@ -111,11 +111,11 @@ test.describe('appointments', () => {
     const url = page.url()
 
     // Asked first (issues.md 2): a dismissed dialog leaves the appointment alone.
-    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('button', { name: 'Termin löschen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Abbrechen' }).click()
     await expect(page).toHaveURL(url)
 
-    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('button', { name: 'Termin löschen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
     await expect(page).toHaveURL(/\/appointments$/)
 
@@ -129,7 +129,7 @@ test.describe('appointments', () => {
     const appointmentId = ((await appointment.json()) as { appointment_id: number }).appointment_id
     await page.goto(`/appointments/${appointmentId}`)
 
-    await page.getByRole('button', { name: 'Löschen' }).click()
+    await page.getByRole('button', { name: 'Termin löschen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
     await expect(page).toHaveURL(new RegExp(`/appointments/${appointmentId}$`))
     await expect(page.getByText(/bereits eine Rechnung geschrieben/)).toBeVisible()
@@ -202,7 +202,7 @@ test.describe('appointments', () => {
 
     // Icon-only on a phone, but still named.
     await expect(page.getByRole('button', { name: 'Duplizieren', exact: true })).toBeVisible()
-    await expect(page.getByRole('button', { name: 'Löschen', exact: true })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Termin löschen', exact: true })).toBeVisible()
 
     // Still incomplete: a Termin needs a time, and none was invented for it.
     await expect(page.getByText('Unvollständig', { exact: true })).toBeVisible()
