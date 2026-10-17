@@ -138,6 +138,12 @@ pub async fn remove_patient(
     let mut transaction = state.pool.begin().await?;
     stock::ensure_editable(&mut transaction, id).await?;
 
+    // The customer's only animal is the treatment's, and stays on it (issues.md, 2026-10-17):
+    // there is nothing else it could be. With a second animal it can come off again.
+    if eligible_animals(&mut transaction, id).await? == [patient_id] {
+        return Err(AppError::field("patient_id", "treatment.onlyPatient"));
+    }
+
     let attributed: Option<bool> = sqlx::query_scalar!(
         "SELECT EXISTS (
              SELECT 1 FROM treatment_item item
@@ -192,6 +198,64 @@ pub async fn ensure_open(connection: &mut PgConnection, treatment_id: i64) -> Ap
         return Err(AppError::field("customer_id", "treatment.customerRequired"));
     }
     Ok(())
+}
+
+/// The animals a treatment's customer could bring: complete, not archived, alive. At most two
+/// are read — every caller only asks "none, exactly one, or more".
+async fn eligible_animals(connection: &mut PgConnection, treatment_id: i64) -> AppResult<Vec<i64>> {
+    Ok(sqlx::query_scalar!(
+        "SELECT patient.id
+           FROM patient
+           JOIN treatment ON treatment.customer_id = patient.customer_id
+          WHERE treatment.id = $1
+            AND NOT patient.draft AND NOT patient.archived AND patient.date_of_death IS NULL
+          ORDER BY patient.id
+          LIMIT 2",
+        treatment_id,
+    )
+    .fetch_all(&mut *connection)
+    .await?)
+}
+
+/// Puts the customer's only animal on a treatment that has none yet (issues.md, 2026-10-17):
+/// with one animal there is nothing to choose, so the picker has nothing to ask.
+pub async fn attach_only_animal(
+    transaction: &mut Transaction<'_, Postgres>,
+    treatment_id: i64,
+) -> AppResult<()> {
+    let attached: Option<bool> = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM patient_treatment WHERE treatment_id = $1)",
+        treatment_id,
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+    if attached.unwrap_or(false) {
+        return Ok(());
+    }
+    if let [only] = eligible_animals(transaction, treatment_id).await?[..] {
+        attach_patient(transaction, treatment_id, only).await?;
+    }
+    Ok(())
+}
+
+/// Whether anything has been entered on a treatment beyond the bare animals: a line, an
+/// invoice, a reason or finding, a file. Until then the visit can still move to another
+/// customer — its animals are only the default, and go with the change.
+pub async fn has_content(connection: &mut PgConnection, treatment_id: i64) -> AppResult<bool> {
+    let content: Option<bool> = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM treatment_item WHERE treatment_id = $1)
+             OR EXISTS (SELECT 1 FROM invoice WHERE treatment_id = $1)
+             OR EXISTS (SELECT 1 FROM patient_treatment
+                         WHERE treatment_id = $1
+                           AND (treatment_reason IS NOT NULL OR finding IS NOT NULL))
+             OR EXISTS (SELECT 1 FROM attachment
+                          JOIN patient_treatment ON patient_treatment.id = attachment.patient_treatment_id
+                         WHERE patient_treatment.treatment_id = $1)",
+        treatment_id,
+    )
+    .fetch_one(&mut *connection)
+    .await?;
+    Ok(content.unwrap_or(false))
 }
 
 /// Attaches a patient to a treatment.

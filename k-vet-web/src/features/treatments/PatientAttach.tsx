@@ -63,6 +63,18 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
     (patient) => !patient.draft && !attachedIds.has(patient.id),
   )
 
+  // The animals this customer could bring, unfiltered by the search — the same set the server
+  // counts (complete, not archived, alive). Archived ones never come back from the list.
+  const herd = useListPatients(
+    { customer_id: treatment.customer_id ?? undefined },
+    { query: { enabled: !treatment.frozen && treatment.customer_id != null } },
+  )
+  const eligible = (herd.data ?? []).filter((patient) => !patient.draft && !patient.date_of_death)
+  // With one animal there is nothing to choose: it is attached by itself and stays (the server
+  // refuses its removal too). With more, the picker is only there while one is left to add.
+  const onlyAnimal = eligible.length === 1 ? eligible[0]?.id : undefined
+  const leftToAdd = eligible.filter((patient) => !attachedIds.has(patient.id)).length
+
   const removeError: unknown = removePatient.error
   const removeBlocked = removeError instanceof ApiError && removeError.status === 409
 
@@ -78,7 +90,7 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
           >
             <PawPrint className="size-3.5 text-rust" aria-hidden />
             <span className="text-sm text-ink">{patient.name}</span>
-            {treatment.frozen ? null : (
+            {treatment.frozen || patient.patient_id === onlyAnimal ? null : (
               <Button
                 size="icon"
                 variant="ghost"
@@ -119,7 +131,7 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
         {t('treatments.removePatientConfirm', { name: pendingPatient?.name ?? '' })}
       </ConfirmDialog>
 
-      {treatment.frozen ? null : (
+      {treatment.frozen || herd.isPending || leftToAdd === 0 ? null : (
         <Command
           shouldFilter={false}
           className="mt-3 rounded-card border border-line-strong bg-surface"

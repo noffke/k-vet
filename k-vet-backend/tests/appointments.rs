@@ -287,14 +287,16 @@ async fn a_second_treatment_on_one_appointment_is_impossible(pool: PgPool) {
     assert!(second.is_err(), "one treatment per appointment");
 }
 
-/// The animals belong to the customer, so the customer can change until the first one is on
-/// the treatment — and the treatment follows every change until then.
+/// The customer can change until something is entered on the treatment. Its animals are only
+/// the default until then — the customer's only one is attached by itself — so they go with
+/// the change rather than locking a visit to a customer picked by mistake.
 #[sqlx::test]
-async fn the_customer_can_change_until_an_animal_is_attached(pool: PgPool) {
+async fn the_customer_can_change_until_something_is_entered(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let first = common::seed_customer(&pool).await;
     let second = common::seed_customer(&pool).await;
-    let animal = common::seed_patient(&pool, second).await;
+    common::seed_patient(&pool, first).await;
+    let second_animal = common::seed_patient(&pool, second).await;
     let appointment = app
         .post(
             "/api/appointments",
@@ -307,12 +309,20 @@ async fn the_customer_can_change_until_an_animal_is_attached(pool: PgPool) {
 
     app.patch(&uri, json!({ "customer_id": first })).await;
     assert_eq!(app.get(&treatment_uri).await.json()["customer_id"], first);
-    app.patch(&uri, json!({ "customer_id": second })).await;
-    assert_eq!(app.get(&treatment_uri).await.json()["customer_id"], second);
 
+    // The first customer's only animal came along by itself, and goes with the change.
+    let moved = app.patch(&uri, json!({ "customer_id": second })).await;
+    assert_eq!(moved.status, StatusCode::OK);
+    let treatment = app.get(&treatment_uri).await.json();
+    assert_eq!(treatment["customer_id"], second);
+    assert_eq!(treatment["patients"].as_array().map(Vec::len), Some(1));
+    assert_eq!(treatment["patients"][0]["patient_id"], second_animal);
+
+    // A line is something entered: from here on the visit is this customer's.
+    let service_id = common::seed_got_service(&pool).await;
     app.post(
-        &format!("{treatment_uri}/patients"),
-        json!({ "patient_id": animal }),
+        &format!("{treatment_uri}/items"),
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
     )
     .await;
     let locked = app.patch(&uri, json!({ "customer_id": first })).await;
@@ -321,6 +331,145 @@ async fn the_customer_can_change_until_an_animal_is_attached(pool: PgPool) {
     let cleared = app.patch(&uri, json!({ "customer_id": null })).await;
     assert_eq!(cleared.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(app.get(&uri).await.json()["customer_id"], second);
+}
+
+/// issues.md, 2026-10-17: with one animal there is nothing to choose. It is attached as soon as
+/// the customer is, and it stays — removing it is refused.
+#[sqlx::test]
+async fn a_customers_only_animal_is_attached_and_stays(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let animal = common::seed_patient(&pool, customer_id).await;
+
+    // Chosen on creation …
+    let created = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T09:30:00Z", "customer_id": customer_id }),
+        )
+        .await
+        .json();
+    let treatment = app
+        .get(&format!("/api/treatments/{}", created["treatment_id"]))
+        .await
+        .json();
+    assert_eq!(treatment["patients"][0]["patient_id"], animal);
+
+    // … or later, by the customer picker.
+    let later = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T10:30:00Z" }),
+        )
+        .await
+        .json();
+    app.patch(
+        &format!("/api/appointments/{}", later["id"]),
+        json!({ "customer_id": customer_id }),
+    )
+    .await;
+    let treatment_uri = format!("/api/treatments/{}", later["treatment_id"]);
+    let treatment = app.get(&treatment_uri).await.json();
+    assert_eq!(treatment["patients"].as_array().map(Vec::len), Some(1));
+    assert_eq!(treatment["patients"][0]["patient_id"], animal);
+
+    let removal = app
+        .delete(&format!("{treatment_uri}/patients/{animal}"))
+        .await;
+    assert_eq!(removal.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(removal.error_fields().contains(&"patient_id".to_owned()));
+    // Asking again for the same customer changes nothing, and attaches nothing twice.
+    app.patch(
+        &format!("/api/appointments/{}", later["id"]),
+        json!({ "customer_id": customer_id }),
+    )
+    .await;
+    let treatment = app.get(&treatment_uri).await.json();
+    assert_eq!(treatment["patients"].as_array().map(Vec::len), Some(1));
+}
+
+/// With two animals the vet chooses: none is attached, and either can come off again.
+#[sqlx::test]
+async fn with_two_animals_nothing_is_preselected(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let bello = common::seed_patient(&pool, customer_id).await;
+    let minka = common::seed_patient(&pool, customer_id).await;
+    let created = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T09:30:00Z", "customer_id": customer_id }),
+        )
+        .await
+        .json();
+    let treatment_uri = format!("/api/treatments/{}", created["treatment_id"]);
+    assert_eq!(
+        app.get(&treatment_uri).await.json()["patients"]
+            .as_array()
+            .map(Vec::len),
+        Some(0)
+    );
+
+    for animal in [bello, minka] {
+        app.post(
+            &format!("{treatment_uri}/patients"),
+            json!({ "patient_id": animal }),
+        )
+        .await;
+    }
+    let removal = app
+        .delete(&format!("{treatment_uri}/patients/{bello}"))
+        .await;
+    assert_eq!(removal.status, StatusCode::OK);
+}
+
+/// "Only animal" counts the animals that can still come: an archived or deceased one is not a
+/// choice, so a customer with one living and one deceased animal has one — and one whose only
+/// animal is archived has none to attach.
+#[sqlx::test]
+async fn deceased_and_archived_animals_are_no_choice(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let living = common::seed_patient(&pool, customer_id).await;
+    let deceased = common::seed_patient(&pool, customer_id).await;
+    sqlx::query("UPDATE patient SET date_of_death = '2026-01-10', archived = true WHERE id = $1")
+        .bind(deceased)
+        .execute(&pool)
+        .await
+        .expect("deceased");
+    let created = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T09:30:00Z", "customer_id": customer_id }),
+        )
+        .await
+        .json();
+    let treatment = app
+        .get(&format!("/api/treatments/{}", created["treatment_id"]))
+        .await
+        .json();
+    assert_eq!(treatment["patients"].as_array().map(Vec::len), Some(1));
+    assert_eq!(treatment["patients"][0]["patient_id"], living);
+
+    let other = common::seed_customer(&pool).await;
+    let archived = common::seed_patient(&pool, other).await;
+    sqlx::query("UPDATE patient SET archived = true WHERE id = $1")
+        .bind(archived)
+        .execute(&pool)
+        .await
+        .expect("archived");
+    let created = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T10:30:00Z", "customer_id": other }),
+        )
+        .await
+        .json();
+    let treatment = app
+        .get(&format!("/api/treatments/{}", created["treatment_id"]))
+        .await
+        .json();
+    assert_eq!(treatment["patients"].as_array().map(Vec::len), Some(0));
 }
 
 /// Migration 0022 on data written under the old rule: an appointment with two treatments is

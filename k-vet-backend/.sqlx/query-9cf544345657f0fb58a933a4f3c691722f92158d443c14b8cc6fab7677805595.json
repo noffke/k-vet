@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT patient.id\n           FROM patient\n           JOIN treatment ON treatment.customer_id = patient.customer_id\n          WHERE treatment.id = $1\n            AND NOT patient.draft AND NOT patient.archived AND patient.date_of_death IS NULL\n          ORDER BY patient.id\n          LIMIT 2",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "9cf544345657f0fb58a933a4f3c691722f92158d443c14b8cc6fab7677805595"
+}

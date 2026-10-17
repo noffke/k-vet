@@ -186,13 +186,16 @@ pub async fn create(
     )
     .fetch_one(&mut *transaction)
     .await?;
-    sqlx::query!(
-        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2)",
+    let treatment_id: i64 = sqlx::query_scalar!(
+        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
         id,
         body.customer_id,
     )
-    .execute(&mut *transaction)
+    .fetch_one(&mut *transaction)
     .await?;
+    if body.customer_id.is_some() {
+        treatments::attach_only_animal(&mut transaction, treatment_id).await?;
+    }
     transaction.commit().await?;
 
     Ok(Json(load(&state.pool, id).await?))
@@ -271,26 +274,28 @@ pub async fn patch(
     let starts_at = body.starts_at.unwrap_or(current.starts_at);
     let draft = recompute_draft(current.draft, &[("starts_at", starts_at.is_some())])?;
 
-    // The customer can change until an animal is attached: the animals belong to the customer,
-    // and moving the visit would strand them. The foreign keys refuse it too
-    // (`patient_treatment_treatment_customer_fkey`); this says why.
+    // The customer can change until something has been entered on the treatment — a line, an
+    // invoice, a reason or finding, a file. Until then its animals are only the default (the
+    // customer's only one is attached by itself), so they go with the change rather than
+    // locking a visit to a customer picked by mistake. The foreign keys would refuse a change
+    // with animals on it (`patient_treatment_treatment_customer_fkey`); they come off first.
+    let treatment_id: i64 =
+        sqlx::query_scalar!("SELECT id FROM treatment WHERE appointment_id = $1", id)
+            .fetch_one(&mut *transaction)
+            .await?;
     let new_customer = body
         .customer_id
         .filter(|customer| *customer != current.customer_id);
     if new_customer.is_some() {
-        let has_animals: Option<bool> = sqlx::query_scalar!(
-            "SELECT EXISTS (
-                 SELECT 1 FROM patient_treatment
-                 JOIN treatment ON treatment.id = patient_treatment.treatment_id
-                 WHERE treatment.appointment_id = $1
-             )",
-            id,
-        )
-        .fetch_one(&mut *transaction)
-        .await?;
-        if has_animals.unwrap_or(false) {
+        if treatments::has_content(&mut transaction, treatment_id).await? {
             return Err(AppError::field("customer_id", "appointment.customerLocked"));
         }
+        sqlx::query!(
+            "DELETE FROM patient_treatment WHERE treatment_id = $1",
+            treatment_id
+        )
+        .execute(&mut *transaction)
+        .await?;
     }
 
     sqlx::query!(
@@ -317,12 +322,15 @@ pub async fn patch(
     if let Some(customer_id) = new_customer {
         sqlx::query!(
             "UPDATE treatment SET customer_id = $2
-             WHERE appointment_id = $1 AND customer_id IS DISTINCT FROM $2",
-            id,
+             WHERE id = $1 AND customer_id IS DISTINCT FROM $2",
+            treatment_id,
             customer_id,
         )
         .execute(&mut *transaction)
         .await?;
+        if customer_id.is_some() {
+            treatments::attach_only_animal(&mut transaction, treatment_id).await?;
+        }
     }
 
     transaction.commit().await?;

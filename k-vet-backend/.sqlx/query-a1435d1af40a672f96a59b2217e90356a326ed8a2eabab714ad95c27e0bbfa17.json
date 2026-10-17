@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (SELECT 1 FROM treatment_item WHERE treatment_id = $1)\n             OR EXISTS (SELECT 1 FROM invoice WHERE treatment_id = $1)\n             OR EXISTS (SELECT 1 FROM patient_treatment\n                         WHERE treatment_id = $1\n                           AND (treatment_reason IS NOT NULL OR finding IS NOT NULL))\n             OR EXISTS (SELECT 1 FROM attachment\n                          JOIN patient_treatment ON patient_treatment.id = attachment.patient_treatment_id\n                         WHERE patient_treatment.treatment_id = $1)",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "?column?",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "a1435d1af40a672f96a59b2217e90356a326ed8a2eabab714ad95c27e0bbfa17"
+}

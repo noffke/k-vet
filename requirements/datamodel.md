@@ -141,7 +141,9 @@ Fields:
   * Relation: 1 Customer (optional while the appointment is still a draft; required before an
     animal or a line goes onto its treatment). Whose visit it is, chosen rather than inferred —
     it is what the animal picker is filtered by, so it has to be known before the first animal is
-    attached. It can change until an animal is attached.
+    attached. It can change until something is entered on the treatment (a line, an invoice, a
+    reason or finding, a file); until then the treatment's animals are only the default and are
+    replaced with the change.
   * Relation: exactly 1 Treatment, created with the appointment and deleted with it. A second
     invoice for the same visit means a second appointment with the same date, time and customer.
 * Treatment
@@ -150,7 +152,9 @@ Fields:
     movements) and is born complete, while the appointment carries the draft lifecycle.
   * Relation: 1 Customer, inherited from the appointment — the invoice's customer
   * Relation: n Patient (all patients of a treatment belong to that customer; enforced by
-    composite foreign keys, so no code path can write a mixed treatment)
+    composite foreign keys, so no code path can write a mixed treatment). A customer with exactly one
+    eligible animal (complete, not archived, alive) has it attached automatically, and it cannot
+    be removed; with several, the vet picks, and the picker disappears once all are attached
   * Treatment Reason (Vorstellungsgrund) (optional)
   * Finding (Diagnosis) (optional)
   * Relation: n Attachment (treatment files)

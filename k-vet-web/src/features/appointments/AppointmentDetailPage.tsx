@@ -14,7 +14,7 @@ import {
   useGetTreatment,
   usePatchAppointment,
 } from '@/api/generated/endpoints'
-import type { Appointment, PriceMode } from '@/api/generated/model'
+import type { Appointment, PriceMode, Treatment } from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CustomerPicker } from '@/components/CustomerPicker'
@@ -196,14 +196,14 @@ export function AppointmentDetailPage() {
         <div className="sm:col-span-2">
           <p className="eyebrow">{t('appointments.customer')}</p>
           <p className="mt-0.5 mb-2 text-xs text-ink-faint">{t('appointments.customerHint')}</p>
-          {/* Locked once an animal is on the treatment: it belongs to this customer, and
-              moving the appointment would strand it. Locked while that is still being loaded,
-              too — no answer yet is not "no animals", and for those first frames the picker
-              was offering to strand them. The server refuses it either way. */}
+          {/* Locked once something is entered on the treatment — a line, an invoice, a reason
+              or finding; until then its animals are only the default and move with the
+              customer. Locked while that is still being loaded, too: no answer yet is not
+              "nothing entered". The server holds the same rule, files included. */}
           <CustomerPicker
             customerId={record.customer_id ?? null}
             customerName={record.customer_name ?? null}
-            locked={treatment.isPending || (treatment.data?.patients ?? []).length > 0}
+            locked={treatment.isPending || hasContent(treatment.data)}
             onPick={(customerId) => {
               autoSave.set({ customer_id: customerId })
               void autoSave.flush()
@@ -213,6 +213,12 @@ export function AppointmentDetailPage() {
               void autoSave.flush()
             }}
           />
+          {/* The one refusal the lock above cannot foresee: files on an animal's record. */}
+          {autoSave.fieldErrors.customer_id ? (
+            <p className="mt-1.5 text-xs text-danger" role="alert">
+              {t(autoSave.fieldErrors.customer_id)}
+            </p>
+          ) : null}
         </div>
       </section>
 
@@ -237,6 +243,16 @@ export function AppointmentDetailPage() {
         }
       />
     </div>
+  )
+}
+
+/** Whether anything has been entered on the treatment beyond its animals. */
+function hasContent(treatment: Treatment | undefined): boolean {
+  if (!treatment) return false
+  return (
+    treatment.item_count > 0 ||
+    treatment.invoice != null ||
+    treatment.patients.some((patient) => patient.treatment_reason || patient.finding)
   )
 }
 

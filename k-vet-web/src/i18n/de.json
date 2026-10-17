@@ -206,7 +206,7 @@
     "treatments": "Behandlungen"
   },
   "appointment": {
-    "customerLocked": "Am Termin hängt schon ein Tier dieses Kunden — der Kunde lässt sich nicht mehr ändern."
+    "customerLocked": "Für diesen Termin ist schon etwas erfasst — der Kunde lässt sich nicht mehr ändern."
   },
   "appointments": {
     "customer": "Kunde",
@@ -456,6 +456,7 @@
   },
   "treatment": {
     "customerRequired": "Bitte zuerst den Kunden des Termins wählen.",
+    "onlyPatient": "Das einzige Tier des Kunden bleibt an der Behandlung.",
     "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden"
   }
 }

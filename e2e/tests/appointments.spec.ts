@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { type APIRequestContext, expect, test } from '@playwright/test'
 import { seedAcceptedInvoice, seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -15,7 +15,9 @@ test.describe('appointments', () => {
     const theirs = await seedCustomer(request)
     const myAnimal = `Meins-${Date.now() % 1e6}`
     const theirAnimal = `Fremd-${Date.now() % 1e6}`
+    // Two animals, so there is something to choose — with one, it is attached by itself.
     await seedPatient(request, mine.customerId, myAnimal)
+    await seedPatient(request, mine.customerId, `Auch-${Date.now() % 1e6}`)
     await seedPatient(request, theirs.customerId, theirAnimal)
 
     await signIn(page)
@@ -45,6 +47,55 @@ test.describe('appointments', () => {
     await picker.fill('')
     await expect(page.getByRole('option', { name: new RegExp(myAnimal) })).toBeVisible()
     await expect(page.getByRole('option', { name: new RegExp(theirAnimal) })).toHaveCount(0)
+  })
+
+  test('a customer\'s only animal is attached by itself and cannot be removed', async ({
+    page,
+    request,
+  }) => {
+    const { customerId, lastName } = await seedCustomer(request)
+    const animal = `Einzig-${Date.now() % 1e6}`
+    await seedPatient(request, customerId, animal)
+
+    await signIn(page)
+    await navigate(page, 'Termine')
+    await page.getByRole('button', { name: 'Neuer Termin' }).click()
+    await page.getByLabel('Uhrzeit').fill('10:15')
+    await page.getByLabel('Uhrzeit').blur()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await page.getByPlaceholder('Kunde suchen …').fill(lastName)
+    await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
+
+    // Nothing to choose: the animal is there, with no picker beside it and no way to take it off.
+    await expect(page.getByRole('link', { name: new RegExp(animal) }).first()).toBeVisible()
+    await expect(page.getByPlaceholder('Patienten')).toHaveCount(0)
+    await expect(
+      page.getByRole('listitem').filter({ hasText: animal }).getByRole('button'),
+    ).toHaveCount(0)
+  })
+
+  test('the animal picker goes once every animal is on the treatment', async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const first = `Erst-${Date.now() % 1e6}`
+    const second = `Zweit-${Date.now() % 1e6}`
+    await seedPatient(request, customerId, first)
+    await seedPatient(request, customerId, second)
+    const { appointmentId } = await seedVisitWithoutAnimals(request, customerId)
+
+    await signIn(page)
+    await page.goto(`/appointments/${appointmentId}`)
+    const picker = page.getByPlaceholder('Patienten')
+    for (const name of [first, second]) {
+      await picker.fill(name)
+      await page.getByRole('option', { name: new RegExp(name) }).first().click()
+    }
+    // Both are on it: nothing left to add, so nothing to search.
+    await expect(picker).toHaveCount(0)
+
+    // Taking one off brings the picker back, offering just that one.
+    await page.getByRole('listitem').filter({ hasText: second }).getByRole('button', { name: 'Entfernen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
+    await expect(picker).toBeVisible()
   })
 
   test('a Termin is only deleted once, and never after it has been billed', async ({
@@ -196,3 +247,15 @@ test.describe('appointments on an en-US browser', () => {
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
   })
 })
+
+/** A complete appointment for `customerId` with no animal on its treatment yet. */
+async function seedVisitWithoutAnimals(
+  request: APIRequestContext,
+  customerId: number,
+): Promise<{ appointmentId: number }> {
+  const response = await request.post('/api/appointments', {
+    data: { starts_at: new Date().toISOString(), customer_id: customerId },
+  })
+  const appointment = (await response.json()) as { id: number }
+  return { appointmentId: appointment.id }
+}

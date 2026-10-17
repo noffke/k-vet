@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment SET customer_id = $2\n             WHERE id = $1 AND customer_id IS DISTINCT FROM $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1398c5a126bfcd951349aa0dcd2470e11a707cc850e10f033467f35d21c96db2"
+}

@@ -39,10 +39,11 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByPlaceholder('Kunde suchen …').fill(lastName)
   await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
 
-  // ── The treatment is part of the appointment: the patient is attached right here ──
+  // ── The treatment is part of the appointment, and the customer's only animal is on it
+  //    already: with one animal there is nothing to pick ──────────────────────────
   await expect(page).toHaveURL(/\/appointments\/\d+$/)
-  await page.getByPlaceholder('Patienten').fill(patientName)
-  await page.getByRole('option', { name: new RegExp(patientName) }).first().click()
+  await expect(page.getByRole('link', { name: new RegExp(patientName) }).first()).toBeVisible()
+  await expect(page.getByPlaceholder('Patienten')).toHaveCount(0)
 
   // The reason and the finding belong to the animal, on its own record.
   await page.getByRole('link', { name: new RegExp(patientName) }).first().click()

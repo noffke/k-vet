@@ -206,7 +206,7 @@
     "treatments": "Treatments"
   },
   "appointment": {
-    "customerLocked": "An animal of this customer is already on the appointment — the customer can no longer change."
+    "customerLocked": "Something has already been entered for this appointment — the customer can no longer change."
   },
   "appointments": {
     "customer": "Customer",
@@ -456,6 +456,7 @@
   },
   "treatment": {
     "customerRequired": "Choose the appointment’s customer first.",
+    "onlyPatient": "The customer's only animal stays on the treatment.",
     "patientOtherCustomer": "This animal belongs to a different customer"
   }
 }
