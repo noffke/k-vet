@@ -27,9 +27,15 @@
 // deeper top margin than one without — at 15mm the logo was taller than the band it sat in and
 // ran off the top of the sheet, which is how it came to print cut in half (issues.md 9). A
 // page with no logo keeps the tighter margin rather than carrying an empty strip around.
-#let logo-height = 22mm
-#let logo-band = logo-height + 4mm
-#let header-gap = 8mm
+//
+// The logo is at most `logo-height` tall and `logo-max-width` wide, `logo-top` below the edge of
+// the sheet, and flush with the right edge of the text. With these the address block starts
+// about 47mm down, inside the window of a DIN 5008 envelope (address field from 45mm).
+#let logo-height = 32mm
+#let logo-max-width = 70mm
+#let logo-top = 9mm
+#let logo-band = logo-height + logo-top
+#let header-gap = 6mm
 
 #set page(
   paper: "a4",
@@ -41,13 +47,18 @@
   ),
   header: [
     #if practice.logo_present [
-      // Bounded on both axes and scaled to fit: the practice uploads whatever shape it has,
-      // and a tall or very wide one must still land inside the band.
-      #align(right)[
-        #box(width: 60mm, height: logo-height)[
-          #image(bytes(inputs.logo), width: 100%, height: 100%, fit: "contain")
-        ]
-      ]
+      // Scaled to its own shape rather than fitted into a fixed box: a box wider than the logo
+      // centred it, so its right edge stood well inside the text's. Bounded on both axes — the
+      // practice uploads whatever shape it has, and a tall or very wide one must still land
+      // inside the band.
+      #context {
+        let logo = bytes(inputs.logo)
+        let natural = measure(image(logo))
+        let scale = if natural.width > 0pt and natural.height > 0pt {
+          calc.min(logo-max-width / natural.width, logo-height / natural.height)
+        } else { 1 }
+        align(right, image(logo, width: natural.width * scale))
+      }
     ]
   ],
   header-ascent: header-gap,
