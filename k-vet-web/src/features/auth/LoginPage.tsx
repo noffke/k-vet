@@ -50,8 +50,11 @@ export function LoginPage() {
           onSubmit={submit}
           className="mt-6 flex flex-col gap-4 rounded-card border border-line bg-surface p-5"
         >
+          {/* A real form with named, typed fields and their autocomplete roles: what password
+              managers look for to recognise a sign-in and fill it. */}
           <TextField
             label={t('login.username')}
+            name="username"
             value={username}
             autoComplete="username"
             autoCapitalize="none"
@@ -61,6 +64,7 @@ export function LoginPage() {
           />
           <TextField
             label={t('login.password')}
+            name="password"
             type="password"
             value={password}
             autoComplete="current-password"
