@@ -342,6 +342,18 @@ Open `base_url` in a browser and sign in with the credentials from `[auth]`. The
 The interface is German by default; `de`/`en` in the corner switches languages, and numbers,
 dates and money follow the chosen locale on input as well as on display.
 
+### Plain HTTP on the LAN
+
+Reached as `http://` on the Pi's address — the setup above — the application works, but the
+browser does not consider the page a secure one, and says so in one place: Chrome flags
+**downloads** as insecure, which here means the ZIP of invoices for bookkeeping (*Rechnungen →
+Alle PDFs herunterladen*). The file is exactly what the server sent; choose **Keep** (*Behalten*).
+Invoice PDFs are not affected — they open in the browser instead of downloading.
+
+No setting in k-vet changes this; serving it over HTTPS does. k-vet has no TLS of its own, so
+that means a reverse proxy in front with a certificate the devices trust, and
+`base_url = "https://…"`, which also marks the login cookie `Secure`.
+
 ## Monitoring
 
 - `GET /healthz` — liveness, no session required. Also the image's `HEALTHCHECK`.
