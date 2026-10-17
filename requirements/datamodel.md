@@ -183,8 +183,10 @@ Fields:
 * PDF File (references an Attachment)
 * Invoice Number (string!)
 * Invoice Date
-* Email Recipients (optional)
+* Email Recipients (optional) — the addresses last asked for; what a retry uses
 * Timestamp Sent by Email (optional)
+* Sent To / CC / BCC (optional) — the addresses the email actually went to, recorded together
+  with the timestamp once the mail server accepted it; shown on the invoice as "sent to"
 * Timestamp Sent by Post (optional)
 * Timestamp Submitted to Bookkeeping (optional)
 * Timestamp Cancelled (optional)

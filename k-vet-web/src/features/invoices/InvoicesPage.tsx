@@ -19,6 +19,7 @@ import { DataList, type DataListColumn } from '@/components/DataList'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { SentTo } from '@/features/invoices/SentTo'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
 
@@ -91,15 +92,19 @@ export function InvoicesPage() {
       header: t('invoices.status'),
       // Released and still here is the one status that is a task rather than a fact, so it is
       // the one that gets a colour.
+      // Where an emailed invoice went, under its status — the addresses the mail server took.
       cell: (row) => (
-        <span
-          className={cn(
-            'rounded-full px-2 py-0.5 text-xs',
-            row.status === 'accepted' ? 'bg-rust-soft text-rust' : 'bg-sunken text-ink-soft',
-          )}
-          title={row.status === 'accepted' ? t('invoices.notSent') : undefined}
-        >
-          {t(`invoices.status_${row.status}`)}
+        <span className="flex flex-col items-start gap-0.5">
+          <span
+            className={cn(
+              'rounded-full px-2 py-0.5 text-xs',
+              row.status === 'accepted' ? 'bg-rust-soft text-rust' : 'bg-sunken text-ink-soft',
+            )}
+            title={row.status === 'accepted' ? t('invoices.notSent') : undefined}
+          >
+            {t(`invoices.status_${row.status}`)}
+          </span>
+          <SentTo to={row.sent_email_to} />
         </span>
       ),
     },

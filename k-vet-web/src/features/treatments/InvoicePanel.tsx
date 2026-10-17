@@ -15,6 +15,7 @@ import type { Treatment } from '@/api/generated/model'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { NotSentBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
+import { SentTo } from '@/features/invoices/SentTo'
 import { useLocaleFormat } from '@/lib/locale'
 
 interface InvoicePanelProps {
@@ -89,6 +90,14 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
                 ? ` · ${t('invoices.sentByPost')} ${dateTime(invoice.data.ts_sent_post)}`
                 : ''}
             </p>
+          ) : null}
+          {invoice.data?.ts_sent_email ? (
+            <SentTo
+              className="mt-0.5 block"
+              to={invoice.data.sent_email_to}
+              cc={invoice.data.sent_email_cc}
+              bcc={invoice.data.sent_email_bcc}
+            />
           ) : null}
           {isUnsent ? (
             <p className="mt-1.5">

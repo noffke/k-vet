@@ -6,7 +6,10 @@
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 
 use std::cell::RefCell;
-use std::sync::Arc;
+use std::io::{BufRead, BufReader, Write};
+use std::net::{TcpListener, TcpStream};
+use std::sync::atomic::{AtomicBool, Ordering};
+use std::sync::{Arc, Mutex};
 
 use axum::Router;
 use axum::body::Body;
@@ -292,6 +295,101 @@ impl TestApp {
 }
 
 /// A test configuration wired to a temporary attachments directory.
+/// A mail server for the tests, which have none otherwise — without it only the failing side of
+/// sending is ever exercised.
+pub struct MailServer {
+    pub port: u16,
+    /// The envelope recipients (`RCPT TO`) of every accepted message: where mail really went,
+    /// BCC included.
+    pub recipients: Arc<Mutex<Vec<String>>>,
+    /// Cleared, the server turns every connection away, as an unreachable relay would.
+    pub accepting: Arc<AtomicBool>,
+}
+
+impl MailServer {
+    pub fn start() -> Self {
+        let listener = TcpListener::bind("127.0.0.1:0").expect("a free port for the mail server");
+        let port = listener
+            .local_addr()
+            .expect("the mail server's address")
+            .port();
+        let recipients = Arc::new(Mutex::new(Vec::new()));
+        let accepting = Arc::new(AtomicBool::new(true));
+        let (seen, open) = (Arc::clone(&recipients), Arc::clone(&accepting));
+        std::thread::spawn(move || {
+            for connection in listener.incoming().flatten() {
+                let (seen, open) = (Arc::clone(&seen), Arc::clone(&open));
+                std::thread::spawn(move || serve_smtp(connection, &seen, &open));
+            }
+        });
+        MailServer {
+            port,
+            recipients,
+            accepting,
+        }
+    }
+
+    pub fn refuse(&self) {
+        self.accepting.store(false, Ordering::SeqCst);
+    }
+}
+
+/// Just enough SMTP for lettre without TLS or authentication: every command is fine, `DATA`
+/// takes everything up to the lone dot.
+fn serve_smtp(connection: TcpStream, seen: &Mutex<Vec<String>>, accepting: &AtomicBool) {
+    let Ok(reader) = connection.try_clone() else {
+        return;
+    };
+    let mut writer = connection;
+    let mut reply = |line: &str| writer.write_all(format!("{line}\r\n").as_bytes()).is_ok();
+    if !accepting.load(Ordering::SeqCst) {
+        reply("421 not now");
+        return;
+    }
+    if !reply("220 k-vet test mail server") {
+        return;
+    }
+    let mut in_data = false;
+    for line in BufReader::new(reader).lines() {
+        let Ok(line) = line else {
+            return;
+        };
+        if in_data {
+            if line == "." {
+                in_data = false;
+                if !reply("250 queued") {
+                    return;
+                }
+            }
+            continue;
+        }
+        // Pooled connections stay open between messages, so the switch is read per command.
+        if !accepting.load(Ordering::SeqCst) {
+            reply("421 not now");
+            return;
+        }
+        let command = line.to_ascii_uppercase();
+        let answer = if let Some(address) = command.strip_prefix("RCPT TO:") {
+            let address = line[line.len() - address.len()..].trim();
+            if let Ok(mut seen) = seen.lock() {
+                seen.push(address.trim_matches(['<', '>']).to_owned());
+            }
+            "250 ok"
+        } else if command.starts_with("DATA") {
+            in_data = true;
+            "354 go ahead"
+        } else if command.starts_with("QUIT") {
+            reply("221 bye");
+            return;
+        } else {
+            "250 ok"
+        };
+        if !reply(answer) {
+            return;
+        }
+    }
+}
+
 pub fn test_config(attachments_dir: &str) -> Config {
     let raw = format!(
         r#"

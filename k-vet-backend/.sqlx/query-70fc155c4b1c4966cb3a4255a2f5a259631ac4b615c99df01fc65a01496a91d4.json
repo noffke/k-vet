@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,\n                  invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
+  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,\n                  invoice.sent_email_to, invoice.sent_email_cc, invoice.sent_email_bcc,\n                  invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
   "describe": {
     "columns": [
       {
@@ -150,6 +150,39 @@
       },
       {
         "ordinal": 12,
+        "name": "sent_email_to",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "sent_email_to"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "sent_email_cc",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "sent_email_cc"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "sent_email_bcc",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "sent_email_bcc"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
         "name": "ts_submitted",
         "type_info": "Timestamptz",
         "origin": {
@@ -160,7 +193,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 16,
         "name": "ts_cancelled",
         "type_info": "Timestamptz",
         "origin": {
@@ -171,7 +204,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 17,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -202,8 +235,11 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "9fd1deed022a12cddc449281c84998af987c659184172f6d146c599ef9a62dfd"
+  "hash": "70fc155c4b1c4966cb3a4255a2f5a259631ac4b615c99df01fc65a01496a91d4"
 }

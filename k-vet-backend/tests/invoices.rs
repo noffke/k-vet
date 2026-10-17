@@ -751,3 +751,62 @@ async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
         println!("wrote {} bytes to {path}", pdf.body.len());
     }
 }
+
+/// "Sent to" names where the mail went, not where it was asked to go (issues.md, 2026-10-17):
+/// recorded only once the mail server took the message, CC and BCC from the settings included,
+/// and left alone by a resend that never got through.
+#[sqlx::test]
+async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
+    let mail = common::MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    sqlx::query(
+        "UPDATE global_settings
+            SET cc_emails = '{buchhaltung@example.com}', bcc_emails = '{archiv@example.com}'",
+    )
+    .execute(&pool)
+    .await
+    .expect("CC and BCC");
+    let billed = billable_treatment(&app, &pool).await;
+    let invoice = create_invoice(&app, billed.treatment_id).await;
+    let invoice_id = invoice["id"].as_i64().unwrap_or_default();
+
+    let accepted = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/accept"),
+            json!({ "recipient_emails": ["kundin@example.com"] }),
+        )
+        .await;
+    assert_eq!(accepted.status, StatusCode::OK);
+
+    let sent = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
+    assert_eq!(sent["status"], "sent");
+    assert_eq!(sent["sent_email_to"], json!(["kundin@example.com"]));
+    assert_eq!(sent["sent_email_cc"], json!(["buchhaltung@example.com"]));
+    assert_eq!(sent["sent_email_bcc"], json!(["archiv@example.com"]));
+    let mut envelope = mail.recipients.lock().expect("recipients").clone();
+    envelope.sort();
+    assert_eq!(
+        envelope,
+        [
+            "archiv@example.com",
+            "buchhaltung@example.com",
+            "kundin@example.com"
+        ],
+        "and that is where the mail server was told to deliver it"
+    );
+
+    // A resend through a mail server that turns it away: the new address is what a retry will
+    // use, but "sent to" still names the delivery that happened.
+    mail.refuse();
+    let failed = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({ "recipient_emails": ["andere@example.com"] }),
+        )
+        .await;
+    assert_eq!(failed.status, StatusCode::BAD_GATEWAY);
+    let after = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
+    assert_eq!(after["email_recipients"], json!(["andere@example.com"]));
+    assert_eq!(after["sent_email_to"], json!(["kundin@example.com"]));
+    assert_eq!(after["ts_sent_email"], sent["ts_sent_email"]);
+}

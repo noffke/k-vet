@@ -18,11 +18,22 @@ export interface Invoice {
   note?: string | null;
   /** @nullable */
   pdf_attachment_id?: number | null;
+  /**
+     * The addresses last asked for — what a retry uses. Not proof of delivery: see
+     * `sent_email_to`.
+     */
   email_recipients: string[];
   /** @nullable */
   ts_accepted?: string | null;
   /** @nullable */
   ts_sent_email?: string | null;
+  /**
+     * Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the
+     * mail server; CC/BCC are unknown for invoices sent before this was recorded.
+     */
+  sent_email_to: string[];
+  sent_email_cc: string[];
+  sent_email_bcc: string[];
   /**
      * When the invoice was handed over on paper — the only trace a postal send leaves.
      * @nullable

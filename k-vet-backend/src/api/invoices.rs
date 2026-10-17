@@ -54,9 +54,16 @@ pub struct Invoice {
     pub includes_finding: bool,
     pub note: Option<String>,
     pub pdf_attachment_id: Option<i64>,
+    /// The addresses last asked for — what a retry uses. Not proof of delivery: see
+    /// `sent_email_to`.
     pub email_recipients: Vec<String>,
     pub ts_accepted: Option<DateTime<Utc>>,
     pub ts_sent_email: Option<DateTime<Utc>>,
+    /// Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the
+    /// mail server; CC/BCC are unknown for invoices sent before this was recorded.
+    pub sent_email_to: Vec<String>,
+    pub sent_email_cc: Vec<String>,
+    pub sent_email_bcc: Vec<String>,
     /// When the invoice was handed over on paper — the only trace a postal send leaves.
     pub ts_sent_post: Option<DateTime<Utc>>,
     pub ts_submitted: Option<DateTime<Utc>>,
@@ -622,13 +629,21 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
     state.mailer.send(message).await?;
 
     // The timestamp is written only after the mail server accepted the message, and it is what
-    // moves the invoice on. A resend must not drag a submitted invoice back a stage.
+    // moves the invoice on. A resend must not drag a submitted invoice back a stage. With it go
+    // the addresses this message actually went to, CC and BCC included — what the screen shows
+    // as "sent to", unlike `email_recipients`, which is only what was last asked for.
     sqlx::query!(
         "UPDATE invoice
          SET ts_sent_email = now(),
+             sent_email_to = $2,
+             sent_email_cc = $3,
+             sent_email_bcc = $4,
              status = CASE WHEN status = 'accepted' THEN 'sent'::invoice_status ELSE status END
          WHERE id = $1",
-        invoice_id
+        invoice_id,
+        &recipients,
+        &row.cc_emails,
+        &row.bcc_emails,
     )
     .execute(&state.pool)
     .await?;
@@ -1205,6 +1220,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
                   invoice.status AS "status: InvoiceStatus", invoice.includes_finding,
                   invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,
                   invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,
+                  invoice.sent_email_to, invoice.sent_email_cc, invoice.sent_email_bcc,
                   invoice.ts_submitted,
                   invoice.ts_cancelled, invoice.created_at
            FROM invoice WHERE invoice.id = $1"#,
@@ -1228,6 +1244,9 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
         email_recipients: row.email_recipients.unwrap_or_default(),
         ts_accepted: row.ts_accepted,
         ts_sent_email: row.ts_sent_email,
+        sent_email_to: row.sent_email_to.unwrap_or_default(),
+        sent_email_cc: row.sent_email_cc.unwrap_or_default(),
+        sent_email_bcc: row.sent_email_bcc.unwrap_or_default(),
         ts_sent_post: row.ts_sent_post,
         ts_submitted: row.ts_submitted,
         ts_cancelled: row.ts_cancelled,

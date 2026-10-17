@@ -5263,6 +5263,9 @@
           "status",
           "includes_finding",
           "email_recipients",
+          "sent_email_to",
+          "sent_email_cc",
+          "sent_email_bcc",
           "customer_name",
           "patients",
           "total_gross",
@@ -5307,7 +5310,8 @@
             "type": "array",
             "items": {
               "type": "string"
-            }
+            },
+            "description": "The addresses last asked for — what a retry uses. Not proof of delivery: see\n`sent_email_to`."
           },
           "ts_accepted": {
             "type": [
@@ -5322,6 +5326,25 @@
               "null"
             ],
             "format": "date-time"
+          },
+          "sent_email_to": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded."
+          },
+          "sent_email_cc": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "sent_email_bcc": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           },
           "ts_sent_post": {
             "type": [
