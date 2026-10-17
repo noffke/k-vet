@@ -205,21 +205,22 @@
     "title": "Patients",
     "treatments": "Treatments"
   },
+  "appointment": {
+    "customerLocked": "An animal of this customer is already on the appointment — the customer can no longer change."
+  },
   "appointments": {
-    "addTreatment": "Add treatment",
     "customer": "Customer",
     "customerHint": "Decides which animals are on offer.",
     "delete": "Delete appointment",
     "deleteBlocked": "An invoice has already been written for this appointment. It stays on record and cannot be deleted.",
-    "deleteConfirm": "Really delete this appointment? Its treatments and their positions go with it.",
+    "deleteConfirm": "Really delete this appointment? Its treatment and its positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
     "pickCustomer": "Search customers …",
     "priceMode": "Prices",
     "priceModeRefresh": "Refresh prices",
     "priceModeVerbatim": "Copy prices",
-    "title": "Appointments",
-    "treatments": "Treatments"
+    "title": "Appointments"
   },
   "treatments": {
     "addItem": "Add line",

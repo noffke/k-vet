@@ -422,11 +422,7 @@ async fn a_dispensed_treatment_cannot_be_deleted_once_invoiced(pool: PgPool) {
     let billed = billable_treatment(&app, &pool).await;
     create_invoice(&app, billed.treatment_id).await;
 
-    let rejected = app
-        .delete(&format!("/api/treatments/{}", billed.treatment_id))
-        .await;
-    assert_eq!(rejected.status, StatusCode::CONFLICT);
-
+    // The treatment goes only with its appointment (migration 0022), and that is refused.
     let appointment: i64 = sqlx::query_scalar("SELECT appointment_id FROM treatment WHERE id = $1")
         .bind(billed.treatment_id)
         .fetch_one(&pool)
@@ -457,15 +453,6 @@ async fn a_cancelled_invoice_still_keeps_its_treatment_and_appointment(pool: PgP
         .await;
     assert_eq!(cancelled.status, StatusCode::OK);
     assert_eq!(cancelled.json()["status"], "cancelled");
-
-    let rejected = app
-        .delete(&format!("/api/treatments/{}", billed.treatment_id))
-        .await;
-    assert_eq!(
-        rejected.status,
-        StatusCode::CONFLICT,
-        "a cancelled invoice is still an invoice; the treatment stays",
-    );
 
     let appointment: i64 = sqlx::query_scalar("SELECT appointment_id FROM treatment WHERE id = $1")
         .bind(billed.treatment_id)

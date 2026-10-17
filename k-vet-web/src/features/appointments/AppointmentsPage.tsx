@@ -45,12 +45,6 @@ export function AppointmentsPage() {
       cell: (row) => dateTime(row.starts_at) || '—',
     },
     { id: 'note', header: t('field.note'), cell: (row) => row.note ?? '' },
-    {
-      id: 'treatments',
-      header: t('appointments.treatments'),
-      numeric: true,
-      cell: (row) => row.treatment_count,
-    },
   ]
 
   return (
@@ -92,7 +86,7 @@ export function AppointmentsPage() {
         rowBadge={(row) => (
           <span className="inline-flex flex-wrap items-center gap-1">
             <IncompleteBadge missing={row.missing_fields} />
-            <NotBilledBadge count={row.unbilled_treatment_count} />
+            <NotBilledBadge count={row.unbilled ? 1 : 0} />
           </span>
         )}
         onRowClick={(row) =>

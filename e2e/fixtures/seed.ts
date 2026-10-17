@@ -74,24 +74,26 @@ export async function seedPatient(
   return patient.id
 }
 
-/** An appointment with a treatment, ready for billing lines. */
+/** An appointment with the animal on its treatment, ready for billing lines. */
 export async function seedTreatment(
   request: APIRequestContext,
   patientId: number,
 ): Promise<{ appointmentId: number; treatmentId: number }> {
-  // The appointment says whose visit it is, and the treatment inherits it (issues.md 7), so
-  // the seed has to name the owner rather than let the first animal imply it.
+  // The appointment says whose visit it is, and its treatment — made with it — inherits that
+  // (issues.md 7), so the seed names the owner rather than letting the first animal imply it.
   const patient = await (await request.get(`/api/patients/${patientId}`)).json()
-  const appointment = await post<{ id: number }>(request, '/api/appointments', {
-    starts_at: new Date().toISOString(),
-    customer_id: (patient as { customer_id: number }).customer_id,
-  })
-  const treatment = await post<{ id: number }>(
+  const appointment = await post<{ id: number; treatment_id: number }>(
     request,
-    `/api/appointments/${appointment.id}/treatments`,
-    { patient_ids: [patientId] },
+    '/api/appointments',
+    {
+      starts_at: new Date().toISOString(),
+      customer_id: (patient as { customer_id: number }).customer_id,
+    },
   )
-  return { appointmentId: appointment.id, treatmentId: treatment.id }
+  await post(request, `/api/treatments/${appointment.treatment_id}/patients`, {
+    patient_id: patientId,
+  })
+  return { appointmentId: appointment.id, treatmentId: appointment.treatment_id }
 }
 
 export interface SeededDrug {

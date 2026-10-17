@@ -191,10 +191,20 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
     .await?
     .rows_affected();
 
+    // An appointment always has its treatment (migration 0022), so "abandoned" means that
+    // treatment is still empty: no animal, no line, no invoice. The delete takes it along.
     removed.appointments = sqlx::query!(
         "DELETE FROM appointment
          WHERE draft AND created_at < $1 AND starts_at IS NULL
-           AND NOT EXISTS (SELECT 1 FROM treatment WHERE appointment_id = appointment.id)",
+           AND NOT EXISTS (
+                 SELECT 1 FROM treatment
+                 WHERE treatment.appointment_id = appointment.id
+                   AND (EXISTS (SELECT 1 FROM patient_treatment
+                                WHERE patient_treatment.treatment_id = treatment.id)
+                        OR EXISTS (SELECT 1 FROM treatment_item
+                                   WHERE treatment_item.treatment_id = treatment.id)
+                        OR EXISTS (SELECT 1 FROM invoice
+                                   WHERE invoice.treatment_id = treatment.id)))",
         cutoff,
     )
     .execute(&mut *transaction)

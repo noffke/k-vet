@@ -474,12 +474,22 @@ pub async fn seed_travel_service(pool: &PgPool) -> i64 {
     .expect("seed travel service")
 }
 
+/// A complete appointment with its (still empty) treatment — an appointment never exists
+/// without one (migration 0022), so neither does a seeded one.
 pub async fn seed_appointment(pool: &PgPool, starts_at: DateTime<Utc>) -> i64 {
-    sqlx::query_scalar("INSERT INTO appointment (starts_at, draft) VALUES ($1, false) RETURNING id")
-        .bind(starts_at)
-        .fetch_one(pool)
+    let id: i64 = sqlx::query_scalar(
+        "INSERT INTO appointment (starts_at, draft) VALUES ($1, false) RETURNING id",
+    )
+    .bind(starts_at)
+    .fetch_one(pool)
+    .await
+    .expect("seed appointment");
+    sqlx::query("INSERT INTO treatment (appointment_id) VALUES ($1)")
+        .bind(id)
+        .execute(pool)
         .await
-        .expect("seed appointment")
+        .expect("seed the appointment's treatment");
+    id
 }
 
 pub async fn seed_treatment(pool: &PgPool, appointment_id: i64, patient_id: i64) -> i64 {
@@ -488,8 +498,9 @@ pub async fn seed_treatment(pool: &PgPool, appointment_id: i64, patient_id: i64)
         .0
 }
 
-/// A treatment with one animal, returning both ids: the reason and the finding live on the
-/// animal's record, and a line's owner is that record.
+/// Puts an animal on the appointment's treatment, returning the treatment's and the record's
+/// ids: the reason and the finding live on the animal's record, and a line's owner is that
+/// record. The appointment takes the animal's customer if it has none yet.
 pub async fn seed_patient_treatment(
     pool: &PgPool,
     appointment_id: i64,
@@ -511,8 +522,11 @@ pub async fn seed_patient_treatment(
         .await
         .expect("give the appointment its customer");
 
+    // The appointment's one treatment, made with it; a first customer is carried down by hand,
+    // as the API does — no key change for a cascade to see.
     let treatment_id: i64 = sqlx::query_scalar(
-        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
+        "UPDATE treatment SET customer_id = COALESCE(customer_id, $2)
+         WHERE appointment_id = $1 RETURNING id",
     )
     .bind(appointment_id)
     .bind(customer_id)

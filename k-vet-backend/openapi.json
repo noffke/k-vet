@@ -152,7 +152,7 @@
             "description": "Deleted"
           },
           "409": {
-            "description": "An invoice was written for one of its treatments"
+            "description": "An invoice was written for its treatment"
           }
         }
       },
@@ -241,82 +241,6 @@
             }
           },
           "404": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/appointments/{id}/treatments": {
-      "get": {
-        "tags": [
-          "treatments"
-        ],
-        "operationId": "listTreatments",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Treatment"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "tags": [
-          "treatments"
-        ],
-        "operationId": "createTreatment",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateTreatment"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Treatment"
-                }
-              }
-            }
-          },
-          "422": {
             "description": ""
           }
         }
@@ -3930,31 +3854,6 @@
             "description": ""
           }
         }
-      },
-      "delete": {
-        "tags": [
-          "treatments"
-        ],
-        "operationId": "deleteTreatment",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "responses": {
-          "204": {
-            "description": ""
-          },
-          "409": {
-            "description": ""
-          }
-        }
       }
     },
     "/api/treatments/{id}/apply-template": {
@@ -4002,50 +3901,6 @@
             "description": ""
           },
           "409": {
-            "description": ""
-          }
-        }
-      }
-    },
-    "/api/treatments/{id}/duplicate": {
-      "post": {
-        "tags": [
-          "treatments"
-        ],
-        "operationId": "duplicateTreatment",
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "schema": {
-              "type": "integer",
-              "format": "int64"
-            }
-          }
-        ],
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DuplicateRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Treatment"
-                }
-              }
-            }
-          },
-          "404": {
             "description": ""
           }
         }
@@ -4437,8 +4292,8 @@
           "id",
           "draft",
           "missing_fields",
-          "treatment_count",
-          "unbilled_treatment_count",
+          "treatment_id",
+          "unbilled",
           "created_at",
           "updated_at"
         ],
@@ -4467,7 +4322,7 @@
               "null"
             ],
             "format": "int64",
-            "description": "Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer's (FR-027)."
+            "description": "Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer's (FR-027). It can change until an animal\nis attached."
           },
           "customer_name": {
             "type": [
@@ -4487,14 +4342,14 @@
             },
             "description": "Mandatory fields still empty, for the \"incomplete — missing: …\" hint."
           },
-          "treatment_count": {
-            "type": "integer",
-            "format": "int64"
-          },
-          "unbilled_treatment_count": {
+          "treatment_id": {
             "type": "integer",
             "format": "int64",
-            "description": "Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036)."
+            "description": "The appointment's one treatment, made with it."
+          },
+          "unbilled": {
+            "type": "boolean",
+            "description": "The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036)."
           },
           "created_at": {
             "type": "string",
@@ -4854,19 +4709,6 @@
           },
           "quantity": {
             "type": "string"
-          }
-        }
-      },
-      "CreateTreatment": {
-        "type": "object",
-        "properties": {
-          "patient_ids": {
-            "type": "array",
-            "items": {
-              "type": "integer",
-              "format": "int64"
-            },
-            "description": "Patients to attach right away; all must belong to one customer. Each gets its own\nPatientenbehandlung."
           }
         }
       },

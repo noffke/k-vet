@@ -1,4 +1,8 @@
-//! Appointments — dated visits that hold treatments (T030).
+//! Appointments — dated visits, each with exactly one treatment (T030).
+//!
+//! The treatment is made with the appointment and lives as long as it does: a second invoice
+//! for the same visit is a second appointment (migration 0022). The appointment carries the
+//! draft lifecycle — time, note, customer — and the treatment the clinical and billing record.
 
 use axum::extract::{Path, Query, State};
 use axum::http::StatusCode;
@@ -20,8 +24,9 @@ pub struct Appointment {
     /// Minute-resolution start; the date defaults to today in the UI, the time is typed.
     pub starts_at: Option<DateTime<Utc>>,
     pub note: Option<String>,
-    /// Whose visit this is. Chosen here and carried down to the treatments, which is what
-    /// limits the animals on offer to that customer's (FR-027).
+    /// Whose visit this is. Chosen here and carried down to the treatment, which is what
+    /// limits the animals on offer to that customer's (FR-027). It can change until an animal
+    /// is attached.
     pub customer_id: Option<i64>,
     /// For the header, so the appointment says whose it is without a second request.
     pub customer_name: Option<String>,
@@ -29,10 +34,11 @@ pub struct Appointment {
     pub draft: bool,
     /// Mandatory fields still empty, for the "incomplete — missing: …" hint.
     pub missing_fields: Vec<String>,
-    pub treatment_count: i64,
-    /// Treatments here that carry positions and no live invoice — work that has not been
-    /// billed to anyone yet (FR-036).
-    pub unbilled_treatment_count: i64,
+    /// The appointment's one treatment, made with it.
+    pub treatment_id: i64,
+    /// The treatment carries positions and no live invoice — work that has not been billed to
+    /// anyone yet (FR-036).
+    pub unbilled: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -62,8 +68,8 @@ struct Row {
     customer_id: Option<i64>,
     customer_name: Option<String>,
     draft: bool,
-    treatment_count: Option<i64>,
-    unbilled_treatment_count: Option<i64>,
+    treatment_id: i64,
+    unbilled: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -78,8 +84,8 @@ impl From<Row> for Appointment {
             customer_name: row.customer_name,
             draft: row.draft,
             missing_fields: missing(row.starts_at.is_some()),
-            treatment_count: row.treatment_count.unwrap_or(0),
-            unbilled_treatment_count: row.unbilled_treatment_count.unwrap_or(0),
+            treatment_id: row.treatment_id,
+            unbilled: row.unbilled,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -113,17 +119,14 @@ pub async fn list(
                   appointment.customer_id,
                   concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
                   appointment.created_at, appointment.updated_at,
-                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
-                      AS treatment_count,
-                  (SELECT count(*) FROM treatment
-                   WHERE treatment.appointment_id = appointment.id
-                     AND EXISTS (SELECT 1 FROM treatment_item
-                                 WHERE treatment_item.treatment_id = treatment.id)
-                     AND NOT EXISTS (SELECT 1 FROM invoice
-                                     WHERE invoice.treatment_id = treatment.id
-                                       AND invoice.status <> 'cancelled'))
-                      AS unbilled_treatment_count
+                  treatment.id AS treatment_id,
+                  (EXISTS (SELECT 1 FROM treatment_item
+                           WHERE treatment_item.treatment_id = treatment.id)
+                   AND NOT EXISTS (SELECT 1 FROM invoice
+                                   WHERE invoice.treatment_id = treatment.id
+                                     AND invoice.status <> 'cancelled')) AS "unbilled!"
            FROM appointment
+           JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id
            WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')
            ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC
@@ -150,25 +153,30 @@ pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CreateAppointment>,
 ) -> AppResult<Json<Appointment>> {
-    // Created as a draft immediately, so auto-save has a row to PATCH (research R4).
+    // Created as a draft immediately, so auto-save has a row to PATCH (research R4) — and with
+    // its treatment, in the same transaction: there is never an appointment without one.
     let draft = body.starts_at.is_none();
-    let row = sqlx::query_as!(
-        Row,
-        r#"INSERT INTO appointment (starts_at, note, customer_id, draft)
-           VALUES ($1, $2, $3, $4)
-           RETURNING id, starts_at, note, draft, created_at, updated_at, customer_id,
-                     (SELECT concat_ws(' ', first_name, last_name) FROM customer
-                      WHERE customer.id = appointment.customer_id) AS customer_name,
-                     0::bigint AS treatment_count, 0::bigint AS unbilled_treatment_count"#,
+    let mut transaction = state.pool.begin().await?;
+    let id: i64 = sqlx::query_scalar!(
+        "INSERT INTO appointment (starts_at, note, customer_id, draft)
+         VALUES ($1, $2, $3, $4) RETURNING id",
         body.starts_at,
         body.note,
         body.customer_id,
         draft,
     )
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *transaction)
     .await?;
+    sqlx::query!(
+        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2)",
+        id,
+        body.customer_id,
+    )
+    .execute(&mut *transaction)
+    .await?;
+    transaction.commit().await?;
 
-    Ok(Json(row.into()))
+    Ok(Json(load(&state.pool, id).await?))
 }
 
 #[utoipa::path(
@@ -193,18 +201,16 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
                   appointment.customer_id,
                   concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
                   appointment.created_at, appointment.updated_at,
-                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
-                      AS treatment_count,
-                  (SELECT count(*) FROM treatment
-                   WHERE treatment.appointment_id = appointment.id
-                     AND EXISTS (SELECT 1 FROM treatment_item
-                                 WHERE treatment_item.treatment_id = treatment.id)
-                     AND NOT EXISTS (SELECT 1 FROM invoice
-                                     WHERE invoice.treatment_id = treatment.id
-                                       AND invoice.status <> 'cancelled'))
-                      AS unbilled_treatment_count
+                  treatment.id AS treatment_id,
+                  (EXISTS (SELECT 1 FROM treatment_item
+                           WHERE treatment_item.treatment_id = treatment.id)
+                   AND NOT EXISTS (SELECT 1 FROM invoice
+                                   WHERE invoice.treatment_id = treatment.id
+                                     AND invoice.status <> 'cancelled')) AS "unbilled!"
            FROM appointment
-           LEFT JOIN customer ON customer.id = appointment.customer_id WHERE appointment.id = $1"#,
+           JOIN treatment ON treatment.appointment_id = appointment.id
+           LEFT JOIN customer ON customer.id = appointment.customer_id
+           WHERE appointment.id = $1"#,
         id,
     )
     .fetch_optional(pool)
@@ -241,27 +247,35 @@ pub async fn patch(
     let starts_at = body.starts_at.unwrap_or(current.starts_at);
     let draft = recompute_draft(current.draft, &[("starts_at", starts_at.is_some())])?;
 
-    let row = sqlx::query_as!(
-        Row,
-        r#"UPDATE appointment SET
-               starts_at   = CASE WHEN $2 THEN $3 ELSE starts_at END,
-               note        = CASE WHEN $4 THEN $5 ELSE note END,
-               customer_id = CASE WHEN $7 THEN $8 ELSE customer_id END,
-               draft       = $6
-           WHERE id = $1
-           RETURNING id, starts_at, note, draft, created_at, updated_at, customer_id,
-                     (SELECT concat_ws(' ', first_name, last_name) FROM customer
-                      WHERE customer.id = appointment.customer_id) AS customer_name,
-                     (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)
-                         AS treatment_count,
-                     (SELECT count(*) FROM treatment
-                      WHERE treatment.appointment_id = appointment.id
-                        AND EXISTS (SELECT 1 FROM treatment_item
-                                    WHERE treatment_item.treatment_id = treatment.id)
-                        AND NOT EXISTS (SELECT 1 FROM invoice
-                                        WHERE invoice.treatment_id = treatment.id
-                                          AND invoice.status <> 'cancelled'))
-                         AS unbilled_treatment_count"#,
+    // The customer can change until an animal is attached: the animals belong to the customer,
+    // and moving the visit would strand them. The foreign keys refuse it too
+    // (`patient_treatment_treatment_customer_fkey`); this says why.
+    let new_customer = body
+        .customer_id
+        .filter(|customer| *customer != current.customer_id);
+    if new_customer.is_some() {
+        let has_animals: Option<bool> = sqlx::query_scalar!(
+            "SELECT EXISTS (
+                 SELECT 1 FROM patient_treatment
+                 JOIN treatment ON treatment.id = patient_treatment.treatment_id
+                 WHERE treatment.appointment_id = $1
+             )",
+            id,
+        )
+        .fetch_one(&mut *transaction)
+        .await?;
+        if has_animals.unwrap_or(false) {
+            return Err(AppError::field("customer_id", "appointment.customerLocked"));
+        }
+    }
+
+    sqlx::query!(
+        "UPDATE appointment SET
+             starts_at   = CASE WHEN $2 THEN $3 ELSE starts_at END,
+             note        = CASE WHEN $4 THEN $5 ELSE note END,
+             customer_id = CASE WHEN $7 THEN $8 ELSE customer_id END,
+             draft       = $6
+         WHERE id = $1",
         id,
         body.starts_at.is_some(),
         starts_at,
@@ -271,11 +285,24 @@ pub async fn patch(
         body.customer_id.is_some(),
         body.customer_id.flatten(),
     )
-    .fetch_one(&mut *transaction)
+    .execute(&mut *transaction)
     .await?;
 
+    // A change from one customer to another reached the treatment through ON UPDATE CASCADE; a
+    // first customer is no key change a cascade sees, so it is carried down here.
+    if let Some(customer_id) = new_customer {
+        sqlx::query!(
+            "UPDATE treatment SET customer_id = $2
+             WHERE appointment_id = $1 AND customer_id IS DISTINCT FROM $2",
+            id,
+            customer_id,
+        )
+        .execute(&mut *transaction)
+        .await?;
+    }
+
     transaction.commit().await?;
-    Ok(Json(row.into()))
+    Ok(Json(load(&state.pool, id).await?))
 }
 
 #[utoipa::path(
@@ -286,7 +313,7 @@ pub async fn patch(
     params(("id" = i64, Path,)),
     responses(
         (status = 204, description = "Deleted"),
-        (status = 409, description = "An invoice was written for one of its treatments")
+        (status = 409, description = "An invoice was written for its treatment")
     )
 )]
 pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
@@ -315,7 +342,7 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
     .await?;
     if invoiced.unwrap_or(false) {
         return Err(AppError::Conflict(
-            "an invoice exists for a treatment of this appointment".to_owned(),
+            "an invoice exists for the treatment of this appointment".to_owned(),
         ));
     }
 
@@ -368,22 +395,20 @@ pub async fn duplicate(
     .fetch_one(&mut *transaction)
     .await?;
 
-    let treatments = sqlx::query_scalar!(
-        "SELECT id FROM treatment WHERE appointment_id = $1 ORDER BY id",
-        id
+    // The copy's treatment is the source's, copied — animals, reasons, findings and lines.
+    let source_treatment: i64 =
+        sqlx::query_scalar!("SELECT id FROM treatment WHERE appointment_id = $1", id)
+            .fetch_one(&mut *transaction)
+            .await?;
+    treatments::copy_treatment(
+        &mut transaction,
+        source_treatment,
+        new_id,
+        source.customer_id,
+        body.price_mode,
+        &state.config.travel_expenses,
     )
-    .fetch_all(&mut *transaction)
     .await?;
-    for treatment_id in treatments {
-        treatments::copy_treatment(
-            &mut transaction,
-            treatment_id,
-            new_id,
-            body.price_mode,
-            &state.config.travel_expenses,
-        )
-        .await?;
-    }
 
     transaction.commit().await?;
     Ok(Json(load(&state.pool, new_id).await?))
@@ -409,8 +434,4 @@ pub fn routes() -> Router<AppState> {
             get(detail).patch(patch).delete(delete),
         )
         .route("/appointments/{id}/duplicate", post(duplicate))
-        .route(
-            "/appointments/{id}/treatments",
-            get(treatments::list_for_appointment).post(treatments::create_for_appointment),
-        )
 }

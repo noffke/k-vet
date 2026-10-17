@@ -18,12 +18,12 @@ export const ListAppointmentsResponseItem = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
-  "treatment_count": zod.int(),
-  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
+  "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
+  "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -40,12 +40,12 @@ export const CreateAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
-  "treatment_count": zod.int(),
-  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
+  "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
+  "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -59,12 +59,12 @@ export const GetAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
-  "treatment_count": zod.int(),
-  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
+  "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
+  "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -91,12 +91,12 @@ export const PatchAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
-  "treatment_count": zod.int(),
-  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
+  "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
+  "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -114,83 +114,12 @@ export const DuplicateAppointmentResponse = zod.object({
   "id": zod.int(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatments, which is what\nlimits the animals on offer to that customer\'s (FR-027).'),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header, so the appointment says whose it is without a second request.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
-  "treatment_count": zod.int(),
-  "unbilled_treatment_count": zod.int().describe('Treatments here that carry positions and no live invoice — work that has not been\nbilled to anyone yet (FR-036).'),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
-})
-
-
-export const ListTreatmentsParams = zod.object({
-  "id": zod.int()
-})
-
-export const ListTreatmentsResponseItem = zod.object({
-  "id": zod.int(),
-  "appointment_id": zod.int(),
-  "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "patients": zod.array(zod.object({
-  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
-  "patient_id": zod.int(),
-  "name": zod.string(),
-  "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
-})).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
-  "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
-  "id": zod.int(),
-  "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
-  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
-  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
-  "total_gross": zod.string(),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
-})
-export const ListTreatmentsResponse = zod.array(ListTreatmentsResponseItem)
-
-
-export const CreateTreatmentParams = zod.object({
-  "id": zod.int()
-})
-
-export const CreateTreatmentBody = zod.object({
-  "patient_ids": zod.array(zod.int()).optional().describe('Patients to attach right away; all must belong to one customer. Each gets its own\nPatientenbehandlung.')
-})
-
-export const CreateTreatmentResponse = zod.object({
-  "id": zod.int(),
-  "appointment_id": zod.int(),
-  "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "patients": zod.array(zod.object({
-  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
-  "patient_id": zod.int(),
-  "name": zod.string(),
-  "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
-})).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
-  "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
-  "id": zod.int(),
-  "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
-  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
-  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
-  "total_gross": zod.string(),
+  "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
+  "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -2649,13 +2578,6 @@ export const GetTreatmentResponse = zod.object({
 })
 
 
-export const DeleteTreatmentParams = zod.object({
-  "id": zod.int()
-})
-
-export const DeleteTreatmentResponse = zod.void()
-
-
 export const ApplyTemplateParams = zod.object({
   "id": zod.int()
 })
@@ -2697,43 +2619,6 @@ export const ApplyTemplateResponseItem = zod.object({
   "created_at": zod.iso.datetime({"offset":true})
 })
 export const ApplyTemplateResponse = zod.array(ApplyTemplateResponseItem)
-
-
-export const DuplicateTreatmentParams = zod.object({
-  "id": zod.int()
-})
-
-export const DuplicateTreatmentBody = zod.object({
-  "price_mode": zod.enum(['verbatim', 'refresh']).optional().describe('How a duplicate treats the prices pinned on the source\'s lines (FR-026).')
-})
-
-export const DuplicateTreatmentResponse = zod.object({
-  "id": zod.int(),
-  "appointment_id": zod.int(),
-  "starts_at": zod.iso.datetime({"offset":true}).nullish(),
-  "patients": zod.array(zod.object({
-  "id": zod.int().describe('The Patientenbehandlung — what positions and files hang on.'),
-  "patient_id": zod.int(),
-  "name": zod.string(),
-  "customer_id": zod.int(),
-  "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
-})).describe('One record per animal, each with its own reason, finding and positions.'),
-  "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
-  "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
-  "id": zod.int(),
-  "invoice_number": zod.string(),
-  "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
-  "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
-  "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
-  "total_gross": zod.string(),
-  "created_at": zod.iso.datetime({"offset":true}),
-  "updated_at": zod.iso.datetime({"offset":true})
-})
 
 
 export const CreateInvoiceParams = zod.object({

@@ -250,6 +250,7 @@ pub async fn create(
 ) -> AppResult<Json<TreatmentItem>> {
     let mut transaction = state.pool.begin().await?;
     stock::ensure_editable(&mut transaction, treatment_id).await?;
+    crate::api::treatments::ensure_open(&mut transaction, treatment_id).await?;
 
     let reference_id = match body.kind {
         TreatmentItemKind::DrugPackaging => body

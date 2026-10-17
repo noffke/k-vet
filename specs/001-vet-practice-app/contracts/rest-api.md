@@ -84,9 +84,7 @@ Resource-specific additions:
 |---|---|
 | `GET /api/appointments` / `POST` / `GET,PATCH /{id}` / `DELETE /{id}` | CRUD (delete allowed while no invoiced treatment) |
 | `POST /api/appointments/{id}/duplicate` | `{price_mode: verbatim\|refresh}` → copy, date = today |
-| `POST /api/appointments/{id}/treatments` | add treatment to appointment |
-| `GET,PATCH /api/treatments/{id}` | treatment detail (reason, finding, patients set) |
-| `POST /api/treatments/{id}/duplicate` | same `price_mode` option |
+| `GET,PATCH /api/treatments/{id}` | treatment detail (reason, finding, patients set); every appointment has exactly one, made with it and exposed as `treatment_id` — there is no separate create, list, duplicate or delete (amended 2026-10-17) |
 | `GET /api/treatments/{id}/items` / `POST` | list/add items; server pins name/price/VAT/factor/GOT number at insert; drug items write draft FEFO dispense movements |
 | `PATCH /api/treatment-items/{id}` | edit line (qty, overrides, patient, km) → draft movements recalculated |
 | `DELETE /api/treatment-items/{id}` | remove line (draft movements removed) |

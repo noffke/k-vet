@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  (SELECT count(*) FROM treatment WHERE treatment.appointment_id = appointment.id)\n                      AS treatment_count,\n                  (SELECT count(*) FROM treatment\n                   WHERE treatment.appointment_id = appointment.id\n                     AND EXISTS (SELECT 1 FROM treatment_item\n                                 WHERE treatment_item.treatment_id = treatment.id)\n                     AND NOT EXISTS (SELECT 1 FROM invoice\n                                     WHERE invoice.treatment_id = treatment.id\n                                       AND invoice.status <> 'cancelled'))\n                      AS unbilled_treatment_count\n           FROM appointment\n           LEFT JOIN customer ON customer.id = appointment.customer_id WHERE appointment.id = $1",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           WHERE ($1::text IS NULL OR appointment.note ILIKE '%' || $1 || '%')\n           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC\n           LIMIT $2 OFFSET $3",
   "describe": {
     "columns": [
       {
@@ -88,19 +88,26 @@
       },
       {
         "ordinal": 8,
-        "name": "treatment_count",
+        "name": "treatment_id",
         "type_info": "Int8",
-        "origin": "Expression"
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "id"
+          }
+        }
       },
       {
         "ordinal": 9,
-        "name": "unbilled_treatment_count",
-        "type_info": "Int8",
+        "name": "unbilled!",
+        "type_info": "Bool",
         "origin": "Expression"
       }
     ],
     "parameters": {
       "Left": [
+        "Text",
+        "Int8",
         "Int8"
       ]
     },
@@ -113,9 +120,9 @@
       null,
       false,
       false,
-      null,
+      false,
       null
     ]
   },
-  "hash": "c9db17b6b03ef6db759a06e05012ad46d776e8321b2a577aab3a81e709d1bb9c"
+  "hash": "e7e45cd5da18417cf641ba9af2ac3132de87c0535d2100983735d3e86d939242"
 }

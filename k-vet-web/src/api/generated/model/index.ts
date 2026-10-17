@@ -26,7 +26,6 @@ export * from './createPackaging';
 export * from './createPatient';
 export * from './createService';
 export * from './createTemplateItem';
-export * from './createTreatment';
 export * from './createTreatmentItem';
 export * from './customer';
 export * from './customerEmail';

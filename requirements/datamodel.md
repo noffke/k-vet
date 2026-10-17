@@ -138,12 +138,16 @@ Fields:
 * Appointment
   * Date + Time (minute resolution)
   * Note (optional)
-  * Relation: 1 Customer (optional while the appointment is still a draft; required before a
-    treatment can be started). Whose visit it is, chosen rather than inferred — it is what the
-    animal picker is filtered by, so it has to be known before the first animal is attached.
-  * Relation: n Treatment
+  * Relation: 1 Customer (optional while the appointment is still a draft; required before an
+    animal or a line goes onto its treatment). Whose visit it is, chosen rather than inferred —
+    it is what the animal picker is filtered by, so it has to be known before the first animal is
+    attached. It can change until an animal is attached.
+  * Relation: exactly 1 Treatment, created with the appointment and deleted with it. A second
+    invoice for the same visit means a second appointment with the same date, time and customer.
 * Treatment
-  * Relation: 1 Appointment
+  * Relation: 1 Appointment (unique: one treatment per appointment). The UI shows both as one
+    screen; the tables stay separate because the treatment is the billing record (invoices, stock
+    movements) and is born complete, while the appointment carries the draft lifecycle.
   * Relation: 1 Customer, inherited from the appointment — the invoice's customer
   * Relation: n Patient (all patients of a treatment belong to that customer; enforced by
     composite foreign keys, so no code path can write a mixed treatment)

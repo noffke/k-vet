@@ -39,9 +39,8 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByPlaceholder('Kunde suchen …').fill(lastName)
   await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
 
-  // ── A treatment, with the patient attached on its page ──────────────────────
-  await page.getByRole('button', { name: 'Behandlung hinzufügen' }).click()
-  await expect(page).toHaveURL(/\/treatments\/\d+$/)
+  // ── The treatment is part of the appointment: the patient is attached right here ──
+  await expect(page).toHaveURL(/\/appointments\/\d+$/)
   await page.getByPlaceholder('Patienten').fill(patientName)
   await page.getByRole('option', { name: new RegExp(patientName) }).first().click()
 
@@ -52,7 +51,7 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByLabel('Therapie und weiteres Vorgehen').fill('Allgemeinzustand unauffällig, Gewicht stabil.')
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
   await page.getByRole('link', { name: /Zurück/ }).click()
-  await expect(page).toHaveURL(/\/treatments\/\d+$/)
+  await expect(page).toHaveURL(/\/appointments\/\d+$/)
 
   // ── Two lines from the picker: a stocked drug and a service ──────────────────
   const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')

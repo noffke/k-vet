@@ -16,8 +16,9 @@ export interface Appointment {
   /** @nullable */
   note?: string | null;
   /**
-     * Whose visit this is. Chosen here and carried down to the treatments, which is what
-     * limits the animals on offer to that customer's (FR-027).
+     * Whose visit this is. Chosen here and carried down to the treatment, which is what
+     * limits the animals on offer to that customer's (FR-027). It can change until an animal
+     * is attached.
      * @nullable
      */
   customer_id?: number | null;
@@ -30,12 +31,13 @@ export interface Appointment {
   draft: boolean;
   /** Mandatory fields still empty, for the "incomplete — missing: …" hint. */
   missing_fields: string[];
-  treatment_count: number;
+  /** The appointment's one treatment, made with it. */
+  treatment_id: number;
   /**
-     * Treatments here that carry positions and no live invoice — work that has not been
-     * billed to anyone yet (FR-036).
+     * The treatment carries positions and no live invoice — work that has not been billed to
+     * anyone yet (FR-036).
      */
-  unbilled_treatment_count: number;
+  unbilled: boolean;
   created_at: string;
   updated_at: string;
 }

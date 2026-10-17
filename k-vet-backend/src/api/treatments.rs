@@ -1,9 +1,11 @@
 //! Treatments — the medical record of one visit, and the source of every invoice (T031).
+//!
+//! Every appointment has exactly one, made with it (migration 0022); there is no endpoint to
+//! create, list or delete them separately.
 
 use std::collections::HashMap;
 
 use axum::extract::{Path, State};
-use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
@@ -13,7 +15,7 @@ use sqlx::{PgConnection, Postgres, Transaction};
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{DuplicateRequest, PriceMode};
+use crate::api::common::PriceMode;
 use crate::api::treatment_items::{self, CatalogLine, TreatmentItem};
 use crate::config::TravelExpenseConfig;
 use crate::domain::enums::{InvoiceStatus, TreatmentItemKind};
@@ -68,14 +70,6 @@ pub struct TreatmentInvoice {
     pub status: InvoiceStatus,
 }
 
-#[derive(Debug, Default, Deserialize, ToSchema)]
-pub struct CreateTreatment {
-    /// Patients to attach right away; all must belong to one customer. Each gets its own
-    /// Patientenbehandlung.
-    #[serde(default)]
-    pub patient_ids: Vec<i64>,
-}
-
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct AddPatient {
     pub patient_id: i64,
@@ -87,83 +81,6 @@ pub struct ApplyTemplate {
     /// The animal the group's lines are for. Absent means the treatment's only animal, and
     /// with several it means none of them — which its drug lines will refuse.
     pub patient_treatment_id: Option<i64>,
-}
-
-#[utoipa::path(
-    get,
-    operation_id = "listTreatments",
-    path = "/api/appointments/{id}/treatments",
-    tag = "treatments",
-    params(("id" = i64, Path,)),
-    responses((status = 200, body = Vec<Treatment>))
-)]
-pub async fn list_for_appointment(
-    State(state): State<AppState>,
-    Path(appointment_id): Path<i64>,
-) -> AppResult<Json<Vec<Treatment>>> {
-    let ids = sqlx::query_scalar!(
-        "SELECT id FROM treatment WHERE appointment_id = $1 ORDER BY id",
-        appointment_id
-    )
-    .fetch_all(&state.pool)
-    .await?;
-
-    let mut connection = state.pool.acquire().await?;
-    let mut treatments = Vec::with_capacity(ids.len());
-    for id in ids {
-        treatments.push(load(&mut connection, id).await?);
-    }
-    Ok(Json(treatments))
-}
-
-#[utoipa::path(
-    post,
-    operation_id = "createTreatment",
-    path = "/api/appointments/{id}/treatments",
-    tag = "treatments",
-    params(("id" = i64, Path,)),
-    request_body = CreateTreatment,
-    responses((status = 200, body = Treatment), (status = 422))
-)]
-pub async fn create_for_appointment(
-    State(state): State<AppState>,
-    Path(appointment_id): Path<i64>,
-    Json(body): Json<CreateTreatment>,
-) -> AppResult<Json<Treatment>> {
-    let mut transaction = state.pool.begin().await?;
-
-    // Treatments hang off a *complete* appointment (data-model.md "Draft rows").
-    let appointment = sqlx::query!(
-        "SELECT draft, customer_id FROM appointment WHERE id = $1",
-        appointment_id
-    )
-    .fetch_optional(&mut *transaction)
-    .await?
-    .ok_or(AppError::NotFound)?;
-    if appointment.draft {
-        return Err(AppError::field("appointment_id", "record.incomplete"));
-    }
-    // Whose visit this is has to be settled before anything is billed against it, and the
-    // animals on offer are the ones this answer allows (issues.md 7).
-    let customer_id = appointment
-        .customer_id
-        .ok_or_else(|| AppError::field("customer_id", "treatment.customerRequired"))?;
-
-    let id: i64 = sqlx::query_scalar!(
-        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
-        appointment_id,
-        customer_id,
-    )
-    .fetch_one(&mut *transaction)
-    .await?;
-
-    for patient_id in body.patient_ids {
-        attach_patient(&mut transaction, id, patient_id).await?;
-    }
-
-    transaction.commit().await?;
-    let mut connection = state.pool.acquire().await?;
-    Ok(Json(load(&mut connection, id).await?))
 }
 
 #[utoipa::path(
@@ -183,40 +100,6 @@ pub async fn detail(
 }
 
 #[utoipa::path(
-    delete,
-    operation_id = "deleteTreatment",
-    path = "/api/treatments/{id}",
-    tag = "treatments",
-    params(("id" = i64, Path,)),
-    responses((status = 204), (status = 409))
-)]
-pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
-    let mut transaction = state.pool.begin().await?;
-
-    // Any invoice at all, cancelled ones included — see the note on deleting an appointment.
-    let invoiced: Option<bool> = sqlx::query_scalar!(
-        "SELECT EXISTS (SELECT 1 FROM invoice WHERE treatment_id = $1)",
-        id,
-    )
-    .fetch_one(&mut *transaction)
-    .await?;
-    if invoiced.unwrap_or(false) {
-        return Err(AppError::Conflict(
-            "an invoice exists for this treatment".to_owned(),
-        ));
-    }
-
-    let deleted = sqlx::query!("DELETE FROM treatment WHERE id = $1", id)
-        .execute(&mut *transaction)
-        .await?;
-    if deleted.rows_affected() == 0 {
-        return Err(AppError::NotFound);
-    }
-    transaction.commit().await?;
-    Ok(StatusCode::NO_CONTENT)
-}
-
-#[utoipa::path(
     post,
     operation_id = "addTreatmentPatient",
     path = "/api/treatments/{id}/patients",
@@ -232,6 +115,7 @@ pub async fn add_patient(
 ) -> AppResult<Json<Treatment>> {
     let mut transaction = state.pool.begin().await?;
     stock::ensure_editable(&mut transaction, id).await?;
+    ensure_open(&mut transaction, id).await?;
     attach_patient(&mut transaction, id, body.patient_id).await?;
     transaction.commit().await?;
 
@@ -282,6 +166,32 @@ pub async fn remove_patient(
 
     let mut connection = state.pool.acquire().await?;
     Ok(Json(load(&mut connection, id).await?))
+}
+
+/// Refuses content on a treatment whose appointment is not ready for it.
+///
+/// The treatment exists from the moment the appointment does, a draft without a time or a
+/// customer included. Animals and lines wait until both are there: what is billed has to have a
+/// date, and whose visit it is decides which animals are on offer (issues.md 7). This is the
+/// gate the old "add treatment" step used to be.
+pub async fn ensure_open(connection: &mut PgConnection, treatment_id: i64) -> AppResult<()> {
+    let row = sqlx::query!(
+        "SELECT appointment.draft, treatment.customer_id
+           FROM treatment
+           JOIN appointment ON appointment.id = treatment.appointment_id
+          WHERE treatment.id = $1",
+        treatment_id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    if row.draft {
+        return Err(AppError::field("appointment_id", "record.incomplete"));
+    }
+    if row.customer_id.is_none() {
+        return Err(AppError::field("customer_id", "treatment.customerRequired"));
+    }
+    Ok(())
 }
 
 /// Attaches a patient to a treatment.
@@ -357,6 +267,7 @@ pub async fn apply_template(
 ) -> AppResult<Json<Vec<TreatmentItem>>> {
     let mut transaction = state.pool.begin().await?;
     stock::ensure_editable(&mut transaction, id).await?;
+    ensure_open(&mut transaction, id).await?;
 
     let template = sqlx::query!(
         "SELECT draft FROM treatment_template WHERE id = $1",
@@ -410,42 +321,8 @@ pub async fn apply_template(
     ))
 }
 
-#[utoipa::path(
-    post,
-    operation_id = "duplicateTreatment",
-    path = "/api/treatments/{id}/duplicate",
-    tag = "treatments",
-    params(("id" = i64, Path,)),
-    request_body = DuplicateRequest,
-    responses((status = 200, body = Treatment), (status = 404))
-)]
-pub async fn duplicate(
-    State(state): State<AppState>,
-    Path(id): Path<i64>,
-    Json(body): Json<DuplicateRequest>,
-) -> AppResult<Json<Treatment>> {
-    let mut transaction = state.pool.begin().await?;
-    let appointment_id: i64 =
-        sqlx::query_scalar!("SELECT appointment_id FROM treatment WHERE id = $1", id)
-            .fetch_optional(&mut *transaction)
-            .await?
-            .ok_or(AppError::NotFound)?;
-
-    let new_id = copy_treatment(
-        &mut transaction,
-        id,
-        appointment_id,
-        body.price_mode,
-        &state.config.travel_expenses,
-    )
-    .await?;
-    transaction.commit().await?;
-
-    let mut connection = state.pool.acquire().await?;
-    Ok(Json(load(&mut connection, new_id).await?))
-}
-
-/// Copies a treatment (reason, finding, patients, lines) into `target_appointment_id`.
+/// Copies a treatment (reason, finding, patients, lines) into `target_appointment_id`, which
+/// must not have its treatment yet, as that appointment's treatment for `customer_id`.
 ///
 /// `PriceMode::Verbatim` keeps the pinned values, `PriceMode::Refresh` re-reads names and
 /// prices from the catalog (FR-026).
@@ -453,6 +330,7 @@ pub async fn copy_treatment(
     transaction: &mut Transaction<'_, Postgres>,
     source_id: i64,
     target_appointment_id: i64,
+    customer_id: Option<i64>,
     price_mode: PriceMode,
     travel: &TravelExpenseConfig,
 ) -> AppResult<i64> {
@@ -466,9 +344,13 @@ pub async fn copy_treatment(
         return Err(AppError::NotFound);
     }
 
+    // The customer travels with the copy. It used to be left out, and the composite keys skip
+    // NULLs, so a copy was accepted that could never be billed and offered every animal in the
+    // practice.
     let new_id: i64 = sqlx::query_scalar!(
-        "INSERT INTO treatment (appointment_id) VALUES ($1) RETURNING id",
+        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
         target_appointment_id,
+        customer_id,
     )
     .fetch_one(&mut **transaction)
     .await?;
@@ -476,8 +358,9 @@ pub async fn copy_treatment(
     // Each animal's record is copied with its reason and finding, and the copy's lines have
     // to point at the copy's records — so the new ids are kept by animal.
     let copied = sqlx::query!(
-        "INSERT INTO patient_treatment (treatment_id, patient_id, treatment_reason, finding)
-         SELECT $1, patient_id, treatment_reason, finding
+        "INSERT INTO patient_treatment
+             (treatment_id, patient_id, customer_id, treatment_reason, finding)
+         SELECT $1, patient_id, customer_id, treatment_reason, finding
            FROM patient_treatment WHERE treatment_id = $2
          RETURNING id, patient_id",
         new_id,
@@ -701,7 +584,7 @@ pub async fn parties(pool: &sqlx::PgPool, treatment_id: i64) -> AppResult<Partie
 
 pub fn routes() -> Router<AppState> {
     Router::new()
-        .route("/treatments/{id}", get(detail).delete(delete))
+        .route("/treatments/{id}", get(detail))
         .route("/treatments/{id}/patients", post(add_patient))
         .route(
             "/treatments/{id}/patients/{patient_id}",
@@ -716,5 +599,4 @@ pub fn routes() -> Router<AppState> {
             post(treatment_items::bulk_delete),
         )
         .route("/treatments/{id}/apply-template", post(apply_template))
-        .route("/treatments/{id}/duplicate", post(duplicate))
 }

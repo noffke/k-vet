@@ -657,23 +657,41 @@ async fn the_database_refuses_a_mixed_customer_treatment(pool: PgPool) {
     assert!(dishonest.is_err(), "nor by mislabelling whose animal it is");
 }
 
-/// A treatment cannot be started until the appointment says whose visit it is — that answer is
-/// what the animal picker is filtered by (issues.md 7).
+/// Nothing goes onto the treatment until the appointment says whose visit it is — that answer is
+/// what the animal picker is filtered by (issues.md 7). The treatment itself is there from the
+/// start; the customer reaches it as soon as the appointment has one.
 #[sqlx::test]
-async fn a_treatment_needs_the_appointments_customer(pool: PgPool) {
+async fn a_treatment_takes_content_only_once_the_appointment_has_a_customer(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let appointment = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T09:30:00Z" }),
+        )
+        .await
+        .json();
+    let appointment_id = appointment["id"].as_i64().unwrap_or_default();
+    let treatment_id = appointment["treatment_id"].as_i64().unwrap_or_default();
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let service_id = common::seed_got_service(&pool).await;
 
     let refused = app
         .post(
-            &format!("/api/appointments/{appointment_id}/treatments"),
-            json!({ "patient_ids": [] }),
+            &format!("/api/treatments/{treatment_id}/patients"),
+            json!({ "patient_id": patient_id }),
         )
         .await;
     assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert!(refused.error_fields().contains(&"customer_id".to_owned()));
+    let refused = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+        )
+        .await;
+    assert!(refused.error_fields().contains(&"customer_id".to_owned()));
 
-    let customer_id = common::seed_customer(&pool).await;
     let named = app
         .patch(
             &format!("/api/appointments/{appointment_id}"),
@@ -681,20 +699,22 @@ async fn a_treatment_needs_the_appointments_customer(pool: PgPool) {
         )
         .await;
     assert_eq!(named.status, StatusCode::OK);
-    assert_eq!(named.json()["customer_id"], customer_id);
-
-    let created = app
-        .post(
-            &format!("/api/appointments/{appointment_id}/treatments"),
-            json!({ "patient_ids": [] }),
-        )
-        .await;
-    assert_eq!(created.status, StatusCode::OK);
+    let treatment = app
+        .get(&format!("/api/treatments/{treatment_id}"))
+        .await
+        .json();
     assert_eq!(
-        created.json()["customer_id"],
-        customer_id,
+        treatment["customer_id"], customer_id,
         "the treatment inherits it rather than waiting for an animal to imply it",
     );
+
+    let attached = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/patients"),
+            json!({ "patient_id": patient_id }),
+        )
+        .await;
+    assert_eq!(attached.status, StatusCode::OK);
 }
 
 #[sqlx::test]
@@ -1019,10 +1039,17 @@ async fn a_bulk_removal_refuses_lines_it_was_not_asked_about(pool: PgPool) {
     assert_eq!(untouched.as_array().map(Vec::len), Some(1));
 }
 
+/// A treatment is duplicated with its appointment (FR-026), the only copy there is now.
 #[sqlx::test]
 async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
+    let appointment_id: i64 =
+        sqlx::query_scalar("SELECT appointment_id FROM treatment WHERE id = $1")
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the treatment's appointment");
     let service_id = common::seed_got_service(&pool).await;
     app.post(
         &format!("/api/treatments/{treatment_id}/items"),
@@ -1038,7 +1065,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
 
     let verbatim = app
         .post(
-            &format!("/api/treatments/{treatment_id}/duplicate"),
+            &format!("/api/appointments/{appointment_id}/duplicate"),
             json!({ "price_mode": "verbatim" }),
         )
         .await
@@ -1046,7 +1073,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
     let verbatim_items = app
         .get(&format!(
             "/api/treatments/{}/items",
-            verbatim["id"].as_i64().unwrap_or_default()
+            verbatim["treatment_id"].as_i64().unwrap_or_default()
         ))
         .await
         .json();
@@ -1057,7 +1084,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
 
     let refreshed = app
         .post(
-            &format!("/api/treatments/{treatment_id}/duplicate"),
+            &format!("/api/appointments/{appointment_id}/duplicate"),
             json!({ "price_mode": "refresh" }),
         )
         .await
@@ -1065,7 +1092,7 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
     let refreshed_items = app
         .get(&format!(
             "/api/treatments/{}/items",
-            refreshed["id"].as_i64().unwrap_or_default()
+            refreshed["treatment_id"].as_i64().unwrap_or_default()
         ))
         .await
         .json();
@@ -1107,20 +1134,31 @@ async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
     assert_eq!(cleared["treatment_reason"], "Routinekontrolle");
 }
 
+/// A draft appointment has its treatment too, but what is billed needs a date first.
 #[sqlx::test]
-async fn treatments_need_a_complete_appointment(pool: PgPool) {
+async fn a_draft_appointments_treatment_takes_no_content(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
-    let draft_appointment = app.post("/api/appointments", json!({})).await;
-    assert_eq!(draft_appointment.json()["draft"], true);
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let draft = app
+        .post("/api/appointments", json!({ "customer_id": customer_id }))
+        .await
+        .json();
+    assert_eq!(draft["draft"], true);
 
     let response = app
         .post(
-            &format!("/api/appointments/{}/treatments", draft_appointment.id()),
-            json!({}),
+            &format!("/api/treatments/{}/patients", draft["treatment_id"]),
+            json!({ "patient_id": patient_id }),
         )
         .await;
 
     assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        response
+            .error_fields()
+            .contains(&"appointment_id".to_owned())
+    );
 }
 
 /// The ad-hoc Umwidmung is a documentation flag on the line, and only a drug line can carry it.

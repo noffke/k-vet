@@ -1,4 +1,5 @@
-//! Appointments: draft rules, auto-save PATCH, duplication, delete guard (T030).
+//! Appointments: draft rules, auto-save PATCH, duplication, delete guard (T030), and the one
+//! treatment each of them has (migration 0022).
 
 // Integration tests may panic on unexpected results — that is how a test reports failure.
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
@@ -93,7 +94,7 @@ async fn the_note_can_be_cleared(pool: PgPool) {
 }
 
 #[sqlx::test]
-async fn the_list_shows_newest_first_with_treatment_counts(pool: PgPool) {
+async fn the_list_shows_newest_first_each_with_its_treatment(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
     let older = common::seed_appointment(
         &pool,
@@ -107,14 +108,17 @@ async fn the_list_shows_newest_first_with_treatment_counts(pool: PgPool) {
     .await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
-    common::seed_treatment(&pool, newer, patient_id).await;
+    let newer_treatment = common::seed_treatment(&pool, newer, patient_id).await;
 
     let list = app.get("/api/appointments").await.json();
 
     assert_eq!(list[0]["id"], newer);
-    assert_eq!(list[0]["treatment_count"], 1);
+    assert_eq!(list[0]["treatment_id"], newer_treatment);
     assert_eq!(list[1]["id"], older);
-    assert_eq!(list[1]["treatment_count"], 0);
+    assert!(
+        list[1]["treatment_id"].as_i64().is_some(),
+        "an appointment without animals has its treatment all the same"
+    );
 }
 
 #[sqlx::test]
@@ -131,7 +135,7 @@ async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
 
     // A treatment without positions is nothing to bill, so it is nothing to mark.
     let list = app.get("/api/appointments").await.json();
-    assert_eq!(list[0]["unbilled_treatment_count"], 0);
+    assert_eq!(list[0]["unbilled"], false);
 
     let service_id = common::seed_got_service(&pool).await;
     app.post(
@@ -140,7 +144,7 @@ async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
     )
     .await;
     let list = app.get("/api/appointments").await.json();
-    assert_eq!(list[0]["unbilled_treatment_count"], 1);
+    assert_eq!(list[0]["unbilled"], true);
 
     // The invoice is what clears it — writing one is enough, it need not be released.
     app.post(
@@ -149,7 +153,7 @@ async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
     )
     .await;
     let list = app.get("/api/appointments").await.json();
-    assert_eq!(list[0]["unbilled_treatment_count"], 0);
+    assert_eq!(list[0]["unbilled"], false);
 }
 
 #[sqlx::test]
@@ -185,7 +189,10 @@ async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(po
     let copy = copy.json();
 
     assert_ne!(copy["id"], source);
-    assert_eq!(copy["treatment_count"], 1, "treatments come along");
+    assert_ne!(
+        copy["treatment_id"], treatment_id,
+        "the copy has its own treatment"
+    );
     assert_eq!(copy["draft"], false);
 
     let starts_at: DateTime<Utc> = copy["starts_at"]
@@ -198,19 +205,37 @@ async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(po
         "the duplicate's date defaults to today"
     );
 
-    let treatments = app
-        .get(&format!("/api/appointments/{}/treatments", copy["id"]))
+    let copied = app
+        .get(&format!("/api/treatments/{}", copy["treatment_id"]))
         .await
         .json();
     let items = app
-        .get(&format!("/api/treatments/{}/items", treatments[0]["id"]))
+        .get(&format!("/api/treatments/{}/items", copy["treatment_id"]))
         .await
         .json();
     assert_eq!(items[0]["price_net"], "23.62", "prices are copied verbatim");
-    assert_eq!(treatments[0]["patients"][0]["patient_id"], patient_id);
+    assert_eq!(copied["patients"][0]["patient_id"], patient_id);
     assert_eq!(
-        items[0]["patient_treatment_id"], treatments[0]["patients"][0]["id"],
+        items[0]["patient_treatment_id"], copied["patients"][0]["id"],
         "the copied line belongs to the copy's own record for that animal, not the source's"
+    );
+    // The copy used to leave the customer behind; the keys skip NULLs, so that was accepted —
+    // and gave a treatment that could never be billed.
+    assert_eq!(
+        copied["customer_id"], customer_id,
+        "the customer comes along"
+    );
+    let invoice = app
+        .post(
+            &format!("/api/treatments/{}/invoice", copy["treatment_id"]),
+            json!({}),
+        )
+        .await;
+    assert_eq!(
+        invoice.status,
+        StatusCode::OK,
+        "the copy can be billed: {}",
+        String::from_utf8_lossy(&invoice.body)
     );
 }
 
@@ -227,4 +252,152 @@ async fn an_appointment_can_be_deleted_while_it_is_not_invoiced(pool: PgPool) {
         app.get(&format!("/api/appointments/{id}")).await.status,
         StatusCode::NOT_FOUND
     );
+}
+
+#[sqlx::test]
+async fn creating_an_appointment_creates_its_one_treatment(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+
+    let created = app.post("/api/appointments", json!({})).await.json();
+    let treatment = app
+        .get(&format!("/api/treatments/{}", created["treatment_id"]))
+        .await
+        .json();
+
+    assert_eq!(treatment["appointment_id"], created["id"]);
+    let count: i64 = sqlx::query_scalar("SELECT count(*) FROM treatment WHERE appointment_id = $1")
+        .bind(created["id"].as_i64())
+        .fetch_one(&pool)
+        .await
+        .expect("count");
+    assert_eq!(count, 1);
+}
+
+/// A second invoice for the same visit is a second appointment; the database refuses a second
+/// treatment from any code path.
+#[sqlx::test]
+async fn a_second_treatment_on_one_appointment_is_impossible(pool: PgPool) {
+    let id = common::seed_appointment(&pool, Utc::now()).await;
+
+    let second = sqlx::query("INSERT INTO treatment (appointment_id) VALUES ($1)")
+        .bind(id)
+        .execute(&pool)
+        .await;
+
+    assert!(second.is_err(), "one treatment per appointment");
+}
+
+/// The animals belong to the customer, so the customer can change until the first one is on
+/// the treatment — and the treatment follows every change until then.
+#[sqlx::test]
+async fn the_customer_can_change_until_an_animal_is_attached(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let first = common::seed_customer(&pool).await;
+    let second = common::seed_customer(&pool).await;
+    let animal = common::seed_patient(&pool, second).await;
+    let appointment = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T09:30:00Z" }),
+        )
+        .await
+        .json();
+    let uri = format!("/api/appointments/{}", appointment["id"]);
+    let treatment_uri = format!("/api/treatments/{}", appointment["treatment_id"]);
+
+    app.patch(&uri, json!({ "customer_id": first })).await;
+    assert_eq!(app.get(&treatment_uri).await.json()["customer_id"], first);
+    app.patch(&uri, json!({ "customer_id": second })).await;
+    assert_eq!(app.get(&treatment_uri).await.json()["customer_id"], second);
+
+    app.post(
+        &format!("{treatment_uri}/patients"),
+        json!({ "patient_id": animal }),
+    )
+    .await;
+    let locked = app.patch(&uri, json!({ "customer_id": first })).await;
+    assert_eq!(locked.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(locked.error_fields().contains(&"customer_id".to_owned()));
+    let cleared = app.patch(&uri, json!({ "customer_id": null })).await;
+    assert_eq!(cleared.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(app.get(&uri).await.json()["customer_id"], second);
+}
+
+/// Migration 0022 on data written under the old rule: an appointment with two treatments is
+/// split in two, one without a treatment gets its empty one, and moving an invoiced treatment
+/// does not make its invoice PDF look stale.
+#[sqlx::test(migrations = false)]
+async fn the_migration_splits_and_backfills(pool: PgPool) {
+    let migrator = sqlx::migrate!("./migrations");
+    migrator
+        .run_to(21, &pool)
+        .await
+        .expect("migrate up to the rule");
+
+    let customer_id = common::seed_customer(&pool).await;
+    let shared: i64 = sqlx::query_scalar(
+        "INSERT INTO appointment (starts_at, note, customer_id, draft)
+         VALUES ('2026-03-02T10:00:00Z', 'Zwei Hunde', $1, false) RETURNING id",
+    )
+    .bind(customer_id)
+    .fetch_one(&pool)
+    .await
+    .expect("appointment");
+    let mut treatments = Vec::new();
+    for _ in 0..2 {
+        let id: i64 = sqlx::query_scalar(
+            "INSERT INTO treatment (appointment_id, customer_id, updated_at)
+             VALUES ($1, $2, '2026-03-02T11:00:00Z') RETURNING id",
+        )
+        .bind(shared)
+        .bind(customer_id)
+        .fetch_one(&pool)
+        .await
+        .expect("treatment");
+        treatments.push(id);
+    }
+    let empty: i64 = sqlx::query_scalar(
+        "INSERT INTO appointment (starts_at, draft) VALUES ('2026-03-03T10:00:00Z', false)
+         RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("appointment without treatment");
+
+    migrator.run_to(22, &pool).await.expect("apply 0022");
+
+    let homes: Vec<(i64, Option<String>, Option<i64>)> = sqlx::query_as(
+        "SELECT appointment.id, appointment.note, appointment.customer_id
+           FROM treatment JOIN appointment ON appointment.id = treatment.appointment_id
+          WHERE treatment.id = ANY($1) ORDER BY treatment.id",
+    )
+    .bind(&treatments)
+    .fetch_all(&pool)
+    .await
+    .expect("where the treatments are now");
+    assert_eq!(homes[0].0, shared, "the oldest treatment stays");
+    assert_ne!(
+        homes[1].0, shared,
+        "the second moves to a copy of the appointment"
+    );
+    assert_eq!(homes[1].1.as_deref(), Some("Zwei Hunde"));
+    assert_eq!(homes[1].2, Some(customer_id));
+
+    let untouched: i64 = sqlx::query_scalar(
+        "SELECT count(*) FROM treatment
+          WHERE id = ANY($1) AND updated_at = '2026-03-02T11:00:00Z'",
+    )
+    .bind(&treatments)
+    .fetch_one(&pool)
+    .await
+    .expect("timestamps");
+    assert_eq!(untouched, 2, "moving a treatment is not editing it");
+
+    let backfilled: i64 =
+        sqlx::query_scalar("SELECT count(*) FROM treatment WHERE appointment_id = $1")
+            .bind(empty)
+            .fetch_one(&pool)
+            .await
+            .expect("count");
+    assert_eq!(backfilled, 1, "every appointment has its treatment");
 }

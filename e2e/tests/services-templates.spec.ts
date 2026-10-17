@@ -80,7 +80,8 @@ test.describe('services and templates', () => {
     const openedTab = page.context().waitForEvent('page')
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
     await (await openedTab).close()
-    await expect(page).toHaveURL(/\/treatments\/\d+$/)
+    // Back on the appointment, which the treatment is part of.
+    await expect(page).toHaveURL(/\/appointments\/\d+$/)
 
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
     const pdf = await page.request.get(`/api/invoices/${treatment.invoice.id}/pdf`)

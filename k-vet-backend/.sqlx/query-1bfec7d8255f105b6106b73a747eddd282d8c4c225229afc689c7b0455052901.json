@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT draft, customer_id FROM appointment WHERE id = $1",
+  "query": "SELECT appointment.draft, treatment.customer_id\n           FROM treatment\n           JOIN appointment ON appointment.id = treatment.appointment_id\n          WHERE treatment.id = $1",
   "describe": {
     "columns": [
       {
@@ -20,7 +20,7 @@
         "type_info": "Int8",
         "origin": {
           "Table": {
-            "table": "appointment",
+            "table": "treatment",
             "name": "customer_id"
           }
         }
@@ -36,5 +36,5 @@
       true
     ]
   },
-  "hash": "ff14d1c087c1017cb8cd99286ab74fcfc056fe4a1a6fd79a4ee0d3d53ef4eca2"
+  "hash": "1bfec7d8255f105b6106b73a747eddd282d8c4c225229afc689c7b0455052901"
 }

@@ -372,9 +372,13 @@ reflected on the next generated invoice.
   user must always fill, and an optional note; an appointment can hold multiple treatments.
   Appointments and treatments can be deleted only while no non-cancelled invoice exists for
   them; afterwards they are permanent records.
+  *Amended 2026-10-17:* an appointment has **exactly one** treatment, created with it and
+  deleted with it, and both are edited on one screen; a second invoice for the same visit is a
+  second appointment (`requirements/datamodel.md`, migration 0022).
 - **FR-026**: Appointments and treatments MUST be duplicable; the duplicate's date defaults to
   today and the vet chooses whether prices are copied verbatim or refreshed from the current
   drug/service data.
+  *Amended 2026-10-17:* only appointments are duplicated; the copy brings its treatment along.
 - **FR-027**: A treatment MUST reference its appointment, one or more patients, an optional
   treatment reason and finding, and any number of attached files. The customer is chosen on the
   appointment and inherited by its treatments — it is not inferred from whichever patient was

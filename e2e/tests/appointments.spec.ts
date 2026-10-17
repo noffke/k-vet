@@ -29,20 +29,19 @@ test.describe('appointments', () => {
     await page.getByLabel('Uhrzeit').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
-    // Nothing can be billed against a visit that does not say whose it is (issues.md 7).
-    const addTreatment = page.getByRole('button', { name: 'Behandlung hinzufügen' })
-    await expect(addTreatment).toBeDisabled()
+    // Nothing goes onto a visit that does not say whose it is (issues.md 7): the treatment,
+    // which is part of this page, waits for the customer.
+    const picker = page.getByPlaceholder('Patienten')
+    await expect(page.getByText('Bitte zuerst den Kunden des Termins wählen.')).toBeVisible()
+    await expect(picker).toHaveCount(0)
 
     await page.getByPlaceholder('Kunde suchen …').fill(mine.lastName)
     await page.getByRole('option', { name: new RegExp(mine.lastName) }).first().click()
-    await expect(addTreatment).toBeEnabled()
 
-    await addTreatment.click()
-    await expect(page).toHaveURL(/\/treatments\/\d+$/)
-
-    // The picker is filtered from the first animal on, not from the second — which is what it
-    // used to be, leaving the whole practice on offer until one had been attached.
-    const picker = page.getByPlaceholder('Patienten')
+    // Same page — the treatment is the appointment's other half. The picker is filtered from
+    // the first animal on, not from the second — which is what it used to be, leaving the
+    // whole practice on offer until one had been attached.
+    await expect(page).toHaveURL(/\/appointments\/\d+$/)
     await picker.fill('')
     await expect(page.getByRole('option', { name: new RegExp(myAnimal) })).toBeVisible()
     await expect(page.getByRole('option', { name: new RegExp(theirAnimal) })).toHaveCount(0)
@@ -85,17 +84,17 @@ test.describe('appointments', () => {
     await expect(page.getByText(/bereits eine Rechnung geschrieben/)).toBeVisible()
   })
 
-  test('a locked customer is not offered for removal before the treatments arrive', async ({
+  test('a locked customer is not offered for removal before the treatment arrives', async ({
     page,
     request,
   }) => {
     await signIn(page)
 
-    // A Termin that already carries a treatment: its customer is locked, because moving it
-    // would strand the animals that hang off it. Whether it is locked is only known once the
-    // treatment list is in, and an empty list is what the page holds until then — so the
-    // picker offered to take the customer off. Long enough to be clicked, and long enough to
-    // put a second button on the page beside the one that deletes the Termin.
+    // A Termin whose treatment carries an animal: its customer is locked, because moving it
+    // would strand the animal. Whether it is locked is only known once the treatment is in,
+    // and "no animals" is what the page would assume until then — so the picker offered to
+    // take the customer off. Long enough to be clicked, and long enough to put a second button
+    // on the page beside the one that deletes the Termin.
     const invoice = await seedAcceptedInvoice(request)
     const treatment = await request.get(`/api/treatments/${invoice.treatmentId}`)
     const { appointment_id: appointmentId } = (await treatment.json()) as {
@@ -110,7 +109,7 @@ test.describe('appointments', () => {
     const held = new Promise<void>((resolve) => {
       arrive = resolve
     })
-    await page.route(`**/api/appointments/${appointmentId}/treatments`, async (route) => {
+    await page.route(`**/api/treatments/${invoice.treatmentId}`, async (route) => {
       await held
       await route.continue()
     })
