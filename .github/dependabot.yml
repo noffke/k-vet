@@ -123,9 +123,10 @@ updates:
       prefix: "docker"
 
   # ── Images referenced by the compose file (postgres) ───────────────────────────────────
-  # Only `docker-compose.yml` is left, and it is the *development* database — deployment does
-  # not use Compose. Keep its `postgres:` tag in step with the server running on the Pi, which
-  # Dependabot cannot see at all.
+  # Only `docker-compose.dev.yml` is left, and it is for *development* — deployment does not use
+  # Compose. The scanner matches `(docker-)?compose(-[\w]+)?(?>\.[\w-]+)?\.ya?ml`, so the `.dev`
+  # name is found. Its `app` service is built from the Dockerfile, so `postgres:` is the one image
+  # here; keep its tag in step with the server running on the Pi, which Dependabot cannot see.
   - package-ecosystem: "docker-compose"
     directory: "/"
     schedule:

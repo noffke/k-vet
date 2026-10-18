@@ -61,16 +61,24 @@ Requirements: Rust stable, `sqlx-cli`, Node.js `^20.19 || >=22.12`, Docker (for 
 `poppler-utils` (the E2E suite reads an invoice PDF with `pdftotext`).
 
 ```bash
-docker compose up -d db                            # Postgres on localhost:5432
+docker compose -f docker-compose.dev.yml up -d db  # Postgres on localhost:5432
 
 cd k-vet-backend
-cp ../config.example.toml config.toml              # bilingual comments; set user + password
+cp ../config.example.toml config.toml              # bilingual comments; set user + password,
+                                                   # and attachments_dir to a writable path
 cargo run -- --hash-password                       # argon2id hash for the config file
-cargo sqlx migrate run                             # includes the GOT 2022 import
-cargo run                                          # API on :8080
+cargo run                                          # API on :8080, migrations run at start
 
 cd ../k-vet-web
 npm ci && npm run dev                              # UI on :5173, proxies /api to :8080
+```
+
+To run the application as its image instead, without Rust or Node on the machine:
+
+```bash
+cp config.example.toml config.toml                 # listen_address = "0.0.0.0",
+                                                   # database url host `db` instead of localhost
+docker compose -f docker-compose.dev.yml up -d --build   # localhost:8080, tierarzt / changeme
 ```
 
 ## Commands

@@ -220,10 +220,9 @@ max_connections = 5
 `--add-host=host.docker.internal:host-gateway`. A staging instance points at
 `kvet_staging` with its own role and password.
 
-`db` is the compose service name; for an external server use its host name or address. **Percent-encode
-any special character in the password** — `@`, `/`, `:`, `?`, `#` and `%` all mean something in a
-URL, so a password of `p@ss/wort` becomes `p%40ss%2Fwort`. A password that ends up splitting the URL
-usually shows as a host-not-found or database-not-found error rather than an authentication one,
+**Percent-encode any special character in the password** — `@`, `/`, `:`, `?`, `#` and `%` all
+mean something in a URL, so a password of `p@ss/wort` becomes `p%40ss%2Fwort`. A password that ends
+up splitting the URL usually shows as a host-not-found or database-not-found error rather than an authentication one,
 which sends you looking in the wrong place. Generating the password with `openssl rand -hex 16`, as
 section 3 suggests, avoids the question entirely.
 
@@ -236,8 +235,8 @@ The application runs its migrations at every start, so there is no separate step
 on the server. A migration that fails aborts start-up rather than leaving the schema half-applied,
 and the error names the migration.
 
-This also means **the database must be reachable before the application starts**. The compose file
-handles that with a health check; against an external server, make sure it is up first.
+This also means **the database must be reachable before the application starts**. The unit orders
+itself after `postgresql.service`; against an external server, make sure it is up first.
 
 ### Checking it worked
 
@@ -443,5 +442,8 @@ needs the built interface on disk and the paths above, which is exactly what the
 
 A development setup still needs a database, and the rules are the same as in
 [section 4](#4-the-database): a role that owns a UTF-8 database, no superuser. The quickest one is
-`docker compose up -d db` from the repository root — `docker-compose.yml` is the development
-database and is not used for deployment — which gives `postgres://kvet:kvet@localhost:5432/kvet`.
+`docker compose -f docker-compose.dev.yml up -d db` from the repository root — the file is for
+development only and is not used for deployment — which gives
+`postgres://kvet:kvet@localhost:5432/kvet`. Without `db` it also builds the image and runs it
+against that database on `http://localhost:8080`; the file's header says which two lines of
+`config.toml` that needs.

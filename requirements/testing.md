@@ -14,7 +14,7 @@
 ## Database provisioning for tests
 - **`#[sqlx::test]`**: per-test database, migrations applied automatically, parallel, auto-cleanup. No testcontainers — plain Postgres is simpler and faster.
 - CI: Postgres as a GitHub Actions `services:` container.
-- Local: `docker compose up db`.
+- Local: `docker compose -f docker-compose.dev.yml up db`.
 - Commit the `.sqlx` offline query metadata so builds need no live DB; CI runs `cargo sqlx prepare --check` to catch drift.
 
 ## CI (GitHub Actions)

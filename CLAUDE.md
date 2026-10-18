@@ -29,9 +29,9 @@ them when behaviour they describe changes.
 Postgres for development and tests:
 
 ```bash
-docker compose up -d db      # postgres://kvet:kvet@localhost:5432/kvet
+docker compose -f docker-compose.dev.yml up -d db      # postgres://kvet:kvet@localhost:5432/kvet
 export DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet
-docker compose exec db createdb -U kvet kvet_e2e   # once; the E2E suite wants its own database
+docker compose -f docker-compose.dev.yml exec db createdb -U kvet kvet_e2e   # once; E2E wants its own database
 ```
 
 Backend (`k-vet-backend/`), the same gates CI runs:
@@ -79,7 +79,9 @@ attachments dir bind-mounted. It runs as uid/gid 1000 (noble's own `ubuntu` user
 `docker-entrypoint.sh` only seeds missing templates and execs the binary. Every startup check
 (config present and readable, attachments dir writable) lives in the binary, with the real
 config parser — keep it that way; a shell copy of those checks drifted once already.
-`docker-compose.yml` is the development database only — nothing deploys with Compose.
+`docker-compose.dev.yml` is for development only — nothing deploys with Compose. `up -d db` starts
+the development database alone; a plain `up` also builds the image and runs it against it on
+`127.0.0.1:8080` (root `config.toml`, named volumes for templates and attachments).
 
 ## The contract pipeline (never edit generated files)
 

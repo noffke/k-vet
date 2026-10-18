@@ -1,0 +1,73 @@
+# k-vet for local development — not a deployment; the practice runs under systemd,
+# see docs/installation.md.
+#
+# de-DE: Nur die Datenbank, für `cargo run` und die Tests:
+# en-US: The database alone, for `cargo run` and the tests:
+#
+#   docker compose -f docker-compose.dev.yml up -d db
+#   DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet
+#
+# de-DE: Die ganze Anwendung, als Abbild gebaut, auf http://localhost:8080. Einmalig
+#        `config.toml` im Wurzelverzeichnis anlegen und zwei Zeilen ändern:
+# en-US: The whole application, built as its image, on http://localhost:8080. Create
+#        `config.toml` in the repository root once and change two lines:
+#
+#   cp config.example.toml config.toml
+#     [server]   listen_address = "0.0.0.0"
+#     [database] url = "postgres://kvet:kvet@db:5432/kvet"
+#   docker compose -f docker-compose.dev.yml up -d --build
+#
+# de-DE: Anmeldung mit `tierarzt` / `changeme` aus der Beispieldatei.
+# en-US: Sign in with `tierarzt` / `changeme` from the example file.
+services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_USER: kvet
+      POSTGRES_PASSWORD: kvet
+      POSTGRES_DB: kvet
+    ports:
+      - "5432:5432"
+    volumes:
+      - kvet-db-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U kvet -d kvet"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    depends_on:
+      db:
+        condition: service_healthy
+    # de-DE: Schema-Migrationen laufen beim Start automatisch.
+    # en-US: Schema migrations run automatically at start.
+    ports:
+      # de-DE: Nur auf diesem Rechner erreichbar — das Beispielpasswort ist öffentlich.
+      # en-US: Reachable from this machine only — the example password is public.
+      - "127.0.0.1:8080:8080"
+    volumes:
+      # de-DE: Fehlt die Datei, bricht der Start ab — sonst legte Docker an ihrer Stelle ein
+      #        leeres Verzeichnis an, und k-vet meldete nur "Is a directory".
+      # en-US: A missing file stops the start — otherwise Docker would create an empty
+      #        directory in its place, and k-vet would only say "Is a directory".
+      - type: bind
+        source: ./config.toml
+        target: /etc/k-vet/config.toml
+        read_only: true
+        bind:
+          create_host_path: false
+      # de-DE: Benannte Volumes statt Verzeichnissen im Checkout: sie übernehmen den
+      #        Besitzer aus dem Abbild (uid/gid 1000), es gibt also nichts zu chownen.
+      # en-US: Named volumes rather than checkout directories: they take their owner from
+      #        the image (uid/gid 1000), so there is nothing to chown.
+      - kvet-templates:/etc/k-vet/templates
+      - kvet-attachments:/var/lib/k-vet/attachments
+
+volumes:
+  kvet-db-data:
+  kvet-templates:
+  kvet-attachments:
