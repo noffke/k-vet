@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT travel_expenses FROM service WHERE id = $1",
+  "query": "SELECT travel_expenses, type = 'got' AS \"got!\" FROM service WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -13,6 +13,12 @@
             "name": "travel_expenses"
           }
         }
+      },
+      {
+        "ordinal": 1,
+        "name": "got!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -21,8 +27,9 @@
       ]
     },
     "nullable": [
-      false
+      false,
+      null
     ]
   },
-  "hash": "55de4026d6f4cdbcbe66e290e797b0f188916d4809a4d78da1959c4c8d290685"
+  "hash": "0b3e3b8ff59cb7aff386ce0de616a2ba58db30545adab5fbb5812f601150bb55"
 }

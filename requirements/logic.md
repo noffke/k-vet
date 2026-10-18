@@ -57,6 +57,8 @@ should be copied verbatim or updated from drugs and services data.
 For treatment items, functionality for changing the position ordering
 is needed: move one step up or down, move to top or bottom.
 
+The price of a GOT position is the fee schedule's and cannot be changed on the line — the factor (Steigerungssatz) is how it is adjusted. A self-defined service, including one charged by analogy (§ 8 GOT), and a drug line may have their price overridden.
+
 On the Treatment page, a treatment template can be applied: its items are appended (in item order) as treatment items with the current prices and names copied.
 
 Each treatment item line is attributed to exactly one patient of the treatment — unless its service is marked "pro Termin", in which case it belongs to the whole visit and to no patient, also when there is just one animal. The service decides, once, in the catalogue; a line cannot be moved between a patient and the visit. When the treatment has exactly one patient, it is preselected. The reason: drug dispensing and treatment are attributed to a single animal, while the house-call fee and Wegegeld are independent of any individual animal — those stand without an animal, last in the position list and on the invoice.

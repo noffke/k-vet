@@ -227,6 +227,7 @@
     "addItem": "Add line",
     "addPatient": "Animal",
     "files": "Files",
+    "gotPriceHint": "fixed by the GOT, adjusted by the factor",
     "groupAdded": "{{count}} positions added from “{{name}}”",
     "itemAdded": "“{{name}}” added",
     "itemAddedPerVisit": "“{{name}}” added per visit",
@@ -423,6 +424,7 @@
   },
   "item": {
     "drugShapeInvalid": "Invalid values for a drug line",
+    "gotPriceFixed": "A GOT position’s price is fixed – adjust it with the factor",
     "kmInvalid": "Kilometres and multiplier belong together",
     "patientNotInTreatment": "This animal is not part of this treatment",
     "patientRequired": "This line needs an animal",

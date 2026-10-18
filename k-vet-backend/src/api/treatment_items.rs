@@ -480,16 +480,25 @@ pub async fn patch(
         _ => None,
     };
 
-    let travel_service = match current.service_id {
-        Some(service_id) => sqlx::query_scalar!(
-            "SELECT travel_expenses FROM service WHERE id = $1",
+    let (travel_service, got_position) = match current.service_id {
+        Some(service_id) => sqlx::query!(
+            r#"SELECT travel_expenses, type = 'got' AS "got!" FROM service WHERE id = $1"#,
             service_id
         )
         .fetch_optional(&mut *transaction)
         .await?
-        .unwrap_or(false),
-        None => false,
+        .map_or((false, false), |service| {
+            (service.travel_expenses, service.got)
+        }),
+        None => (false, false),
     };
+
+    // A GOT position costs what the fee schedule says; the factor (Steigerungssatz) is how the
+    // vet adjusts it, never the price itself. A § 8 analogy is a self-defined service, priced
+    // by the practice, and stays editable.
+    if got_position && body.price_net.is_some() {
+        return Err(AppError::field("price_net", "item.gotPriceFixed"));
+    }
 
     // Re-price a travel line whenever its distance or multiplier changes.
     let travel_price = if travel_service {

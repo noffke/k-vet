@@ -111,6 +111,63 @@ async fn line_total_applies_quantity_and_factor(pool: PgPool) {
     assert_eq!(patched["price_gross"], "42.16");
 }
 
+/// A GOT position costs what the fee schedule says: its price is refused, its factor is how it
+/// is adjusted. A self-defined service charged by analogy (§ 8) is the practice's own price.
+#[sqlx::test]
+async fn a_got_positions_price_is_fixed(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, _) = treatment(&pool).await;
+    let got_service = common::seed_got_service(&pool).await;
+    let analogy: i64 = sqlx::query_scalar(
+        "INSERT INTO service (type, name, got_number, vat_percent, net_price, draft)
+         VALUES ('self_defined', 'Ultraschall analog', '40', 19.000, 30.00, false) RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("seed a § 8 service");
+    let items = format!("/api/treatments/{treatment_id}/items");
+    let got_line = app
+        .post(
+            &items,
+            json!({ "kind": "service", "service_id": got_service, "quantity": "1" }),
+        )
+        .await
+        .json();
+    let analogous_line = app
+        .post(
+            &items,
+            json!({ "kind": "service", "service_id": analogy, "quantity": "1" }),
+        )
+        .await
+        .json();
+
+    let repriced = app
+        .patch(
+            &format!("/api/treatment-items/{}", got_line["id"]),
+            json!({ "price_net": "30.00" }),
+        )
+        .await;
+    assert_eq!(repriced.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(repriced.error_fields(), vec!["price_net"]);
+    let factored = app
+        .patch(
+            &format!("/api/treatment-items/{}", got_line["id"]),
+            json!({ "factor": "200.000" }),
+        )
+        .await;
+    assert_eq!(factored.status, StatusCode::OK);
+    assert_eq!(factored.json()["price_net"], "23.62");
+
+    let own_price = app
+        .patch(
+            &format!("/api/treatment-items/{}", analogous_line["id"]),
+            json!({ "price_net": "35.00" }),
+        )
+        .await;
+    assert_eq!(own_price.status, StatusCode::OK);
+    assert_eq!(own_price.json()["price_net"], "35.00");
+}
+
 /// The same figure reaches the picker, so the price previewed before a pick is the price the
 /// line ends up costing (issues.md 16).
 #[sqlx::test]

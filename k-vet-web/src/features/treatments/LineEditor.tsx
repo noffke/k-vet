@@ -33,6 +33,11 @@ import { useLocaleFormat } from '@/lib/locale'
 /** How long the undo stays on screen. Sonner's 4 s default is too quick to read and decide. */
 const UNDO_MS = 10_000
 
+/** A position from the GOT itself — not a self-defined service charged by analogy (§ 8). */
+function gotPosition(item: TreatmentItem): boolean {
+  return item.got_number != null && !item.got_analogous
+}
+
 interface PositionGroupProps {
   treatment: Treatment
   heading: ReactNode
@@ -235,13 +240,19 @@ export function PositionGroup({
                   value && patchItem.mutate({ id: item.id, data: { quantity: value } })
                 }
               />
+              {/* A GOT position costs what the schedule says; the factor adjusts it, the price
+                  stays (the server refuses one). A § 8 analogy is the practice's own price. */}
               <NumberInput
                 label={t('field.priceNet')}
                 value={item.price_net}
                 unit={currencySymbol}
                 money
-                hint={`${t('field.priceGross')}: ${money(item.price_gross)}`}
-                disabled={readOnly}
+                hint={
+                  gotPosition(item)
+                    ? `${t('field.priceGross')}: ${money(item.price_gross)} · ${t('treatments.gotPriceHint')}`
+                    : `${t('field.priceGross')}: ${money(item.price_gross)}`
+                }
+                disabled={readOnly || gotPosition(item)}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { price_net: value } })
                 }

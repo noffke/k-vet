@@ -294,6 +294,21 @@ test.describe('treatment lines', () => {
       .toEqual([null])
   })
 
+  test("a GOT position's price is fixed, its factor is not", async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
+    await page.getByRole('option', { name: /Beratung/ }).first().click()
+
+    await expect(page.getByLabel('Preis (netto)')).toBeDisabled()
+    await expect(page.getByText(/fest nach GOT/)).toBeVisible()
+    await expect(page.getByLabel('Faktor', { exact: true })).toBeEnabled()
+  })
+
   test('a position is not removed by a stray click', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId)

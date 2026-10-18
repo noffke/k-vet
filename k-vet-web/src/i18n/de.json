@@ -227,6 +227,7 @@
     "addItem": "Position hinzufügen",
     "addPatient": "Tier",
     "files": "Dateien",
+    "gotPriceHint": "fest nach GOT, anpassbar über den Faktor",
     "groupAdded": "{{count}} Positionen aus „{{name}}“ hinzugefügt",
     "itemAdded": "„{{name}}“ hinzugefügt",
     "itemAddedPerVisit": "„{{name}}“ pro Termin hinzugefügt",
@@ -423,6 +424,7 @@
   },
   "item": {
     "drugShapeInvalid": "Ungültige Angaben für eine Medikamentenposition",
+    "gotPriceFixed": "Der Preis einer GOT-Position steht fest – anpassen lässt er sich über den Faktor",
     "kmInvalid": "Kilometer und Faktor müssen zusammen angegeben werden",
     "patientNotInTreatment": "Dieses Tier gehört nicht zu dieser Behandlung",
     "patientRequired": "Diese Position braucht ein Tier",
