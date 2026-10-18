@@ -679,6 +679,7 @@ export const ListDrugsResponseItem = zod.object({
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -704,6 +705,7 @@ export const CreateDrugResponse = zod.object({
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -732,6 +734,7 @@ export const GetDrugResponse = zod.object({
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -759,7 +762,8 @@ export const PatchDrugBody = zod.object({
   "vaccine": zod.boolean().nullish(),
   "refrigerate": zod.boolean().nullish(),
   "redesignation": zod.boolean().nullish(),
-  "human_drug": zod.boolean().nullish()
+  "human_drug": zod.boolean().nullish(),
+  "euthanasia": zod.boolean().nullish()
 })
 
 export const PatchDrugResponse = zod.object({
@@ -773,6 +777,7 @@ export const PatchDrugResponse = zod.object({
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -801,6 +806,7 @@ export const ArchiveDrugResponse = zod.object({
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -880,6 +886,7 @@ export const UnarchiveDrugResponse = zod.object({
   "refrigerate": zod.boolean(),
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -2342,6 +2349,7 @@ export const PatchTreatmentItemResponse = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2386,6 +2394,7 @@ export const SetTreatmentItemLotsResponse = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2428,6 +2437,7 @@ export const MoveTreatmentItemResponseItem = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2648,6 +2658,7 @@ export const ApplyTemplateResponseItem = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2722,6 +2733,7 @@ export const ListTreatmentItemsResponseItem = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2772,6 +2784,7 @@ export const CreateTreatmentItemResponse = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({
@@ -2814,6 +2827,7 @@ export const BulkDeleteTreatmentItemsResponseItem = zod.object({
   "km_multiplier": zod.string().nullish(),
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
   "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
   "lots": zod.array(zod.object({

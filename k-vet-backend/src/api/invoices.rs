@@ -315,11 +315,17 @@ pub async fn accept(
     Path(id): Path<i64>,
     Json(body): Json<AcceptInvoice>,
 ) -> AppResult<Json<Invoice>> {
+    let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        r#"SELECT status AS "status: InvoiceStatus", treatment_id FROM invoice WHERE id = $1"#,
+        r#"SELECT invoice.status AS "status: InvoiceStatus", appointment.starts_at
+           FROM invoice
+           JOIN treatment ON treatment.id = invoice.treatment_id
+           JOIN appointment ON appointment.id = treatment.appointment_id
+           WHERE invoice.id = $1
+           FOR UPDATE OF invoice"#,
         id
     )
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::NotFound)?;
 
@@ -337,8 +343,32 @@ pub async fn accept(
         id,
         &body.recipient_emails,
     )
-    .execute(&state.pool)
+    .execute(&mut *transaction)
     .await?;
+
+    // A euthanasia drug on a line ends that animal's record: its date of death is the day of the
+    // appointment, in the practice's time zone as the invoice prints it, and — as entering a
+    // date of death by hand does — it is archived. A date already entered is the vet's and
+    // stays; releasing again after an update finds it set and changes nothing. Cancelling does
+    // not undo it: the animal died.
+    if let Some(starts_at) = current.starts_at {
+        sqlx::query!(
+            "UPDATE patient SET date_of_death = $2, archived = true
+              WHERE date_of_death IS NULL
+                AND id IN (SELECT record.patient_id
+                             FROM invoice
+                             JOIN treatment_item item ON item.treatment_id = invoice.treatment_id
+                             JOIN patient_treatment record ON record.id = item.patient_treatment_id
+                             JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id
+                             JOIN drug ON drug.id = packaging.drug_id
+                            WHERE invoice.id = $1 AND drug.euthanasia)",
+            id,
+            starts_at.with_timezone(&Local).date_naive(),
+        )
+        .execute(&mut *transaction)
+        .await?;
+    }
+    transaction.commit().await?;
 
     // A failing send leaves the invoice accepted and retriable (FR-031).
     if !body.recipient_emails.is_empty()

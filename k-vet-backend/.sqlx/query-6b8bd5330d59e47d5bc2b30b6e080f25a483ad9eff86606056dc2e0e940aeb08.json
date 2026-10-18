@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE patient SET date_of_death = $2, archived = true\n              WHERE date_of_death IS NULL\n                AND id IN (SELECT record.patient_id\n                             FROM invoice\n                             JOIN treatment_item item ON item.treatment_id = invoice.treatment_id\n                             JOIN patient_treatment record ON record.id = item.patient_treatment_id\n                             JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id\n                             JOIN drug ON drug.id = packaging.drug_id\n                            WHERE invoice.id = $1 AND drug.euthanasia)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Date"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6b8bd5330d59e47d5bc2b30b6e080f25a483ad9eff86606056dc2e0e940aeb08"
+}

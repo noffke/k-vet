@@ -74,6 +74,11 @@ export interface TreatmentItem {
      * preparation used in an ear. Documentation only; it does not move the price.
      */
   redesignation: boolean;
+  /**
+     * The drug is a euthanasia preparation: releasing the invoice sets this line's animal's
+     * date of death. Read from the drug, so the release page can say so beforehand.
+     */
+  euthanasia: boolean;
   /** `price_net × quantity × factor/100`, rounded to cents — **net**. */
   line_net: string;
   /** `line_net` plus VAT: what the customer pays for this line. */

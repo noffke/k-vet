@@ -27,4 +27,6 @@ export interface PatchDrug {
   redesignation?: boolean | null;
   /** @nullable */
   human_drug?: boolean | null;
+  /** @nullable */
+  euthanasia?: boolean | null;
 }

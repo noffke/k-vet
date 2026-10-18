@@ -5082,6 +5082,7 @@
           "refrigerate",
           "redesignation",
           "human_drug",
+          "euthanasia",
           "archived",
           "draft",
           "missing_fields",
@@ -5132,6 +5133,10 @@
           "human_drug": {
             "type": "boolean",
             "description": "A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands."
+          },
+          "euthanasia": {
+            "type": "boolean",
+            "description": "A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line's animal to the appointment's day (and archives it), unless one is entered."
           },
           "vat_percent": {
             "type": [
@@ -6141,6 +6146,12 @@
             ]
           },
           "human_drug": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "euthanasia": {
             "type": [
               "boolean",
               "null"
@@ -7609,6 +7620,7 @@
           "vat_percent",
           "travel_expenses",
           "redesignation",
+          "euthanasia",
           "line_net",
           "line_gross",
           "lots",
@@ -7717,6 +7729,10 @@
           "redesignation": {
             "type": "boolean",
             "description": "Ad-hoc Umwidmung: this dispense is outside the preparation's approval — an eye\npreparation used in an ear. Documentation only; it does not move the price."
+          },
+          "euthanasia": {
+            "type": "boolean",
+            "description": "The drug is a euthanasia preparation: releasing the invoice sets this line's animal's\ndate of death. Read from the drug, so the release page can say so beforehand."
           },
           "line_net": {
             "type": "string",

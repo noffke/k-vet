@@ -47,6 +47,45 @@ test.describe('pharmacy', () => {
     await expect(page.getByLabel('Listenpreis (netto)').last()).toHaveValue('1,00')
   })
 
+  test('releasing an invoice with a euthanasia drug enters the date of death', async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const name = `Minka-${Date.now() % 1e6}`
+    const patientId = await seedPatient(request, customerId, name)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const drug = await seedDrug(request)
+
+    // The mark is set on the drug's page, and says what it does.
+    await signIn(page)
+    await page.goto(`/pharmacy/${drug.drugId}`)
+    await page.getByLabel('Euthanasie').check()
+    await expect(page.getByText(/trägt die Freigabe der Rechnung den Tag des Termins/)).toBeVisible()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+
+    await request.post(`/api/treatments/${treatmentId}/items`, {
+      data: { kind: 'drug_packaging', drug_packaging_id: drug.subsetPackagingId, quantity: '1' },
+    })
+    await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
+
+    // The release page says it before the button does it.
+    const today = new Date().toLocaleDateString('de-DE', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+    })
+    await page.goto(`/treatments/${treatmentId}/invoice/accept`)
+    await expect(
+      page.getByText(`Mit der Freigabe wird für ${name} das Todesdatum ${today} eingetragen.`),
+    ).toBeVisible()
+    await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()
+    await expect(page.getByText('Freigegeben').first()).toBeVisible()
+
+    await page.goto(`/patients/${patientId}`)
+    await expect(page.getByLabel('Todesdatum')).toHaveValue(today)
+  })
+
   test('marking a drug as a Humanpräparat switches the AMPreisV rule', async ({
     page,
     request,

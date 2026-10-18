@@ -264,6 +264,7 @@
     "create": "Create invoice",
     "createAnyway": "Create anyway",
     "date": "Invoice date",
+    "euthanasiaNotice": "Releasing enters {{date}} as the date of death for {{names}}.",
     "includesFinding": "Print treatment and next steps",
     "mailUnreachable": "The mail server cannot be reached. The invoice was not sent — check the mail settings, or print it and mark it as sent by post.",
     "markPosted": "Sent by post",
@@ -313,8 +314,10 @@
     "correction": "Correction",
     "correctionHint": "Enter the counted stock — the difference is booked.",
     "drugs": "Drugs",
+    "euthanasiaHint": "When this drug is dispensed at an appointment, releasing the invoice enters the appointment’s day as the animal’s date of death and archives it. A date of death already entered stays.",
     "expiryShort": "Expires",
     "flags": {
+      "euthanasia": "Euthanasia",
       "humanDrug": "Human preparation",
       "narcotic": "Narcotic",
       "redesignation": "Redesignation",

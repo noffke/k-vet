@@ -1,14 +1,17 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { Mail } from 'lucide-react'
+import { AlertTriangle, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetInvoiceQueryKey,
+  getGetPatientQueryKey,
   getGetTreatmentQueryKey,
+  getListPatientsQueryKey,
   useAcceptInvoice,
   useAddCustomerEmail,
   useGetTreatment,
+  useListTreatmentItems,
 } from '@/api/generated/endpoints'
 import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
@@ -16,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextField } from '@/components/ui/field'
 import { useRecipientLabel } from '@/features/treatments/useRecipientLabel'
+import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
 
 /**
@@ -28,7 +32,9 @@ export function InvoiceAcceptPage() {
   const treatmentId = Number(id)
   const client = useQueryClient()
 
+  const { date } = useLocaleFormat()
   const treatment = useGetTreatment(treatmentId)
+  const items = useListTreatmentItems(treatmentId)
   const recipientLabel = useRecipientLabel(treatment.data?.customer_id)
   const [chosen, setChosen] = useState<string[] | null>(null)
   const [extra, setExtra] = useState('')
@@ -42,6 +48,12 @@ export function InvoiceAcceptPage() {
     mutation: {
       onSuccess: async () => {
         await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
+        // A euthanasia line has just ended an animal's record: its page and every list of
+        // animals (the next visit's picker among them) must not show it alive.
+        await client.invalidateQueries({ queryKey: getListPatientsQueryKey() })
+        for (const patient of treatment.data?.patients ?? []) {
+          await client.invalidateQueries({ queryKey: getGetPatientQueryKey(patient.patient_id) })
+        }
         const invoiceId = treatment.data?.invoice?.id
         if (invoiceId) {
           await client.invalidateQueries({ queryKey: getGetInvoiceQueryKey(invoiceId) })
@@ -85,6 +97,13 @@ export function InvoiceAcceptPage() {
       </div>
     )
   }
+
+  // Releasing sets the date of death of every animal a euthanasia drug was dispensed for — a
+  // consequence on the animal's record, and one an archived, deceased animal cannot simply be
+  // taken back from, so it is said before the button rather than discovered after it.
+  const putDown = record.patients.filter((patient) =>
+    (items.data ?? []).some((item) => item.euthanasia && item.patient_treatment_id === patient.id),
+  )
 
   const typedEmail = extra.trim()
   // An address typed here is usually one the customer has just given the practice, so it is
@@ -150,6 +169,21 @@ export function InvoiceAcceptPage() {
           onChange={(event) => setExtra(event.target.value)}
         />
       </section>
+
+      {putDown.length > 0 ? (
+        <aside
+          role="note"
+          className="mt-4 flex items-start gap-3 rounded-card border-2 border-danger/40 bg-blush/40 px-4 py-3"
+        >
+          <AlertTriangle className="mt-0.5 size-5 shrink-0 text-danger" aria-hidden />
+          <p className="text-sm font-medium text-ink">
+            {t('invoices.euthanasiaNotice', {
+              names: putDown.map((patient) => patient.name).join(', '),
+              date: date(record.starts_at),
+            })}
+          </p>
+        </aside>
+      ) : null}
 
       <div className="mt-4 flex justify-end gap-2">
         <Button onClick={() => void back()}>{t('action.cancel')}</Button>

@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug SET\n               name               = CASE WHEN $2 THEN $3 ELSE name END,\n               manufacturer_id    = CASE WHEN $4 THEN $5 ELSE manufacturer_id END,\n               vat_percent        = CASE WHEN $6 THEN $7 ELSE vat_percent END,\n               approval_number    = CASE WHEN $8 THEN $9 ELSE approval_number END,\n               submission_receipt = COALESCE($10, submission_receipt),\n               narcotic           = COALESCE($11, narcotic),\n               vaccine            = COALESCE($12, vaccine),\n               refrigerate        = COALESCE($13, refrigerate),\n               redesignation      = COALESCE($14, redesignation),\n               human_drug         = COALESCE($15, human_drug),\n               draft              = $16,\n               euthanasia         = COALESCE($17, euthanasia)\n           WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Text",
+        "Bool",
+        "Int8",
+        "Bool",
+        "Numeric",
+        "Bool",
+        "Text",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6e11d21a464f693170dbba95f1e049b2f9a5ea0ff38528b7f714bdec634e214a"
+}

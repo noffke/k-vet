@@ -452,6 +452,34 @@ async fn drugs_can_be_searched_by_name_manufacturer_and_approval_number(pool: Pg
     );
 }
 
+/// A drug is marked as a euthanasia preparation on its own page; the mark is what a release
+/// reads to set the date of death (tests/invoices.rs).
+#[sqlx::test]
+async fn a_drug_can_be_marked_as_a_euthanasia_preparation(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let (supplier, manufacturer) = address_book(&app).await;
+    let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
+
+    let drug = app.get(&format!("/api/drugs/{drug_id}")).await.json();
+    assert_eq!(drug["euthanasia"], false);
+    let marked = app
+        .patch(
+            &format!("/api/drugs/{drug_id}"),
+            json!({ "euthanasia": true }),
+        )
+        .await
+        .json();
+    assert_eq!(marked["euthanasia"], true);
+    let unmarked = app
+        .patch(
+            &format!("/api/drugs/{drug_id}"),
+            json!({ "euthanasia": false }),
+        )
+        .await
+        .json();
+    assert_eq!(unmarked["euthanasia"], false);
+}
+
 /// Marking a drug as a Humanpräparat switches it to § 3 Abs. 1 Satz 2 and reprices the catalogue.
 #[sqlx::test]
 async fn a_human_preparation_switches_the_ampreisv_rule(pool: PgPool) {

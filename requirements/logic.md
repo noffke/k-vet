@@ -73,6 +73,8 @@ be the possibility to update an invoice (e.g. finding changed, etc.). If the inv
 has to be automatically canceled first. Created invoices can keep their invoice number on update, Accepted invoice
 numbers are "burned".
 
+Accepting an invoice with a euthanasia drug on a line ends that animal's record: its date of death becomes the appointment's day and it is archived, as entering a date of death by hand does. A date already entered stays; accepting again after an update changes nothing, and cancelling does not undo it. The accept page says so before the button.
+
 The lifecycle is `Created → Accepted → Sent → Submitted`, or `Cancelled` from any of them. An
 invoice must have reached the customer before it can be handed to bookkeeping — Sent is a
 precondition of Submitted, which is why one status column suffices.

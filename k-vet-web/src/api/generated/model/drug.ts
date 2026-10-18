@@ -25,6 +25,11 @@ export interface Drug {
      * § 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.
      */
   human_drug: boolean;
+  /**
+     * A euthanasia preparation: releasing an invoice with it on a line sets the date of death
+     * of that line's animal to the appointment's day (and archives it), unless one is entered.
+     */
+  euthanasia: boolean;
   /** @nullable */
   vat_percent?: string | null;
   /** @nullable */

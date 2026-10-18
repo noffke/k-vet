@@ -67,6 +67,9 @@ pub struct TreatmentItem {
     /// Ad-hoc Umwidmung: this dispense is outside the preparation's approval — an eye
     /// preparation used in an ear. Documentation only; it does not move the price.
     pub redesignation: bool,
+    /// The drug is a euthanasia preparation: releasing the invoice sets this line's animal's
+    /// date of death. Read from the drug, so the release page can say so beforehand.
+    pub euthanasia: bool,
     /// `price_net × quantity × factor/100`, rounded to cents — **net**.
     pub line_net: Decimal,
     /// `line_net` plus VAT: what the customer pays for this line.
@@ -1005,9 +1008,12 @@ pub async fn load_items(
                   item.km_multiplier, item.created_at,
                   COALESCE(service.travel_expenses, false) AS "travel_expenses!",
                   COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)
-                      AS "got_analogous!"
+                      AS "got_analogous!",
+                  COALESCE(drug.euthanasia, false) AS "euthanasia!"
            FROM treatment_item item
            LEFT JOIN service ON service.id = item.service_id
+           LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id
+           LEFT JOIN drug ON drug.id = packaging.drug_id
            WHERE item.treatment_id = $1 ORDER BY item.position"#,
         treatment_id,
     )
@@ -1050,6 +1056,7 @@ pub async fn load_items(
             .gross,
             unit_net: money::line_total(row.price_net, Decimal::ONE, row.factor),
             redesignation: row.redesignation,
+            euthanasia: row.euthanasia,
             lots: lots
                 .iter()
                 .filter(|lot| lot.treatment_item_id == Some(row.id))

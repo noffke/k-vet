@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_treatment_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,\n                  item.redesignation,\n                  item.km_multiplier, item.created_at,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\",\n                  COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)\n                      AS \"got_analogous!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
+  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_treatment_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,\n                  item.redesignation,\n                  item.km_multiplier, item.created_at,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\",\n                  COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)\n                      AS \"got_analogous!\",\n                  COALESCE(drug.euthanasia, false) AS \"euthanasia!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id\n           LEFT JOIN drug ON drug.id = packaging.drug_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
   "describe": {
     "columns": [
       {
@@ -222,6 +222,12 @@
         "name": "got_analogous!",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 20,
+        "name": "euthanasia!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -249,8 +255,9 @@
       true,
       false,
       null,
+      null,
       null
     ]
   },
-  "hash": "61b93473447dc918f65704f3cf2fca3a71ca35d4c7074fec9d85819feca5fe34"
+  "hash": "d117a938f51209bf1c83420f920455620d041352b37021eca019816acc6fa500"
 }

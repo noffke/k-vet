@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,\n                  drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,\n                  drug.human_drug,\n                  drug.vat_percent, drug.approval_number, drug.archived, drug.draft,\n                  drug.created_at, drug.updated_at,\n                  manufacturer.name AS \"manufacturer_name?\",\n                  (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining\n                    WHERE lot_remaining.drug_id = drug.id) AS \"in_stock?\",\n                  (SELECT unit FROM drug_packaging\n                    WHERE drug_packaging.drug_id = drug.id\n                      AND drug_packaging.kind = 'original') AS \"unit?\",\n                  (SELECT sales_price_net FROM drug_packaging\n                    WHERE drug_packaging.drug_id = drug.id\n                      AND drug_packaging.kind = 'original') AS \"original_price_net?\"\n           FROM drug\n           LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id\n           WHERE drug.id = $1",
+  "query": "SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,\n                  drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,\n                  drug.human_drug, drug.euthanasia,\n                  drug.vat_percent, drug.approval_number, drug.archived, drug.draft,\n                  drug.created_at, drug.updated_at,\n                  manufacturer.name AS \"manufacturer_name?\",\n                  (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining\n                    WHERE lot_remaining.drug_id = drug.id) AS \"in_stock?\",\n                  (SELECT unit FROM drug_packaging\n                    WHERE drug_packaging.drug_id = drug.id\n                      AND drug_packaging.kind = 'original') AS \"unit?\",\n                  (SELECT sales_price_net FROM drug_packaging\n                    WHERE drug_packaging.drug_id = drug.id\n                      AND drug_packaging.kind = 'original') AS \"original_price_net?\"\n           FROM drug\n           LEFT JOIN manufacturer ON manufacturer.id = drug.manufacturer_id\n           WHERE drug.id = $1",
   "describe": {
     "columns": [
       {
@@ -104,6 +104,17 @@
       },
       {
         "ordinal": 9,
+        "name": "euthanasia",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "euthanasia"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
         "name": "vat_percent",
         "type_info": "Numeric",
         "origin": {
@@ -114,7 +125,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "approval_number",
         "type_info": "Text",
         "origin": {
@@ -125,7 +136,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
@@ -136,7 +147,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -147,7 +158,7 @@
         }
       },
       {
-        "ordinal": 13,
+        "ordinal": 14,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -158,7 +169,7 @@
         }
       },
       {
-        "ordinal": 14,
+        "ordinal": 15,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -169,7 +180,7 @@
         }
       },
       {
-        "ordinal": 15,
+        "ordinal": 16,
         "name": "manufacturer_name?",
         "type_info": "Text",
         "origin": {
@@ -180,19 +191,19 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "in_stock?",
         "type_info": "Numeric",
         "origin": "Expression"
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "unit?",
         "type_info": "Text",
         "origin": "Expression"
       },
       {
-        "ordinal": 18,
+        "ordinal": 19,
         "name": "original_price_net?",
         "type_info": "Numeric",
         "origin": "Expression"
@@ -213,6 +224,7 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       false,
@@ -225,5 +237,5 @@
       null
     ]
   },
-  "hash": "004dbac1fee1a60c70c083680eb20b5e15a777286a2771a1261903f00cfbbc11"
+  "hash": "1902d128f288ab47ee45c507ed4996b7d6e2515d2b7ac7cbe84658f873cec1c3"
 }

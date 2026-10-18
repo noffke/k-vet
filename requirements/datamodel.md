@@ -30,6 +30,11 @@ Generally, all entities should have a created and updated timestamp.
   * VAT Percent (selector)
   * Approval Number (Zulassungsnummer) (optional)
   * Redesignation (Umwidmung) (bool)
+  * Human Drug (Humanpräparat) (bool) — selects the AMPreisV rule, see `prices.md`
+  * Euthanasia (bool) — a euthanasia preparation: releasing an invoice with it on a line sets
+    that line's animal's date of death to the appointment's day and archives the animal,
+    unless a date of death is already entered. Pre-set (migration 0025) for every drug whose
+    name contains "release" (pentobarbital), case-insensitive.
   * Relation: 1 Manufacturer
   * Relation: n Drug Packaging (exactly one of them has Kind = original)
   * Decision: the original packaging is modeled as a Drug Packaging (Kind = original), so invoice positions uniformly reference packagings and the subset price formula stays within one entity

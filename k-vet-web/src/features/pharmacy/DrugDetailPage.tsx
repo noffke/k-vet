@@ -155,6 +155,19 @@ export function DrugDetailPage() {
               />
             ))}
           </div>
+          {/* Not informational like the others: it acts, on the animal, when an invoice is
+              released — so it says so. */}
+          <div className="mt-2 flex flex-col gap-1">
+            <CheckboxField
+              label={t('pharmacy.flags.euthanasia')}
+              defaultChecked={record.euthanasia}
+              onChange={(event) => {
+                autoSave.set({ euthanasia: event.target.checked })
+                void autoSave.flush()
+              }}
+            />
+            <p className="text-xs text-ink-faint">{t('pharmacy.euthanasiaHint')}</p>
+          </div>
         </fieldset>
       </section>
 

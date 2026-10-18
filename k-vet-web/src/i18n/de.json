@@ -264,6 +264,7 @@
     "create": "Rechnung erstellen",
     "createAnyway": "Trotzdem erstellen",
     "date": "Rechnungsdatum",
+    "euthanasiaNotice": "Mit der Freigabe wird für {{names}} das Todesdatum {{date}} eingetragen.",
     "includesFinding": "Therapie und weiteres Vorgehen aufführen",
     "mailUnreachable": "Der Mailserver ist nicht erreichbar. Die Rechnung wurde nicht versendet — bitte die Mail-Einstellungen prüfen, oder die Rechnung ausdrucken und als „Per Post versendet“ markieren.",
     "markPosted": "Per Post versendet",
@@ -313,8 +314,10 @@
     "correction": "Korrektur",
     "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht.",
     "drugs": "Medikamente",
+    "euthanasiaHint": "Wird dieses Medikament bei einem Termin abgegeben, trägt die Freigabe der Rechnung den Tag des Termins als Todesdatum des Tiers ein und archiviert es. Ein schon eingetragenes Todesdatum bleibt.",
     "expiryShort": "Verfall",
     "flags": {
+      "euthanasia": "Euthanasie",
       "humanDrug": "Humanpräparat",
       "narcotic": "BTM",
       "redesignation": "Umwidmung",

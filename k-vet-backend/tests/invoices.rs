@@ -810,3 +810,135 @@ async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
     assert_eq!(after["sent_email_to"], json!(["kundin@example.com"]));
     assert_eq!(after["ts_sent_email"], sent["ts_sent_email"]);
 }
+
+/// Two animals on one visit, a euthanasia drug dispensed for the first: its record and the
+/// treatment's, with an invoice ready to release. The visit is at noon UTC on 2 March, which is
+/// 2 March in the practice's time zone too.
+async fn euthanasia_visit(app: &TestApp, pool: &PgPool) -> (i64, i64, i64) {
+    let customer_id = common::seed_customer(pool).await;
+    let put_down = common::seed_patient(pool, customer_id).await;
+    let companion = common::seed_patient(pool, customer_id).await;
+    let appointment_id =
+        common::seed_appointment(pool, "2026-03-02T12:00:00Z".parse().expect("timestamp")).await;
+    let (treatment_id, record) =
+        common::seed_patient_treatment(pool, appointment_id, put_down).await;
+    let (_, companion_record) =
+        common::seed_patient_treatment(pool, appointment_id, companion).await;
+
+    let drug = common::seed_drug(pool).await;
+    sqlx::query("UPDATE drug SET euthanasia = true WHERE id = $1")
+        .bind(drug.drug_id)
+        .execute(pool)
+        .await
+        .expect("mark the drug");
+    common::seed_lot(pool, drug.packaging_id, 1, dec("100"), None).await;
+    let service_id = common::seed_got_service(pool).await;
+    app.post(
+        &format!("/api/treatments/{treatment_id}/items"),
+        json!({
+            "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
+            "quantity": "1", "patient_treatment_id": record
+        }),
+    )
+    .await;
+    app.post(
+        &format!("/api/treatments/{treatment_id}/items"),
+        json!({
+            "kind": "service", "service_id": service_id, "quantity": "1",
+            "patient_treatment_id": companion_record
+        }),
+    )
+    .await;
+    (treatment_id, put_down, companion)
+}
+
+async fn death(pool: &PgPool, patient_id: i64) -> (Option<chrono::NaiveDate>, bool) {
+    sqlx::query_as("SELECT date_of_death, archived FROM patient WHERE id = $1")
+        .bind(patient_id)
+        .fetch_one(pool)
+        .await
+        .expect("patient")
+}
+
+/// Releasing an invoice with a euthanasia drug on it ends that animal's record on the day of the
+/// appointment (issues.md) — that animal's only — and a release after an update changes nothing.
+#[sqlx::test]
+async fn releasing_a_euthanasia_line_sets_the_animals_date_of_death(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, put_down, companion) = euthanasia_visit(&app, &pool).await;
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    assert_eq!(items[0]["euthanasia"], true, "the release page can warn");
+    assert_eq!(items[1]["euthanasia"], false);
+
+    let invoice = create_invoice(&app, treatment_id).await;
+    assert_eq!(
+        death(&pool, put_down).await,
+        (None, false),
+        "not before the release"
+    );
+    let released = app
+        .post(
+            &format!("/api/invoices/{}/accept", invoice["id"]),
+            json!({ "recipient_emails": [] }),
+        )
+        .await;
+    assert_eq!(released.status, StatusCode::OK);
+
+    let day = chrono::NaiveDate::from_ymd_opt(2026, 3, 2);
+    assert_eq!(death(&pool, put_down).await, (day, true));
+    assert_eq!(
+        death(&pool, companion).await,
+        (None, false),
+        "only the animal the drug was given to"
+    );
+
+    // An update cancels the released invoice and makes a new one; releasing that finds the date
+    // already set.
+    sqlx::query("UPDATE patient SET date_of_death = '2026-03-01' WHERE id = $1")
+        .bind(put_down)
+        .execute(&pool)
+        .await
+        .expect("a date the vet corrected by hand");
+    let updated = create_invoice(&app, treatment_id).await;
+    let released_again = app
+        .post(
+            &format!("/api/invoices/{}/accept", updated["id"]),
+            json!({ "recipient_emails": [] }),
+        )
+        .await;
+    assert_eq!(released_again.status, StatusCode::OK);
+    assert_eq!(
+        death(&pool, put_down).await.0,
+        chrono::NaiveDate::from_ymd_opt(2026, 3, 1),
+        "a date already entered is the vet's and stays"
+    );
+}
+
+/// Migration 0025 marks the practice's euthanasia preparation, under whatever strength it was
+/// entered, and nothing else.
+#[sqlx::test(migrations = false)]
+async fn the_migration_marks_release_as_a_euthanasia_drug(pool: PgPool) {
+    let migrator = sqlx::migrate!("./migrations");
+    migrator.run_to(24, &pool).await.expect("migrate to 0024");
+    let mut ids = Vec::new();
+    for name in ["Release 500 mg/ml", "RELEASE 300", "Amoxicillin 100"] {
+        let id: i64 = sqlx::query_scalar("INSERT INTO drug (name) VALUES ($1) RETURNING id")
+            .bind(name)
+            .fetch_one(&pool)
+            .await
+            .expect("drug");
+        ids.push(id);
+    }
+
+    migrator.run_to(25, &pool).await.expect("apply 0025");
+
+    let mut marked: Vec<i64> = sqlx::query_scalar("SELECT id FROM drug WHERE euthanasia")
+        .fetch_all(&pool)
+        .await
+        .expect("marked drugs");
+    marked.sort_unstable();
+    assert_eq!(marked, vec![ids[0], ids[1]]);
+}

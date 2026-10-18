@@ -50,6 +50,9 @@ pub struct Drug {
     /// A medicine approved for humans, dispensed for use in an animal: priced by
     /// § 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.
     pub human_drug: bool,
+    /// A euthanasia preparation: releasing an invoice with it on a line sets the date of death
+    /// of that line's animal to the appointment's day (and archives it), unless one is entered.
+    pub euthanasia: bool,
     pub vat_percent: Option<Decimal>,
     pub approval_number: Option<String>,
     pub archived: bool,
@@ -106,6 +109,7 @@ pub struct PatchDrug {
     pub refrigerate: Option<bool>,
     pub redesignation: Option<bool>,
     pub human_drug: Option<bool>,
+    pub euthanasia: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -256,7 +260,8 @@ pub async fn patch(
                refrigerate        = COALESCE($13, refrigerate),
                redesignation      = COALESCE($14, redesignation),
                human_drug         = COALESCE($15, human_drug),
-               draft              = $16
+               draft              = $16,
+               euthanasia         = COALESCE($17, euthanasia)
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -274,6 +279,7 @@ pub async fn patch(
         body.redesignation,
         body.human_drug,
         draft,
+        body.euthanasia,
     )
     .execute(&mut *transaction)
     .await?;
@@ -592,7 +598,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
     let row = sqlx::query!(
         r#"SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,
                   drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,
-                  drug.human_drug,
+                  drug.human_drug, drug.euthanasia,
                   drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
@@ -633,6 +639,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         refrigerate: row.refrigerate,
         redesignation: row.redesignation,
         human_drug: row.human_drug,
+        euthanasia: row.euthanasia,
         vat_percent: row.vat_percent,
         approval_number: row.approval_number,
         archived: row.archived,
