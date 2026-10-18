@@ -39,6 +39,9 @@ of the items within a group is needed: move one step up or down, move to top or 
 For master data, we need normal CRUD functionality. Master data is archived instead of deleted (soft delete): archived customers and patients are hidden from search and select boxes by default (with the option to show them); patients with a date of death are archived automatically. Data referenced by invoiced treatments is never hard-deleted.
 
 If a warning remark has been set for a customer, it must be prominently displayed when "opening" the customer data.
+The customer page lists the customer's animals and all of the customer's appointments, newest first, each opening the appointment.
+
+Every list loads page by page: the first fifty rows, then "Mehr laden" for the next fifty while there are more — a list that ends without the button is complete.
 In a table view, maybe add a warning icon with a tooltip containing the text. Same for warning remarks on patients.
 
 For patients, show the patient photo (if set) in a circle on top. Species should be a select box with Cat and Dog as default, but with the option to clear and enter freetext.

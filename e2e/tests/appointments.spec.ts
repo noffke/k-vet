@@ -105,6 +105,19 @@ test.describe('appointments', () => {
     await expect(loadMore).toHaveCount(0)
   })
 
+  test("a customer's page lists their appointments and opens one", async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const name = `Fiete-${Date.now() % 1e6}`
+    const patientId = await seedPatient(request, customerId, name)
+    const { appointmentId } = await seedTreatment(request, patientId)
+
+    await signIn(page)
+    await page.goto(`/customers/${customerId}`)
+    await expect(page.getByRole('heading', { name: 'Termine' })).toBeVisible()
+    await page.getByRole('link', { name: new RegExp(name) }).click()
+    await expect(page).toHaveURL(new RegExp(`/appointments/${appointmentId}$`))
+  })
+
   test('a second animal is a second tab, and "+ Tier" goes once all are there', async ({
     page,
     request,

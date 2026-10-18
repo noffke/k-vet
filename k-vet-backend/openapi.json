@@ -51,6 +51,16 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "customer_id",
+            "in": "query",
+            "description": "Only this customer's appointments — the customer page lists them.",
+            "required": false,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
           }
         ],
         "responses": {

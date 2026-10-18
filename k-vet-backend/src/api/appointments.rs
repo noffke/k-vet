@@ -10,7 +10,7 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Local, NaiveTime, TimeZone, Utc};
 use serde::{Deserialize, Serialize};
-use utoipa::ToSchema;
+use utoipa::{IntoParams, ToSchema};
 
 use crate::AppState;
 use crate::api::common::{DuplicateRequest, ListQuery, double_option};
@@ -112,12 +112,13 @@ fn missing(has_starts_at: bool) -> Vec<String> {
     operation_id = "listAppointments",
     path = "/api/appointments",
     tag = "appointments",
-    params(ListQuery),
+    params(ListQuery, AppointmentFilter),
     responses((status = 200, body = Vec<Appointment>))
 )]
 pub async fn list(
     State(state): State<AppState>,
     Query(query): Query<ListQuery>,
+    Query(filter): Query<AppointmentFilter>,
 ) -> AppResult<Json<Vec<Appointment>>> {
     let rows = sqlx::query_as!(
         Row,
@@ -141,7 +142,8 @@ pub async fn list(
            LEFT JOIN customer ON customer.id = appointment.customer_id
            -- Whose visit and which animals, now that the list shows those instead of the note;
            -- the note is still searched.
-           WHERE ($1::text IS NULL
+           WHERE ($4::bigint IS NULL OR appointment.customer_id = $4)
+             AND ($1::text IS NULL
                   OR appointment.note ILIKE '%' || $1 || '%'
                   OR concat_ws(' ', customer.first_name, customer.last_name) ILIKE '%' || $1 || '%'
                   OR EXISTS (SELECT 1 FROM patient_treatment
@@ -153,11 +155,19 @@ pub async fn list(
         query.search(),
         query.limit(),
         query.offset(),
+        filter.customer_id,
     )
     .fetch_all(&state.pool)
     .await?;
 
     Ok(Json(rows.into_iter().map(Appointment::from).collect()))
+}
+
+#[derive(Debug, Default, Deserialize, IntoParams)]
+#[into_params(parameter_in = Query)]
+pub struct AppointmentFilter {
+    /// Only this customer's appointments — the customer page lists them.
+    pub customer_id: Option<i64>,
 }
 
 #[utoipa::path(

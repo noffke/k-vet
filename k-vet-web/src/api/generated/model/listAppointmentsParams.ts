@@ -17,4 +17,8 @@ q?: string;
 archived?: boolean;
 limit?: number;
 offset?: number;
+/**
+ * Only this customer's appointments — the customer page lists them.
+ */
+customer_id?: number;
 };

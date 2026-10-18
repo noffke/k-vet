@@ -11,7 +11,8 @@ export const ListAppointmentsQueryParams = zod.object({
   "q": zod.string().optional().describe('Text filter (name, number, …).'),
   "archived": zod.boolean().optional().describe('Include archived records (default: false).'),
   "limit": zod.int().optional(),
-  "offset": zod.int().optional()
+  "offset": zod.int().optional(),
+  "customer_id": zod.int().optional().describe('Only this customer\'s appointments — the customer page lists them.')
 })
 
 export const ListAppointmentsResponseItem = zod.object({

@@ -121,6 +121,56 @@ async fn the_list_shows_newest_first_each_with_its_treatment(pool: PgPool) {
     );
 }
 
+/// The customer page lists the customer's appointments: only theirs, newest first, and page by
+/// page like every list.
+#[sqlx::test]
+async fn the_list_can_be_limited_to_one_customer(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let other_customer = common::seed_customer(&pool).await;
+    let other_patient = common::seed_patient(&pool, other_customer).await;
+    let mut theirs = Vec::new();
+    for day in ["2026-05-01", "2026-05-03"] {
+        let id = common::seed_appointment(
+            &pool,
+            format!("{day}T09:00:00Z").parse::<DateTime<Utc>>().unwrap(),
+        )
+        .await;
+        common::seed_treatment(&pool, id, patient_id).await;
+        theirs.push(id);
+    }
+    let elsewhere = common::seed_appointment(
+        &pool,
+        "2026-05-02T09:00:00Z".parse::<DateTime<Utc>>().unwrap(),
+    )
+    .await;
+    common::seed_treatment(&pool, elsewhere, other_patient).await;
+
+    let ids = |list: &serde_json::Value| -> Vec<i64> {
+        list.as_array()
+            .map(|rows| rows.iter().filter_map(|row| row["id"].as_i64()).collect())
+            .unwrap_or_default()
+    };
+    let listed = app
+        .get(&format!("/api/appointments?customer_id={customer_id}"))
+        .await
+        .json();
+    assert_eq!(
+        ids(&listed),
+        vec![theirs[1], theirs[0]],
+        "theirs, newest first"
+    );
+
+    let second_page = app
+        .get(&format!(
+            "/api/appointments?customer_id={customer_id}&limit=1&offset=1"
+        ))
+        .await
+        .json();
+    assert_eq!(ids(&second_page), vec![theirs[0]]);
+}
+
 #[sqlx::test]
 async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

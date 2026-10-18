@@ -1,12 +1,14 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { Plus, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetCustomerQueryKey,
+  getListAppointmentsQueryKey,
   getListCustomersQueryKey,
   getListPatientsQueryKey,
+  listAppointments,
   useAddCustomerEmail,
   useArchiveCustomer,
   useCreatePatient,
@@ -21,14 +23,17 @@ import type { Customer, CustomerEmail, EmailType, Salutation } from '@/api/gener
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
-import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
+import { ArchivedBadge, IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/field'
 import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
+import { useLocaleFormat } from '@/lib/locale'
+import { usePagedList } from '@/lib/paging'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
 const EMAIL_TYPES: EmailType[] = ['private', 'work', 'other']
@@ -482,6 +487,53 @@ export function CustomerDetailPage() {
           ))}
         </ul>
       </section>
+
+      <CustomerAppointments customerId={customerId} />
     </div>
+  )
+}
+
+/**
+ * Every appointment of this customer, newest first (issues.md) — what the vet reads before a
+ * visit, and the way into one from the customer rather than from the day list.
+ */
+function CustomerAppointments({ customerId }: { customerId: number }) {
+  const { t } = useTranslation()
+  const { dateTime } = useLocaleFormat()
+  const params = { customer_id: customerId }
+  const appointments = usePagedList(getListAppointmentsQueryKey(params), listAppointments, params)
+
+  return (
+    <section className="mt-6">
+      <h2 className="text-base">{t('appointments.title')}</h2>
+      <ul className="mt-2 flex flex-col gap-2">
+        {appointments.rows.map((appointment) => (
+          <li key={appointment.id}>
+            <Link
+              to="/appointments/$id"
+              params={{ id: String(appointment.id) }}
+              className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-card border border-line bg-surface px-3 py-2 hover:bg-cream-soft"
+            >
+              <span className="numeric text-sm font-medium text-ink">
+                {appointment.starts_at ? dateTime(appointment.starts_at) : '—'}
+              </span>
+              <span className="min-w-0 flex-1 truncate text-sm text-ink-soft">
+                {appointment.patient_names.join(', ')}
+              </span>
+              <span className="inline-flex flex-wrap items-center gap-1">
+                <IncompleteBadge missing={appointment.missing_fields} />
+                <NotBilledBadge count={appointment.unbilled ? 1 : 0} />
+              </span>
+            </Link>
+          </li>
+        ))}
+        {!appointments.isPending && appointments.rows.length === 0 ? (
+          <li className="rounded-card border border-dashed border-line-strong px-4 py-6 text-center text-sm text-ink-faint">
+            {t('list.empty')}
+          </li>
+        ) : null}
+      </ul>
+      <LoadMore list={appointments} />
+    </section>
   )
 }
