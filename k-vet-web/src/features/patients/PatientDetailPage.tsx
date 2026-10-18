@@ -327,9 +327,11 @@ export function PatientDetailPage() {
         <ul className="mt-2 flex flex-col gap-2">
           {(treatments.data ?? []).map((visit) => (
             <li key={visit.id}>
+              {/* The visit's page, with this animal's tab open. */}
               <Link
-                to="/patient-treatments/$id"
-                params={{ id: String(visit.id) }}
+                to="/appointments/$id"
+                params={{ id: String(visit.appointment_id) }}
+                search={{ tier: visit.id }}
                 className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-1 rounded-card border border-line bg-surface px-3 py-2 hover:bg-cream-soft"
               >
                 <span className="numeric text-sm font-medium text-ink">

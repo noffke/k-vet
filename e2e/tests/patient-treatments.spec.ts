@@ -4,7 +4,7 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { signIn } from './helpers'
 
 const run = promisify(execFile)
@@ -24,11 +24,12 @@ async function pdfText(bytes: Buffer): Promise<string> {
  * before the positions belonged to the animal.
  */
 test.describe('patient treatments', () => {
-  test('each animal has its own positions, reason and finding', async ({ page, request }) => {
+  test('each animal has its own tab: positions, reason and finding', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const eddie = await seedPatient(request, customerId, 'Eddie')
     const helene = await seedPatient(request, customerId, 'Helene')
     const drug = await seedDrug(request)
+    const { serviceName } = await seedService(request)
     const { treatmentId } = await seedTreatment(request, eddie)
     await request.post(`/api/treatments/${treatmentId}/patients`, {
       data: { patient_id: helene },
@@ -36,35 +37,87 @@ test.describe('patient treatments', () => {
 
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
+    const panel = page.getByRole('tabpanel')
+    const picker = panel.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
 
-    // One group per animal, each with its own search box.
-    const eddiesGroup = page.locator('div').filter({ has: page.getByRole('link', { name: 'Eddie' }) }).last()
-    const helenesGroup = page.locator('div').filter({ has: page.getByRole('link', { name: 'Helene' }) }).last()
-
-    await eddiesGroup.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await eddiesGroup.getByRole('option', { name: /· 10 ml/ }).first().click()
-    await helenesGroup.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
-    await helenesGroup.getByRole('option', { name: /Beratung/ }).first().click()
-
-    // A line belongs to the animal whose box it was typed into.
-    await expect(eddiesGroup.getByLabel('Name')).toHaveCount(1)
-    await expect(eddiesGroup.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
-    await expect(helenesGroup.getByLabel('Name')).toHaveValue(/Beratung/)
-
-    // Reason and finding are the animal's, on its own page.
-    await page.getByRole('link', { name: 'Eddie' }).first().click()
-    await expect(page).toHaveURL(/\/patient-treatments\/\d+$/)
-    await page.getByLabel('Vorbericht und Untersuchung').fill('Verbandswechsel')
-    await page.getByLabel('Therapie und weiteres Vorgehen').fill('Wunde sauber und trocken.')
-    await page.getByLabel('Therapie und weiteres Vorgehen').blur()
+    // Eddie's tab is open first: his line, his reason and finding.
+    await expect(page.getByRole('tab', { name: 'Eddie' })).toHaveAttribute('aria-selected', 'true')
+    await picker.fill(drug.drugName)
+    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await expect(panel.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
+    await panel.getByLabel('Vorbericht und Untersuchung').fill('Verbandswechsel')
+    await panel.getByLabel('Therapie und weiteres Vorgehen').fill('Wunde sauber und trocken.')
+    await panel.getByLabel('Therapie und weiteres Vorgehen').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
-    // That page shows this animal's positions, not the other's.
-    await expect(page.getByLabel('Name')).toHaveCount(1)
-    await expect(page.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
+    // The visit's own position, entered from Eddie's tab, "pro Termin".
+    await panel.getByRole('button', { name: 'Ohne Tier' }).click()
+    await panel.getByPlaceholder('Leistung suchen …').fill(serviceName)
+    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await expect(panel.getByText('pro Termin')).toBeVisible()
+    await expect(panel.getByLabel('Name')).toHaveCount(2)
 
-    await page.getByRole('link', { name: /Zurück/ }).click()
-    await expect(page.getByText('Verbandswechsel')).toBeVisible()
+    // Helene's tab: her own record and lines — and the same "pro Termin" line, so the vet sees
+    // the house call is already entered.
+    await page.getByRole('tab', { name: 'Helene' }).click()
+    await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveValue('')
+    await picker.fill('Beratung im')
+    await page.getByRole('option', { name: /Beratung/ }).first().click()
+    await expect(panel.getByLabel('Name')).toHaveCount(2)
+    await expect(panel.getByLabel('Name').first()).toHaveValue(/Beratung/)
+    await expect(panel.getByLabel('Name').last()).toHaveValue(new RegExp(serviceName))
+
+    // Back to Eddie: what was typed is still there.
+    await page.getByRole('tab', { name: 'Eddie' }).click()
+    await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveValue('Verbandswechsel')
+
+    // Three lines in all — the visit's one counted once, not per animal.
+    const lines = (await (await request.get(`/api/treatments/${treatmentId}/items`)).json()) as {
+      patient_treatment_id: number | null
+    }[]
+    expect(lines).toHaveLength(3)
+    expect(lines.filter((line) => line.patient_treatment_id === null)).toHaveLength(1)
+  })
+
+  test("a warning sits in its animal's tab, and the tab says so while closed", async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const calm = await seedPatient(request, customerId, 'Anton')
+    const biter = await seedPatient(request, customerId, 'Bruno')
+    await request.patch(`/api/patients/${biter}`, {
+      data: { warning_remark: 'Beißt bei der Blutabnahme' },
+    })
+    const { treatmentId } = await seedTreatment(request, calm)
+    await request.post(`/api/treatments/${treatmentId}/patients`, { data: { patient_id: biter } })
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+
+    // Anton's tab is open: no banner — but Bruno's tab carries the mark.
+    await expect(page.getByRole('tab', { name: /Anton/ })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('alert')).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: /Bruno/ }).getByRole('img', { name: 'Warnhinweis' })).toBeVisible()
+
+    await page.getByRole('tab', { name: /Bruno/ }).click()
+    await expect(page.getByRole('tabpanel').getByRole('alert')).toContainText('Beißt bei der Blutabnahme')
+  })
+
+  test("the animal's visit history opens the visit on its tab", async ({ page, request }) => {
+    const { customerId } = await seedCustomer(request)
+    const first = await seedPatient(request, customerId, 'Erna')
+    const second = await seedPatient(request, customerId, 'Fritz')
+    const { treatmentId } = await seedTreatment(request, first)
+    await request.post(`/api/treatments/${treatmentId}/patients`, { data: { patient_id: second } })
+
+    await signIn(page)
+    await page.goto(`/patients/${second}`)
+    await page.getByRole('link', { name: /\d{2}\.\d{2}\.\d{4}/ }).first().click()
+
+    // Fritz's tab, not the first one.
+    await expect(page).toHaveURL(/\/appointments\/\d+\?tier=\d+/)
+    await expect(page.getByRole('tab', { name: /Fritz/ })).toHaveAttribute('aria-selected', 'true')
   })
 
   test('the invoice groups the positions and the report per animal', async ({
@@ -100,9 +153,23 @@ test.describe('patient treatments', () => {
       })
     }
 
+    // And the visit's own position: last on the invoice, once.
+    const { serviceName } = await seedService(request)
+    const services = (await (await request.get(`/api/services?q=${serviceName}`)).json()) as {
+      id: number
+    }[]
+    await request.post(`/api/treatments/${treatmentId}/items`, {
+      data: {
+        kind: 'service',
+        service_id: services[0]?.id,
+        quantity: '1',
+        patient_treatment_id: null,
+      },
+    })
+
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
-    // The button is disabled until the lines are on screen.
+    // The button is disabled until the lines are on screen: the open tab's and the visit's.
     await expect(page.getByLabel('Name')).toHaveCount(2)
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
     const openedTab = page.context().waitForEvent('page')
@@ -117,6 +184,9 @@ test.describe('patient treatments', () => {
     // Positions under a heading per animal, as on the practice's own invoices.
     expect(text).toContain('Tier: Eddie')
     expect(text).toContain('Tier: Helene')
+    // The visit's position comes after every animal, and only once.
+    expect(text.split(serviceName)).toHaveLength(2)
+    expect(text.indexOf(serviceName)).toBeGreaterThan(text.indexOf('Tier: Helene'))
     // And the report iterates them, each with its own reason and finding.
     for (const name of ['Eddie', 'Helene']) {
       expect(text).toContain(`Grund ${name}`)

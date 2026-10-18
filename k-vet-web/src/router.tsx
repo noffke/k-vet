@@ -34,7 +34,6 @@ import { TextBlocksPage } from '@/features/textblocks/TextBlocksPage'
 import { InvoiceAcceptPage } from '@/features/treatments/InvoiceAcceptPage'
 import { InvoiceCreatePage } from '@/features/treatments/InvoiceCreatePage'
 import { InvoiceSendPage } from '@/features/treatments/InvoiceSendPage'
-import { PatientTreatmentPage } from '@/features/treatments/PatientTreatmentPage'
 import { TreatmentPage } from '@/features/treatments/TreatmentPage'
 import { queryClient } from '@/lib/query'
 
@@ -94,6 +93,11 @@ const appointmentsRoute = createRoute({
 const appointmentDetailRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/appointments/$id',
+  // `tier` is the open animal's tab (its patient_treatment id); absent means the first.
+  validateSearch: (search: Record<string, unknown>): { tier?: number } => {
+    const tier = Number(search.tier)
+    return Number.isInteger(tier) && tier > 0 ? { tier } : {}
+  },
   component: AppointmentDetailPage,
 })
 
@@ -223,12 +227,6 @@ const invoiceSendRoute = createRoute({
   component: InvoiceSendPage,
 })
 
-const patientTreatmentRoute = createRoute({
-  getParentRoute: () => appRoute,
-  path: '/patient-treatments/$id',
-  component: PatientTreatmentPage,
-})
-
 const routeTree = rootRoute.addChildren([
   loginRoute,
   appRoute.addChildren([
@@ -258,7 +256,6 @@ const routeTree = rootRoute.addChildren([
     invoiceCreateRoute,
     invoiceAcceptRoute,
     invoiceSendRoute,
-    patientTreatmentRoute,
   ]),
 ])
 

@@ -329,6 +329,10 @@ async fn a_patient_lists_the_visits_it_was_part_of(pool: PgPool) {
         .json();
     assert_eq!(visits.as_array().map(Vec::len), Some(2));
     assert_eq!(visits[0]["id"], newer_record, "newest visit first");
+    assert_eq!(
+        visits[0]["appointment_id"], newer,
+        "the appointment whose page holds the animal's tab"
+    );
     assert_eq!(visits[1]["id"], older_record);
     assert_eq!(visits[0]["treatment_reason"], "Routinekontrolle");
     // Nothing billed yet, so no invoice to name.

@@ -224,6 +224,7 @@
   },
   "treatments": {
     "addItem": "Add line",
+    "addPatient": "Animal",
     "files": "Files",
     "groupAdded": "{{count}} positions added from “{{name}}”",
     "itemAdded": "“{{name}}” added",
@@ -232,6 +233,7 @@
     "lotSelection": "Lot selection",
     "lots": "Lots",
     "noReason": "No history recorded",
+    "perVisit": "per visit",
     "pickerItemsOnly": "Search drug or service …",
     "pickerPlaceholder": "Search drug, service or group …",
     "pickerServicesOnly": "Search service …",

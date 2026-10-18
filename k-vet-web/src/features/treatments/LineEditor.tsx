@@ -1,12 +1,10 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Link } from '@tanstack/react-router'
 import {
   ChevronDown,
   ChevronsDown,
   ChevronsUp,
   ChevronUp,
   Pill,
-  Plus,
   Stethoscope,
   Trash2,
 } from 'lucide-react'
@@ -35,80 +33,6 @@ import { useLocaleFormat } from '@/lib/locale'
 /** How long the undo stays on screen. Sonner's 4 s default is too quick to read and decide. */
 const UNDO_MS = 10_000
 
-interface LineEditorProps {
-  treatment: Treatment
-  items: TreatmentItem[]
-  /** Frozen treatments (accepted invoice) render read-only. */
-  readOnly: boolean
-}
-
-/**
- * The billing lines of a treatment — the screen the practice spends its day in.
- *
- * Prices are pinned when a line is added and stay editable per line; the lots a drug line
- * was dispensed from are shown underneath it, because that is what makes a batch
- * traceable later.
- */
-export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
-  const { t } = useTranslation()
-  const { money } = useLocaleFormat()
-
-  const loose = items.filter((item) => item.patient_treatment_id === null)
-  // Drug dispensing and treatment are attributed to a single animal; the bucket is for what is
-  // independent of any of them — the house-call fee, Wegegeld. It only appears once it holds
-  // something, or on request, and an explicit "no animal" is kept even with a single animal.
-  const [bucketOpen, setBucketOpen] = useState(false)
-  const showBucket = loose.length > 0 || bucketOpen || treatment.patients.length === 0
-
-  return (
-    <section className="mt-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-base">{t('treatments.items')}</h2>
-        <span className="flex items-center gap-3">
-          {readOnly || showBucket ? null : (
-            <Button size="small" variant="ghost" onClick={() => setBucketOpen(true)}>
-              <Plus className="size-4" />
-              {t('treatments.withoutPatient')}
-            </Button>
-          )}
-          <span className="numeric text-sm font-semibold text-ink">
-            {t('treatments.total')}: {money(treatment.total_gross)}
-          </span>
-        </span>
-      </div>
-
-      {treatment.patients.map((patient) => (
-        <PositionGroup
-          key={patient.id}
-          treatment={treatment}
-          heading={
-            <Link
-              to="/patient-treatments/$id"
-              params={{ id: String(patient.id) }}
-              className="hover:underline"
-            >
-              {patient.name}
-            </Link>
-          }
-          patientTreatmentId={patient.id}
-          items={items.filter((item) => item.patient_treatment_id === patient.id)}
-          readOnly={readOnly}
-        />
-      ))}
-
-      {showBucket ? (
-        <PositionGroup
-          treatment={treatment}
-          heading={<span className="text-ink-soft">{t('treatments.withoutPatient')}</span>}
-          patientTreatmentId={null}
-          items={loose}
-          readOnly={readOnly}
-        />
-      ) : null}
-    </section>
-  )
-}
-
 interface PositionGroupProps {
   treatment: Treatment
   heading: ReactNode
@@ -116,6 +40,10 @@ interface PositionGroupProps {
   patientTreatmentId: number | null
   items: TreatmentItem[]
   readOnly: boolean
+  /** Whether the group's search box is offered at all (the visit's own opens on request). */
+  showPicker?: boolean
+  /** The search box below the lines rather than above — new lines are appended there. */
+  pickerBelow?: boolean
 }
 
 /**
@@ -128,6 +56,8 @@ export function PositionGroup({
   patientTreatmentId,
   items,
   readOnly,
+  showPicker = true,
+  pickerBelow = false,
 }: PositionGroupProps) {
   const { t } = useTranslation()
   const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
@@ -212,39 +142,42 @@ export function PositionGroup({
   const move = (itemId: number, direction: MoveDirection) =>
     moveItem.mutate({ id: itemId, data: { direction } })
 
+  const pickerBlock =
+    readOnly || !showPicker ? null : (
+      <div className="mt-2">
+        <ItemPicker
+          onPick={pick}
+          servicesOnly={patientTreatmentId === null}
+          onPickTemplate={
+            patientTreatmentId === null
+              ? undefined
+              : (template) =>
+                  applyTemplate.mutate(
+                    {
+                      id: treatment.id,
+                      data: {
+                        template_id: template.id,
+                        patient_treatment_id: patientTreatmentId,
+                      },
+                    },
+                    // Here rather than on the hook: this is where the group that was
+                    // clicked is known, and its name is what the undo has to say.
+                    { onSuccess: (applied) => offerUndo(applied, template.name ?? '') },
+                  )
+          }
+          disabled={addItem.isPending}
+        />
+      </div>
+    )
+
   return (
     <div className="mt-4">
       <h3 className="text-sm font-semibold text-ink">{heading}</h3>
-      {patientTreatmentId === null && !readOnly ? (
+      {patientTreatmentId === null && !readOnly && showPicker ? (
         <p className="mt-0.5 text-xs text-ink-faint">{t('treatments.withoutPatientHint')}</p>
       ) : null}
 
-      {readOnly ? null : (
-        <div className="mt-2">
-          <ItemPicker
-            onPick={pick}
-            servicesOnly={patientTreatmentId === null}
-            onPickTemplate={
-              patientTreatmentId === null
-                ? undefined
-                : (template) =>
-                    applyTemplate.mutate(
-                      {
-                        id: treatment.id,
-                        data: {
-                          template_id: template.id,
-                          patient_treatment_id: patientTreatmentId,
-                        },
-                      },
-                      // Here rather than on the hook: this is where the group that was
-                      // clicked is known, and its name is what the undo has to say.
-                      { onSuccess: (applied) => offerUndo(applied, template.name ?? '') },
-                    )
-            }
-            disabled={addItem.isPending}
-          />
-        </div>
-      )}
+      {pickerBelow ? null : pickerBlock}
 
       <ul className="mt-2 flex flex-col gap-2">
         {items.map((item, index) => (
@@ -456,6 +389,7 @@ export function PositionGroup({
           </li>
         ) : null}
       </ul>
+      {pickerBelow ? pickerBlock : null}
 
       <ConfirmDialog
         open={pendingRemoval !== null}

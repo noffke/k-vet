@@ -33,10 +33,10 @@ test.describe('text blocks', () => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId, `Bello-${suffix}`)
     const { treatmentId } = await seedTreatment(request, patientId)
-    // `patients[].id` is the Patientenbehandlung — the record that carries the two texts.
-    const treatment = await request.get(`/api/treatments/${treatmentId}`)
-    const record = (await treatment.json()).patients[0].id
-    await page.goto(`/patient-treatments/${record}`)
+    // `patients[].id` is the Patientenbehandlung — the record that carries the two texts, in its
+    // animal's tab on the visit's page.
+    const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
+    await page.goto(`/appointments/${treatment.appointment_id}?tier=${treatment.patients[0].id}`)
 
     const reason = page.getByLabel('Vorbericht und Untersuchung')
     await reason.fill('AnfangEnde')

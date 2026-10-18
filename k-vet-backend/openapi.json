@@ -6793,17 +6793,23 @@
         "description": "One visit this animal was part of, as the patient page lists them.",
         "required": [
           "id",
-          "treatment_id"
+          "treatment_id",
+          "appointment_id"
         ],
         "properties": {
           "id": {
             "type": "integer",
             "format": "int64",
-            "description": "The `patient_treatment` record — what the list links to."
+            "description": "The `patient_treatment` record — the animal's tab the list opens."
           },
           "treatment_id": {
             "type": "integer",
             "format": "int64"
+          },
+          "appointment_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The visit's appointment, whose page holds the animal's record as one of its tabs."
           },
           "starts_at": {
             "type": [

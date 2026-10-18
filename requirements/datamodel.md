@@ -154,7 +154,7 @@ Fields:
   * Relation: n Patient (all patients of a treatment belong to that customer; enforced by
     composite foreign keys, so no code path can write a mixed treatment). A customer with exactly one
     eligible animal (complete, not archived, alive) has it attached automatically, and it cannot
-    be removed; with several, the vet picks, and the picker disappears once all are attached
+    be removed; with several, the vet adds them through "+ Tier", which disappears once all are attached
   * Treatment Reason (Vorstellungsgrund) (optional)
   * Finding (Diagnosis) (optional)
   * Relation: n Attachment (treatment files)

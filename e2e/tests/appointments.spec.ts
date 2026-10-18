@@ -66,15 +66,19 @@ test.describe('appointments', () => {
     await page.getByPlaceholder('Kunde suchen …').fill(lastName)
     await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
 
-    // Nothing to choose: the animal is there, with no picker beside it and no way to take it off.
-    await expect(page.getByRole('link', { name: new RegExp(animal) }).first()).toBeVisible()
+    // Nothing to choose: the animal is there as the one tab, with nothing to add beside it and
+    // no way to take it off.
+    await expect(page.getByRole('tab', { name: new RegExp(animal) })).toBeVisible()
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(page.getByRole('button', { name: 'Tier', exact: true })).toHaveCount(0)
     await expect(page.getByPlaceholder('Patienten')).toHaveCount(0)
-    await expect(
-      page.getByRole('listitem').filter({ hasText: animal }).getByRole('button'),
-    ).toHaveCount(0)
+    await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
   })
 
-  test('the animal picker goes once every animal is on the treatment', async ({ page, request }) => {
+  test('a second animal is a second tab, and "+ Tier" goes once all are there', async ({
+    page,
+    request,
+  }) => {
     const { customerId } = await seedCustomer(request)
     const first = `Erst-${Date.now() % 1e6}`
     const second = `Zweit-${Date.now() % 1e6}`
@@ -85,17 +89,29 @@ test.describe('appointments', () => {
     await signIn(page)
     await page.goto(`/appointments/${appointmentId}`)
     const picker = page.getByPlaceholder('Patienten')
-    for (const name of [first, second]) {
-      await picker.fill(name)
-      await page.getByRole('option', { name: new RegExp(name) }).first().click()
-    }
-    // Both are on it: nothing left to add, so nothing to search.
-    await expect(picker).toHaveCount(0)
+    const addAnimal = page.getByRole('button', { name: 'Tier', exact: true })
 
-    // Taking one off brings the picker back, offering just that one.
-    await page.getByRole('listitem').filter({ hasText: second }).getByRole('button', { name: 'Entfernen' }).click()
+    // No animal yet: the search is offered straight away, and the first pick becomes a tab.
+    await picker.fill(first)
+    await page.getByRole('option', { name: new RegExp(first) }).first().click()
+    await expect(page.getByRole('tab', { name: new RegExp(first) })).toBeVisible()
+
+    // The second comes through "+ Tier", and its tab opens.
+    await addAnimal.click()
+    await picker.fill(second)
+    await page.getByRole('option', { name: new RegExp(second) }).first().click()
+    await expect(page.getByRole('tab', { name: new RegExp(second) })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    // Both are tabs: nothing left to add.
+    await expect(addAnimal).toHaveCount(0)
+
+    // Taking one off brings "+ Tier" back.
+    await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
-    await expect(picker).toBeVisible()
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(addAnimal).toBeVisible()
   })
 
   test('a Termin is only deleted once, and never after it has been billed', async ({

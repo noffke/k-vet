@@ -1707,8 +1707,9 @@ export const ListPatientTreatmentsOfPatientParams = zod.object({
 })
 
 export const ListPatientTreatmentsOfPatientResponseItem = zod.object({
-  "id": zod.int().describe('The `patient_treatment` record — what the list links to.'),
+  "id": zod.int().describe('The `patient_treatment` record — the animal\'s tab the list opens.'),
   "treatment_id": zod.int(),
+  "appointment_id": zod.int().describe('The visit\'s appointment, whose page holds the animal\'s record as one of its tabs.'),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date; the record has none of its own.'),
   "treatment_reason": zod.string().nullish(),
   "invoice_number": zod.string().nullish().describe('The visit\'s invoice, when it has one that was not cancelled.'),

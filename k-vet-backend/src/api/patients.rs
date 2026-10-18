@@ -407,9 +407,11 @@ pub async fn list_files(
 /// One visit this animal was part of, as the patient page lists them.
 #[derive(Debug, Serialize, ToSchema)]
 pub struct PatientTreatmentSummary {
-    /// The `patient_treatment` record — what the list links to.
+    /// The `patient_treatment` record — the animal's tab the list opens.
     pub id: i64,
     pub treatment_id: i64,
+    /// The visit's appointment, whose page holds the animal's record as one of its tabs.
+    pub appointment_id: i64,
     /// The visit's date; the record has none of its own.
     pub starts_at: Option<DateTime<Utc>>,
     pub treatment_reason: Option<String>,
@@ -434,7 +436,7 @@ pub async fn list_treatments(
     // treatment page applies (`api::invoices`), so the two cannot disagree about it.
     let rows = sqlx::query!(
         r#"SELECT record.id, record.treatment_id, record.treatment_reason,
-                  appointment.starts_at,
+                  appointment.id AS appointment_id, appointment.starts_at,
                   invoice.invoice_number AS "invoice_number?",
                   invoice.status AS "invoice_status?: InvoiceStatus"
            FROM patient_treatment record
@@ -454,6 +456,7 @@ pub async fn list_treatments(
             .map(|row| PatientTreatmentSummary {
                 id: row.id,
                 treatment_id: row.treatment_id,
+                appointment_id: row.appointment_id,
                 starts_at: row.starts_at,
                 treatment_reason: row.treatment_reason,
                 invoice_number: row.invoice_number,

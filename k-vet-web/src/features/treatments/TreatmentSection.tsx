@@ -1,64 +1,249 @@
+import * as Tabs from '@radix-ui/react-tabs'
 import { Link } from '@tanstack/react-router'
+import { Plus, TriangleAlert } from 'lucide-react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetTreatment, useListTreatmentItems } from '@/api/generated/endpoints'
+import type { Treatment, TreatmentItem, TreatmentPatient } from '@/api/generated/model'
+import { Button } from '@/components/ui/button'
 import { WarningBanner } from '@/components/WarningBanner'
+import { AnimalPicker, RemoveAnimal, useEligibleAnimals } from '@/features/treatments/AnimalPicker'
+import { AnimalRecord } from '@/features/treatments/AnimalRecord'
 import { InvoicePanel } from '@/features/treatments/InvoicePanel'
-import { LineEditor } from '@/features/treatments/LineEditor'
-import { PatientAttach } from '@/features/treatments/PatientAttach'
+import { PositionGroup } from '@/features/treatments/LineEditor'
+import { useLocaleFormat } from '@/lib/locale'
+import type { SaveStatus } from '@/lib/saveState'
+import { cn } from '@/lib/utils'
+
+interface TreatmentSectionProps {
+  treatmentId: number
+  /** The open animal's record (`?tier=`); the first animal when absent or gone. */
+  activeRecordId?: number | undefined
+  onSelectRecord: (recordId: number) => void
+  onSaveState: (status: SaveStatus) => void
+}
 
 /**
- * The treatment of an appointment: what was done, on which animal, and what it costs.
+ * The treatment of an appointment, on the appointment's page: one tab per animal, each with
+ * that animal's record and lines, then the visit's total and invoice.
  *
- * Every appointment has exactly one (a second invoice for the same visit is a second
- * appointment), so this is part of the appointment's page rather than a page of its own. The
- * invoice panel sits at the bottom because that is the last step of the visit.
+ * A second animal is a second tab, not a different page — the vet starts writing in the first
+ * animal's tab straight away, whether it stays alone or not.
  */
-export function TreatmentSection({ treatmentId }: { treatmentId: number }) {
+export function TreatmentSection(props: TreatmentSectionProps) {
   const { t } = useTranslation()
-  const treatment = useGetTreatment(treatmentId)
-  const items = useListTreatmentItems(treatmentId)
+  const treatment = useGetTreatment(props.treatmentId)
+  const items = useListTreatmentItems(props.treatmentId)
 
   if (treatment.isPending) return <p className="mt-6 text-sm text-ink-faint">{t('list.loading')}</p>
   if (!treatment.data) return <p className="mt-6 text-sm text-danger">{t('error.notFound')}</p>
+  return <TreatmentBody {...props} treatment={treatment.data} items={items.data ?? []} />
+}
 
-  const record = treatment.data
-  const warnings = record.patients.filter((patient) => patient.warning_remark)
+function TreatmentBody({
+  treatment,
+  items,
+  activeRecordId,
+  onSelectRecord,
+  onSaveState,
+}: TreatmentSectionProps & { treatment: Treatment; items: TreatmentItem[] }) {
+  const { t } = useTranslation()
+  const { money } = useLocaleFormat()
+  const eligible = useEligibleAnimals(treatment)
+  const [adding, setAdding] = useState(false)
+
+  const patients = treatment.patients
+  const active = patients.find((patient) => patient.id === activeRecordId) ?? patients[0]
+  // The visit's own positions: the house-call fee, Wegegeld — independent of any one animal.
+  const general = items.filter((item) => item.patient_treatment_id === null)
+  const canAdd = !treatment.frozen && !eligible.pending && eligible.leftToAdd > 0
 
   return (
     <section className="mt-6">
-      {warnings.map((patient) => (
-        <WarningBanner
-          key={patient.patient_id}
-          className="mb-4"
-          title={patient.name}
-          remark={patient.warning_remark ?? ''}
-        />
-      ))}
-
-      <PatientAttach treatment={record} />
-
-      {/* Why each animal was seen and what was found is its own record — two animals brought
-          in together are rarely brought in for the same thing. */}
-      <ul className="mt-3 flex flex-col gap-2">
-        {record.patients.map((patient) => (
-          <li key={patient.id}>
-            <Link
-              to="/patient-treatments/$id"
-              params={{ id: String(patient.id) }}
-              className="block rounded-card border border-line bg-surface px-3 py-2.5 hover:bg-cream-soft"
+      {active === undefined ? (
+        // No animal yet: a customer with several, none picked. The visit's own positions can
+        // be written down already.
+        <>
+          <h2 className="text-base">{t('field.patient')}</h2>
+          {canAdd ? <AnimalPicker treatment={treatment} onAttached={onSelectRecord} /> : null}
+          <PositionGroup
+            treatment={treatment}
+            heading={t('treatments.perVisit')}
+            patientTreatmentId={null}
+            items={general}
+            readOnly={treatment.frozen}
+          />
+        </>
+      ) : (
+        <Tabs.Root
+          value={String(active.id)}
+          onValueChange={(value) => onSelectRecord(Number(value))}
+        >
+          <div className="flex items-end gap-2 border-b border-line">
+            {/* Scrolls inside itself with many animals — never the page (helpers.ts). */}
+            <Tabs.List
+              aria-label={t('field.patients')}
+              className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
             >
-              <span className="font-medium text-ink">{patient.name}</span>
-              <span className="ml-2 text-sm text-ink-soft">
-                {patient.treatment_reason ?? t('treatments.noReason')}
-              </span>
-            </Link>
-          </li>
-        ))}
-      </ul>
+              {patients.map((patient) => (
+                <Tabs.Trigger
+                  key={patient.id}
+                  value={String(patient.id)}
+                  className={cn(
+                    '-mb-px flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-medium text-ink-soft sm:min-h-9',
+                    'hover:text-ink data-[state=active]:border-rust data-[state=active]:text-rust',
+                  )}
+                >
+                  {/* A warning sits in its animal's tab; the mark says so while it is closed. */}
+                  {patient.warning_remark ? (
+                    <TriangleAlert
+                      className="size-3.5 text-danger"
+                      role="img"
+                      aria-label={t('field.warningRemark')}
+                    />
+                  ) : null}
+                  {patient.name}
+                </Tabs.Trigger>
+              ))}
+            </Tabs.List>
+            {canAdd ? (
+              <Button
+                size="small"
+                variant="ghost"
+                aria-expanded={adding}
+                onClick={() => setAdding((open) => !open)}
+              >
+                <Plus className="size-4" />
+                {t('treatments.addPatient')}
+              </Button>
+            ) : null}
+          </div>
 
-      <LineEditor treatment={record} items={items.data ?? []} readOnly={record.frozen} />
+          {adding && canAdd ? (
+            <AnimalPicker
+              treatment={treatment}
+              onAttached={(recordId) => {
+                setAdding(false)
+                onSelectRecord(recordId)
+              }}
+            />
+          ) : null}
 
-      <InvoicePanel treatment={record} hasItems={(items.data ?? []).length > 0} />
+          {/* Only the open tab is mounted: the visit's shared lines are never on screen twice. */}
+          {patients.map((patient) => (
+            <Tabs.Content key={patient.id} value={String(patient.id)} className="pt-4">
+              <AnimalPanel
+                treatment={treatment}
+                patient={patient}
+                items={items}
+                general={general}
+                removable={
+                  !treatment.frozen &&
+                  !eligible.pending &&
+                  patient.patient_id !== eligible.onlyAnimal
+                }
+                onRemoved={() => {
+                  const next = patients.find((other) => other.id !== patient.id)
+                  if (next) onSelectRecord(next.id)
+                }}
+                onSaveState={onSaveState}
+              />
+            </Tabs.Content>
+          ))}
+        </Tabs.Root>
+      )}
+
+      <p className="numeric mt-6 text-right text-sm font-semibold text-ink">
+        {t('treatments.total')}: {money(treatment.total_gross)}
+      </p>
+      <InvoicePanel treatment={treatment} hasItems={items.length > 0} />
     </section>
+  )
+}
+
+/**
+ * One animal's tab: its warning, its record, its lines — and below them the visit's own
+ * positions, marked "pro Termin", which every tab shows: they are the same lines, billed once,
+ * and each tab tells the vet whether the house call is already entered.
+ */
+function AnimalPanel({
+  treatment,
+  patient,
+  items,
+  general,
+  removable,
+  onRemoved,
+  onSaveState,
+}: {
+  treatment: Treatment
+  patient: TreatmentPatient
+  items: TreatmentItem[]
+  general: TreatmentItem[]
+  removable: boolean
+  onRemoved: () => void
+  onSaveState: (status: SaveStatus) => void
+}) {
+  const { t } = useTranslation()
+  const [generalOpen, setGeneralOpen] = useState(false)
+  const generalRef = useRef<HTMLDivElement>(null)
+
+  return (
+    <div>
+      {patient.warning_remark ? (
+        <WarningBanner className="mb-4" title={patient.name} remark={patient.warning_remark} />
+      ) : null}
+
+      <div className="flex flex-wrap items-center justify-between gap-2">
+        <Link
+          to="/patients/$id"
+          params={{ id: String(patient.patient_id) }}
+          className="text-base font-semibold text-ink hover:underline"
+        >
+          {patient.name}
+        </Link>
+        {removable ? (
+          <RemoveAnimal treatment={treatment} patient={patient} onRemoved={onRemoved} />
+        ) : null}
+      </div>
+
+      <AnimalRecord key={patient.id} recordId={patient.id} onSaveState={onSaveState} />
+
+      <PositionGroup
+        treatment={treatment}
+        heading={t('treatments.items')}
+        patientTreatmentId={patient.id}
+        items={items.filter((item) => item.patient_treatment_id === patient.id)}
+        readOnly={treatment.frozen}
+      />
+
+      {general.length > 0 || generalOpen ? (
+        <div ref={generalRef}>
+          <PositionGroup
+            treatment={treatment}
+            heading={t('treatments.perVisit')}
+            patientTreatmentId={null}
+            items={general}
+            readOnly={treatment.frozen}
+            showPicker={generalOpen}
+            pickerBelow
+          />
+        </div>
+      ) : null}
+
+      {treatment.frozen ? null : (
+        <Button
+          size="small"
+          variant="ghost"
+          className="mt-3"
+          onClick={() => {
+            setGeneralOpen(true)
+            requestAnimationFrame(() => generalRef.current?.scrollIntoView({ block: 'nearest' }))
+          }}
+        >
+          <Plus className="size-4" />
+          {t('treatments.withoutPatient')}
+        </Button>
+      )}
+    </div>
   )
 }

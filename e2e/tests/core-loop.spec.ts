@@ -40,19 +40,19 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
 
   // ── The treatment is part of the appointment, and the customer's only animal is on it
-  //    already: with one animal there is nothing to pick ──────────────────────────
-  await expect(page).toHaveURL(/\/appointments\/\d+$/)
-  await expect(page.getByRole('link', { name: new RegExp(patientName) }).first()).toBeVisible()
+  //    already, in its own tab: nothing to pick, and the record is right here ─────
+  await expect(page).toHaveURL(/\/appointments\/\d+/)
+  await expect(page.getByRole('tab', { name: new RegExp(patientName) })).toHaveAttribute(
+    'aria-selected',
+    'true',
+  )
   await expect(page.getByPlaceholder('Patienten')).toHaveCount(0)
 
-  // The reason and the finding belong to the animal, on its own record.
-  await page.getByRole('link', { name: new RegExp(patientName) }).first().click()
-  await expect(page).toHaveURL(/\/patient-treatments\/\d+$/)
+  // The reason and the finding belong to the animal — written in its tab, without leaving.
   await page.getByLabel('Vorbericht und Untersuchung').fill('Jahresimpfung und Kontrolle')
   await page.getByLabel('Therapie und weiteres Vorgehen').fill('Allgemeinzustand unauffällig, Gewicht stabil.')
+  await page.getByLabel('Therapie und weiteres Vorgehen').blur()
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
-  await page.getByRole('link', { name: /Zurück/ }).click()
-  await expect(page).toHaveURL(/\/appointments\/\d+$/)
 
   // ── Two lines from the picker: a stocked drug and a service ──────────────────
   const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')

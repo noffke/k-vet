@@ -28,17 +28,17 @@ test.describe('auto-save', () => {
     const { treatmentId } = await seedTreatment(request, patientId)
     await signIn(page)
 
-    // The reason is the animal's, on its Patientenbehandlung.
+    // The reason is the animal's, in its tab on the visit's page.
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
-    const recordId = treatment.patients[0].id
-    await page.goto(`/patient-treatments/${recordId}`)
+    const visit = `/appointments/${treatment.appointment_id}?tier=${treatment.patients[0].id}`
+    await page.goto(visit)
     await page.getByLabel('Vorbericht und Untersuchung').fill('Impfung und Kontrolle')
 
     // Navigate away immediately: the pending change is flushed, not dropped.
     await navigate(page, 'Kunden')
     await expect(page).toHaveURL(/\/customers$/)
 
-    await page.goto(`/patient-treatments/${recordId}`)
+    await page.goto(visit)
     await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveValue('Impfung und Kontrolle')
   })
 

@@ -11,9 +11,11 @@ import type { InvoiceStatus } from './invoiceStatus';
  * One visit this animal was part of, as the patient page lists them.
  */
 export interface PatientTreatmentSummary {
-  /** The `patient_treatment` record — what the list links to. */
+  /** The `patient_treatment` record — the animal's tab the list opens. */
   id: number;
   treatment_id: number;
+  /** The visit's appointment, whose page holds the animal's record as one of its tabs. */
+  appointment_id: number;
   /**
      * The visit's date; the record has none of its own.
      * @nullable

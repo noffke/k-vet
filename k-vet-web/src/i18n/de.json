@@ -224,6 +224,7 @@
   },
   "treatments": {
     "addItem": "Position hinzufügen",
+    "addPatient": "Tier",
     "files": "Dateien",
     "groupAdded": "{{count}} Positionen aus „{{name}}“ hinzugefügt",
     "itemAdded": "„{{name}}“ hinzugefügt",
@@ -232,6 +233,7 @@
     "lotSelection": "Chargenauswahl",
     "lots": "Chargen",
     "noReason": "Kein Vorbericht",
+    "perVisit": "pro Termin",
     "pickerItemsOnly": "Medikament oder Leistung suchen …",
     "pickerPlaceholder": "Medikament, Leistung oder Gruppe suchen …",
     "pickerServicesOnly": "Leistung suchen …",

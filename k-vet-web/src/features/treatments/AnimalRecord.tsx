@@ -1,7 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Link, useParams } from '@tanstack/react-router'
 import { NotebookPen, Upload } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
 import {
@@ -10,40 +9,37 @@ import {
   getGetTreatmentQueryKey,
   getListPatientTreatmentFilesQueryKey,
   useGetPatientTreatment,
-  useGetTreatment,
   useListPatientTreatmentFiles,
-  useListTreatmentItems,
   usePatchPatientTreatment,
 } from '@/api/generated/endpoints'
 import type { Attachment, PatientTreatment, TextBlock } from '@/api/generated/model'
-import { BackLink } from '@/components/BackLink'
-import { PageHeader } from '@/components/PageHeader'
-import { SaveIndicator } from '@/components/SaveIndicator'
 import { TextBlockPicker } from '@/components/TextBlockPicker'
 import { Button } from '@/components/ui/button'
 import { autoGrow, TextAreaField } from '@/components/ui/field'
-import { InvoicePanel } from '@/features/treatments/InvoicePanel'
-import { PositionGroup } from '@/features/treatments/LineEditor'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
+import type { SaveStatus } from '@/lib/saveState'
 
 /** Which of the two texts the picker was opened for. */
 type TextField = 'treatment_reason' | 'finding'
 
 /**
- * One animal's record of one visit: why it was seen, what was found, the files that belong to
- * it, and the positions billed for it.
+ * One animal's record of one visit: why it was seen, what was found, and the files that belong
+ * to it — what the vet writes in during the examination, in the animal's tab.
  *
- * The positions are here as well as on the treatment because this is where the vet stands
- * during the examination — and they belong to this record, which is what ties a dispensed
- * batch to the animal that received it.
+ * It auto-saves on its own, but has no indicator of its own: it reports its state, and the
+ * page shows one for everything on it.
  */
-export function PatientTreatmentPage() {
+export function AnimalRecord({
+  recordId,
+  onSaveState,
+}: {
+  recordId: number
+  onSaveState: (status: SaveStatus) => void
+}) {
   const { t } = useTranslation()
-  const { id } = useParams({ from: '/app/patient-treatments/$id' })
-  const recordId = Number(id)
   const client = useQueryClient()
-  const { date, dateTime } = useLocaleFormat()
+  const { date } = useLocaleFormat()
   const fileInput = useRef<HTMLInputElement>(null)
 
   // The two textareas are uncontrolled (`defaultValue`), so inserting is done on the element
@@ -57,12 +53,6 @@ export function PatientTreatmentPage() {
   const record = useGetPatientTreatment(recordId)
   const files = useListPatientTreatmentFiles(recordId)
   const treatmentId = record.data?.treatment_id
-  const treatment = useGetTreatment(treatmentId ?? 0, {
-    query: { enabled: Boolean(treatmentId) },
-  })
-  const items = useListTreatmentItems(treatmentId ?? 0, {
-    query: { enabled: Boolean(treatmentId) },
-  })
   const patchRecord = usePatchPatientTreatment()
 
   const autoSave = useAutoSave<PatientTreatment>({
@@ -73,14 +63,19 @@ export function PatientTreatmentPage() {
       }),
     onSaved: (updated) => {
       client.setQueryData(getGetPatientTreatmentQueryKey(recordId), updated)
+      // The appointment's customer lock counts a reason or finding as entered content.
       if (treatmentId) {
         void client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
       }
     },
   })
 
-  if (record.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
-  if (!record.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
+  useEffect(() => {
+    onSaveState({ state: autoSave.state, error: autoSave.error })
+  }, [autoSave.state, autoSave.error, onSaveState])
+
+  if (record.isPending) return <p className="mt-4 text-sm text-ink-faint">{t('list.loading')}</p>
+  if (!record.data) return <p className="mt-4 text-sm text-danger">{t('error.notFound')}</p>
   const current = record.data
 
   /**
@@ -136,29 +131,8 @@ export function PatientTreatmentPage() {
   }
 
   return (
-    <div className="mx-auto max-w-3xl">
-      <PageHeader
-        back={
-          <BackLink
-            to="/treatments/$id"
-            params={{ id: String(current.treatment_id) }}
-            label={dateTime(current.starts_at) || t('treatments.title')}
-          />
-        }
-        eyebrow={
-          <Link
-            to="/patients/$id"
-            params={{ id: String(current.patient_id) }}
-            className="hover:underline"
-          >
-            {t('patients.title')}
-          </Link>
-        }
-        title={current.patient_name ?? t('field.patient')}
-        actions={<SaveIndicator state={autoSave.state} error={autoSave.error} />}
-      />
-
-      <section className="mt-5 flex flex-col gap-4 rounded-card border border-line bg-surface p-4">
+    <>
+      <section className="mt-4 flex flex-col gap-4 rounded-card border border-line bg-surface p-4">
         <div>
           <TextAreaField
             ref={reasonInput}
@@ -205,9 +179,9 @@ export function PatientTreatmentPage() {
         }}
       />
 
-      <section className="mt-6">
+      <section className="mt-5">
         <div className="flex items-center justify-between gap-3">
-          <h2 className="text-base">{t('patients.files')}</h2>
+          <h3 className="text-sm font-semibold text-ink">{t('patients.files')}</h3>
           <Button size="small" onClick={() => fileInput.current?.click()}>
             <Upload className="size-4" />
             {t('action.upload')}
@@ -248,28 +222,6 @@ export function PatientTreatmentPage() {
           ) : null}
         </ul>
       </section>
-
-      {treatment.data ? (
-        <section className="mt-6">
-          <h2 className="text-base">{t('treatments.items')}</h2>
-          <PositionGroup
-            treatment={treatment.data}
-            heading={current.patient_name ?? t('field.patient')}
-            patientTreatmentId={recordId}
-            items={(items.data ?? []).filter((item) => item.patient_treatment_id === recordId)}
-            readOnly={current.frozen}
-          />
-        </section>
-      ) : null}
-
-      {/*
-        One animal per appointment is the common case, and the invoice covers the whole visit —
-        so the vet had to go back to the treatment to bill what they had just recorded here
-        (issues.md 13). The panel acts on the parent treatment either way.
-      */}
-      {treatment.data ? (
-        <InvoicePanel treatment={treatment.data} hasItems={(items.data ?? []).length > 0} />
-      ) : null}
-    </div>
+    </>
   )
 }

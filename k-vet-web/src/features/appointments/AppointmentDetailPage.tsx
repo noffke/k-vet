@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useNavigate, useParams, useSearch } from '@tanstack/react-router'
 import { Copy, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/fetcher'
 import {
@@ -30,6 +30,7 @@ import { TreatmentSection } from '@/features/treatments/TreatmentSection'
 import { useAutoSave } from '@/lib/autosave'
 import { todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
+import { combineSaveStatus, type SaveStatus } from '@/lib/saveState'
 
 /**
  * One appointment: date and time (auto-saved), a note, the customer — and its treatment, the
@@ -43,6 +44,7 @@ import { useLocaleFormat } from '@/lib/locale'
 export function AppointmentDetailPage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/appointments/$id' })
+  const { tier } = useSearch({ from: '/app/appointments/$id' })
   const appointmentId = Number(id)
   const navigate = useNavigate()
   const client = useQueryClient()
@@ -54,6 +56,18 @@ export function AppointmentDetailPage() {
   const patchAppointment = usePatchAppointment()
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // The open animal's record auto-saves on its own; the header shows one state for both.
+  const [recordSave, setRecordSave] = useState<SaveStatus>({ state: 'idle', error: null })
+  const selectRecord = useCallback(
+    (recordId: number) =>
+      void navigate({
+        to: '/appointments/$id',
+        params: { id: String(appointmentId) },
+        search: { tier: recordId },
+        replace: true,
+      }),
+    [navigate, appointmentId],
+  )
   // A typed date has nowhere to go until a time exists — a timestamp needs both halves.
   const [typedDate, setTypedDate] = useState<string | null>(null)
 
@@ -136,7 +150,9 @@ export function AppointmentDetailPage() {
         title={storedDate ? formatDate(storedDate) : t('appointments.new')}
         actions={
           <>
-            <SaveIndicator state={autoSave.state} error={autoSave.error} />
+            <SaveIndicator
+              {...combineSaveStatus({ state: autoSave.state, error: autoSave.error }, recordSave)}
+            />
             <Button onClick={() => setDuplicateOpen(true)}>
               <Copy className="size-4" />
               <span className="sr-only sm:not-sr-only">{t('action.duplicate')}</span>
@@ -234,7 +250,12 @@ export function AppointmentDetailPage() {
       ) : !record.customer_id ? (
         <p className="mt-6 text-sm text-ink-faint">{t('treatment.customerRequired')}</p>
       ) : (
-        <TreatmentSection treatmentId={record.treatment_id} />
+        <TreatmentSection
+          treatmentId={record.treatment_id}
+          activeRecordId={tier}
+          onSelectRecord={selectRecord}
+          onSaveState={setRecordSave}
+        />
       )}
 
       <DuplicateDialog

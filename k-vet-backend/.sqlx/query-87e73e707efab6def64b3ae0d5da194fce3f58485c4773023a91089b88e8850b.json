@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT record.id, record.treatment_id, record.treatment_reason,\n                  appointment.starts_at,\n                  invoice.invoice_number AS \"invoice_number?\",\n                  invoice.status AS \"invoice_status?: InvoiceStatus\"\n           FROM patient_treatment record\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           LEFT JOIN invoice ON invoice.treatment_id = record.treatment_id\n                            AND invoice.status <> 'cancelled'\n           WHERE record.patient_id = $1\n           ORDER BY appointment.starts_at DESC NULLS LAST, record.id DESC",
+  "query": "SELECT record.id, record.treatment_id, record.treatment_reason,\n                  appointment.id AS appointment_id, appointment.starts_at,\n                  invoice.invoice_number AS \"invoice_number?\",\n                  invoice.status AS \"invoice_status?: InvoiceStatus\"\n           FROM patient_treatment record\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           LEFT JOIN invoice ON invoice.treatment_id = record.treatment_id\n                            AND invoice.status <> 'cancelled'\n           WHERE record.patient_id = $1\n           ORDER BY appointment.starts_at DESC NULLS LAST, record.id DESC",
   "describe": {
     "columns": [
       {
@@ -38,6 +38,17 @@
       },
       {
         "ordinal": 3,
+        "name": "appointment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
         "name": "starts_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -48,7 +59,7 @@
         }
       },
       {
-        "ordinal": 4,
+        "ordinal": 5,
         "name": "invoice_number?",
         "type_info": "Text",
         "origin": {
@@ -59,7 +70,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "invoice_status?: InvoiceStatus",
         "type_info": {
           "Custom": {
@@ -92,10 +103,11 @@
       false,
       false,
       true,
+      false,
       true,
       false,
       false
     ]
   },
-  "hash": "7a5f18565bc4a59b7af41ebe3da8f7e118614ec0c6352e6da1edac0207e1dfd1"
+  "hash": "87e73e707efab6def64b3ae0d5da194fce3f58485c4773023a91089b88e8850b"
 }
