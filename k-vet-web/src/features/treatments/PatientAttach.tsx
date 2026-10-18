@@ -83,26 +83,34 @@ export function PatientAttach({ treatment }: { treatment: Treatment }) {
       <h2 className="text-base">{t('field.patient')}</h2>
 
       <ul className="mt-2 flex flex-wrap gap-2">
-        {treatment.patients.map((patient) => (
-          <li
-            key={patient.patient_id}
-            className="flex items-center gap-1.5 rounded-full border border-line bg-surface pl-3 pr-1 py-1"
-          >
-            <PawPrint className="size-3.5 text-rust" aria-hidden />
-            <span className="text-sm text-ink">{patient.name}</span>
-            {treatment.frozen || patient.patient_id === onlyAnimal ? null : (
-              <Button
-                size="icon"
-                variant="ghost"
-                aria-label={t('action.remove')}
-                className="size-7 sm:size-7"
-                onClick={() => setPendingPatient(patient)}
-              >
-                <X className="size-3.5" />
-              </Button>
-            )}
-          </li>
-        ))}
+        {treatment.patients.map((patient) => {
+          const removable = !treatment.frozen && patient.patient_id !== onlyAnimal
+          return (
+            <li
+              key={patient.patient_id}
+              // The × sits in the right padding; a chip without one — the only animal, a frozen
+              // treatment — needs the full padding back, and the same height as one with it.
+              className={cn(
+                'flex min-h-9 items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-3',
+                removable ? 'pr-1' : 'pr-3',
+              )}
+            >
+              <PawPrint className="size-3.5 text-rust" aria-hidden />
+              <span className="text-sm text-ink">{patient.name}</span>
+              {removable ? (
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  aria-label={t('action.remove')}
+                  className="size-7 sm:size-7"
+                  onClick={() => setPendingPatient(patient)}
+                >
+                  <X className="size-3.5" />
+                </Button>
+              ) : null}
+            </li>
+          )
+        })}
         {treatment.patients.length === 0 ? (
           <li className="text-sm text-ink-faint">{t('list.empty')}</li>
         ) : null}
