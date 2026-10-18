@@ -81,3 +81,10 @@ than the rate applied to the group's net, which can differ by a cent on a long i
 to the method and accepted. § 14 Abs. 4 UStG requires the Entgelt per rate (Nr. 7) and the
 Steuerbetrag on it (Nr. 8); it prescribes neither rounding, and it does not require a per-line
 gross at all.
+
+On a position — not a GOT one, whose price is the schedule's — the vet types the **gross** unit
+price, after the factor, because that is what the customer is quoted. It is stored as the net
+that comes closest (`money::net_for_gross`): with net in whole cents and VAT rounded per line,
+not every gross amount has a net behind it (at 19 % none gives 15,00 €), and then the nearest
+below is taken. Quantities above one can move the line total by a cent the same way
+(2 × 10,00 € gross is 19,99 €). The vet accepted both (2026-10-18; `review.md`, item `MWS-05`).

@@ -240,23 +240,19 @@ export function PositionGroup({
                   value && patchItem.mutate({ id: item.id, data: { quantity: value } })
                 }
               />
-              {/* A GOT position costs what the schedule says; the factor adjusts it, the price
-                  stays (the server refuses one). A § 8 analogy is the practice's own price. */}
-              <NumberInput
-                label={t('field.priceNet')}
-                value={item.price_net}
-                unit={currencySymbol}
-                money
-                hint={
-                  gotPosition(item)
-                    ? `${t('field.priceGross')}: ${money(item.price_gross)} · ${t('treatments.gotPriceHint')}`
-                    : `${t('field.priceGross')}: ${money(item.price_gross)}`
-                }
-                disabled={readOnly || gotPosition(item)}
-                onChange={(value) =>
-                  value && patchItem.mutate({ id: item.id, data: { price_net: value } })
-                }
-              />
+              {/* A GOT position costs what the schedule says, net as the GOT publishes it; the
+                  factor adjusts it, the price stays (the server refuses one). */}
+              {gotPosition(item) ? (
+                <NumberInput
+                  label={t('field.priceNet')}
+                  value={item.price_net}
+                  unit={currencySymbol}
+                  money
+                  hint={`${t('field.priceGross')}: ${money(item.price_gross)} · ${t('treatments.gotPriceHint')}`}
+                  disabled
+                  onChange={() => undefined}
+                />
+              ) : null}
               {item.kind === 'service' ? (
                 <NumberInput
                   label={t('field.factor')}
@@ -317,6 +313,22 @@ export function PositionGroup({
                   </select>
                 </label>
               ) : null}
+              {/* Every other position is priced as the customer sees it, last in the row (issues.md):
+                  gross, after the factor, with the net underneath. The server stores the net that
+                  comes closest, so a cent rounding moved shows here once the field is left. */}
+              {gotPosition(item) ? null : (
+                <NumberInput
+                  label={t('field.priceGross')}
+                  value={item.price_gross}
+                  unit={currencySymbol}
+                  money
+                  hint={`${t('field.priceNet')}: ${money(item.unit_net)}`}
+                  disabled={readOnly}
+                  onChange={(value) =>
+                    value && patchItem.mutate({ id: item.id, data: { price_gross: value } })
+                  }
+                />
+              )}
             </div>
 
             {item.kind === 'drug_packaging' ? (

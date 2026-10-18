@@ -71,6 +71,39 @@ pub fn add_vat(net: Decimal, vat_percent: Decimal) -> VatSplit {
     }
 }
 
+/// The unit net price for a gross price the vet types on a position (issues.md): the net whose
+/// one unit — after the factor, with VAT added as [`add_vat`] adds it — comes to `gross`.
+///
+/// Net stays what is stored and computed in, so not every gross amount has a net in whole cents
+/// behind it: at 19 % no net gives 15,00 € (12,60 → 14,99; 12,61 → 15,01). Then the nearest is
+/// taken, and on a tie the lower — the customer is never charged more than was typed. The vet
+/// sees the result in the field once it is saved (`review.md`, item MWS-05).
+pub fn net_for_gross(
+    gross: Decimal,
+    vat_percent: Decimal,
+    factor_percent: Option<Decimal>,
+) -> Decimal {
+    let factor = factor_percent.unwrap_or_else(hundred);
+    if factor <= Decimal::ZERO || gross <= Decimal::ZERO {
+        return Decimal::ZERO.max(gross);
+    }
+    let unit_gross =
+        |net: Decimal| add_vat(line_total(net, Decimal::ONE, Some(factor)), vat_percent).gross;
+    let estimate = round_money(gross * hundred() / (hundred() + vat_percent) * hundred() / factor);
+    let cent = Decimal::new(1, CENTS);
+
+    // The two roundings (factor, VAT) put the answer within a few cents of the estimate; look
+    // at each and keep the closest gross, below rather than above, then the smaller net.
+    (-5..=5)
+        .map(|step| estimate + cent * Decimal::from(step))
+        .filter(|net| *net >= Decimal::ZERO)
+        .min_by_key(|net| {
+            let reached = unit_gross(*net);
+            ((reached - gross).abs(), reached > gross, *net)
+        })
+        .unwrap_or(estimate)
+}
+
 /// One VAT rate's share of an invoice.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VatGroup {
@@ -540,6 +573,61 @@ mod tests {
         assert_eq!(groups[0].gross, dec("130.90"));
         assert_eq!(groups[1].vat_percent, dec("7"));
         assert_eq!(groups[1].vat, dec("7.00"));
+    }
+
+    // ⚠ FOR VET REVIEW (SC-005), item MWS-05 in `review.md`: a typed gross price is met to the
+    // cent when a net in whole cents gives it, and missed by one when none does.
+    #[test]
+    fn a_typed_gross_price_finds_its_net() {
+        let gross_of = |net: &str, vat: &str, factor: Option<&str>| {
+            add_vat(
+                line_total(dec(net), Decimal::ONE, factor.map(dec)),
+                dec(vat),
+            )
+            .gross
+        };
+        assert_eq!(net_for_gross(dec("10.00"), dec("19"), None), dec("8.40"));
+        assert_eq!(gross_of("8.40", "19", None), dec("10.00"), "met exactly");
+        assert_eq!(net_for_gross(dec("10.70"), dec("7"), None), dec("10.00"));
+
+        // No net gives 15,00 at 19 %: 12,60 → 14,99 and 12,61 → 15,01. The lower one is taken,
+        // so the customer is never charged more than was typed.
+        assert_eq!(net_for_gross(dec("15.00"), dec("19"), None), dec("12.60"));
+        assert_eq!(gross_of("12.60", "19", None), dec("14.99"));
+        // The same at 7 %: 11,21 → 11,99 and 11,22 → 12,01.
+        assert_eq!(net_for_gross(dec("12.00"), dec("7"), None), dec("11.21"));
+
+        // The gross typed is the unit price *after* the factor, as the invoice prints it:
+        // 23,80 € at 200 % is a fee of 10,00 € net, doubled, plus 19 %.
+        assert_eq!(
+            net_for_gross(dec("23.80"), dec("19"), Some(dec("200"))),
+            dec("10.00")
+        );
+        assert_eq!(net_for_gross(dec("5.00"), dec("0"), None), dec("5.00"));
+        assert_eq!(net_for_gross(Decimal::ZERO, dec("19"), None), Decimal::ZERO);
+
+        // Two units of a 10,00 € line are not 20,00 €: the VAT is rounded on the line's net
+        // (16,80 € → 3,19 €), as `MWS-01` asks.
+        let line = line_total(dec("8.40"), dec("2"), None);
+        assert_eq!(add_vat(line, dec("19")).gross, dec("19.99"));
+    }
+
+    #[test]
+    fn every_gross_a_net_can_give_is_met_exactly_and_the_rest_by_a_cent() {
+        for vat in ["19", "7"] {
+            let reachable: std::collections::HashSet<Decimal> = (0..=3_000)
+                .map(|cents| add_vat(Decimal::new(cents, 2), dec(vat)).gross)
+                .collect();
+            for cents in 0..=3_000 {
+                let gross = Decimal::new(cents, 2);
+                let met = add_vat(net_for_gross(gross, dec(vat), None), dec(vat)).gross;
+                if reachable.contains(&gross) {
+                    assert_eq!(met, gross, "{gross} at {vat} % has a net in whole cents");
+                } else {
+                    assert_eq!(met, gross - dec("0.01"), "{gross} at {vat} %: a cent below");
+                }
+            }
+        }
     }
 
     // ⚠ FOR VET REVIEW (SC-005), item MWS-01 in `review.md`.

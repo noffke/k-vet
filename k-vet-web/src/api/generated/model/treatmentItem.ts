@@ -41,8 +41,13 @@ export interface TreatmentItem {
      * `travel_expenses` — the number itself stays pinned, this only picks the label.
      */
   got_analogous: boolean;
-  /** Per-unit **net** price, pinned at line entry. */
+  /** Per-unit **net** price, pinned at line entry — before the factor. */
   price_net: string;
+  /**
+     * The net counterpart of `price_gross`: one unit, after the factor. What the line editor
+     * shows under the gross price the vet types.
+     */
+  unit_net: string;
   /**
      * The customer-facing unit price: gross, **with the Steigerungssatz already applied**.
      *

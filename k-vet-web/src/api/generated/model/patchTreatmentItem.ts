@@ -9,8 +9,14 @@
 export interface PatchTreatmentItem {
   /** @nullable */
   quantity?: string | null;
-  /** @nullable */
-  price_net?: string | null;
+  /**
+     * The unit price as the customer sees it: gross, after the factor — what `price_gross`
+     * reports. Stored as the net that comes closest (`money::net_for_gross`), so a gross no
+     * net in whole cents can give comes back a cent lower. Refused on a GOT position, whose
+     * price is the fee schedule's.
+     * @nullable
+     */
+  price_gross?: string | null;
   /** @nullable */
   name?: string | null;
   /** @nullable */

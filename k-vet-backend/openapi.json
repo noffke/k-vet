@@ -6512,11 +6512,12 @@
               "null"
             ]
           },
-          "price_net": {
+          "price_gross": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The unit price as the customer sees it: gross, after the factor — what `price_gross`\nreports. Stored as the net that comes closest (`money::net_for_gross`), so a gross no\nnet in whole cents can give comes back a cent lower. Refused on a GOT position, whose\nprice is the fee schedule's."
           },
           "name": {
             "type": [
@@ -7603,6 +7604,7 @@
           "quantity",
           "got_analogous",
           "price_net",
+          "unit_net",
           "price_gross",
           "vat_percent",
           "travel_expenses",
@@ -7682,7 +7684,11 @@
           },
           "price_net": {
             "type": "string",
-            "description": "Per-unit **net** price, pinned at line entry."
+            "description": "Per-unit **net** price, pinned at line entry — before the factor."
+          },
+          "unit_net": {
+            "type": "string",
+            "description": "The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types."
           },
           "price_gross": {
             "type": "string",

@@ -374,6 +374,34 @@ Zur Auswahl stehen **19 %** und **7 %**.
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
+### MWS-05 · Bruttopreis an einer Position eingeben
+
+An einer Position (außer GOT) geben Sie jetzt den **Bruttopreis** ein, darunter steht der
+Nettopreis. Gespeichert und gerechnet wird weiter **netto** — so verlangen es GOT und AMPreisV,
+und so geht die Steuer je Zeile auf (`MWS-01`). k-vet sucht deshalb den Nettopreis in ganzen
+Cent, der Ihren Bruttopreis ergibt.
+
+Für die meisten Beträge gibt es ihn genau. Für manche nicht — dann steht nach dem Speichern der
+nächstgelegene Betrag im Feld, und zwar der **niedrigere**, damit nie mehr berechnet wird als
+eingegeben:
+
+| Sie geben ein | netto   | MwSt 19 % | brutto      |
+| ------------- | ------- | --------- | ----------- |
+| 10,00 €       | 8,40 €  | 1,60 €    | 10,00 €     |
+| 15,00 €       | 12,60 € | 2,39 €    | **14,99 €** |
+
+(12,61 € netto ergäben 15,01 € — 15,00 € ist mit ganzen Cent nicht erreichbar.)
+
+Auch die Menge kann einen Cent ausmachen, weil die Steuer auf den Nettobetrag der ganzen Zeile
+gerechnet wird: 2 × 10,00 € brutto sind 16,80 € netto, darauf 3,19 € Steuer — **19,99 €**.
+
+**Frage:** Ist es für Sie in Ordnung, dass ein eingegebener Bruttopreis so um einen Cent
+abweichen kann?
+
+*Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
+
+*Fundstelle: `k-vet-backend/src/domain/money.rs`, `net_for_gross`*
+
 ---
 
 ## E · Texte auf Rechnung und E-Mail

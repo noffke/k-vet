@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { navigate, pdfText, signIn } from './helpers'
 
 /**
@@ -134,10 +134,11 @@ test.describe('services and templates', () => {
 
     await page.getByLabel('Kilometer').fill('12')
     // 12 km × 3.50 € net = 42.00 € net (GOT quotes the Wegegeld net).
-    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('42,00')
+    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,98')
+    await expect(page.getByText(/Preis \(netto\): 42,00/)).toBeVisible()
 
     await page.getByLabel('Faktor (Verkehrsverhältnisse)').fill('2')
-    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('84,00')
+    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('99,96')
   })
 
   test('a template applies its lines in order with current prices', async ({ page, request }) => {
@@ -178,7 +179,7 @@ test.describe('services and templates', () => {
     await expect(page.getByLabel('Name').first()).toHaveValue(new RegExp(drugName))
     // The 10 ml subset of a 100 ml bottle bought for 10.00 net: § 4 basis 1.00, +100 % = 2.00
     // net — pinned at apply time. The customer pays 2,38 € once VAT is added.
-    await expect(page.getByLabel('Preis (netto)').first()).toHaveValue('2,00')
+    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('2,38')
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
 
@@ -241,7 +242,7 @@ test.describe('treatment lines', () => {
     await page.getByRole('option', { name: /· 10 ml/ }).first().click()
 
     // The price before and after must be identical: an Umwidmung documents, it does not price.
-    const price = page.getByLabel('Preis (netto)').first()
+    const price = page.getByLabel('Preis (brutto)').first()
     const before = await price.inputValue()
 
     const umwidmung = page.getByLabel('Umwidmung')
@@ -307,6 +308,32 @@ test.describe('treatment lines', () => {
     await expect(page.getByLabel('Preis (netto)')).toBeDisabled()
     await expect(page.getByText(/fest nach GOT/)).toBeVisible()
     await expect(page.getByLabel('Faktor', { exact: true })).toBeEnabled()
+  })
+
+  test('a position outside the GOT is priced gross, with its net underneath', async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const { serviceName } = await seedService(request)
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
+    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+
+    const price = page.getByLabel('Preis (brutto)')
+    await price.fill('10,00')
+    await price.blur()
+    await expect(page.getByText(/Preis \(netto\): 8,40/)).toBeVisible()
+
+    // No net in whole cents gives 15,00 € at 19 %: the nearest below is what is stored.
+    await price.fill('15,00')
+    await price.blur()
+    await expect(price).toHaveValue('14,99')
+    await expect(page.getByText(/Preis \(netto\): 12,60/)).toBeVisible()
   })
 
   test('a position is not removed by a stray click', async ({ page, request }) => {

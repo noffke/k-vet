@@ -44,8 +44,11 @@ pub struct TreatmentItem {
     /// (§ 8 GOT), rather than the line's own GOT position. Read from the service, like
     /// `travel_expenses` — the number itself stays pinned, this only picks the label.
     pub got_analogous: bool,
-    /// Per-unit **net** price, pinned at line entry.
+    /// Per-unit **net** price, pinned at line entry — before the factor.
     pub price_net: Decimal,
+    /// The net counterpart of `price_gross`: one unit, after the factor. What the line editor
+    /// shows under the gross price the vet types.
+    pub unit_net: Decimal,
     /// The customer-facing unit price: gross, **with the Steigerungssatz already applied**.
     ///
     /// This is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out
@@ -131,7 +134,11 @@ fn one() -> Decimal {
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct PatchTreatmentItem {
     pub quantity: Option<Decimal>,
-    pub price_net: Option<Decimal>,
+    /// The unit price as the customer sees it: gross, after the factor — what `price_gross`
+    /// reports. Stored as the net that comes closest (`money::net_for_gross`), so a gross no
+    /// net in whole cents can give comes back a cent lower. Refused on a GOT position, whose
+    /// price is the fee schedule's.
+    pub price_gross: Option<Decimal>,
     pub name: Option<String>,
     pub factor: Option<Decimal>,
     /// Moves the line to another animal. It lands at the end of the target's order; its
@@ -431,7 +438,8 @@ pub async fn patch(
     // travel flag is read separately.
     let current = sqlx::query!(
         r#"SELECT treatment_id, kind AS "kind: TreatmentItemKind", drug_packaging_id, quantity,
-                  patient_treatment_id, per_visit, position, km, km_multiplier, service_id
+                  patient_treatment_id, per_visit, position, km, km_multiplier, service_id,
+                  vat_percent, factor
            FROM treatment_item WHERE id = $1 FOR UPDATE"#,
         id,
     )
@@ -496,8 +504,13 @@ pub async fn patch(
     // A GOT position costs what the fee schedule says; the factor (Steigerungssatz) is how the
     // vet adjusts it, never the price itself. A § 8 analogy is a self-defined service, priced
     // by the practice, and stays editable.
-    if got_position && body.price_net.is_some() {
-        return Err(AppError::field("price_net", "item.gotPriceFixed"));
+    if got_position && body.price_gross.is_some() {
+        return Err(AppError::field("price_gross", "item.gotPriceFixed"));
+    }
+    if let Some(gross) = body.price_gross
+        && gross < Decimal::ZERO
+    {
+        return Err(AppError::field("price_gross", "value.mustNotBeNegative"));
     }
 
     // Re-price a travel line whenever its distance or multiplier changes.
@@ -516,8 +529,13 @@ pub async fn patch(
     } else {
         None
     };
-    // An explicit price still wins over the computed one.
-    let price_net = body.price_net.or(travel_price);
+    // An explicit price still wins over the computed one. It is typed gross for the factor the
+    // line will have once this request is applied.
+    let factor = body.factor.or(current.factor);
+    let price_net = body
+        .price_gross
+        .map(|gross| money::net_for_gross(gross, current.vat_percent, factor))
+        .or(travel_price);
 
     sqlx::query!(
         r#"UPDATE treatment_item SET
@@ -1030,6 +1048,7 @@ pub async fn load_items(
                 row.vat_percent,
             )
             .gross,
+            unit_net: money::line_total(row.price_net, Decimal::ONE, row.factor),
             redesignation: row.redesignation,
             lots: lots
                 .iter()

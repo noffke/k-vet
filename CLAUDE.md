@@ -127,6 +127,8 @@ is pure and unit-tested, including path-traversal refusal).
   still prints gross columns: VAT is rounded **per line** and summed (*horizontale Berechnung*, one
   of the two roundings § 14 UStG practice accepts), so a line's gross is `net + vat` exactly and the
   column adds up to its VAT group by construction — never re-derive a gross amount by multiplying.
+  The one way back is `net_for_gross`: a position's price is typed gross (after the factor) and
+  stored as the net that comes closest — the nearest below when no net in cents gives it exactly.
 - `src/domain/stock.rs` — FEFO allocation and the append-only movement ledger. A dispense is a
   *draft* until the invoice is accepted, then *frozen*; corrections are compensating rows that
   reference what they reverse. A movement with a reversal is never deleted. Line quantity counts

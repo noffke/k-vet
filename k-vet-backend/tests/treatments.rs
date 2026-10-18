@@ -144,11 +144,11 @@ async fn a_got_positions_price_is_fixed(pool: PgPool) {
     let repriced = app
         .patch(
             &format!("/api/treatment-items/{}", got_line["id"]),
-            json!({ "price_net": "30.00" }),
+            json!({ "price_gross": "35.70" }),
         )
         .await;
     assert_eq!(repriced.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert_eq!(repriced.error_fields(), vec!["price_net"]);
+    assert_eq!(repriced.error_fields(), vec!["price_gross"]);
     let factored = app
         .patch(
             &format!("/api/treatment-items/{}", got_line["id"]),
@@ -161,11 +161,68 @@ async fn a_got_positions_price_is_fixed(pool: PgPool) {
     let own_price = app
         .patch(
             &format!("/api/treatment-items/{}", analogous_line["id"]),
-            json!({ "price_net": "35.00" }),
+            json!({ "price_gross": "41.65" }),
         )
         .await;
     assert_eq!(own_price.status, StatusCode::OK);
     assert_eq!(own_price.json()["price_net"], "35.00");
+}
+
+/// Outside the GOT a position is priced gross, as the customer sees it; the net behind it is
+/// what is stored. A gross no net in whole cents gives comes back a cent lower (`review.md`,
+/// MWS-05), and the gross is the unit price after the factor.
+#[sqlx::test]
+async fn a_typed_gross_price_is_stored_as_its_net(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, _) = treatment(&pool).await;
+    let service_id: i64 = sqlx::query_scalar(
+        "INSERT INTO service (type, name, vat_percent, net_price, draft)
+         VALUES ('self_defined', 'Laborpauschale', 19.000, 20.00, false) RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("seed a self-defined service");
+    let line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+        )
+        .await
+        .json();
+    let item = format!("/api/treatment-items/{}", line["id"]);
+
+    let exact = app
+        .patch(&item, json!({ "price_gross": "10.00" }))
+        .await
+        .json();
+    assert_eq!(exact["price_net"], "8.40");
+    assert_eq!(exact["price_gross"], "10.00");
+
+    let unreachable = app
+        .patch(&item, json!({ "price_gross": "15.00" }))
+        .await
+        .json();
+    assert_eq!(unreachable["price_net"], "12.60");
+    assert_eq!(
+        unreachable["price_gross"], "14.99",
+        "the nearest below, never more than typed"
+    );
+
+    // Doubled by the factor in the same request: 23,80 € is 20,00 € net after it, 10,00 € before.
+    let factored = app
+        .patch(
+            &item,
+            json!({ "factor": "200.000", "price_gross": "23.80" }),
+        )
+        .await
+        .json();
+    assert_eq!(factored["price_net"], "10.00");
+    assert_eq!(factored["unit_net"], "20.00");
+    assert_eq!(factored["price_gross"], "23.80");
+
+    let negative = app.patch(&item, json!({ "price_gross": "-1.00" })).await;
+    assert_eq!(negative.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(negative.error_fields(), vec!["price_gross"]);
 }
 
 /// The same figure reaches the picker, so the price previewed before a pick is the price the
