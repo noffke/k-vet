@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { SlidersHorizontal } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
+import { useGoBack } from '@/lib/trail'
 
 /**
  * A stocktake on one Charge: what is actually on the shelf, and why it differs.
@@ -28,7 +29,6 @@ export function StockCorrectionPage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/lots/$id/correction' })
   const lotId = Number(id)
-  const navigate = useNavigate()
   const client = useQueryClient()
 
   const lot = useGetLot(lotId)
@@ -38,7 +38,9 @@ export function StockCorrectionPage() {
   const [reason, setReason] = useState('')
   const counted = newRemaining ?? lot.data?.remaining ?? null
 
-  const back = () => navigate({ to: '/lots/$id', params: { id: String(lotId) } })
+  // Back where the vet came from — the appointment with its animal's tab — on success and on
+  // cancel alike, rather than piling another entry onto the history.
+  const back = useGoBack({ to: '/lots/$id', params: { id: String(lotId) } })
   const correct = useCreateCorrection({
     mutation: {
       onSuccess: async () => {

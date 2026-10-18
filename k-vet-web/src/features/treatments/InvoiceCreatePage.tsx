@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { ReceiptText } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextAreaField } from '@/components/ui/field'
 import { useLocaleFormat } from '@/lib/locale'
+import { useGoBack } from '@/lib/trail'
 import { toCamelCase } from '@/lib/utils'
 
 /**
@@ -31,7 +32,6 @@ export function InvoiceCreatePage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/treatments/$id/invoice' })
   const treatmentId = Number(id)
-  const navigate = useNavigate()
   const client = useQueryClient()
   const { money } = useLocaleFormat()
 
@@ -53,7 +53,9 @@ export function InvoiceCreatePage() {
   // awaited mutation is a popup, and every browser blocks that.
   const pdfTab = useRef<Window | null>(null)
 
-  const back = () => navigate({ to: '/treatments/$id', params: { id: String(treatmentId) } })
+  // Back where the vet came from — the appointment with its animal's tab — on success and on
+  // cancel alike, rather than piling another entry onto the history.
+  const back = useGoBack({ to: '/treatments/$id', params: { id: String(treatmentId) } })
   const createInvoice = useCreateInvoice({
     mutation: {
       onSuccess: async (created) => {

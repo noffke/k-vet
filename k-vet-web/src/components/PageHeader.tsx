@@ -1,4 +1,5 @@
-import type { ReactNode } from 'react'
+import { type ReactNode, useEffect } from 'react'
+import { remember, useHistoryEntry } from '@/lib/trail'
 
 interface PageHeaderProps {
   /** The way back, on a detail page — a `BackLink`, rendered in place of the eyebrow. */
@@ -11,8 +12,16 @@ interface PageHeaderProps {
   children?: ReactNode
 }
 
-/** The shared page opening: small caps eyebrow, terracotta title, actions on the right. */
+/**
+ * The shared page opening: small caps eyebrow, terracotta title, actions on the right.
+ *
+ * Its title is also what the next page's "Zurück" calls this one — so every page that has a
+ * title can be gone back to by name (`lib/trail.ts`).
+ */
 export function PageHeader({ back, eyebrow, title, actions, children }: PageHeaderProps) {
+  const { index, href } = useHistoryEntry()
+  useEffect(() => remember(index, { title, href }), [index, title, href])
+
   return (
     <header className="flex flex-wrap items-end justify-between gap-x-4 gap-y-2 border-b border-line pb-3">
       <div className="min-w-0">

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +16,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextField } from '@/components/ui/field'
 import { useRecipientLabel } from '@/features/treatments/useRecipientLabel'
+import { useGoBack } from '@/lib/trail'
 
 /**
  * Releasing the invoice: it gets its timestamp, the treatment freezes, and the document goes
@@ -25,7 +26,6 @@ export function InvoiceAcceptPage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/treatments/$id/invoice/accept' })
   const treatmentId = Number(id)
-  const navigate = useNavigate()
   const client = useQueryClient()
 
   const treatment = useGetTreatment(treatmentId)
@@ -35,7 +35,9 @@ export function InvoiceAcceptPage() {
   const [confirmSaveEmail, setConfirmSaveEmail] = useState(false)
   const addEmail = useAddCustomerEmail()
 
-  const back = () => navigate({ to: '/treatments/$id', params: { id: String(treatmentId) } })
+  // Back where the vet came from — the appointment with its animal's tab — on success and on
+  // cancel alike, rather than piling another entry onto the history.
+  const back = useGoBack({ to: '/treatments/$id', params: { id: String(treatmentId) } })
   const acceptInvoice = useAcceptInvoice({
     mutation: {
       onSuccess: async () => {

@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { PackagePlus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
 import { todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
+import { useGoBack } from '@/lib/trail'
 
 /**
  * A delivery: what arrived, when, in how many packages, and until when it keeps.
@@ -30,7 +31,6 @@ export function StockIntakePage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/pharmacy/$id/intake' })
   const drugId = Number(id)
-  const navigate = useNavigate()
   const client = useQueryClient()
   const { quantity: formatQuantity } = useLocaleFormat()
 
@@ -43,7 +43,9 @@ export function StockIntakePage() {
   const [batchNumber, setBatchNumber] = useState('')
   const [expirationDate, setExpirationDate] = useState<string | null>(null)
 
-  const back = () => navigate({ to: '/pharmacy/$id', params: { id: String(drugId) } })
+  // Back where the vet came from — the appointment with its animal's tab — on success and on
+  // cancel alike, rather than piling another entry onto the history.
+  const back = useGoBack({ to: '/pharmacy/$id', params: { id: String(drugId) } })
   const createIntake = useCreateStockIntake({
     mutation: {
       onSuccess: async () => {

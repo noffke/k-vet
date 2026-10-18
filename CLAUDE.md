@@ -189,7 +189,13 @@ overflow sheet).
   `pagehide` and unmount; it surfaces per-field server errors. Use it for every editable record.
 - `components/DataList.tsx` — one column definition renders a real table on desktop and cards on
   a phone. The card *is* a `<button>`, so per-row buttons/links go through `rowActions`, never
-  into a `cell`. Row clicks ignore events from interactive elements.
+  into a `cell`. Row clicks ignore events from interactive elements. Lists read through
+  `lib/paging.ts::usePagedList` (fifty rows a page) with `LoadMore` under them — never a bare
+  list hook, whose server default silently ends at 100.
+- `components/BackLink.tsx` + `lib/trail.ts` — "Zurück" goes back through the history to the
+  page the vet came from, named by that page's `PageHeader` title (remembered per history
+  entry in `sessionStorage`); the `to`/`label` a page passes is only the fallback for a page
+  opened from nowhere in this tab. Wizard pages leave with `useGoBack`, not a pushing navigate.
 - `lib/format.ts` + `useLocaleFormat` — all user-facing numbers, dates and money go through
   these, in both directions (de-DE `1.234,56 €` / `dd.MM.yyyy`, en-US equivalents). The wire
   format is always dot-decimal strings via `toWire`; never `toFixed`/`toLocaleString` in a

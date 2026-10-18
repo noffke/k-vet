@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useParams } from '@tanstack/react-router'
+import { useParams } from '@tanstack/react-router'
 import { Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,6 +16,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CheckboxField, TextField } from '@/components/ui/field'
 import { useRecipientLabel } from '@/features/treatments/useRecipientLabel'
+import { useGoBack } from '@/lib/trail'
 
 /** The problem detail the server sends when the SMTP relay did not answer. */
 const MAIL_UNREACHABLE = 'invoice.mailUnreachable'
@@ -37,7 +38,6 @@ export function InvoiceSendPage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/treatments/$id/invoice/send' })
   const treatmentId = Number(id)
-  const navigate = useNavigate()
   const client = useQueryClient()
 
   const treatment = useGetTreatment(treatmentId)
@@ -47,7 +47,9 @@ export function InvoiceSendPage() {
   const [chosen, setChosen] = useState<string[] | null>(null)
   const [extra, setExtra] = useState('')
 
-  const back = () => navigate({ to: '/treatments/$id', params: { id: String(treatmentId) } })
+  // Back where the vet came from — the appointment with its animal's tab — on success and on
+  // cancel alike, rather than piling another entry onto the history.
+  const back = useGoBack({ to: '/treatments/$id', params: { id: String(treatmentId) } })
   const sendInvoice = useSendInvoice({
     mutation: {
       onSuccess: async () => {
