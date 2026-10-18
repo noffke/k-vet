@@ -7,6 +7,7 @@ import {
   getInvoicePdfUrl,
   getListInvoicesQueryKey,
   getPendingInvoicePdfsUrl,
+  listInvoices,
   useBulkSubmitInvoices,
   useCancelInvoice,
   useListInvoices,
@@ -16,11 +17,13 @@ import {
 import type { Invoice } from '@/api/generated/model'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
 import { SentTo } from '@/features/invoices/SentTo'
 import { useLocaleFormat } from '@/lib/locale'
+import { usePagedList } from '@/lib/paging'
 import { cn } from '@/lib/utils'
 
 /**
@@ -41,10 +44,10 @@ export function InvoicesPage() {
   const [cancelling, setCancelling] = useState<Invoice | null>(null)
 
   const pending = useListInvoices({ pending: true })
-  const invoices = useListInvoices({
-    q: search || undefined,
-    cancelled: showCancelled || undefined,
-  })
+  // The hand-over takes every pending invoice at once, so that list stays one request; the
+  // whole list is read page by page.
+  const params = { q: search || undefined, cancelled: showCancelled || undefined }
+  const invoices = usePagedList(getListInvoicesQueryKey(params), listInvoices, params)
 
   const refresh = () => client.invalidateQueries({ queryKey: getListInvoicesQueryKey() })
   const submit = useSubmitInvoice({ mutation: { onSuccess: refresh } })
@@ -234,7 +237,7 @@ export function InvoicesPage() {
 
         <DataList
           className="mt-3"
-          data={invoices.data ?? []}
+          data={invoices.rows}
           columns={columns}
           getRowId={(row) => String(row.id)}
           isLoading={invoices.isPending}
@@ -242,6 +245,7 @@ export function InvoicesPage() {
           rowActions={rowActions}
           onRowClick={openTreatment}
         />
+        <LoadMore list={invoices} />
       </section>
 
       <ConfirmDialog

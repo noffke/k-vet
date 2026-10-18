@@ -81,6 +81,30 @@ test.describe('appointments', () => {
     await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
   })
 
+  test('the list goes on past its first page with "Mehr laden"', async ({ page, request }) => {
+    // It used to stop at the server's default of 100 without a word, which looked complete.
+    const { customerId, lastName } = await seedCustomer(request)
+    for (let day = 0; day < 55; day += 1) {
+      await request.post('/api/appointments', {
+        data: {
+          starts_at: new Date(Date.UTC(2025, 0, 1 + day, 10)).toISOString(),
+          customer_id: customerId,
+        },
+      })
+    }
+
+    await signIn(page)
+    await navigate(page, 'Termine')
+    await page.getByPlaceholder('Suchen …').fill(lastName)
+    const rows = page.getByText(lastName).filter({ visible: true })
+    await expect(rows).toHaveCount(50)
+
+    const loadMore = page.getByRole('button', { name: 'Mehr laden' })
+    await loadMore.click()
+    await expect(rows).toHaveCount(55)
+    await expect(loadMore).toHaveCount(0)
+  })
+
   test('a second animal is a second tab, and "+ Tier" goes once all are there', async ({
     page,
     request,

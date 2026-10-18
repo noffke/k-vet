@@ -6,10 +6,10 @@ import { useTranslation } from 'react-i18next'
 import {
   getGetServiceQueryKey,
   getListServicesQueryKey,
+  listServices,
   useArchiveService,
   useCreateService,
   useGetService,
-  useListServices,
   usePatchService,
   useUnarchiveService,
 } from '@/api/generated/endpoints'
@@ -17,6 +17,7 @@ import type { Service } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
@@ -26,6 +27,7 @@ import { CheckboxField, TextField } from '@/components/ui/field'
 import { VatSelect } from '@/components/VatSelect'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
+import { usePagedList } from '@/lib/paging'
 
 /**
  * The service catalog: the imported GOT 2022 schedule plus the practice's own positions.
@@ -42,11 +44,12 @@ export function ServicesPage() {
   const [showHidden, setShowHidden] = useState(false)
   const [showArchived, setShowArchived] = useState(false)
 
-  const services = useListServices({
+  const params = {
     q: search || undefined,
     hidden: showHidden || undefined,
     archived: showArchived || undefined,
-  })
+  }
+  const services = usePagedList(getListServicesQueryKey(params), listServices, params)
   const open = (id: number) => navigate({ to: '/services/$id', params: { id: String(id) } })
   const createService = useCreateService({
     mutation: {
@@ -137,7 +140,7 @@ export function ServicesPage() {
 
       <DataList
         className="mt-4"
-        data={services.data ?? []}
+        data={services.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
         isLoading={services.isPending}
@@ -150,6 +153,7 @@ export function ServicesPage() {
         )}
         onRowClick={(row) => void open(row.id)}
       />
+      <LoadMore list={services} />
     </div>
   )
 }

@@ -16,13 +16,13 @@ import {
   getGetTemplateQueryKey,
   getListTemplateItemsQueryKey,
   getListTemplatesQueryKey,
+  listTemplates,
   useArchiveTemplate,
   useCreateTemplate,
   useCreateTemplateItem,
   useDeleteTemplateItem,
   useGetTemplate,
   useListTemplateItems,
-  useListTemplates,
   useMoveTemplateItem,
   usePatchTemplate,
   usePatchTemplateItem,
@@ -33,6 +33,7 @@ import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { ItemPicker } from '@/components/ItemPicker'
+import { LoadMore } from '@/components/LoadMore'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
@@ -41,6 +42,7 @@ import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
+import { usePagedList } from '@/lib/paging'
 
 /** The list of reusable line sets. */
 export function TemplatesPage() {
@@ -49,7 +51,8 @@ export function TemplatesPage() {
   const client = useQueryClient()
   const [search, setSearch] = useState('')
 
-  const templates = useListTemplates({ q: search || undefined })
+  const params = { q: search || undefined }
+  const templates = usePagedList(getListTemplatesQueryKey(params), listTemplates, params)
   const createTemplate = useCreateTemplate({
     mutation: {
       onSuccess: async (template) => {
@@ -92,7 +95,7 @@ export function TemplatesPage() {
 
       <DataList
         className="mt-4"
-        data={templates.data ?? []}
+        data={templates.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
         isLoading={templates.isPending}
@@ -107,6 +110,7 @@ export function TemplatesPage() {
           void navigate({ to: '/templates/$id', params: { id: String(row.id) } })
         }
       />
+      <LoadMore list={templates} />
     </div>
   )
 }

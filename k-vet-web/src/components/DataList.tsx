@@ -15,6 +15,8 @@ import { cn } from '@/lib/utils'
  * v9 makes the table's capabilities explicit: only the features registered here exist on the
  * instance, and the set is part of the type. This list renders rows and a flat header — no
  * sorting, filtering, paging or selection — so the core set plus the row model is all of it.
+ * Paging happens around it: `usePagedList` reads the rows page by page, and `LoadMore` under
+ * the list asks for the next one.
  */
 const TABLE_FEATURES = {
   ...coreFeatures,

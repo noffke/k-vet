@@ -5,18 +5,20 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getListDrugsQueryKey,
+  listDrugs,
   useCreateDrug,
-  useListDrugs,
   usePatchDrug,
 } from '@/api/generated/endpoints'
 import type { Drug } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
+import { usePagedList } from '@/lib/paging'
 
 /** The drug cabinet: what the practice stocks, and how much of it is left. */
 export function PharmacyPage() {
@@ -27,7 +29,8 @@ export function PharmacyPage() {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
 
-  const drugs = useListDrugs({ q: search || undefined, archived: showArchived || undefined })
+  const params = { q: search || undefined, archived: showArchived || undefined }
+  const drugs = usePagedList(getListDrugsQueryKey(params), listDrugs, params)
   const { vat_rates } = useOperatorConfig()
   const patchDrug = usePatchDrug()
   const createDrug = useCreateDrug({
@@ -123,7 +126,7 @@ export function PharmacyPage() {
 
       <DataList
         className="mt-4"
-        data={drugs.data ?? []}
+        data={drugs.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
         isLoading={drugs.isPending}
@@ -136,6 +139,7 @@ export function PharmacyPage() {
         )}
         onRowClick={(row) => void navigate({ to: '/pharmacy/$id', params: { id: String(row.id) } })}
       />
+      <LoadMore list={drugs} />
     </div>
   )
 }

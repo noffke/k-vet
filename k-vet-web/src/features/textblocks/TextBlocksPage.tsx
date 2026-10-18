@@ -5,15 +5,17 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getListTextBlocksQueryKey,
+  listTextBlocks,
   useCreateTextBlock,
-  useListTextBlocks,
 } from '@/api/generated/endpoints'
 import type { TextBlock } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { usePagedList } from '@/lib/paging'
 
 /**
  * The Textbaustein library (issues.md 11): named snippets the vet assembles a Vorbericht or a
@@ -26,10 +28,11 @@ export function TextBlocksPage() {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
 
-  const blocks = useListTextBlocks({
+  const params = {
     q: search || undefined,
     archived: showArchived || undefined,
-  })
+  }
+  const blocks = usePagedList(getListTextBlocksQueryKey(params), listTextBlocks, params)
   const createBlock = useCreateTextBlock({
     mutation: {
       onSuccess: async (block) => {
@@ -73,7 +76,7 @@ export function TextBlocksPage() {
 
       <DataList
         className="mt-4"
-        data={blocks.data ?? []}
+        data={blocks.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
         isLoading={blocks.isPending}
@@ -91,6 +94,7 @@ export function TextBlocksPage() {
           void navigate({ to: '/text-blocks/$id', params: { id: String(row.id) } })
         }
       />
+      <LoadMore list={blocks} />
     </div>
   )
 }

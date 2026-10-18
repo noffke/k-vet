@@ -6,17 +6,19 @@ import { useTranslation } from 'react-i18next'
 import {
   getListManufacturersQueryKey,
   getListSuppliersQueryKey,
+  listManufacturers,
+  listSuppliers,
   useCreateManufacturer,
   useCreateSupplier,
-  useListManufacturers,
-  useListSuppliers,
 } from '@/api/generated/endpoints'
 import type { AddressBookEntry } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { type PagedList, usePagedList } from '@/lib/paging'
 
 /**
  * Hersteller and Lieferanten: the two address books the pharmacy picks from.
@@ -51,7 +53,12 @@ function ManufacturerSection({ showArchived }: { showArchived: boolean }) {
   const navigate = useNavigate()
   const client = useQueryClient()
 
-  const manufacturers = useListManufacturers({ archived: showArchived || undefined })
+  const params = { archived: showArchived || undefined }
+  const manufacturers = usePagedList(
+    getListManufacturersQueryKey(params),
+    listManufacturers,
+    params,
+  )
   const create = useCreateManufacturer({
     mutation: {
       onSuccess: async (entry) => {
@@ -68,9 +75,7 @@ function ManufacturerSection({ showArchived }: { showArchived: boolean }) {
     <AddressBookSection
       title={t('masterData.manufacturers')}
       newLabel={t('masterData.newManufacturer')}
-      entries={manufacturers.data ?? []}
-      isLoading={manufacturers.isPending}
-      isError={manufacturers.isError}
+      list={manufacturers}
       onCreate={() => create.mutate()}
       onOpen={(id) =>
         void navigate({ to: '/masterdata/manufacturers/$id', params: { id: String(id) } })
@@ -84,7 +89,8 @@ function SupplierSection({ showArchived }: { showArchived: boolean }) {
   const navigate = useNavigate()
   const client = useQueryClient()
 
-  const suppliers = useListSuppliers({ archived: showArchived || undefined })
+  const params = { archived: showArchived || undefined }
+  const suppliers = usePagedList(getListSuppliersQueryKey(params), listSuppliers, params)
   const create = useCreateSupplier({
     mutation: {
       onSuccess: async (entry) => {
@@ -98,9 +104,7 @@ function SupplierSection({ showArchived }: { showArchived: boolean }) {
     <AddressBookSection
       title={t('masterData.suppliers')}
       newLabel={t('masterData.newSupplier')}
-      entries={suppliers.data ?? []}
-      isLoading={suppliers.isPending}
-      isError={suppliers.isError}
+      list={suppliers}
       onCreate={() => create.mutate()}
       onOpen={(id) =>
         void navigate({ to: '/masterdata/suppliers/$id', params: { id: String(id) } })
@@ -113,17 +117,13 @@ function SupplierSection({ showArchived }: { showArchived: boolean }) {
 function AddressBookSection({
   title,
   newLabel,
-  entries,
-  isLoading,
-  isError,
+  list,
   onCreate,
   onOpen,
 }: {
   title: string
   newLabel: string
-  entries: AddressBookEntry[]
-  isLoading: boolean
-  isError: boolean
+  list: PagedList<AddressBookEntry>
   onCreate: () => void
   onOpen: (id: number) => void
 }) {
@@ -153,11 +153,11 @@ function AddressBookSection({
 
       <DataList
         className="mt-3"
-        data={entries}
+        data={list.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
-        isLoading={isLoading}
-        error={isError ? t('list.error') : null}
+        isLoading={list.isPending}
+        error={list.isError ? t('list.error') : null}
         rowBadge={(row) => (
           <>
             <IncompleteBadge missing={row.missing_fields} />
@@ -166,6 +166,7 @@ function AddressBookSection({
         )}
         onRowClick={(row) => onOpen(row.id)}
       />
+      <LoadMore list={list} />
     </section>
   )
 }

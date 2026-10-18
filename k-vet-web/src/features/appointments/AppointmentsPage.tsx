@@ -5,15 +5,17 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getListAppointmentsQueryKey,
+  listAppointments,
   useCreateAppointment,
-  useListAppointments,
 } from '@/api/generated/endpoints'
 import type { Appointment } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { useLocaleFormat } from '@/lib/locale'
+import { usePagedList } from '@/lib/paging'
 
 /**
  * The practice's day list. "New appointment" creates the record immediately and opens it —
@@ -27,7 +29,8 @@ export function AppointmentsPage() {
   const client = useQueryClient()
   const [search, setSearch] = useState('')
 
-  const appointments = useListAppointments({ q: search || undefined })
+  const params = { q: search || undefined }
+  const appointments = usePagedList(getListAppointmentsQueryKey(params), listAppointments, params)
   const createAppointment = useCreateAppointment({
     mutation: {
       onSuccess: async (appointment) => {
@@ -89,7 +92,7 @@ export function AppointmentsPage() {
 
       <DataList
         className="mt-4"
-        data={appointments.data ?? []}
+        data={appointments.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
         isLoading={appointments.isPending}
@@ -104,6 +107,7 @@ export function AppointmentsPage() {
           void navigate({ to: '/appointments/$id', params: { id: String(row.id) } })
         }
       />
+      <LoadMore list={appointments} />
     </div>
   )
 }

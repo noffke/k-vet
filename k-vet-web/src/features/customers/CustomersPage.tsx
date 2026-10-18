@@ -5,11 +5,12 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getListCustomersQueryKey,
+  listCustomers,
   useCreateCustomer,
-  useListCustomers,
 } from '@/api/generated/endpoints'
 import type { Customer } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import {
   ArchivedBadge,
@@ -19,6 +20,7 @@ import {
 } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { usePagedList } from '@/lib/paging'
 
 /**
  * The customer index: search, warning indicators, archived on request (FR-009).
@@ -34,10 +36,11 @@ export function CustomersPage() {
   const [search, setSearch] = useState('')
   const [showArchived, setShowArchived] = useState(false)
 
-  const customers = useListCustomers({
+  const params = {
     q: search || undefined,
     archived: showArchived || undefined,
-  })
+  }
+  const customers = usePagedList(getListCustomersQueryKey(params), listCustomers, params)
   // The draft already carries `[invoice] default_country` — the backend prefills it on create,
   // so the field the vet sees and the value stored agree without a second round-trip.
   const createCustomer = useCreateCustomer({
@@ -97,7 +100,7 @@ export function CustomersPage() {
 
       <DataList
         className="mt-4"
-        data={customers.data ?? []}
+        data={customers.rows}
         columns={columns}
         getRowId={(row) => String(row.id)}
         isLoading={customers.isPending}
@@ -118,6 +121,7 @@ export function CustomersPage() {
           void navigate({ to: '/customers/$id', params: { id: String(row.id) } })
         }
       />
+      <LoadMore list={customers} />
     </div>
   )
 }

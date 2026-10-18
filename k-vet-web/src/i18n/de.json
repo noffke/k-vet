@@ -185,6 +185,7 @@
   "list": {
     "empty": "Keine Einträge",
     "error": "Konnte nicht geladen werden",
+    "loadMore": "Mehr laden",
     "loading": "Lädt …",
     "searchPlaceholder": "Suchen …"
   },
