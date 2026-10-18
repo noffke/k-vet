@@ -80,17 +80,19 @@ function TreatmentBody({
           onValueChange={(value) => onSelectRecord(Number(value))}
         >
           <div className="flex items-end gap-2 border-b border-line">
-            {/* Scrolls inside itself with many animals — never the page (helpers.ts). */}
+            {/* Scrolls sideways inside itself with many animals — never the page (helpers.ts).
+                Never up and down: `overflow-x` alone turns `overflow-y` to auto as well, and
+                the tabs then grew a scrollbar of their own. */}
             <Tabs.List
               aria-label={t('field.patients')}
-              className="flex min-w-0 flex-1 gap-1 overflow-x-auto"
+              className="flex min-w-0 flex-1 gap-1 overflow-x-auto overflow-y-hidden"
             >
               {patients.map((patient) => (
                 <Tabs.Trigger
                   key={patient.id}
                   value={String(patient.id)}
                   className={cn(
-                    '-mb-px flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-medium text-ink-soft sm:min-h-9',
+                    'flex min-h-11 shrink-0 items-center gap-1.5 border-b-2 border-transparent px-3 text-sm font-medium text-ink-soft sm:min-h-9',
                     'hover:text-ink data-[state=active]:border-rust data-[state=active]:text-rust',
                   )}
                 >

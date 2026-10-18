@@ -42,6 +42,9 @@ test.describe('patient treatments', () => {
 
     // Eddie's tab is open first: his line, his reason and finding.
     await expect(page.getByRole('tab', { name: 'Eddie' })).toHaveAttribute('aria-selected', 'true')
+    // The tab bar scrolls sideways at most — it once grew a vertical scrollbar of its own.
+    const tabBar = page.getByRole('tablist')
+    expect(await tabBar.evaluate((list) => list.scrollHeight - list.clientHeight)).toBe(0)
     await picker.fill(drug.drugName)
     await page.getByRole('option', { name: /· 10 ml/ }).first().click()
     await expect(panel.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
