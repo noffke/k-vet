@@ -46,7 +46,7 @@ For patients, show the patient photo (if set) in a circle on top. Species should
 ## Appointments (Termine)
 For appointments, we need normal CRUD functionality. When creating a new appointment, the date should be set to today by default, and the time must always be filled by the user.
 An appointment has exactly one treatment, created with it; appointment and treatment are edited on one screen. A second invoice for the same visit is a second appointment for the same date, time and customer.
-Below the appointment's own fields, each animal of the visit is a tab: its warning, its reason and finding, its files and its lines. A second animal is a second tab, not a different layout. Under each animal's lines, every tab also lists the visit's own positions ("pro Termin": house-call fee, Wegegeld) — the same lines in every tab, billed once — and offers "+ Ohne Tier" to add one.
+Below the appointment's own fields, each animal of the visit is a tab: its warning, its reason and finding, its files and its lines. A second animal is a second tab, not a different layout. Under each animal's lines, every tab also lists the visit's own positions ("pro Termin": house-call fee, Wegegeld) — the same lines in every tab, billed once. They are picked in an animal's tab like any other position and go there by themselves, because their service is marked "pro Termin"; before any animal is on the visit, only they can be added.
 For appointments, we also need the option to duplicate an existing one, which copies its treatment along. The duplicated appointment should then have the date set to today by default.
 Additionally, when duplicating an appointment, there must be the option to select if prices
 should be copied verbatim or updated from drugs and services data.
@@ -56,7 +56,7 @@ is needed: move one step up or down, move to top or bottom.
 
 On the Treatment page, a treatment template can be applied: its items are appended (in item order) as treatment items with the current prices and names copied.
 
-Each treatment item line must be attributed to a patient: mandatory for drug lines, optional for service lines. When the treatment has exactly one patient, it is preselected. The reason: drug dispensing and treatment are attributed to a single animal, while the house-call fee and Wegegeld are independent of any individual animal — those, and only those, stand "Ohne Tier" (also when there is just one animal), last in the position list and on the invoice.
+Each treatment item line is attributed to exactly one patient of the treatment — unless its service is marked "pro Termin", in which case it belongs to the whole visit and to no patient, also when there is just one animal. The service decides, once, in the catalogue; a line cannot be moved between a patient and the visit. When the treatment has exactly one patient, it is preselected. The reason: drug dispensing and treatment are attributed to a single animal, while the house-call fee and Wegegeld are independent of any individual animal — those stand without an animal, last in the position list and on the invoice.
 
 On an individual treatment, we need the option to create or update the invoice. When
 creating the invoice, we need the option to select a checkbox for Includes Finding. An optional note

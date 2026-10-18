@@ -82,6 +82,10 @@ Fields:
 * VAT Percent (selector)
 * Gross Price
 * Travel Expenses (bool)
+* Per Visit (bool, "pro Termin") — the service's lines belong to the whole visit, never to an
+  animal: the house-call fee (Hausbesuchsgebühr), Wegegeld. Always set for a travel-expense
+  service, which GOT § 10 charges per visit (CHECK `NOT travel_expenses OR per_visit`). Pre-set
+  for every travel-expense service and GOT 40 (Hausbesuch), nothing else.
 * Hidden (bool)
 
 ### Treatment Templates (Behandlungsgruppen)
@@ -172,12 +176,15 @@ Fields:
     * Factor
     * GOT Number (copied, for GOT services)
     * allow to override Name
-    * Relation: 0..1 Patient. A treatment is attributed to a single animal, like a dispensed
-      drug, so a service normally names one too. Without one ("Ohne Tier") stand only the
-      positions independent of any individual animal — the house-call fee (Hausbesuchsgebühr)
-      and Wegegeld. They come last, after the animals, in the position list and on the invoice.
-      An explicit "Ohne Tier" is kept even when the treatment has a single animal; only a line
-      added without saying either way defaults to that animal.
+    * Relation: 0..1 Patient, decided by the service: a line of a service marked "pro Termin"
+      has no animal, every other line — drug or service — has exactly one. The reason: drug
+      dispensing and treatment are attributed to a single animal, while the house-call fee
+      (Hausbesuchsgebühr) and Wegegeld are independent of any individual animal. The line keeps
+      the decision as a snapshot (`per_visit`, like the price), tied to its attribution by a
+      CHECK — so it moves between animals, never between an animal and the visit, and changing
+      the service later moves no line. The visit's lines come last, after the animals, in the
+      position list and on the invoice. Lines from before the flag (migration 0024) stay where
+      they were entered.
   * Position (for ordering)
   * Price (copied from the current sales price; allow to override)
   * VAT Percent (copied)

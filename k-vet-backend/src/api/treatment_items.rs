@@ -88,14 +88,11 @@ pub struct CreateTreatmentItem {
     pub drug_packaging_id: Option<i64>,
     /// Required for `service` lines.
     pub service_id: Option<i64>,
-    /// The animal the line belongs to. Drug dispensing and treatment are attributed to a single
-    /// animal, so a line normally names one; absent, it defaults to the treatment's only
-    /// animal when there is exactly one. An explicit `null` means the whole visit — positions
-    /// independent of any individual animal, like the house-call fee or Wegegeld — and is kept
-    /// even with one animal. A drug line always needs an animal.
-    #[serde(default, deserialize_with = "double_option")]
-    #[schema(value_type = Option<i64>)]
-    pub patient_treatment_id: Option<Option<i64>>,
+    /// The animal the line belongs to; absent, the treatment's only animal when it has exactly
+    /// one. Drug dispensing and treatment are attributed to a single animal, so every line
+    /// needs one — except a line of a service marked "pro Termin" (`per_visit`: house-call fee,
+    /// Wegegeld), which belongs to the whole visit and ignores this field.
+    pub patient_treatment_id: Option<i64>,
     #[serde(default = "one")]
     pub quantity: Decimal,
     /// Travel-expense lines: kilometres driven (one way).
@@ -107,26 +104,23 @@ pub struct CreateTreatmentItem {
     pub redesignation: bool,
 }
 
-/// Which animal a new line belongs to.
+/// Which animal a new line belongs to — asked for. A line of a per-visit service belongs to
+/// the visit whatever is asked.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Attribution {
     /// Nothing said: the treatment's only animal, when it has exactly one (FR-028).
     Default,
-    /// Explicitly none: a position for the whole visit, independent of any individual animal
-    /// (house-call fee, Wegegeld). Never a drug line.
+    /// The whole visit, because the line being copied was the visit's — a duplicate reproduces
+    /// its source, including lines from before the service decided (migration 0024).
     Visit,
     /// That animal's record.
     Record(i64),
 }
 
-impl From<Option<Option<i64>>> for Attribution {
-    /// The wire form: absent, explicit `null`, or an id.
-    fn from(value: Option<Option<i64>>) -> Self {
-        match value {
-            None => Attribution::Default,
-            Some(None) => Attribution::Visit,
-            Some(Some(id)) => Attribution::Record(id),
-        }
+impl From<Option<i64>> for Attribution {
+    /// The wire form: absent or an id.
+    fn from(value: Option<i64>) -> Self {
+        value.map_or(Attribution::Default, Attribution::Record)
     }
 }
 
@@ -140,8 +134,9 @@ pub struct PatchTreatmentItem {
     pub price_net: Option<Decimal>,
     pub name: Option<String>,
     pub factor: Option<Decimal>,
-    /// Moves the line to another animal, or out of all of them. It lands at the end of the
-    /// target's order; its dispensed lots follow, because they hang off the line.
+    /// Moves the line to another animal. It lands at the end of the target's order; its
+    /// dispensed lots follow, because they hang off the line. A line of a per-visit service
+    /// stays the visit's, and every other line keeps an animal: `null` is refused for those.
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<i64>)]
     pub patient_treatment_id: Option<Option<i64>>,
@@ -167,6 +162,8 @@ pub struct CatalogLine {
     pub factor: Option<Decimal>,
     pub got_number: Option<String>,
     pub travel_expenses: bool,
+    /// The service is marked "pro Termin": its line belongs to the visit, not to an animal.
+    pub per_visit: bool,
 }
 
 /// Reads the current catalog values for a packaging or service.
@@ -215,12 +212,13 @@ pub async fn catalog_line(
                 factor: None,
                 got_number: None,
                 travel_expenses: false,
+                per_visit: false,
             })
         }
         TreatmentItemKind::Service => {
             let row = sqlx::query!(
                 r#"SELECT name, net_price, vat_percent, factor, got_number, travel_expenses,
-                          draft, archived
+                          per_visit, draft
                    FROM service WHERE id = $1"#,
                 reference_id,
             )
@@ -242,6 +240,7 @@ pub async fn catalog_line(
                 factor: row.factor,
                 got_number: row.got_number,
                 travel_expenses: row.travel_expenses,
+                per_visit: row.per_visit,
             })
         }
     }
@@ -338,17 +337,23 @@ pub async fn insert_pinned_item(
         None => catalog_line(transaction, kind, reference_id).await?,
     };
 
-    // Drug dispensing and treatment are attributed to a single animal, so a line names one.
-    // Unsaid, a treatment with exactly one animal preselects it (FR-028); only the visit's own
-    // positions — house-call fee, Wegegeld — are asked for without one, and that is kept even
-    // with a single animal. Drug lines require an animal: it is what ties a dispensed batch to
-    // the animal that received it.
+    // Drug dispensing and treatment are attributed to a single animal, so a line names one —
+    // for a drug it is what ties a dispensed batch to the animal that received it. The visit's
+    // own positions (house-call fee, Wegegeld) belong to no animal: their service says so
+    // ("pro Termin"), and the animal asked for — the tab the vet picked it in — is ignored.
+    // Unsaid, a treatment with exactly one animal preselects it (FR-028).
     let patient_treatment_id = match attribution {
+        Attribution::Visit => None,
+        _ if catalog.per_visit => None,
         Attribution::Record(id) => Some(validate_record(transaction, treatment_id, id).await?),
         Attribution::Default => sole_record(transaction, treatment_id).await?,
-        Attribution::Visit => None,
     };
-    if kind == TreatmentItemKind::DrugPackaging && patient_treatment_id.is_none() {
+    let per_visit = patient_treatment_id.is_none();
+    // Only a per-visit service stands without one — or the copy of a service line that was the
+    // visit's before the service decided.
+    let visit_line = catalog.per_visit
+        || (attribution == Attribution::Visit && kind == TreatmentItemKind::Service);
+    if per_visit && !visit_line {
         return Err(AppError::field(
             "patient_treatment_id",
             "item.patientRequired",
@@ -374,9 +379,9 @@ pub async fn insert_pinned_item(
     let item_id: i64 = sqlx::query_scalar!(
         r#"INSERT INTO treatment_item
                (treatment_id, position, kind, drug_packaging_id, service_id, patient_treatment_id,
-                name, quantity, unit, factor, got_number, price_net, vat_percent,
+                per_visit, name, quantity, unit, factor, got_number, price_net, vat_percent,
                 km, km_multiplier, redesignation)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
            RETURNING id"#,
         treatment_id,
         position,
@@ -384,6 +389,7 @@ pub async fn insert_pinned_item(
         packaging_id,
         service_id,
         patient_treatment_id,
+        per_visit,
         catalog.name,
         quantity,
         catalog.unit,
@@ -425,7 +431,7 @@ pub async fn patch(
     // travel flag is read separately.
     let current = sqlx::query!(
         r#"SELECT treatment_id, kind AS "kind: TreatmentItemKind", drug_packaging_id, quantity,
-                  patient_treatment_id, position, km, km_multiplier, service_id
+                  patient_treatment_id, per_visit, position, km, km_multiplier, service_id
            FROM treatment_item WHERE id = $1 FOR UPDATE"#,
         id,
     )
@@ -440,14 +446,22 @@ pub async fn patch(
     {
         return Err(AppError::field("quantity", "value.mustBePositive"));
     }
-    if let Some(Some(record_id)) = body.patient_treatment_id {
-        validate_record(&mut transaction, current.treatment_id, record_id).await?;
-    }
-    if current.kind == TreatmentItemKind::DrugPackaging && body.patient_treatment_id == Some(None) {
-        return Err(AppError::field(
-            "patient_treatment_id",
-            "item.patientRequired",
-        ));
+    // A line moves between animals, never between an animal and the visit: which of the two it
+    // belongs to was decided by its service when it was added (the database holds it, too).
+    match body.patient_treatment_id {
+        Some(Some(_)) if current.per_visit => {
+            return Err(AppError::field("patient_treatment_id", "item.perVisit"));
+        }
+        Some(Some(record_id)) => {
+            validate_record(&mut transaction, current.treatment_id, record_id).await?;
+        }
+        Some(None) if !current.per_visit => {
+            return Err(AppError::field(
+                "patient_treatment_id",
+                "item.patientRequired",
+            ));
+        }
+        _ => {}
     }
 
     // Moving a line to another animal takes it out of one order and puts it at the end of

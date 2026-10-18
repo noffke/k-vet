@@ -29,7 +29,7 @@ test.describe('patient treatments', () => {
     const eddie = await seedPatient(request, customerId, 'Eddie')
     const helene = await seedPatient(request, customerId, 'Helene')
     const drug = await seedDrug(request)
-    const { serviceName } = await seedService(request)
+    const { serviceName } = await seedService(request, { perVisit: true })
     const { treatmentId } = await seedTreatment(request, eddie)
     await request.post(`/api/treatments/${treatmentId}/patients`, {
       data: { patient_id: helene },
@@ -53,12 +53,19 @@ test.describe('patient treatments', () => {
     await panel.getByLabel('Therapie und weiteres Vorgehen').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
-    // The visit's own position, entered from Eddie's tab, "pro Termin".
-    await panel.getByRole('button', { name: 'Ohne Tier' }).click()
-    await panel.getByPlaceholder('Leistung suchen …').fill(serviceName)
+    // The visit's own position, picked in Eddie's tab like any other: its service is marked
+    // "pro Termin", so it goes to the visit by itself — there is no "Ohne Tier" to choose.
+    await expect(panel.getByRole('button', { name: 'Ohne Tier' })).toHaveCount(0)
+    await picker.fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await expect(page.getByText(`„${serviceName}“ pro Termin hinzugefügt`)).toBeVisible()
     await expect(panel.getByText('pro Termin')).toBeVisible()
     await expect(panel.getByLabel('Name')).toHaveCount(2)
+    // Only Eddie's line can move — between the two animals, never to the visit.
+    // By role: the label wraps the select, so its text content carries the options as well.
+    const owner = panel.getByRole('combobox', { name: 'Patient', exact: true })
+    await expect(owner).toHaveCount(1)
+    expect(await owner.locator('option').allTextContents()).toEqual(['Eddie', 'Helene'])
 
     // Helene's tab: her own record and lines — and the same "pro Termin" line, so the vet sees
     // the house call is already entered.
@@ -157,17 +164,9 @@ test.describe('patient treatments', () => {
     }
 
     // And the visit's own position: last on the invoice, once.
-    const { serviceName } = await seedService(request)
-    const services = (await (await request.get(`/api/services?q=${serviceName}`)).json()) as {
-      id: number
-    }[]
+    const { serviceId, serviceName } = await seedService(request, { perVisit: true })
     await request.post(`/api/treatments/${treatmentId}/items`, {
-      data: {
-        kind: 'service',
-        service_id: services[0]?.id,
-        quantity: '1',
-        patient_treatment_id: null,
-      },
+      data: { kind: 'service', service_id: serviceId, quantity: '1' },
     })
 
     await signIn(page)

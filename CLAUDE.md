@@ -136,6 +136,10 @@ is pure and unit-tested, including path-traversal refusal).
   created invoice keeps its number; updating an accepted one cancels it and burns the number
   (`domain/invoice_number.rs` allocates from the configured pattern, counter scoped by the
   pattern's date parts, never reused). Every step is timestamped.
+- `src/api/treatment_items.rs` — which animal a line belongs to is its *service's* call:
+  `service.per_visit` ("pro Termin": house call, Wegegeld) puts the line on the visit, every
+  other line names an animal. The line keeps a `per_visit` snapshot that a CHECK ties to
+  `patient_treatment_id IS NULL`, so it moves between animals but never to or from the visit.
 - `src/pdf/` (Typst) and `src/mail/` (minijinja + lettre) — see `docs/templates.md`. Only the
   fonts embedded in the binary are available; the email template's first line is the subject.
 - `src/jobs/mod.rs` — in-process scheduler: nightly at 03:00 rebuild picker weights and delete

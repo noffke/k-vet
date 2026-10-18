@@ -4751,7 +4751,7 @@
               "null"
             ],
             "format": "int64",
-            "description": "The animal the line belongs to. Drug dispensing and treatment are attributed to a single\nanimal, so a line normally names one; absent, it defaults to the treatment's only\nanimal when there is exactly one. An explicit `null` means the whole visit — positions\nindependent of any individual animal, like the house-call fee or Wegegeld — and is kept\neven with one animal. A drug line always needs an animal."
+            "description": "The animal the line belongs to; absent, the treatment's only animal when it has exactly\none. Drug dispensing and treatment are attributed to a single animal, so every line\nneeds one — except a line of a service marked \"pro Termin\" (`per_visit`: house-call fee,\nWegegeld), which belongs to the whole visit and ignores this field."
           },
           "quantity": {
             "type": "string"
@@ -6347,6 +6347,13 @@
             "type": [
               "boolean",
               "null"
+            ],
+            "description": "Setting it also sets `per_visit`, which a travel-expense service cannot be without."
+          },
+          "per_visit": {
+            "type": [
+              "boolean",
+              "null"
             ]
           },
           "hidden": {
@@ -6519,7 +6526,7 @@
               "null"
             ],
             "format": "int64",
-            "description": "Moves the line to another animal, or out of all of them. It lands at the end of the\ntarget's order; its dispensed lots follow, because they hang off the line."
+            "description": "Moves the line to another animal. It lands at the end of the target's order; its\ndispensed lots follow, because they hang off the line. A line of a per-visit service\nstays the visit's, and every other line keeps an animal: `null` is refused for those."
           },
           "km": {
             "type": [
@@ -6919,6 +6926,7 @@
               "price_gross",
               "vat_percent",
               "travel_expenses",
+              "per_visit",
               "uses",
               "kind"
             ],
@@ -6954,6 +6962,10 @@
               },
               "travel_expenses": {
                 "type": "boolean"
+              },
+              "per_visit": {
+                "type": "boolean",
+                "description": "\"pro Termin\": the line will belong to the visit, not to the animal it is picked for."
               },
               "uses": {
                 "type": "integer",
@@ -7110,6 +7122,7 @@
           "id",
           "type",
           "travel_expenses",
+          "per_visit",
           "hidden",
           "archived",
           "draft",
@@ -7169,6 +7182,10 @@
           "travel_expenses": {
             "type": "boolean",
             "description": "Travel-expense lines are priced from the kilometres entered (FR-023)."
+          },
+          "per_visit": {
+            "type": "boolean",
+            "description": "\"pro Termin\": the service's lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit."
           },
           "hidden": {
             "type": "boolean",

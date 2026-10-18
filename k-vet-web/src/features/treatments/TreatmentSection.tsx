@@ -1,7 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { Link } from '@tanstack/react-router'
 import { Plus, TriangleAlert } from 'lucide-react'
-import { useRef, useState } from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetTreatment, useListTreatmentItems } from '@/api/generated/endpoints'
 import type { Treatment, TreatmentItem, TreatmentPatient } from '@/api/generated/model'
@@ -61,8 +61,8 @@ function TreatmentBody({
   return (
     <section className="mt-6">
       {active === undefined ? (
-        // No animal yet: a customer with several, none picked. The visit's own positions can
-        // be written down already.
+        // No animal yet: a customer with several, none picked. The visit's own positions —
+        // the services marked "pro Termin" — can be written down already; nothing else can.
         <>
           <h2 className="text-base">{t('field.patient')}</h2>
           {canAdd ? <AnimalPicker treatment={treatment} onAttached={onSelectRecord} /> : null}
@@ -166,7 +166,8 @@ function TreatmentBody({
 /**
  * One animal's tab: its warning, its record, its lines — and below them the visit's own
  * positions, marked "pro Termin", which every tab shows: they are the same lines, billed once,
- * and each tab tells the vet whether the house call is already entered.
+ * and each tab tells the vet whether the house call is already entered. They are added from the
+ * animal's own search box: a service marked "pro Termin" goes there by itself.
  */
 function AnimalPanel({
   treatment,
@@ -186,8 +187,6 @@ function AnimalPanel({
   onSaveState: (status: SaveStatus) => void
 }) {
   const { t } = useTranslation()
-  const [generalOpen, setGeneralOpen] = useState(false)
-  const generalRef = useRef<HTMLDivElement>(null)
 
   return (
     <div>
@@ -218,34 +217,16 @@ function AnimalPanel({
         readOnly={treatment.frozen}
       />
 
-      {general.length > 0 || generalOpen ? (
-        <div ref={generalRef}>
-          <PositionGroup
-            treatment={treatment}
-            heading={t('treatments.perVisit')}
-            patientTreatmentId={null}
-            items={general}
-            readOnly={treatment.frozen}
-            showPicker={generalOpen}
-            pickerBelow
-          />
-        </div>
+      {general.length > 0 ? (
+        <PositionGroup
+          treatment={treatment}
+          heading={t('treatments.perVisit')}
+          patientTreatmentId={null}
+          items={general}
+          readOnly={treatment.frozen}
+          showPicker={false}
+        />
       ) : null}
-
-      {treatment.frozen ? null : (
-        <Button
-          size="small"
-          variant="ghost"
-          className="mt-3"
-          onClick={() => {
-            setGeneralOpen(true)
-            requestAnimationFrame(() => generalRef.current?.scrollIntoView({ block: 'nearest' }))
-          }}
-        >
-          <Plus className="size-4" />
-          {t('treatments.withoutPatient')}
-        </Button>
-      )}
     </div>
   )
 }

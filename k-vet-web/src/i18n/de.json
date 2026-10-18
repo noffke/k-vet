@@ -228,6 +228,7 @@
     "files": "Dateien",
     "groupAdded": "{{count}} Positionen aus „{{name}}“ hinzugefügt",
     "itemAdded": "„{{name}}“ hinzugefügt",
+    "itemAddedPerVisit": "„{{name}}“ pro Termin hinzugefügt",
     "items": "Positionen",
     "kmHint": "Einfache Strecke; abgerechnet wird je Doppelkilometer.",
     "lotSelection": "Chargenauswahl",
@@ -235,8 +236,8 @@
     "noReason": "Kein Vorbericht",
     "perVisit": "pro Termin",
     "pickerItemsOnly": "Medikament oder Leistung suchen …",
+    "pickerPerVisitOnly": "Leistung pro Termin suchen …",
     "pickerPlaceholder": "Medikament, Leistung oder Gruppe suchen …",
-    "pickerServicesOnly": "Leistung suchen …",
     "redesignation": "Umwidmung",
     "redesignationHint": "Abgabe außerhalb der Zulassung — wird auf dieser Zeile dokumentiert, ändert den Preis nicht.",
     "removeItem": "Position entfernen",
@@ -246,8 +247,7 @@
     "removePatientConfirm": "„{{name}}“ wirklich von dieser Behandlung nehmen? Die Positionen dieses Tieres gehen mit.",
     "title": "Behandlung",
     "total": "Summe",
-    "withoutPatient": "Ohne Tier",
-    "withoutPatientHint": "Für den ganzen Termin, nicht für ein einzelnes Tier — z. B. Hausbesuch, Wegegeld."
+    "withoutPatientHint": "Solange kein Tier gewählt ist, nur Leistungen pro Termin – z. B. Hausbesuch, Wegegeld."
   },
   "invoices": {
     "accept": "Rechnung freigeben",
@@ -348,6 +348,8 @@
     "gotHint": "Position aus der GOT 2022 — Nummer und Faktor sind Pflicht.",
     "hidden": "Ausgeblendet",
     "new": "Neue Leistung",
+    "perVisit": "pro Termin",
+    "perVisitHint": "Steht ohne Tier, einmal für den ganzen Termin – z. B. Hausbesuch. Wegegeld gilt immer pro Termin.",
     "searchPlaceholder": "GOT-Nummer oder Bezeichnung suchen …",
     "selfDefined": "Eigene Leistung",
     "showHidden": "Ausgeblendete anzeigen",
@@ -422,7 +424,8 @@
     "drugShapeInvalid": "Ungültige Angaben für eine Medikamentenposition",
     "kmInvalid": "Kilometer und Faktor müssen zusammen angegeben werden",
     "patientNotInTreatment": "Dieses Tier gehört nicht zu dieser Behandlung",
-    "patientRequired": "Für Medikamente ist ein Patient erforderlich",
+    "patientRequired": "Diese Position braucht ein Tier",
+    "perVisit": "Diese Leistung gilt pro Termin, nicht für ein Tier",
     "stockShort": "Der Bestand dieser Charge reicht für diese Menge nicht aus. Bitte zuerst eine Inventur für die Charge erfassen."
   },
   "packaging": {
@@ -430,7 +433,8 @@
     "supplierOnOriginalOnly": "Nur Originalpackungen haben einen Lieferanten"
   },
   "service": {
-    "gotFieldsRequired": "GOT-Nummer und Faktor sind erforderlich"
+    "gotFieldsRequired": "GOT-Nummer und Faktor sind erforderlich",
+    "travelIsPerVisit": "Wegegeld gilt immer pro Termin"
   },
   "lot": {
     "noOriginalPackaging": "Zu diesem Medikament gibt es keine Originalpackung",

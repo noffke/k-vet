@@ -33,10 +33,10 @@ interface ItemPickerProps {
    */
   onPickTemplate?: ((template: Template) => void) | undefined
   /**
-   * Offers services only. For the visit's own positions (house call, Wegegeld): a dispensed
-   * drug always belongs to an animal, and the server would refuse it there.
+   * Offers the services marked "pro Termin" only (house call, Wegegeld). For a visit with no
+   * animal yet: every other line belongs to an animal, and the server would refuse it there.
    */
-  servicesOnly?: boolean
+  perVisitOnly?: boolean
   disabled?: boolean
   placeholder?: string
 }
@@ -53,7 +53,7 @@ interface ItemPickerProps {
 export function ItemPicker({
   onPick,
   onPickTemplate,
-  servicesOnly = false,
+  perVisitOnly = false,
   disabled,
   placeholder,
 }: ItemPickerProps) {
@@ -83,7 +83,9 @@ export function ItemPicker({
   )
   // An unfinished group would apply nothing, so it is not offered.
   const groups = onPickTemplate ? (templates.data ?? []).filter((template) => !template.draft) : []
-  const items = (results.data ?? []).filter((item) => !servicesOnly || item.kind === 'service')
+  const items = (results.data ?? []).filter(
+    (item) => !perVisitOnly || (item.kind === 'service' && item.per_visit),
+  )
 
   return (
     <Command
@@ -97,8 +99,8 @@ export function ItemPicker({
         disabled={disabled}
         placeholder={
           placeholder ??
-          (servicesOnly
-            ? t('treatments.pickerServicesOnly')
+          (perVisitOnly
+            ? t('treatments.pickerPerVisitOnly')
             : onPickTemplate
               ? t('treatments.pickerPlaceholder')
               : t('treatments.pickerItemsOnly'))

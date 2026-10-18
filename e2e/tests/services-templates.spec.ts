@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
 import { navigate, pdfText, signIn } from './helpers'
 
 /**
@@ -114,6 +114,9 @@ test.describe('services and templates', () => {
     await page.getByLabel('Preis (netto)').fill('13,00')
     await page.getByLabel('Wegegeld').check()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    // Wegegeld is charged per visit (GOT § 10): the service is "pro Termin", and stays so.
+    await expect(page.getByLabel('pro Termin')).toBeChecked()
+    await expect(page.getByLabel('pro Termin')).toBeDisabled()
 
     // The back link returns to the list, which now carries the new position.
     await page.getByRole('link', { name: 'Zurück: Leistungen' }).click()
@@ -251,30 +254,36 @@ test.describe('treatment lines', () => {
     await expect(page.getByLabel('Umwidmung')).toBeChecked()
   })
 
-  test('a visit position stays without an animal, even with a single animal', async ({
+  test('a service marked "pro Termin" goes to the visit by itself, also with one animal', async ({
     page,
     request,
   }) => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId)
     const { treatmentId } = await seedTreatment(request, patientId)
-    const { serviceName } = await seedService(request)
-    const drug = await seedDrug(request)
+    const serviceName = `Hausbesuch-${Date.now().toString().slice(-6)}`
 
+    // The house-call fee belongs to no animal: that is set once, on the service.
     await signIn(page)
+    await navigate(page, 'Leistungen')
+    await page.getByRole('button', { name: 'Neue Leistung' }).click()
+    await expect(page).toHaveURL(/\/services\/\d+$/)
+    await page.getByLabel('Name').fill(serviceName)
+    await page.getByLabel('USt.').selectOption('19.000')
+    await page.getByLabel('Preis (netto)').fill('34,50')
+    await page.getByLabel('pro Termin').check()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+
+    // Picked in the animal's own search box, it lands in the visit's lines, not the animal's.
     await page.goto(`/treatments/${treatmentId}`)
-    // The house-call fee or Wegegeld belong to no animal, and that is what "Ohne Tier" is for.
-    await page.getByRole('button', { name: 'Ohne Tier' }).click()
-    const visitPicker = page.getByPlaceholder('Leistung suchen …')
-
-    // A dispensed drug always belongs to an animal, so the visit's picker does not offer one.
-    await visitPicker.fill(drug.drugName)
-    await expect(page.getByRole('option', { name: /· 10 ml/ })).toHaveCount(0)
-
-    await visitPicker.fill(serviceName)
+    await expect(page.getByRole('button', { name: 'Ohne Tier' })).toHaveCount(0)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await expect(page.getByText(`„${serviceName}“ pro Termin hinzugefügt`)).toBeVisible()
+    await expect(page.getByText('pro Termin', { exact: true })).toBeVisible()
+    // One animal, and the line is the visit's: there is nothing to move it to.
+    await expect(page.getByRole('combobox', { name: 'Patient', exact: true })).toHaveCount(0)
 
-    // Kept without an animal — not filed under the only one.
     await expect
       .poll(async () => {
         const lines = (await (await request.get(`/api/treatments/${treatmentId}/items`)).json()) as {

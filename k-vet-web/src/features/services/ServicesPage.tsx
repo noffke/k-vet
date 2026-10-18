@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate, useParams } from '@tanstack/react-router'
-import { EyeOff, Plus, Route } from 'lucide-react'
+import { EyeOff, House, Plus, Route } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -74,6 +74,9 @@ export function ServicesPage() {
           {row.name ?? '—'}
           {row.travel_expenses ? (
             <Route className="size-3.5 text-rust" aria-label={t('services.travelExpenses')} />
+          ) : null}
+          {row.per_visit ? (
+            <House className="size-3.5 text-rust" aria-label={t('services.perVisit')} />
           ) : null}
           {row.hidden ? (
             <EyeOff className="size-3.5 text-ink-faint" aria-label={t('services.hidden')} />
@@ -313,6 +316,19 @@ export function ServiceDetailPage() {
             }}
           />
           <p className="text-xs text-ink-faint">{t('services.travelExpensesHint')}</p>
+          {/* Wegegeld is always per visit, and ticking it ticks this on the server — keyed on
+              the stored value, so the box shows what the server made of it. */}
+          <CheckboxField
+            key={String(record.per_visit)}
+            label={t('services.perVisit')}
+            defaultChecked={record.per_visit}
+            disabled={record.travel_expenses}
+            onChange={(event) => {
+              autoSave.set({ per_visit: event.target.checked })
+              void autoSave.flush()
+            }}
+          />
+          <p className="text-xs text-ink-faint">{t('services.perVisitHint')}</p>
           <CheckboxField
             label={t('services.hidden')}
             defaultChecked={record.hidden}

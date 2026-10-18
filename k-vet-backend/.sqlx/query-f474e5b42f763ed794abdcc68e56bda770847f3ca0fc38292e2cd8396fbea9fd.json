@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT treatment_id, kind AS \"kind: TreatmentItemKind\", drug_packaging_id, quantity,\n                  patient_treatment_id, position, km, km_multiplier, service_id\n           FROM treatment_item WHERE id = $1 FOR UPDATE",
+  "query": "SELECT treatment_id, kind AS \"kind: TreatmentItemKind\", drug_packaging_id, quantity,\n                  patient_treatment_id, per_visit, position, km, km_multiplier, service_id\n           FROM treatment_item WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -70,6 +70,17 @@
       },
       {
         "ordinal": 5,
+        "name": "per_visit",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "per_visit"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
         "name": "position",
         "type_info": "Int4",
         "origin": {
@@ -80,7 +91,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "km",
         "type_info": "Numeric",
         "origin": {
@@ -91,7 +102,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "km_multiplier",
         "type_info": "Numeric",
         "origin": {
@@ -102,7 +113,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "service_id",
         "type_info": "Int8",
         "origin": {
@@ -125,10 +136,11 @@
       false,
       true,
       false,
+      false,
       true,
       true,
       true
     ]
   },
-  "hash": "2aaa0e0212c73420b7183b9a2e274043044604afd625094b1eace4cbdf27d7d8"
+  "hash": "f474e5b42f763ed794abdcc68e56bda770847f3ca0fc38292e2cd8396fbea9fd"
 }

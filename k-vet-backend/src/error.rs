@@ -209,11 +209,15 @@ fn constraint_field_message(constraint: &str) -> Option<(&'static str, &'static 
         "service_complete" => ("draft", "record.incomplete"),
         "service_got_shape" => ("got_number", "service.gotFieldsRequired"),
         "service_factor_positive" => ("factor", "value.mustBePositive"),
+        "service_travel_is_per_visit" => ("per_visit", "service.travelIsPerVisit"),
         "supplier_complete" | "manufacturer_complete" => ("name", "record.incomplete"),
         "treatment_template_complete" => ("name", "record.incomplete"),
         "appointment_complete" => ("starts_at", "record.incomplete"),
         "treatment_item_quantity_positive" => ("quantity", "value.mustBePositive"),
-        "treatment_item_drug_needs_patient" => ("patient_id", "item.patientRequired"),
+        "treatment_item_drug_needs_patient" => ("patient_treatment_id", "item.patientRequired"),
+        "treatment_item_per_visit_has_no_animal" => {
+            ("patient_treatment_id", "item.patientRequired")
+        }
         "treatment_item_drug_shape" => ("kind", "item.drugShapeInvalid"),
         "treatment_item_km_shape" => ("km", "item.kmInvalid"),
         "drug_stock_lot_packages_positive" => ("packages_received", "value.mustBePositive"),
@@ -267,7 +271,17 @@ mod tests {
     #[test]
     fn known_constraints_map_to_fields() {
         let mapped = constraint_field_message("treatment_item_drug_needs_patient");
-        assert_eq!(mapped, Some(("patient_id", "item.patientRequired")));
+        assert_eq!(
+            mapped,
+            Some(("patient_treatment_id", "item.patientRequired"))
+        );
+        let mapped = constraint_field_message("treatment_item_per_visit_has_no_animal");
+        assert_eq!(
+            mapped,
+            Some(("patient_treatment_id", "item.patientRequired"))
+        );
+        let mapped = constraint_field_message("service_travel_is_per_visit");
+        assert_eq!(mapped, Some(("per_visit", "service.travelIsPerVisit")));
         assert_eq!(constraint_field_message("no_such_constraint"), None);
     }
 }

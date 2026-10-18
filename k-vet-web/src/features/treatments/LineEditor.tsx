@@ -40,10 +40,12 @@ interface PositionGroupProps {
   patientTreatmentId: number | null
   items: TreatmentItem[]
   readOnly: boolean
-  /** Whether the group's search box is offered at all (the visit's own opens on request). */
+  /**
+   * Whether the group has a search box of its own. The visit's lines have one only while no
+   * animal is on the visit; after that a per-visit service is picked in an animal's tab and
+   * lands among them by itself.
+   */
   showPicker?: boolean
-  /** The search box below the lines rather than above — new lines are appended there. */
-  pickerBelow?: boolean
 }
 
 /**
@@ -57,7 +59,6 @@ export function PositionGroup({
   items,
   readOnly,
   showPicker = true,
-  pickerBelow = false,
 }: PositionGroupProps) {
   const { t } = useTranslation()
   const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
@@ -87,15 +88,14 @@ export function PositionGroup({
    * individual items in the picker — so the wrong one is easy to click. Offer to take it back
    * for as long as that mistake takes to notice.
    *
-   * Which lines to remove is read off the response, which carries the *whole* treatment: the
-   * animal has to be matched as well, because the other animals' lines are absent from `items`
-   * and would otherwise look newly added.
+   * Which lines to remove is read off the response, which carries the *whole* treatment, by
+   * comparing it with the whole treatment as it was before — not with this animal's lines: a
+   * group's per-visit positions land among the visit's, and would escape the undo.
    */
-  const offerUndo = (applied: TreatmentItem[], groupName: string) => {
-    const before = new Set(items.map((item) => item.id))
-    const added = applied
-      .filter((item) => item.patient_treatment_id === patientTreatmentId)
-      .filter((item) => !before.has(item.id))
+  const offerUndo = (applied: TreatmentItem[], before: Set<number> | null, groupName: string) => {
+    // Without knowing what was there, every line would look new — better no undo than that.
+    if (before === null) return
+    const added = applied.filter((item) => !before.has(item.id))
     if (added.length === 0) return
 
     toast(t('treatments.groupAdded', { count: added.length, name: groupName }), {
@@ -117,6 +117,12 @@ export function PositionGroup({
    * (issues.md 7). Name what was added rather than just confirming that something was.
    */
   const pick = (item: PickerItem) => {
+    // The visit's own group names no animal; the server files a per-visit service under the
+    // visit whichever animal is named.
+    const patient_treatment_id = patientTreatmentId ?? undefined
+    // Picked in an animal's tab, a per-visit service lands in the "pro Termin" lines below,
+    // not among the animal's — the toast says where it went.
+    const elsewhere = item.kind === 'service' && item.per_visit && patientTreatmentId !== null
     addItem.mutate(
       {
         id: treatment.id,
@@ -126,16 +132,18 @@ export function PositionGroup({
                 kind: 'drug_packaging',
                 drug_packaging_id: item.id,
                 quantity: '1',
-                patient_treatment_id: patientTreatmentId,
+                patient_treatment_id,
               }
-            : {
-                kind: 'service',
-                service_id: item.id,
-                quantity: '1',
-                patient_treatment_id: patientTreatmentId,
-              },
+            : { kind: 'service', service_id: item.id, quantity: '1', patient_treatment_id },
       },
-      { onSuccess: () => toast(t('treatments.itemAdded', { name: item.name })) },
+      {
+        onSuccess: () =>
+          toast(
+            t(elsewhere ? 'treatments.itemAddedPerVisit' : 'treatments.itemAdded', {
+              name: item.name,
+            }),
+          ),
+      },
     )
   }
 
@@ -147,11 +155,16 @@ export function PositionGroup({
       <div className="mt-2">
         <ItemPicker
           onPick={pick}
-          servicesOnly={patientTreatmentId === null}
+          perVisitOnly={patientTreatmentId === null}
           onPickTemplate={
             patientTreatmentId === null
               ? undefined
-              : (template) =>
+              : (template) => {
+                  // What the treatment holds right now, before the group adds to it.
+                  const current = client.getQueryData<TreatmentItem[]>(
+                    getListTreatmentItemsQueryKey(treatment.id),
+                  )
+                  const before = current ? new Set(current.map((item) => item.id)) : null
                   applyTemplate.mutate(
                     {
                       id: treatment.id,
@@ -162,8 +175,9 @@ export function PositionGroup({
                     },
                     // Here rather than on the hook: this is where the group that was
                     // clicked is known, and its name is what the undo has to say.
-                    { onSuccess: (applied) => offerUndo(applied, template.name ?? '') },
+                    { onSuccess: (applied) => offerUndo(applied, before, template.name ?? '') },
                   )
+                }
           }
           disabled={addItem.isPending}
         />
@@ -177,7 +191,7 @@ export function PositionGroup({
         <p className="mt-0.5 text-xs text-ink-faint">{t('treatments.withoutPatientHint')}</p>
       ) : null}
 
-      {pickerBelow ? null : pickerBlock}
+      {pickerBlock}
 
       <ul className="mt-2 flex flex-col gap-2">
         {items.map((item, index) => (
@@ -268,28 +282,22 @@ export function PositionGroup({
                 </>
               ) : null}
               {/* Moving a line to the animal it belongs to, when it was entered under the
-                  wrong one. A drug line cannot leave every animal — that is its traceability. */}
-              {treatment.patients.length > 1 || item.patient_treatment_id === null ? (
+                  wrong one. Never between an animal and the visit: that is the service's to
+                  say ("pro Termin"), and the visit's lines have no animal to move between. */}
+              {treatment.patients.length > 1 && item.patient_treatment_id !== null ? (
                 <label className="flex flex-col gap-1">
                   <span className="text-xs font-semibold text-ink-soft">{t('field.patient')}</span>
                   <select
-                    value={item.patient_treatment_id ?? ''}
+                    value={item.patient_treatment_id}
                     disabled={readOnly}
                     onChange={(event) =>
                       patchItem.mutate({
                         id: item.id,
-                        data: {
-                          patient_treatment_id: event.target.value
-                            ? Number(event.target.value)
-                            : null,
-                        },
+                        data: { patient_treatment_id: Number(event.target.value) },
                       })
                     }
                     className="rounded-control border border-line-strong bg-surface px-2 py-2 min-h-11 sm:min-h-9"
                   >
-                    {item.kind === 'service' ? (
-                      <option value="">{t('treatments.withoutPatient')}</option>
-                    ) : null}
                     {treatment.patients.map((patient) => (
                       <option key={patient.id} value={patient.id}>
                         {patient.name}
@@ -389,7 +397,6 @@ export function PositionGroup({
           </li>
         ) : null}
       </ul>
-      {pickerBelow ? pickerBlock : null}
 
       <ConfirmDialog
         open={pendingRemoval !== null}

@@ -16,8 +16,9 @@ export interface PatchTreatmentItem {
   /** @nullable */
   factor?: string | null;
   /**
-     * Moves the line to another animal, or out of all of them. It lands at the end of the
-     * target's order; its dispensed lots follow, because they hang off the line.
+     * Moves the line to another animal. It lands at the end of the target's order; its
+     * dispensed lots follow, because they hang off the line. A line of a per-visit service
+     * stays the visit's, and every other line keeps an animal: `null` is refused for those.
      * @nullable
      */
   patient_treatment_id?: number | null;

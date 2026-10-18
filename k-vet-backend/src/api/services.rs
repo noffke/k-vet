@@ -34,6 +34,10 @@ pub struct Service {
     pub gross_price: Option<Decimal>,
     /// Travel-expense lines are priced from the kilometres entered (FR-023).
     pub travel_expenses: bool,
+    /// "pro Termin": the service's lines belong to the whole visit, never to an animal — the
+    /// house-call fee, Wegegeld. Every other line names an animal. Always set for a
+    /// travel-expense service, which GOT § 10 charges per visit.
+    pub per_visit: bool,
     /// Hidden services stay out of pickers and lists by default (FR-021).
     pub hidden: bool,
     pub archived: bool,
@@ -61,7 +65,9 @@ pub struct PatchService {
     pub vat_percent: Option<Option<Decimal>>,
     #[serde(default, deserialize_with = "double_option")]
     pub net_price: Option<Option<Decimal>>,
+    /// Setting it also sets `per_visit`, which a travel-expense service cannot be without.
     pub travel_expenses: Option<bool>,
+    pub per_visit: Option<bool>,
     pub hidden: Option<bool>,
 }
 
@@ -104,6 +110,7 @@ macro_rules! service_row {
                 .zip(row.vat_percent)
                 .map(|(net, vat)| crate::domain::money::add_vat(net, vat).gross),
             travel_expenses: row.travel_expenses,
+            per_visit: row.per_visit,
             hidden: row.hidden,
             archived: row.archived,
             draft: row.draft,
@@ -128,7 +135,8 @@ pub async fn list(
 ) -> AppResult<Json<Vec<Service>>> {
     let rows = sqlx::query!(
         r#"SELECT id, type AS "service_type: ServiceType", name, got_number, factor,
-                  vat_percent, net_price, travel_expenses, hidden, archived, draft,
+                  vat_percent, net_price, travel_expenses, per_visit, hidden, archived,
+                  draft,
                   created_at, updated_at
            FROM service
            WHERE ($2 OR NOT archived)
@@ -261,6 +269,9 @@ pub async fn patch(
                vat_percent     = CASE WHEN $8 THEN $9 ELSE vat_percent END,
                net_price     = CASE WHEN $10 THEN $11 ELSE net_price END,
                travel_expenses = COALESCE($12, travel_expenses),
+               -- Wegegeld is per visit (GOT § 10): ticking it ticks this. Unticking this on a
+               -- travel-expense service is left to service_travel_is_per_visit to refuse.
+               per_visit       = COALESCE($15, per_visit OR COALESCE($12, false)),
                hidden          = COALESCE($13, hidden),
                draft           = $14
            WHERE id = $1"#,
@@ -278,6 +289,7 @@ pub async fn patch(
         body.travel_expenses,
         body.hidden,
         draft,
+        body.per_visit,
     )
     .execute(&mut *transaction)
     .await?;
@@ -333,7 +345,8 @@ async fn set_archived(state: &AppState, id: i64, archived: bool) -> AppResult<Js
 pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Service> {
     let row = sqlx::query!(
         r#"SELECT id, type AS "service_type: ServiceType", name, got_number, factor,
-                  vat_percent, net_price, travel_expenses, hidden, archived, draft,
+                  vat_percent, net_price, travel_expenses, per_visit, hidden, archived,
+                  draft,
                   created_at, updated_at
            FROM service WHERE id = $1"#,
         id,

@@ -17,8 +17,13 @@ export interface PatchService {
   vat_percent?: string | null;
   /** @nullable */
   net_price?: string | null;
-  /** @nullable */
+  /**
+     * Setting it also sets `per_visit`, which a travel-expense service cannot be without.
+     * @nullable
+     */
   travel_expenses?: boolean | null;
+  /** @nullable */
+  per_visit?: boolean | null;
   /** @nullable */
   hidden?: boolean | null;
 }

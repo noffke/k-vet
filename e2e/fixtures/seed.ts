@@ -156,10 +156,14 @@ export interface SeededService {
   serviceName: string
 }
 
-/** A complete self-defined service, priced gross. */
+/**
+ * A complete self-defined service, priced gross. `perVisit` marks it "pro Termin": its lines
+ * belong to the visit, not to an animal (house call); left out, the server decides — which is
+ * "pro Termin" for a travel-expense service and not otherwise.
+ */
 export async function seedService(
   request: APIRequestContext,
-  options: { netPrice?: string; travelExpenses?: boolean } = {},
+  options: { netPrice?: string; travelExpenses?: boolean; perVisit?: boolean } = {},
 ): Promise<SeededService> {
   await login(request)
   const service = await post<{ id: number }>(request, '/api/services', { type: 'self_defined' })
@@ -169,6 +173,7 @@ export async function seedService(
     vat_percent: '19.000',
     net_price: options.netPrice ?? '23.62',
     travel_expenses: options.travelExpenses ?? false,
+    ...(options.perVisit === undefined ? {} : { per_visit: options.perVisit }),
   })
   return { serviceId: service.id, serviceName }
 }

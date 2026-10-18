@@ -38,6 +38,8 @@ export type PickerItem = {
   price_gross: string;
   vat_percent: string;
   travel_expenses: boolean;
+  /** "pro Termin": the line will belong to the visit, not to the animal it is picked for. */
+  per_visit: boolean;
   uses: number;
   kind: 'service';
 };

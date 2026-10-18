@@ -228,6 +228,7 @@
     "files": "Files",
     "groupAdded": "{{count}} positions added from “{{name}}”",
     "itemAdded": "“{{name}}” added",
+    "itemAddedPerVisit": "“{{name}}” added per visit",
     "items": "Lines",
     "kmHint": "One-way distance; billed per double kilometre.",
     "lotSelection": "Lot selection",
@@ -235,8 +236,8 @@
     "noReason": "No history recorded",
     "perVisit": "per visit",
     "pickerItemsOnly": "Search drug or service …",
+    "pickerPerVisitOnly": "Search per-visit service …",
     "pickerPlaceholder": "Search drug, service or group …",
-    "pickerServicesOnly": "Search service …",
     "redesignation": "Redesignation",
     "redesignationHint": "Dispensed outside the approval — recorded on this line, no effect on the price.",
     "removeItem": "Remove position",
@@ -246,8 +247,7 @@
     "removePatientConfirm": "Really take “{{name}}” off this treatment? This animal’s positions go with it.",
     "title": "Treatment",
     "total": "Total",
-    "withoutPatient": "No animal",
-    "withoutPatientHint": "For the whole visit, not one animal — e.g. house call, Wegegeld."
+    "withoutPatientHint": "Until an animal is chosen, only per-visit services – e.g. house call, Wegegeld."
   },
   "invoices": {
     "accept": "Accept invoice",
@@ -348,6 +348,8 @@
     "gotHint": "A position of the GOT 2022 schedule — number and factor are required.",
     "hidden": "Hidden",
     "new": "New service",
+    "perVisit": "per visit",
+    "perVisitHint": "Billed without an animal, once for the whole visit – e.g. a house call. Wegegeld is always per visit.",
     "searchPlaceholder": "Search a GOT number or a name …",
     "selfDefined": "Self-defined",
     "showHidden": "Show hidden",
@@ -422,7 +424,8 @@
     "drugShapeInvalid": "Invalid values for a drug line",
     "kmInvalid": "Kilometres and multiplier belong together",
     "patientNotInTreatment": "This animal is not part of this treatment",
-    "patientRequired": "Drug lines need a patient",
+    "patientRequired": "This line needs an animal",
+    "perVisit": "This service is per visit, not for one animal",
     "stockShort": "This lot does not hold enough for that quantity. Record a stocktake for the lot first."
   },
   "packaging": {
@@ -430,7 +433,8 @@
     "supplierOnOriginalOnly": "Only original packagings have a supplier"
   },
   "service": {
-    "gotFieldsRequired": "GOT number and factor are required"
+    "gotFieldsRequired": "GOT number and factor are required",
+    "travelIsPerVisit": "Wegegeld is always per visit"
   },
   "lot": {
     "noOriginalPackaging": "This drug has no original packaging",

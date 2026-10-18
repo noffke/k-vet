@@ -38,6 +38,12 @@ export interface Service {
   gross_price?: string | null;
   /** Travel-expense lines are priced from the kilometres entered (FR-023). */
   travel_expenses: boolean;
+  /**
+     * "pro Termin": the service's lines belong to the whole visit, never to an animal — the
+     * house-call fee, Wegegeld. Every other line names an animal. Always set for a
+     * travel-expense service, which GOT § 10 charges per visit.
+     */
+  per_visit: boolean;
   /** Hidden services stay out of pickers and lists by default (FR-021). */
   hidden: boolean;
   archived: boolean;

@@ -342,3 +342,152 @@ async fn a_line_says_whether_its_got_number_is_its_own_or_an_analogy(pool: PgPoo
     assert_eq!(items[0]["got_analogous"], false);
     assert_eq!(items[1]["got_analogous"], true);
 }
+
+/// "pro Termin" is the service's to say: its lines belong to the visit, never to an animal.
+/// Wegegeld cannot be without it — GOT § 10 charges it per visit — so ticking Wegegeld ticks it
+/// too, and unticking it on a travel-expense service is refused.
+#[sqlx::test]
+async fn a_service_is_marked_per_visit_and_wegegeld_always_is(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_got_service(&pool).await;
+
+    let imported: Vec<String> = sqlx::query_scalar(
+        "SELECT got_number FROM service WHERE per_visit AND type = 'got' ORDER BY got_number",
+    )
+    .fetch_all(&pool)
+    .await
+    .expect("per-visit positions");
+    assert_eq!(
+        imported,
+        vec!["40"],
+        "of the catalogue, only the Hausbesuch"
+    );
+
+    let marked = app
+        .patch(&format!("/api/services/{id}"), json!({ "per_visit": true }))
+        .await
+        .json();
+    assert_eq!(marked["per_visit"], true);
+    let picked = app.get("/api/picker/items?q=Allgemeine").await.json();
+    let offered = picked
+        .as_array()
+        .and_then(|items| items.iter().find(|item| item["id"] == id))
+        .expect("the picker offers the service");
+    assert_eq!(
+        offered["per_visit"], true,
+        "the picker says where the line will go"
+    );
+    let unmarked = app
+        .patch(
+            &format!("/api/services/{id}"),
+            json!({ "per_visit": false }),
+        )
+        .await
+        .json();
+    assert_eq!(unmarked["per_visit"], false);
+
+    let travel = app
+        .patch(
+            &format!("/api/services/{id}"),
+            json!({ "travel_expenses": true }),
+        )
+        .await
+        .json();
+    assert_eq!(travel["per_visit"], true, "Wegegeld is per visit");
+    let refused = app
+        .patch(
+            &format!("/api/services/{id}"),
+            json!({ "per_visit": false }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(refused.error_fields(), vec!["per_visit"]);
+}
+
+/// Migration 0024 on data written before the service decided: Wegegeld and the Hausbesuch are
+/// marked, nothing else, and every line stays where it was — an old "Ohne Tier" examination
+/// the visit's, a Hausbesuch entered under the animal the animal's — without making an
+/// invoice PDF look stale.
+#[sqlx::test(migrations = false)]
+async fn the_migration_marks_wegegeld_and_hausbesuch_and_moves_no_line(pool: PgPool) {
+    let migrator = sqlx::migrate!("./migrations");
+    migrator
+        .run_to(23, &pool)
+        .await
+        .expect("migrate up to the rule");
+
+    let wegegeld: i64 = sqlx::query_scalar(
+        "INSERT INTO service (type, name, vat_percent, net_price, travel_expenses, draft)
+         VALUES ('self_defined', 'Wegegeld', 19.000, 13.00, true, false) RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("Wegegeld");
+    let hausbesuch: i64 =
+        sqlx::query_scalar("SELECT id FROM service WHERE type = 'got' AND got_number = '40'")
+            .fetch_one(&pool)
+            .await
+            .expect("GOT 40");
+    let examination = common::seed_got_service(&pool).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let (treatment_id, record_id) =
+        common::seed_patient_treatment(&pool, appointment_id, patient_id).await;
+    sqlx::query(
+        "INSERT INTO treatment_item
+             (treatment_id, position, kind, service_id, patient_treatment_id, name, quantity,
+              factor, got_number, price_net, vat_percent)
+         VALUES ($1, 1, 'service', $2, NULL, 'Allgemeine Untersuchung', 1, 100, '1', 23.62, 19),
+                ($1, 1, 'service', $3, $4, 'Hausbesuch', 1, 100, '40', 34.50, 19)",
+    )
+    .bind(treatment_id)
+    .bind(examination)
+    .bind(hausbesuch)
+    .bind(record_id)
+    .execute(&pool)
+    .await
+    .expect("lines written under the old rule");
+    let touched_before: chrono::DateTime<Utc> =
+        sqlx::query_scalar("SELECT updated_at FROM treatment WHERE id = $1")
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("timestamp");
+
+    migrator.run_to(24, &pool).await.expect("apply 0024");
+
+    let mut marked: Vec<i64> = sqlx::query_scalar("SELECT id FROM service WHERE per_visit")
+        .fetch_all(&pool)
+        .await
+        .expect("marked services");
+    marked.sort_unstable();
+    let mut expected = vec![wegegeld, hausbesuch];
+    expected.sort_unstable();
+    assert_eq!(marked, expected);
+
+    let lines: Vec<(Option<i64>, bool)> = sqlx::query_as(
+        "SELECT patient_treatment_id, per_visit FROM treatment_item
+          WHERE treatment_id = $1 ORDER BY name DESC",
+    )
+    .bind(treatment_id)
+    .fetch_all(&pool)
+    .await
+    .expect("lines");
+    assert_eq!(
+        lines,
+        vec![(Some(record_id), false), (None, true)],
+        "the Hausbesuch stays the animal's, the examination the visit's"
+    );
+
+    let touched_after: chrono::DateTime<Utc> =
+        sqlx::query_scalar("SELECT updated_at FROM treatment WHERE id = $1")
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("timestamp");
+    assert_eq!(
+        touched_after, touched_before,
+        "filling in the snapshot is not an edit"
+    );
+}

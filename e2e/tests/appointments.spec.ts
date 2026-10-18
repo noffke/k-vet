@@ -1,5 +1,11 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
-import { seedAcceptedInvoice, seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
+import {
+  seedAcceptedInvoice,
+  seedCustomer,
+  seedPatient,
+  seedService,
+  seedTreatment,
+} from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -85,11 +91,25 @@ test.describe('appointments', () => {
     await seedPatient(request, customerId, first)
     await seedPatient(request, customerId, second)
     const { appointmentId } = await seedVisitWithoutAnimals(request, customerId)
+    const visitService = await seedService(request, { perVisit: true })
+    const animalService = await seedService(request)
 
     await signIn(page)
     await page.goto(`/appointments/${appointmentId}`)
     const picker = page.getByPlaceholder('Patienten')
     const addAnimal = page.getByRole('button', { name: 'Tier', exact: true })
+
+    // Before any animal, only the visit's own positions can be written down.
+    const visitPicker = page.getByPlaceholder('Leistung pro Termin suchen …')
+    await visitPicker.fill(animalService.serviceName)
+    await expect(
+      page.getByRole('option', { name: new RegExp(animalService.serviceName) }),
+    ).toHaveCount(0)
+    await visitPicker.fill(visitService.serviceName)
+    await expect(
+      page.getByRole('option', { name: new RegExp(visitService.serviceName) }),
+    ).toHaveCount(1)
+    await visitPicker.fill('')
 
     // No animal yet: the search is offered straight away, and the first pick becomes a tab.
     await picker.fill(first)

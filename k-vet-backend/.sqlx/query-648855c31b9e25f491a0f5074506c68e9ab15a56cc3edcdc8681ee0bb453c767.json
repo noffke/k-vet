@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, net_price, travel_expenses, hidden, archived, draft,\n                  created_at, updated_at\n           FROM service WHERE id = $1",
+  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, net_price, travel_expenses, per_visit, hidden, archived,\n                  draft,\n                  created_at, updated_at\n           FROM service WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -103,6 +103,17 @@
       },
       {
         "ordinal": 8,
+        "name": "per_visit",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "per_visit"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
         "name": "hidden",
         "type_info": "Bool",
         "origin": {
@@ -113,7 +124,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
@@ -124,7 +135,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -135,7 +146,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -146,7 +157,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -175,8 +186,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "d35113ef79aa100acac49ba013f6edbc841d76cea234911a25353a39ad98052e"
+  "hash": "648855c31b9e25f491a0f5074506c68e9ab15a56cc3edcdc8681ee0bb453c767"
 }

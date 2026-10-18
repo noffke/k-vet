@@ -561,15 +561,28 @@ pub async fn seed_got_service(pool: &PgPool) -> i64 {
     .expect("seed GOT service")
 }
 
-/// A self-defined travel-expense service (price computed from kilometres).
+/// A self-defined travel-expense service (price computed from kilometres) — per visit, as
+/// every travel-expense service is (migration 0024).
 pub async fn seed_travel_service(pool: &PgPool) -> i64 {
     sqlx::query_scalar(
-        "INSERT INTO service (type, name, vat_percent, net_price, travel_expenses, draft)
-         VALUES ('self_defined', 'Wegegeld', 19.000, 13.00, true, false) RETURNING id",
+        "INSERT INTO service
+             (type, name, vat_percent, net_price, travel_expenses, per_visit, draft)
+         VALUES ('self_defined', 'Wegegeld', 19.000, 13.00, true, true, false) RETURNING id",
     )
     .fetch_one(pool)
     .await
     .expect("seed travel service")
+}
+
+/// A self-defined service marked "pro Termin": its lines belong to the visit, not an animal.
+pub async fn seed_visit_service(pool: &PgPool) -> i64 {
+    sqlx::query_scalar(
+        "INSERT INTO service (type, name, vat_percent, net_price, per_visit, draft)
+         VALUES ('self_defined', 'Hausbesuch', 19.000, 34.50, true, false) RETURNING id",
+    )
+    .fetch_one(pool)
+    .await
+    .expect("seed per-visit service")
 }
 
 /// A complete appointment with its (still empty) treatment — an appointment never exists

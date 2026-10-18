@@ -443,7 +443,7 @@ pub async fn copy_treatment(
                   item.service_id, record.patient_id AS "patient_id?",
                   item.name, item.quantity, item.unit, item.factor, item.got_number,
                   item.price_net, item.vat_percent, item.km, item.km_multiplier,
-                  item.redesignation
+                  item.redesignation, item.per_visit
            FROM treatment_item item
            LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id
            WHERE item.treatment_id = $1 ORDER BY item.position"#,
@@ -468,6 +468,7 @@ pub async fn copy_treatment(
                 factor: item.factor,
                 got_number: item.got_number,
                 travel_expenses: item.km.is_some(),
+                per_visit: item.per_visit,
             }),
             PriceMode::Refresh => None,
         };
@@ -478,8 +479,8 @@ pub async fn copy_treatment(
             item.kind,
             reference_id,
             item.quantity,
-            // A general line stays general in the copy: with one animal, "unsaid" would file it
-            // under that animal.
+            // The visit's line stays the visit's in the copy, also one from before its service
+            // decided (0024): with one animal, "unsaid" would file it under that animal.
             item.patient_id
                 .and_then(|patient| records.get(&patient).copied())
                 .map_or(Attribution::Visit, Attribution::Record),

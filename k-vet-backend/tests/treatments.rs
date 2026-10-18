@@ -387,55 +387,223 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
     );
 }
 
-/// Drug dispensing and treatment belong to a single animal, so with one animal an unsaid line
-/// lands on it. The visit's own positions — house-call fee, Wegegeld — belong to no animal, and
-/// asking for "no animal" explicitly is kept even when there is only one.
-#[sqlx::test]
-async fn a_visit_position_stays_without_an_animal_even_with_one(pool: PgPool) {
-    let app = TestApp::new(pool.clone()).await;
-    let (treatment_id, _) = treatment(&pool).await;
-    let service_id = common::seed_got_service(&pool).await;
-    let drug = common::seed_drug(&pool).await;
-    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+/// Posts a line and returns the response, so a test can read its status or its body.
+async fn add_line(app: &TestApp, treatment_id: i64, line: Value) -> common::TestResponse {
+    app.post(&format!("/api/treatments/{treatment_id}/items"), line)
+        .await
+}
 
-    let visit_line = app
-        .post(
-            &format!("/api/treatments/{treatment_id}/items"),
-            json!({
-                "kind": "service", "service_id": service_id, "quantity": "1",
-                "patient_treatment_id": null
-            }),
-        )
-        .await;
+/// Drug dispensing and treatment belong to a single animal; the house-call fee and Wegegeld
+/// belong to the visit. Which of the two a line is, its service says ("pro Termin") — not the
+/// tab it was picked in, and it cannot be changed on the line afterwards.
+#[sqlx::test]
+async fn a_per_visit_service_belongs_to_the_visit_wherever_it_is_picked(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, record_id) = treatment(&pool).await;
+    let visit_service = common::seed_visit_service(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+
+    // Picked in the animal's tab, which sends the animal along.
+    let visit_line = add_line(
+        &app,
+        treatment_id,
+        json!({
+            "kind": "service", "service_id": visit_service, "quantity": "1",
+            "patient_treatment_id": record_id
+        }),
+    )
+    .await;
     assert_eq!(
         visit_line.status,
         StatusCode::OK,
         "{}",
         String::from_utf8_lossy(&visit_line.body)
     );
+    let visit_line = visit_line.json();
     assert!(
-        visit_line.json()["patient_treatment_id"].is_null(),
-        "an explicit \"no animal\" is not filed under the only animal"
+        visit_line["patient_treatment_id"].is_null(),
+        "a per-visit service is the visit's, also with a single animal"
     );
 
-    let drug_without_animal = app
-        .post(
-            &format!("/api/treatments/{treatment_id}/items"),
-            json!({
-                "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
-                "quantity": "1", "patient_treatment_id": null
-            }),
+    let animal_line = add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await
+    .json();
+    assert_eq!(animal_line["patient_treatment_id"], record_id);
+
+    // Neither moves to the other side: the service decided.
+    let to_animal = app
+        .patch(
+            &format!("/api/treatment-items/{}", visit_line["id"]),
+            json!({ "patient_treatment_id": record_id }),
         )
         .await;
-    assert_eq!(drug_without_animal.status, StatusCode::UNPROCESSABLE_ENTITY);
-    assert!(
-        drug_without_animal
-            .error_fields()
-            .contains(&"patient_treatment_id".to_owned()),
-        "a dispensed drug always belongs to an animal"
-    );
+    assert_eq!(to_animal.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(to_animal.error_fields(), vec!["patient_treatment_id"]);
+    let to_visit = app
+        .patch(
+            &format!("/api/treatment-items/{}", animal_line["id"]),
+            json!({ "patient_treatment_id": null }),
+        )
+        .await;
+    assert_eq!(to_visit.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(to_visit.error_fields(), vec!["patient_treatment_id"]);
 
-    // A duplicate keeps the visit position a visit position.
+    // A group applied to the animal still puts its per-visit position on the visit.
+    let template_id: i64 = sqlx::query_scalar(
+        "INSERT INTO treatment_template (name, draft) VALUES ('Hausbesuch', false) RETURNING id",
+    )
+    .fetch_one(&pool)
+    .await
+    .expect("seed template");
+    sqlx::query(
+        "INSERT INTO treatment_template_item (template_id, position, kind, service_id, quantity)
+         VALUES ($1, 1, 'service', $2, 1), ($1, 2, 'service', $3, 1)",
+    )
+    .bind(template_id)
+    .bind(visit_service)
+    .bind(service_id)
+    .execute(&pool)
+    .await
+    .expect("seed template items");
+    let applied = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/apply-template"),
+            json!({ "template_id": template_id, "patient_treatment_id": record_id }),
+        )
+        .await;
+    assert_eq!(applied.status, StatusCode::OK);
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    let on_visit = items
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .filter(|item| item["patient_treatment_id"].is_null())
+                .count()
+        })
+        .unwrap_or_default();
+    assert_eq!(on_visit, 2, "both per-visit lines are the visit's");
+}
+
+/// Every line that is not a per-visit service needs an animal: with several, the one it is
+/// for; with none attached yet, only the visit's own positions can be written down.
+#[sqlx::test]
+async fn every_other_line_needs_an_animal(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let first = common::seed_patient(&pool, customer_id).await;
+    let second = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let (treatment_id, first_record) =
+        common::seed_patient_treatment(&pool, appointment_id, first).await;
+    let (_, second_record) = common::seed_patient_treatment(&pool, appointment_id, second).await;
+    let visit_service = common::seed_visit_service(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+
+    let unsaid = add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await;
+    assert_eq!(unsaid.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(unsaid.error_fields(), vec!["patient_treatment_id"]);
+    let visit_line = add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": visit_service, "quantity": "1" }),
+    )
+    .await;
+    assert_eq!(visit_line.status, StatusCode::OK);
+    assert!(visit_line.json()["patient_treatment_id"].is_null());
+
+    // A line moves between the animals as before.
+    let line = add_line(
+        &app,
+        treatment_id,
+        json!({
+            "kind": "service", "service_id": service_id, "quantity": "1",
+            "patient_treatment_id": first_record
+        }),
+    )
+    .await
+    .json();
+    let moved = app
+        .patch(
+            &format!("/api/treatment-items/{}", line["id"]),
+            json!({ "patient_treatment_id": second_record }),
+        )
+        .await;
+    assert_eq!(moved.status, StatusCode::OK);
+    assert_eq!(moved.json()["patient_treatment_id"], second_record);
+
+    // No animal on the visit yet.
+    sqlx::query("DELETE FROM treatment_item WHERE patient_treatment_id IS NOT NULL")
+        .execute(&pool)
+        .await
+        .expect("clear the animals' lines");
+    sqlx::query("DELETE FROM patient_treatment WHERE treatment_id = $1")
+        .bind(treatment_id)
+        .execute(&pool)
+        .await
+        .expect("take the animals off the visit");
+    let unsaid = add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await;
+    assert_eq!(unsaid.status, StatusCode::UNPROCESSABLE_ENTITY);
+    let visit_line = add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": visit_service, "quantity": "1" }),
+    )
+    .await;
+    assert_eq!(visit_line.status, StatusCode::OK);
+}
+
+/// A duplicate reproduces its source: the visit's lines stay the visit's — also one from
+/// before the service decided (migration 0024), whose service is not marked "pro Termin" —
+/// even when the prices are re-read from the catalogue.
+#[sqlx::test]
+async fn a_duplicate_keeps_the_visits_lines_the_visits(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, _) = treatment(&pool).await;
+    let visit_service = common::seed_visit_service(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+    add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": visit_service, "quantity": "1" }),
+    )
+    .await;
+    add_line(
+        &app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await;
+    sqlx::query(
+        "INSERT INTO treatment_item
+             (treatment_id, position, kind, service_id, patient_treatment_id, per_visit, name,
+              quantity, factor, got_number, price_net, vat_percent)
+         VALUES ($1, 2, 'service', $2, NULL, true, 'Allgemeine Untersuchung', 1, 100, '1',
+                 23.62, 19)",
+    )
+    .bind(treatment_id)
+    .bind(service_id)
+    .execute(&pool)
+    .await
+    .expect("an old-style \"Ohne Tier\" line");
+
     let appointment_id: i64 =
         sqlx::query_scalar("SELECT appointment_id FROM treatment WHERE id = $1")
             .bind(treatment_id)
@@ -445,16 +613,37 @@ async fn a_visit_position_stays_without_an_animal_even_with_one(pool: PgPool) {
     let copy = app
         .post(
             &format!("/api/appointments/{appointment_id}/duplicate"),
-            json!({ "price_mode": "verbatim" }),
+            json!({ "price_mode": "refresh" }),
         )
-        .await
-        .json();
+        .await;
+    assert_eq!(
+        copy.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&copy.body)
+    );
     let copied = app
-        .get(&format!("/api/treatments/{}/items", copy["treatment_id"]))
+        .get(&format!(
+            "/api/treatments/{}/items",
+            copy.json()["treatment_id"]
+        ))
         .await
         .json();
-    assert_eq!(copied.as_array().map(Vec::len), Some(1));
-    assert!(copied[0]["patient_treatment_id"].is_null());
+    let attributions: Vec<bool> = copied
+        .as_array()
+        .map(|items| {
+            items
+                .iter()
+                .map(|item| item["patient_treatment_id"].is_null())
+                .collect()
+        })
+        .unwrap_or_default();
+    assert_eq!(attributions.len(), 3);
+    assert_eq!(
+        attributions.iter().filter(|on_visit| **on_visit).count(),
+        2,
+        "both of the visit's lines stay the visit's"
+    );
 }
 
 #[sqlx::test]

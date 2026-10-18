@@ -57,6 +57,8 @@ pub enum PickerItem {
         price_gross: Decimal,
         vat_percent: Decimal,
         travel_expenses: bool,
+        /// "pro Termin": the line will belong to the visit, not to the animal it is picked for.
+        per_visit: bool,
         uses: i64,
     },
 }
@@ -98,6 +100,7 @@ pub async fn items(
                   NULL::text              AS got_number,
                   NULL::numeric           AS factor,
                   false                   AS travel_expenses,
+                  false                   AS per_visit,
                   COALESCE(usage.uses, 0) AS uses,
                   CASE WHEN $1::text IS NULL THEN 0
                        ELSE similarity(drug.name, $1) END AS score
@@ -127,6 +130,7 @@ pub async fn items(
                   service.got_number AS got_number,
                   service.factor    AS factor,
                   service.travel_expenses AS travel_expenses,
+                  service.per_visit AS per_visit,
                   COALESCE(usage.uses, 0) AS uses,
                   CASE WHEN $1::text IS NULL THEN 0
                        ELSE similarity(service.name, $1) END AS score
@@ -183,6 +187,7 @@ pub async fn items(
                     price_gross,
                     vat_percent,
                     travel_expenses: row.travel_expenses.unwrap_or(false),
+                    per_visit: row.per_visit.unwrap_or(false),
                     uses,
                 }),
                 _ => None,

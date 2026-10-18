@@ -1777,6 +1777,7 @@ export const PickerItemsResponseItem = zod.union([zod.object({
   "price_gross": zod.string(),
   "vat_percent": zod.string(),
   "travel_expenses": zod.boolean(),
+  "per_visit": zod.boolean().describe('"pro Termin": the line will belong to the visit, not to the animal it is picked for.'),
   "uses": zod.int(),
   "kind": zod.enum(['service'])
 })]).describe('A pickable catalog entry — a tagged union so the UI can show distinct icons.')
@@ -1820,6 +1821,7 @@ export const ListServicesResponseItem = zod.object({
   "net_price": zod.string().nullish().describe('The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.'),
   "gross_price": zod.string().nullish().describe('Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.'),
   "travel_expenses": zod.boolean().describe('Travel-expense lines are priced from the kilometres entered (FR-023).'),
+  "per_visit": zod.boolean().describe('"pro Termin": the service\'s lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit.'),
   "hidden": zod.boolean().describe('Hidden services stay out of pickers and lists by default (FR-021).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -1844,6 +1846,7 @@ export const CreateServiceResponse = zod.object({
   "net_price": zod.string().nullish().describe('The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.'),
   "gross_price": zod.string().nullish().describe('Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.'),
   "travel_expenses": zod.boolean().describe('Travel-expense lines are priced from the kilometres entered (FR-023).'),
+  "per_visit": zod.boolean().describe('"pro Termin": the service\'s lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit.'),
   "hidden": zod.boolean().describe('Hidden services stay out of pickers and lists by default (FR-021).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -1867,6 +1870,7 @@ export const GetServiceResponse = zod.object({
   "net_price": zod.string().nullish().describe('The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.'),
   "gross_price": zod.string().nullish().describe('Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.'),
   "travel_expenses": zod.boolean().describe('Travel-expense lines are priced from the kilometres entered (FR-023).'),
+  "per_visit": zod.boolean().describe('"pro Termin": the service\'s lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit.'),
   "hidden": zod.boolean().describe('Hidden services stay out of pickers and lists by default (FR-021).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -1886,7 +1890,8 @@ export const PatchServiceBody = zod.object({
   "factor": zod.string().nullish(),
   "vat_percent": zod.string().nullish(),
   "net_price": zod.string().nullish(),
-  "travel_expenses": zod.boolean().nullish(),
+  "travel_expenses": zod.boolean().nullish().describe('Setting it also sets `per_visit`, which a travel-expense service cannot be without.'),
+  "per_visit": zod.boolean().nullish(),
   "hidden": zod.boolean().nullish()
 })
 
@@ -1900,6 +1905,7 @@ export const PatchServiceResponse = zod.object({
   "net_price": zod.string().nullish().describe('The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.'),
   "gross_price": zod.string().nullish().describe('Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.'),
   "travel_expenses": zod.boolean().describe('Travel-expense lines are priced from the kilometres entered (FR-023).'),
+  "per_visit": zod.boolean().describe('"pro Termin": the service\'s lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit.'),
   "hidden": zod.boolean().describe('Hidden services stay out of pickers and lists by default (FR-021).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -1923,6 +1929,7 @@ export const ArchiveServiceResponse = zod.object({
   "net_price": zod.string().nullish().describe('The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.'),
   "gross_price": zod.string().nullish().describe('Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.'),
   "travel_expenses": zod.boolean().describe('Travel-expense lines are priced from the kilometres entered (FR-023).'),
+  "per_visit": zod.boolean().describe('"pro Termin": the service\'s lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit.'),
   "hidden": zod.boolean().describe('Hidden services stay out of pickers and lists by default (FR-021).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -1946,6 +1953,7 @@ export const UnarchiveServiceResponse = zod.object({
   "net_price": zod.string().nullish().describe('The fee **without** VAT — the GOT publishes net, so that is what is stored and edited.'),
   "gross_price": zod.string().nullish().describe('Derived from `net_price` and `vat_percent` so the UI can show what the customer pays.'),
   "travel_expenses": zod.boolean().describe('Travel-expense lines are priced from the kilometres entered (FR-023).'),
+  "per_visit": zod.boolean().describe('"pro Termin": the service\'s lines belong to the whole visit, never to an animal — the\nhouse-call fee, Wegegeld. Every other line names an animal. Always set for a\ntravel-expense service, which GOT § 10 charges per visit.'),
   "hidden": zod.boolean().describe('Hidden services stay out of pickers and lists by default (FR-021).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -2305,7 +2313,7 @@ export const PatchTreatmentItemBody = zod.object({
   "price_net": zod.string().nullish(),
   "name": zod.string().nullish(),
   "factor": zod.string().nullish(),
-  "patient_treatment_id": zod.int().nullish().describe('Moves the line to another animal, or out of all of them. It lands at the end of the\ntarget\'s order; its dispensed lots follow, because they hang off the line.'),
+  "patient_treatment_id": zod.int().nullish().describe('Moves the line to another animal. It lands at the end of the target\'s order; its\ndispensed lots follow, because they hang off the line. A line of a per-visit service\nstays the visit\'s, and every other line keeps an animal: `null` is refused for those.'),
   "km": zod.string().nullish(),
   "km_multiplier": zod.string().nullish(),
   "redesignation": zod.boolean().nullish()
@@ -2729,7 +2737,7 @@ export const CreateTreatmentItemBody = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish().describe('Required for `drug_packaging` lines.'),
   "service_id": zod.int().nullish().describe('Required for `service` lines.'),
-  "patient_treatment_id": zod.int().nullish().describe('The animal the line belongs to. Drug dispensing and treatment are attributed to a single\nanimal, so a line normally names one; absent, it defaults to the treatment\'s only\nanimal when there is exactly one. An explicit `null` means the whole visit — positions\nindependent of any individual animal, like the house-call fee or Wegegeld — and is kept\neven with one animal. A drug line always needs an animal.'),
+  "patient_treatment_id": zod.int().nullish().describe('The animal the line belongs to; absent, the treatment\'s only animal when it has exactly\none. Drug dispensing and treatment are attributed to a single animal, so every line\nneeds one — except a line of a service marked "pro Termin" (`per_visit`: house-call fee,\nWegegeld), which belongs to the whole visit and ignores this field.'),
   "quantity": zod.string().optional(),
   "km": zod.string().nullish().describe('Travel-expense lines: kilometres driven (one way).'),
   "km_multiplier": zod.string().nullish().describe('Multiplier for adverse travel conditions (1–3).'),

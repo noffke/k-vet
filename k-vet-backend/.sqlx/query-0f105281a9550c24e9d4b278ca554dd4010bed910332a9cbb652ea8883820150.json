@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, net_price, travel_expenses, hidden, archived, draft,\n                  created_at, updated_at\n           FROM service\n           WHERE ($2 OR NOT archived)\n             AND ($3 OR NOT hidden)\n             AND ($4::service_type IS NULL OR type = $4)\n             AND ($1::text IS NULL\n                  OR name ILIKE '%' || $1 || '%'\n                  OR got_number = $1)\n           ORDER BY got_number NULLS LAST, name NULLS LAST, id\n           LIMIT $5 OFFSET $6",
+  "query": "SELECT id, type AS \"service_type: ServiceType\", name, got_number, factor,\n                  vat_percent, net_price, travel_expenses, per_visit, hidden, archived,\n                  draft,\n                  created_at, updated_at\n           FROM service\n           WHERE ($2 OR NOT archived)\n             AND ($3 OR NOT hidden)\n             AND ($4::service_type IS NULL OR type = $4)\n             AND ($1::text IS NULL\n                  OR name ILIKE '%' || $1 || '%'\n                  OR got_number = $1)\n           ORDER BY got_number NULLS LAST, name NULLS LAST, id\n           LIMIT $5 OFFSET $6",
   "describe": {
     "columns": [
       {
@@ -103,6 +103,17 @@
       },
       {
         "ordinal": 8,
+        "name": "per_visit",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "per_visit"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
         "name": "hidden",
         "type_info": "Bool",
         "origin": {
@@ -113,7 +124,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
@@ -124,7 +135,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -135,7 +146,7 @@
         }
       },
       {
-        "ordinal": 11,
+        "ordinal": 12,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -146,7 +157,7 @@
         }
       },
       {
-        "ordinal": 12,
+        "ordinal": 13,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -190,8 +201,9 @@
       false,
       false,
       false,
+      false,
       false
     ]
   },
-  "hash": "58b4e621e7d1fe967db0ad03aa1941c4c626b5d20fb000511a801291eb3939de"
+  "hash": "0f105281a9550c24e9d4b278ca554dd4010bed910332a9cbb652ea8883820150"
 }

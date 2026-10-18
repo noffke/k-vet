@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, record.patient_id AS \"patient_id?\",\n                  item.name, item.quantity, item.unit, item.factor, item.got_number,\n                  item.price_net, item.vat_percent, item.km, item.km_multiplier,\n                  item.redesignation\n           FROM treatment_item item\n           LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
+  "query": "SELECT item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, record.patient_id AS \"patient_id?\",\n                  item.name, item.quantity, item.unit, item.factor, item.got_number,\n                  item.price_net, item.vat_percent, item.km, item.km_multiplier,\n                  item.redesignation, item.per_visit\n           FROM treatment_item item\n           LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
   "describe": {
     "columns": [
       {
@@ -166,6 +166,17 @@
             "name": "redesignation"
           }
         }
+      },
+      {
+        "ordinal": 14,
+        "name": "per_visit",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "per_visit"
+          }
+        }
       }
     ],
     "parameters": {
@@ -187,8 +198,9 @@
       false,
       true,
       true,
+      false,
       false
     ]
   },
-  "hash": "7b4af803e17879838d2cd9cc3cc2b6997caa893c21bfa011c6029f68dc44be6f"
+  "hash": "2d154aec3acc8e8e3240a4e82db960a68586cdb187db8d7bdf4ee04f97a9e44d"
 }

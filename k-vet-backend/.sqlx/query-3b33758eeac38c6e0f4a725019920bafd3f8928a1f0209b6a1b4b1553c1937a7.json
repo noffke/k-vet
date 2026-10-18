@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT name, net_price, vat_percent, factor, got_number, travel_expenses,\n                          draft, archived\n                   FROM service WHERE id = $1",
+  "query": "SELECT name, net_price, vat_percent, factor, got_number, travel_expenses,\n                          per_visit, draft\n                   FROM service WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -71,23 +71,23 @@
       },
       {
         "ordinal": 6,
+        "name": "per_visit",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "per_visit"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
           "Table": {
             "table": "service",
             "name": "draft"
-          }
-        }
-      },
-      {
-        "ordinal": 7,
-        "name": "archived",
-        "type_info": "Bool",
-        "origin": {
-          "Table": {
-            "table": "service",
-            "name": "archived"
           }
         }
       }
@@ -108,5 +108,5 @@
       false
     ]
   },
-  "hash": "d634ca03b9342dcfc3dda088017f8169559f1d008615b2295470a177b532f02c"
+  "hash": "3b33758eeac38c6e0f4a725019920bafd3f8928a1f0209b6a1b4b1553c1937a7"
 }
