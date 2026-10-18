@@ -32,6 +32,11 @@ interface ItemPickerProps {
    * the positions. Left out where a group would make no sense — inside a group itself.
    */
   onPickTemplate?: ((template: Template) => void) | undefined
+  /**
+   * Offers services only. For the visit's own positions (house call, Wegegeld): a dispensed
+   * drug always belongs to an animal, and the server would refuse it there.
+   */
+  servicesOnly?: boolean
   disabled?: boolean
   placeholder?: string
 }
@@ -45,7 +50,13 @@ interface ItemPickerProps {
  * are not billable positions, they insert several, and a group has no single price or VAT
  * rate to rank or show next to one.
  */
-export function ItemPicker({ onPick, onPickTemplate, disabled, placeholder }: ItemPickerProps) {
+export function ItemPicker({
+  onPick,
+  onPickTemplate,
+  servicesOnly = false,
+  disabled,
+  placeholder,
+}: ItemPickerProps) {
   const { t } = useTranslation()
   const { money, quantity } = useLocaleFormat()
   const label = (item: PickerItem) => pickerLabel(item, quantity)
@@ -72,6 +83,7 @@ export function ItemPicker({ onPick, onPickTemplate, disabled, placeholder }: It
   )
   // An unfinished group would apply nothing, so it is not offered.
   const groups = onPickTemplate ? (templates.data ?? []).filter((template) => !template.draft) : []
+  const items = (results.data ?? []).filter((item) => !servicesOnly || item.kind === 'service')
 
   return (
     <Command
@@ -85,7 +97,11 @@ export function ItemPicker({ onPick, onPickTemplate, disabled, placeholder }: It
         disabled={disabled}
         placeholder={
           placeholder ??
-          (onPickTemplate ? t('treatments.pickerPlaceholder') : t('treatments.pickerItemsOnly'))
+          (servicesOnly
+            ? t('treatments.pickerServicesOnly')
+            : onPickTemplate
+              ? t('treatments.pickerPlaceholder')
+              : t('treatments.pickerItemsOnly'))
         }
         className="w-full rounded-t-card border-b border-line bg-transparent px-3 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none"
       />
@@ -134,7 +150,7 @@ export function ItemPicker({ onPick, onPickTemplate, disabled, placeholder }: It
           heading={groups.length > 0 ? t('treatments.items') : undefined}
           className="[&_[cmdk-group-heading]]:px-2 [&_[cmdk-group-heading]]:py-1.5"
         >
-          {(results.data ?? []).map((item) => (
+          {items.map((item) => (
             <Command.Item
               key={`${item.kind}-${item.id}`}
               value={`${item.kind}-${item.id}`}

@@ -16,7 +16,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::PriceMode;
-use crate::api::treatment_items::{self, CatalogLine, TreatmentItem};
+use crate::api::treatment_items::{self, Attribution, CatalogLine, TreatmentItem};
 use crate::config::TravelExpenseConfig;
 use crate::domain::enums::{InvoiceStatus, TreatmentItemKind};
 use crate::domain::money;
@@ -368,7 +368,8 @@ pub async fn apply_template(
             item.kind,
             reference_id,
             item.quantity,
-            body.patient_treatment_id,
+            body.patient_treatment_id
+                .map_or(Attribution::Default, Attribution::Record),
             None,
             None,
             false,
@@ -477,8 +478,11 @@ pub async fn copy_treatment(
             item.kind,
             reference_id,
             item.quantity,
+            // A general line stays general in the copy: with one animal, "unsaid" would file it
+            // under that animal.
             item.patient_id
-                .and_then(|patient| records.get(&patient).copied()),
+                .and_then(|patient| records.get(&patient).copied())
+                .map_or(Attribution::Visit, Attribution::Record),
             item.km,
             item.km_multiplier,
             item.redesignation,

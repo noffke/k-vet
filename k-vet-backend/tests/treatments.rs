@@ -387,6 +387,76 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
     );
 }
 
+/// Drug dispensing and treatment belong to a single animal, so with one animal an unsaid line
+/// lands on it. The visit's own positions — house-call fee, Wegegeld — belong to no animal, and
+/// asking for "no animal" explicitly is kept even when there is only one.
+#[sqlx::test]
+async fn a_visit_position_stays_without_an_animal_even_with_one(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let (treatment_id, _) = treatment(&pool).await;
+    let service_id = common::seed_got_service(&pool).await;
+    let drug = common::seed_drug(&pool).await;
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+
+    let visit_line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "service", "service_id": service_id, "quantity": "1",
+                "patient_treatment_id": null
+            }),
+        )
+        .await;
+    assert_eq!(
+        visit_line.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&visit_line.body)
+    );
+    assert!(
+        visit_line.json()["patient_treatment_id"].is_null(),
+        "an explicit \"no animal\" is not filed under the only animal"
+    );
+
+    let drug_without_animal = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({
+                "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+                "quantity": "1", "patient_treatment_id": null
+            }),
+        )
+        .await;
+    assert_eq!(drug_without_animal.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        drug_without_animal
+            .error_fields()
+            .contains(&"patient_treatment_id".to_owned()),
+        "a dispensed drug always belongs to an animal"
+    );
+
+    // A duplicate keeps the visit position a visit position.
+    let appointment_id: i64 =
+        sqlx::query_scalar("SELECT appointment_id FROM treatment WHERE id = $1")
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the treatment's appointment");
+    let copy = app
+        .post(
+            &format!("/api/appointments/{appointment_id}/duplicate"),
+            json!({ "price_mode": "verbatim" }),
+        )
+        .await
+        .json();
+    let copied = app
+        .get(&format!("/api/treatments/{}/items", copy["treatment_id"]))
+        .await
+        .json();
+    assert_eq!(copied.as_array().map(Vec::len), Some(1));
+    assert!(copied[0]["patient_treatment_id"].is_null());
+}
+
 #[sqlx::test]
 async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

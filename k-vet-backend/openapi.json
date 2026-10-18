@@ -4751,7 +4751,7 @@
               "null"
             ],
             "format": "int64",
-            "description": "Defaults to the treatment's only Patientenbehandlung when there is exactly one."
+            "description": "The animal the line belongs to. Drug dispensing and treatment are attributed to a single\nanimal, so a line normally names one; absent, it defaults to the treatment's only\nanimal when there is exactly one. An explicit `null` means the whole visit — positions\nindependent of any individual animal, like the house-call fee or Wegegeld — and is kept\neven with one animal. A drug line always needs an animal."
           },
           "quantity": {
             "type": "string"

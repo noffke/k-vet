@@ -234,6 +234,7 @@
     "noReason": "Kein Vorbericht",
     "pickerItemsOnly": "Medikament oder Leistung suchen …",
     "pickerPlaceholder": "Medikament, Leistung oder Gruppe suchen …",
+    "pickerServicesOnly": "Leistung suchen …",
     "redesignation": "Umwidmung",
     "redesignationHint": "Abgabe außerhalb der Zulassung — wird auf dieser Zeile dokumentiert, ändert den Preis nicht.",
     "removeItem": "Position entfernen",
@@ -243,7 +244,8 @@
     "removePatientConfirm": "„{{name}}“ wirklich von dieser Behandlung nehmen? Die Positionen dieses Tieres gehen mit.",
     "title": "Behandlung",
     "total": "Summe",
-    "withoutPatient": "Ohne Tier"
+    "withoutPatient": "Ohne Tier",
+    "withoutPatientHint": "Für den ganzen Termin, nicht für ein einzelnes Tier — z. B. Hausbesuch, Wegegeld."
   },
   "invoices": {
     "accept": "Rechnung freigeben",

@@ -88,8 +88,14 @@ pub struct CreateTreatmentItem {
     pub drug_packaging_id: Option<i64>,
     /// Required for `service` lines.
     pub service_id: Option<i64>,
-    /// Defaults to the treatment's only Patientenbehandlung when there is exactly one.
-    pub patient_treatment_id: Option<i64>,
+    /// The animal the line belongs to. Drug dispensing and treatment are attributed to a single
+    /// animal, so a line normally names one; absent, it defaults to the treatment's only
+    /// animal when there is exactly one. An explicit `null` means the whole visit — positions
+    /// independent of any individual animal, like the house-call fee or Wegegeld — and is kept
+    /// even with one animal. A drug line always needs an animal.
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<i64>)]
+    pub patient_treatment_id: Option<Option<i64>>,
     #[serde(default = "one")]
     pub quantity: Decimal,
     /// Travel-expense lines: kilometres driven (one way).
@@ -99,6 +105,29 @@ pub struct CreateTreatmentItem {
     /// Ad-hoc Umwidmung; only meaningful on a drug line.
     #[serde(default)]
     pub redesignation: bool,
+}
+
+/// Which animal a new line belongs to.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Attribution {
+    /// Nothing said: the treatment's only animal, when it has exactly one (FR-028).
+    Default,
+    /// Explicitly none: a position for the whole visit, independent of any individual animal
+    /// (house-call fee, Wegegeld). Never a drug line.
+    Visit,
+    /// That animal's record.
+    Record(i64),
+}
+
+impl From<Option<Option<i64>>> for Attribution {
+    /// The wire form: absent, explicit `null`, or an id.
+    fn from(value: Option<Option<i64>>) -> Self {
+        match value {
+            None => Attribution::Default,
+            Some(None) => Attribution::Visit,
+            Some(Some(id)) => Attribution::Record(id),
+        }
+    }
 }
 
 fn one() -> Decimal {
@@ -267,7 +296,7 @@ pub async fn create(
         body.kind,
         reference_id,
         body.quantity,
-        body.patient_treatment_id,
+        body.patient_treatment_id.into(),
         body.km,
         body.km_multiplier,
         body.redesignation,
@@ -293,7 +322,7 @@ pub async fn insert_pinned_item(
     kind: TreatmentItemKind,
     reference_id: i64,
     quantity: Decimal,
-    patient_treatment_id: Option<i64>,
+    attribution: Attribution,
     km: Option<Decimal>,
     km_multiplier: Option<Decimal>,
     redesignation: bool,
@@ -309,11 +338,15 @@ pub async fn insert_pinned_item(
         None => catalog_line(transaction, kind, reference_id).await?,
     };
 
-    // A treatment with exactly one animal preselects it (FR-028); drug lines require one,
-    // because that is what ties a dispensed batch to the animal that received it.
-    let patient_treatment_id = match patient_treatment_id {
-        Some(id) => Some(validate_record(transaction, treatment_id, id).await?),
-        None => sole_record(transaction, treatment_id).await?,
+    // Drug dispensing and treatment are attributed to a single animal, so a line names one.
+    // Unsaid, a treatment with exactly one animal preselects it (FR-028); only the visit's own
+    // positions — house-call fee, Wegegeld — are asked for without one, and that is kept even
+    // with a single animal. Drug lines require an animal: it is what ties a dispensed batch to
+    // the animal that received it.
+    let patient_treatment_id = match attribution {
+        Attribution::Record(id) => Some(validate_record(transaction, treatment_id, id).await?),
+        Attribution::Default => sole_record(transaction, treatment_id).await?,
+        Attribution::Visit => None,
     };
     if kind == TreatmentItemKind::DrugPackaging && patient_treatment_id.is_none() {
         return Err(AppError::field(
@@ -852,7 +885,8 @@ async fn validate_record(
     }
 }
 
-/// The treatment's only animal record, when it has exactly one — what a new line defaults to.
+/// The treatment's only animal record, when it has exactly one — what a new line defaults to
+/// when nothing is said. An explicit "no animal" (`Attribution::Visit`) never comes here.
 async fn sole_record(connection: &mut PgConnection, treatment_id: i64) -> AppResult<Option<i64>> {
     let records = sqlx::query_scalar!(
         "SELECT id FROM patient_treatment WHERE treatment_id = $1",

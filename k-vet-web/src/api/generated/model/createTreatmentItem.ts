@@ -20,7 +20,11 @@ export interface CreateTreatmentItem {
      */
   service_id?: number | null;
   /**
-     * Defaults to the treatment's only Patientenbehandlung when there is exactly one.
+     * The animal the line belongs to. Drug dispensing and treatment are attributed to a single
+     * animal, so a line normally names one; absent, it defaults to the treatment's only
+     * animal when there is exactly one. An explicit `null` means the whole visit — positions
+     * independent of any individual animal, like the house-call fee or Wegegeld — and is kept
+     * even with one animal. A drug line always needs an animal.
      * @nullable
      */
   patient_treatment_id?: number | null;

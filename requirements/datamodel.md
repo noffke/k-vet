@@ -172,7 +172,12 @@ Fields:
     * Factor
     * GOT Number (copied, for GOT services)
     * allow to override Name
-    * Relation: 0..1 Patient (optional)
+    * Relation: 0..1 Patient. A treatment is attributed to a single animal, like a dispensed
+      drug, so a service normally names one too. Without one ("Ohne Tier") stand only the
+      positions independent of any individual animal — the house-call fee (Hausbesuchsgebühr)
+      and Wegegeld. They come last, after the animals, in the position list and on the invoice.
+      An explicit "Ohne Tier" is kept even when the treatment has a single animal; only a line
+      added without saying either way defaults to that animal.
   * Position (for ordering)
   * Price (copied from the current sales price; allow to override)
   * VAT Percent (copied)

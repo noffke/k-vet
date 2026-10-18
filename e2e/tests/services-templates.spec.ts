@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { navigate, pdfText, signIn } from './helpers'
 
 /**
@@ -249,6 +249,40 @@ test.describe('treatment lines', () => {
     // It survives a reload — it is stored on the line, not just ticked in the browser.
     await page.reload()
     await expect(page.getByLabel('Umwidmung')).toBeChecked()
+  })
+
+  test('a visit position stays without an animal, even with a single animal', async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const { serviceName } = await seedService(request)
+    const drug = await seedDrug(request)
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    // The house-call fee or Wegegeld belong to no animal, and that is what "Ohne Tier" is for.
+    await page.getByRole('button', { name: 'Ohne Tier' }).click()
+    const visitPicker = page.getByPlaceholder('Leistung suchen …')
+
+    // A dispensed drug always belongs to an animal, so the visit's picker does not offer one.
+    await visitPicker.fill(drug.drugName)
+    await expect(page.getByRole('option', { name: /· 10 ml/ })).toHaveCount(0)
+
+    await visitPicker.fill(serviceName)
+    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+
+    // Kept without an animal — not filed under the only one.
+    await expect
+      .poll(async () => {
+        const lines = (await (await request.get(`/api/treatments/${treatmentId}/items`)).json()) as {
+          patient_treatment_id: number | null
+        }[]
+        return lines.map((line) => line.patient_treatment_id)
+      })
+      .toEqual([null])
   })
 
   test('a position is not removed by a stray click', async ({ page, request }) => {

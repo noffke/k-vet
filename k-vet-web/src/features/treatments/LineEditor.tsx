@@ -54,8 +54,9 @@ export function LineEditor({ treatment, items, readOnly }: LineEditorProps) {
   const { money } = useLocaleFormat()
 
   const loose = items.filter((item) => item.patient_treatment_id === null)
-  // The bucket is for what covers the visit rather than an animal — a Wegegeld shared by two
-  // of them. Rare, so it only appears once it holds something, or on request.
+  // Drug dispensing and treatment are attributed to a single animal; the bucket is for what is
+  // independent of any of them — the house-call fee, Wegegeld. It only appears once it holds
+  // something, or on request, and an explicit "no animal" is kept even with a single animal.
   const [bucketOpen, setBucketOpen] = useState(false)
   const showBucket = loose.length > 0 || bucketOpen || treatment.patients.length === 0
 
@@ -214,11 +215,15 @@ export function PositionGroup({
   return (
     <div className="mt-4">
       <h3 className="text-sm font-semibold text-ink">{heading}</h3>
+      {patientTreatmentId === null && !readOnly ? (
+        <p className="mt-0.5 text-xs text-ink-faint">{t('treatments.withoutPatientHint')}</p>
+      ) : null}
 
       {readOnly ? null : (
         <div className="mt-2">
           <ItemPicker
             onPick={pick}
+            servicesOnly={patientTreatmentId === null}
             onPickTemplate={
               patientTreatmentId === null
                 ? undefined

@@ -234,6 +234,7 @@
     "noReason": "No history recorded",
     "pickerItemsOnly": "Search drug or service …",
     "pickerPlaceholder": "Search drug, service or group …",
+    "pickerServicesOnly": "Search service …",
     "redesignation": "Redesignation",
     "redesignationHint": "Dispensed outside the approval — recorded on this line, no effect on the price.",
     "removeItem": "Remove position",
@@ -243,7 +244,8 @@
     "removePatientConfirm": "Really take “{{name}}” off this treatment? This animal’s positions go with it.",
     "title": "Treatment",
     "total": "Total",
-    "withoutPatient": "No animal"
+    "withoutPatient": "No animal",
+    "withoutPatientHint": "For the whole visit, not one animal — e.g. house call, Wegegeld."
   },
   "invoices": {
     "accept": "Accept invoice",

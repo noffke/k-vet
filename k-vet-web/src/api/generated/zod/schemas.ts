@@ -2728,7 +2728,7 @@ export const CreateTreatmentItemBody = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "drug_packaging_id": zod.int().nullish().describe('Required for `drug_packaging` lines.'),
   "service_id": zod.int().nullish().describe('Required for `service` lines.'),
-  "patient_treatment_id": zod.int().nullish().describe('Defaults to the treatment\'s only Patientenbehandlung when there is exactly one.'),
+  "patient_treatment_id": zod.int().nullish().describe('The animal the line belongs to. Drug dispensing and treatment are attributed to a single\nanimal, so a line normally names one; absent, it defaults to the treatment\'s only\nanimal when there is exactly one. An explicit `null` means the whole visit — positions\nindependent of any individual animal, like the house-call fee or Wegegeld — and is kept\neven with one animal. A drug line always needs an animal.'),
   "quantity": zod.string().optional(),
   "km": zod.string().nullish().describe('Travel-expense lines: kilometres driven (one way).'),
   "km_multiplier": zod.string().nullish().describe('Multiplier for adverse travel conditions (1–3).'),

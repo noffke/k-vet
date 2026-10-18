@@ -55,7 +55,7 @@ is needed: move one step up or down, move to top or bottom.
 
 On the Treatment page, a treatment template can be applied: its items are appended (in item order) as treatment items with the current prices and names copied.
 
-Each treatment item line must be attributed to a patient: mandatory for drug lines, optional for service lines. When the treatment has exactly one patient, it is preselected.
+Each treatment item line must be attributed to a patient: mandatory for drug lines, optional for service lines. When the treatment has exactly one patient, it is preselected. The reason: drug dispensing and treatment are attributed to a single animal, while the house-call fee and Wegegeld are independent of any individual animal — those, and only those, stand "Ohne Tier" (also when there is just one animal), last in the position list and on the invoice.
 
 On an individual treatment, we need the option to create or update the invoice. When
 creating the invoice, we need the option to select a checkbox for Includes Finding. An optional note
