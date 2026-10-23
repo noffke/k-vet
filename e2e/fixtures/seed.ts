@@ -205,7 +205,10 @@ export async function seedAcceptedInvoice(request: APIRequestContext): Promise<S
     `/api/treatments/${treatmentId}/invoice`,
     {},
   )
-  await post(request, `/api/invoices/${invoice.id}/accept`, { recipient_emails: [] })
+  await post(request, `/api/invoices/${invoice.id}/accept`, {
+    recipient_emails: [],
+    send_at: new Date().toISOString(),
+  })
 
   return { invoiceId: invoice.id, invoiceNumber: invoice.invoice_number, treatmentId }
 }

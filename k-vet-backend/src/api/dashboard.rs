@@ -11,7 +11,7 @@
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
-use chrono::NaiveDate;
+use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
@@ -75,6 +75,9 @@ pub struct AtRiskEntry {
     pub patients: Vec<String>,
     #[schema(value_type = String)]
     pub total_gross: Decimal,
+    /// When its mail is scheduled to go out, for a released invoice waiting on purpose — which
+    /// would otherwise look just like a forgotten one.
+    pub mail_scheduled_for: Option<DateTime<Utc>>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -212,6 +215,7 @@ async fn unbilled_treatments(pool: &PgPool) -> AppResult<AtRisk> {
             customer_name: parties.customer_name,
             patients: parties.patients,
             total_gross: treatment_items::treatment_total_gross(&mut connection, row.id).await?,
+            mail_scheduled_for: None,
         });
     }
 
@@ -248,6 +252,12 @@ async fn invoices_at_risk(pool: &PgPool, status: InvoiceStatus) -> AppResult<AtR
             customer_name: invoice.customer_name,
             patients: invoice.patients,
             total_gross: invoice.total_gross,
+            // Only a mail still ahead and untroubled counts as "scheduled"; a failing one is on
+            // the failed-mail card instead.
+            mail_scheduled_for: invoice
+                .email_queue
+                .filter(|mail| mail.last_error.is_none() && mail.send_after > Utc::now())
+                .map(|mail| mail.send_after),
         });
     }
 

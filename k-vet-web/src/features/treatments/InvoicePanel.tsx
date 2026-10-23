@@ -17,6 +17,7 @@ import { NotSentBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { SentTo } from '@/features/invoices/SentTo'
 import { useLocaleFormat } from '@/lib/locale'
+import { isAhead } from '@/lib/schedule'
 
 interface InvoicePanelProps {
   treatment: Treatment
@@ -223,9 +224,12 @@ function QueuedMailNote({ mail }: { mail: QueuedEmail }) {
   const { t } = useTranslation()
   const { dateTime } = useLocaleFormat()
   if (!mail.last_error) {
+    const recipients = mail.recipients.join(', ')
     return (
       <p className="mt-1 text-xs break-all text-ink-soft">
-        {t('invoices.queueWaiting', { recipients: mail.recipients.join(', ') })}
+        {isAhead(mail.send_after)
+          ? t('invoices.queueScheduled', { recipients, time: dateTime(mail.send_after) })
+          : t('invoices.queueWaiting', { recipients })}
       </p>
     )
   }

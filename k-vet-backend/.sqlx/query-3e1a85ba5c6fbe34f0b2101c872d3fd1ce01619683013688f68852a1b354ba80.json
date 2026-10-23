@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, invoice_id, recipients, queued_at, attempts, last_attempt_at, last_error,\n                  refused, gave_up_at,\n                  first_failure_at + make_interval(hours => $1) AS retry_until\n           FROM mail_queue WHERE last_error IS NOT NULL\n           ORDER BY first_failure_at, id",
+  "query": "SELECT id, invoice_id, recipients, queued_at, send_after, attempts, last_attempt_at,\n                  last_error, refused, gave_up_at,\n                  first_failure_at + make_interval(hours => $1) AS retry_until\n           FROM mail_queue WHERE last_error IS NOT NULL\n           ORDER BY first_failure_at, id",
   "describe": {
     "columns": [
       {
@@ -49,6 +49,17 @@
       },
       {
         "ordinal": 4,
+        "name": "send_after",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "send_after"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
         "name": "attempts",
         "type_info": "Int4",
         "origin": {
@@ -59,7 +70,7 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
         "name": "last_attempt_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -70,7 +81,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "last_error",
         "type_info": "Text",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "refused",
         "type_info": "Bool",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "gave_up_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -103,7 +114,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "retry_until",
         "type_info": "Timestamptz",
         "origin": "Expression"
@@ -120,6 +131,7 @@
       false,
       false,
       false,
+      false,
       true,
       true,
       false,
@@ -127,5 +139,5 @@
       null
     ]
   },
-  "hash": "9f092c7db27f9a756f42bc280b417dbdc1f24170ebcd26ee4fcdbe0ead7f18be"
+  "hash": "3e1a85ba5c6fbe34f0b2101c872d3fd1ce01619683013688f68852a1b354ba80"
 }

@@ -624,7 +624,8 @@ export const GetDashboardResponse = zod.object({
   "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
-  "total_gross": zod.string()
+  "total_gross": zod.string(),
+  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
 }))
 }).describe('Treatments that were worked and billed to nobody.'),
   "unreleased": zod.object({
@@ -635,7 +636,8 @@ export const GetDashboardResponse = zod.object({
   "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
-  "total_gross": zod.string()
+  "total_gross": zod.string(),
+  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
 }))
 }).describe('Invoices written but never released.'),
   "unsent": zod.object({
@@ -646,7 +648,8 @@ export const GetDashboardResponse = zod.object({
   "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
-  "total_gross": zod.string()
+  "total_gross": zod.string(),
+  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
 }))
 }).describe('Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show.'),
   "expiring_lots": zod.array(zod.object({
@@ -664,6 +667,7 @@ export const GetDashboardResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -947,6 +951,7 @@ export const ListInvoicesResponseItem = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -999,6 +1004,7 @@ export const GetInvoiceResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1021,7 +1027,8 @@ export const AcceptInvoiceParams = zod.object({
 })
 
 export const AcceptInvoiceBody = zod.object({
-  "recipient_emails": zod.array(zod.string()).optional().describe('Customer email addresses the PDF is sent to.')
+  "recipient_emails": zod.array(zod.string()).optional().describe('Customer email addresses the PDF is sent to.'),
+  "send_at": zod.iso.datetime({"offset":true}).describe('When the mail may go out: the queue takes it with its first run at or after this. "Send\nnow" is now; a time already past means the next run, so a browser clock that lags the\nserver\'s never fails a send. Ignored when no address is given.')
 })
 
 export const AcceptInvoiceResponse = zod.object({
@@ -1045,6 +1052,7 @@ export const AcceptInvoiceResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1087,6 +1095,7 @@ export const CancelInvoiceResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1129,6 +1138,7 @@ export const MarkInvoicePostedResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1158,7 +1168,8 @@ export const SendInvoiceParams = zod.object({
 })
 
 export const SendInvoiceBody = zod.object({
-  "recipient_emails": zod.array(zod.string()).optional().describe('Where this send goes. Replaces the stored recipients, so a mistyped address can be\ncorrected and an invoice accepted without one can still be emailed.')
+  "recipient_emails": zod.array(zod.string()).optional().describe('Where this send goes. Replaces the stored recipients, so a mistyped address can be\ncorrected and an invoice accepted without one can still be emailed.'),
+  "send_at": zod.iso.datetime({"offset":true}).describe('When the mail may go out — as for releasing.')
 })
 
 export const SendInvoiceResponse = zod.object({
@@ -1182,6 +1193,7 @@ export const SendInvoiceResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1224,6 +1236,7 @@ export const SubmitInvoiceResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1360,8 +1373,8 @@ export const RemoveQueuedMailResponse = zod.void()
 
 
 /**
- * @summary Tries a failed mail again from the start: the next run of the queue (within five minutes)
-sends it, and a failure gets a fresh [`RETRY_HOURS`].
+ * @summary Tries a failed mail again from the start, and now: the next run of the queue (within five
+minutes) sends it, and a failure gets a fresh [`RETRY_HOURS`].
  */
 export const RetryQueuedMailParams = zod.object({
   "id": zod.int()
@@ -1372,6 +1385,7 @@ export const RetryQueuedMailResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -2837,6 +2851,7 @@ export const CreateInvoiceResponse = zod.object({
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),

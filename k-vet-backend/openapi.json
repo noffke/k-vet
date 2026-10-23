@@ -1617,7 +1617,7 @@
         "tags": [
           "invoices"
         ],
-        "summary": "Tries a failed mail again from the start: the next run of the queue (within five minutes)\nsends it, and a failure gets a fresh [`RETRY_HOURS`].",
+        "summary": "Tries a failed mail again from the start, and now: the next run of the queue (within five\nminutes) sends it, and a failure gets a fresh [`RETRY_HOURS`].",
         "operationId": "retryQueuedMail",
         "parameters": [
           {
@@ -4241,6 +4241,9 @@
     "schemas": {
       "AcceptInvoice": {
         "type": "object",
+        "required": [
+          "send_at"
+        ],
         "properties": {
           "recipient_emails": {
             "type": "array",
@@ -4248,6 +4251,11 @@
               "type": "string"
             },
             "description": "Customer email addresses the PDF is sent to."
+          },
+          "send_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the mail may go out: the queue takes it with its first run at or after this. \"Send\nnow\" is now; a time already past means the next run, so a browser clock that lags the\nserver's never fails a send. Ignored when no address is given."
           }
         }
       },
@@ -4499,6 +4507,14 @@
           },
           "total_gross": {
             "type": "string"
+          },
+          "mail_scheduled_for": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one."
           }
         }
       },
@@ -7237,6 +7253,7 @@
           "invoice_id",
           "recipients",
           "queued_at",
+          "send_after",
           "attempts",
           "refused"
         ],
@@ -7258,6 +7275,11 @@
           "queued_at": {
             "type": "string",
             "format": "date-time"
+          },
+          "send_after": {
+            "type": "string",
+            "format": "date-time",
+            "description": "Not sent before this: now for \"send now\", a chosen hour for \"send later\"."
           },
           "attempts": {
             "type": "integer",
@@ -7310,6 +7332,9 @@
       },
       "SendInvoice": {
         "type": "object",
+        "required": [
+          "send_at"
+        ],
         "properties": {
           "recipient_emails": {
             "type": "array",
@@ -7317,6 +7342,11 @@
               "type": "string"
             },
             "description": "Where this send goes. Replaces the stored recipients, so a mistyped address can be\ncorrected and an invoice accepted without one can still be emailed."
+          },
+          "send_at": {
+            "type": "string",
+            "format": "date-time",
+            "description": "When the mail may go out — as for releasing."
           }
         }
       },

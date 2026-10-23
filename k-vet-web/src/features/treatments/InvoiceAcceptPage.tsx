@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { AlertTriangle } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import {
   getGetInvoiceQueryKey,
   getGetPatientQueryKey,
@@ -12,7 +11,7 @@ import {
   useGetTreatment,
   useListTreatmentItems,
 } from '@/api/generated/endpoints'
-import { InvoiceMailForm } from '@/features/treatments/InvoiceMailForm'
+import { InvoiceMailForm, useQueuedToast } from '@/features/treatments/InvoiceMailForm'
 import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
 
@@ -25,6 +24,7 @@ export function InvoiceAcceptPage() {
   const { id } = useParams({ from: '/app/treatments/$id/invoice/accept' })
   const treatmentId = Number(id)
   const client = useQueryClient()
+  const announce = useQueuedToast()
   const treatment = useGetTreatment(treatmentId)
 
   // Back where the vet came from — the appointment with its animal's tab — rather than piling
@@ -33,8 +33,8 @@ export function InvoiceAcceptPage() {
   const acceptInvoice = useAcceptInvoice({
     mutation: {
       onSuccess: async (released) => {
-        // Released now; the mail goes out with the queue's next run.
-        if (released.email_queue) toast(t('invoices.queued'))
+        // Released now; the mail goes out with the queue's next run, or at the time chosen.
+        announce(released.email_queue)
         await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
         // A euthanasia line has just ended an animal's record: its page and every list of
         // animals (the next visit's picker among them) must not show it alive.
@@ -63,7 +63,10 @@ export function InvoiceAcceptPage() {
       pending={acceptInvoice.isPending}
       failed={acceptInvoice.isError}
       submit={(invoiceId, choice) =>
-        acceptInvoice.mutate({ id: invoiceId, data: { recipient_emails: choice.recipients } })
+        acceptInvoice.mutate({
+          id: invoiceId,
+          data: { recipient_emails: choice.recipients, send_at: choice.sendAt },
+        })
       }
     />
   )

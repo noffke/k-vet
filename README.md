@@ -24,8 +24,8 @@ layouts are first-class — not one design squeezed onto a phone.
   with a counter that never goes backwards.
 - **Invoices** — PDF from a Typst template, plain-text email through the practice's own mail
   server, and a lifecycle (created → accepted → sent → submitted, or cancelled) where every step
-  is stamped. Mail goes out through a queue, retried for six hours when the mail server does not
-  answer. An invoice reaches the customer — by email or on paper — before the bookkeeper sees it,
+  is stamped. Mail goes out through a queue — now, or at a chosen hour — retried for six hours when
+  the mail server does not answer. An invoice reaches the customer — by email or on paper — before the bookkeeper sees it,
   and the dashboard lists the ones that did not and every mail that failed.
 - **Bookkeeping hand-off** — every pending PDF as one ZIP, then one click to mark them handed
   over.

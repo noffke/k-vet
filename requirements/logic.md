@@ -92,6 +92,14 @@ timestamp:
   sending again replaces it. Cancelling the invoice, or marking it as posted, drops the waiting
   mail. Until it is delivered the invoice stays Accepted, and the treatment page says where the
   mail is.
+
+  Releasing or sending also says when the mail may go out: "Gleich versenden" (the default — with
+  the next run) or "Später versenden" at a chosen day and hour, offered as tomorrow at 08:00
+  local time. After a euthanasia the vet releases the invoice the same day but does not want it
+  to reach the grieving owners at once. A scheduled mail shows its time on the treatment page,
+  in the invoices list and in the dashboard's "not sent" list, so it does not look forgotten; the
+  send page reopens on that schedule. Every request carries the time — "Gleich" is now — and a
+  time already past simply means the next run.
 * by post — nothing else can observe a letter going into a postbox, so the vet marks it by hand.
   Only an Accepted invoice can be marked as posted.
 

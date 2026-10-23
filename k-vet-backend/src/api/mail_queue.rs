@@ -27,6 +27,8 @@ pub struct QueuedEmail {
     pub invoice_id: i64,
     pub recipients: Vec<String>,
     pub queued_at: DateTime<Utc>,
+    /// Not sent before this: now for "send now", a chosen hour for "send later".
+    pub send_after: DateTime<Utc>,
     pub attempts: i32,
     pub last_attempt_at: Option<DateTime<Utc>>,
     /// The transport's own words for the last failure: the host it could not reach, or the
@@ -41,21 +43,24 @@ pub struct QueuedEmail {
     pub gave_up_at: Option<DateTime<Utc>>,
 }
 
-/// Queues the invoice's mail to `recipients`. A mail already waiting for the invoice — failing
-/// or given up — is replaced, with a fresh start: there is only ever one per invoice.
+/// Queues the invoice's mail to `recipients`, to go out with the first run at or after
+/// `send_after`. A mail already waiting for the invoice — scheduled, failing or given up — is
+/// replaced, with a fresh start: there is only ever one per invoice.
 pub async fn queue(
     connection: &mut PgConnection,
     invoice_id: i64,
     recipients: &[String],
+    send_after: DateTime<Utc>,
 ) -> AppResult<()> {
     sqlx::query!(
-        "INSERT INTO mail_queue (invoice_id, recipients) VALUES ($1, $2)
+        "INSERT INTO mail_queue (invoice_id, recipients, send_after) VALUES ($1, $2, $3)
          ON CONFLICT (invoice_id) DO UPDATE
-            SET recipients = EXCLUDED.recipients, queued_at = now(), attempts = 0,
-                last_attempt_at = NULL, first_failure_at = NULL, last_error = NULL,
-                refused = false, gave_up_at = NULL",
+            SET recipients = EXCLUDED.recipients, send_after = EXCLUDED.send_after,
+                queued_at = now(), attempts = 0, last_attempt_at = NULL,
+                first_failure_at = NULL, last_error = NULL, refused = false, gave_up_at = NULL",
         invoice_id,
         recipients,
+        send_after,
     )
     .execute(connection)
     .await?;
@@ -78,8 +83,8 @@ pub async fn for_invoice(
 ) -> AppResult<Option<QueuedEmail>> {
     Ok(sqlx::query_as!(
         QueuedEmail,
-        r#"SELECT id, invoice_id, recipients, queued_at, attempts, last_attempt_at, last_error,
-                  refused, gave_up_at,
+        r#"SELECT id, invoice_id, recipients, queued_at, send_after, attempts, last_attempt_at,
+                  last_error, refused, gave_up_at,
                   first_failure_at + make_interval(hours => $2) AS retry_until
            FROM mail_queue WHERE invoice_id = $1"#,
         invoice_id,
@@ -93,8 +98,8 @@ pub async fn for_invoice(
 pub async fn failed(connection: &mut PgConnection) -> AppResult<Vec<QueuedEmail>> {
     Ok(sqlx::query_as!(
         QueuedEmail,
-        r#"SELECT id, invoice_id, recipients, queued_at, attempts, last_attempt_at, last_error,
-                  refused, gave_up_at,
+        r#"SELECT id, invoice_id, recipients, queued_at, send_after, attempts, last_attempt_at,
+                  last_error, refused, gave_up_at,
                   first_failure_at + make_interval(hours => $1) AS retry_until
            FROM mail_queue WHERE last_error IS NOT NULL
            ORDER BY first_failure_at, id"#,
@@ -112,8 +117,8 @@ pub async fn failed(connection: &mut PgConnection) -> AppResult<Vec<QueuedEmail>
     params(("id" = i64, Path,)),
     responses((status = 200, body = QueuedEmail), (status = 404))
 )]
-/// Tries a failed mail again from the start: the next run of the queue (within five minutes)
-/// sends it, and a failure gets a fresh [`RETRY_HOURS`].
+/// Tries a failed mail again from the start, and now: the next run of the queue (within five
+/// minutes) sends it, and a failure gets a fresh [`RETRY_HOURS`].
 pub async fn retry(
     State(state): State<AppState>,
     Path(id): Path<i64>,
@@ -121,8 +126,8 @@ pub async fn retry(
     let mut connection = state.pool.acquire().await?;
     let invoice_id = sqlx::query_scalar!(
         "UPDATE mail_queue
-            SET queued_at = now(), attempts = 0, last_attempt_at = NULL, first_failure_at = NULL,
-                last_error = NULL, refused = false, gave_up_at = NULL
+            SET queued_at = now(), send_after = now(), attempts = 0, last_attempt_at = NULL,
+                first_failure_at = NULL, last_error = NULL, refused = false, gave_up_at = NULL
           WHERE id = $1
          RETURNING invoice_id",
         id,

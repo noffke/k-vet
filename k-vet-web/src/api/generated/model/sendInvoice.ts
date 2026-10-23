@@ -12,4 +12,6 @@ export interface SendInvoice {
      * corrected and an invoice accepted without one can still be emailed.
      */
   recipient_emails?: string[];
+  /** When the mail may go out — as for releasing. */
+  send_at: string;
 }

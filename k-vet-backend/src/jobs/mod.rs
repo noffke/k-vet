@@ -271,7 +271,8 @@ pub struct MailRun {
     pub dropped: u64,
 }
 
-/// Works through the mail queue once: every mail that has not been given up, oldest first.
+/// Works through the mail queue once: every mail that is due and has not been given up, oldest
+/// first. A mail scheduled for later is left alone until its time.
 ///
 /// Each is tried in a transaction of its own that locks the queue row and the invoice, so a
 /// resend, a retry, a removal or a cancel arriving meanwhile waits for the attempt rather than
@@ -281,7 +282,9 @@ pub struct MailRun {
 /// was a refusal, which is final at once.
 pub async fn send_queued_mail(state: &AppState) -> AppResult<MailRun> {
     let waiting = sqlx::query_scalar!(
-        "SELECT id FROM mail_queue WHERE gave_up_at IS NULL ORDER BY queued_at, id"
+        "SELECT id FROM mail_queue
+          WHERE gave_up_at IS NULL AND send_after <= now()
+          ORDER BY send_after, queued_at, id"
     )
     .fetch_all(&state.pool)
     .await?;
@@ -294,13 +297,13 @@ pub async fn send_queued_mail(state: &AppState) -> AppResult<MailRun> {
                       invoice.status AS "status: InvoiceStatus"
                FROM mail_queue queue
                JOIN invoice ON invoice.id = queue.invoice_id
-               WHERE queue.id = $1 AND queue.gave_up_at IS NULL
+               WHERE queue.id = $1 AND queue.gave_up_at IS NULL AND queue.send_after <= now()
                FOR UPDATE OF queue, invoice"#,
             id,
         )
         .fetch_optional(&mut *transaction)
         .await?;
-        // Removed, or given up, since the list was read.
+        // Removed, given up or rescheduled since the list was read.
         let Some(row) = row else {
             continue;
         };

@@ -9,4 +9,10 @@
 export interface AcceptInvoice {
   /** Customer email addresses the PDF is sent to. */
   recipient_emails?: string[];
+  /**
+     * When the mail may go out: the queue takes it with its first run at or after this. "Send
+     * now" is now; a time already past means the next run, so a browser clock that lags the
+     * server's never fails a send. Ignored when no address is given.
+     */
+  send_at: string;
 }

@@ -24,6 +24,7 @@ import { CheckboxField } from '@/components/ui/field'
 import { SentTo } from '@/features/invoices/SentTo'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { isAhead } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
 
 /**
@@ -36,7 +37,7 @@ export function InvoicesPage() {
   const { t } = useTranslation()
   const navigate = useNavigate()
   const client = useQueryClient()
-  const { money, date } = useLocaleFormat()
+  const { money, date, dateTime } = useLocaleFormat()
 
   const [search, setSearch] = useState('')
   const [showCancelled, setShowCancelled] = useState(false)
@@ -108,6 +109,14 @@ export function InvoicesPage() {
             {t(`invoices.status_${row.status}`)}
           </span>
           <SentTo to={row.sent_email_to} />
+          {/* Released and waiting on purpose — not to be marked "Per Post versendet" by
+              mistake. Waiting and failed mails stay off the list: the appointment and the
+              dashboard say those. */}
+          {row.email_queue && !row.email_queue.last_error && isAhead(row.email_queue.send_after) ? (
+            <span className="text-xs text-ink-faint">
+              {t('invoices.mailScheduled', { time: dateTime(row.email_queue.send_after) })}
+            </span>
+          ) : null}
         </span>
       ),
     },

@@ -14,6 +14,8 @@ export interface QueuedEmail {
   invoice_id: number;
   recipients: string[];
   queued_at: string;
+  /** Not sent before this: now for "send now", a chosen hour for "send later". */
+  send_after: string;
   attempts: number;
   /** @nullable */
   last_attempt_at?: string | null;

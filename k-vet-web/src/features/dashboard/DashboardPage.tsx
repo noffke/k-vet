@@ -131,7 +131,7 @@ function AtRiskCard({
   data: AtRisk | undefined
 }) {
   const { t } = useTranslation()
-  const { date, money } = useLocaleFormat()
+  const { date, dateTime, money } = useLocaleFormat()
   const entries = data?.entries ?? []
   const count = data?.count ?? 0
 
@@ -166,6 +166,12 @@ function AtRiskCard({
                       {entry.patients.join(', ')}
                       {entry.date ? ` · ${date(entry.date)}` : ''}
                     </span>
+                    {/* Waiting on purpose — "Später versenden" — rather than forgotten. */}
+                    {entry.mail_scheduled_for ? (
+                      <span className="block truncate text-xs text-ink-soft">
+                        {t('invoices.mailScheduled', { time: dateTime(entry.mail_scheduled_for) })}
+                      </span>
+                    ) : null}
                   </span>
                   <span className="numeric shrink-0 text-sm font-semibold text-ink-soft">
                     {money(entry.total_gross)}

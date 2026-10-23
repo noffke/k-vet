@@ -22,4 +22,10 @@ export interface AtRiskEntry {
   customer_name: string;
   patients: string[];
   total_gross: string;
+  /**
+     * When its mail is scheduled to go out, for a released invoice waiting on purpose — which
+     * would otherwise look just like a forgotten one.
+     * @nullable
+     */
+  mail_scheduled_for?: string | null;
 }

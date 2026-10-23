@@ -1,13 +1,12 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
-import { toast } from 'sonner'
 import {
   getGetInvoiceQueryKey,
   getGetTreatmentQueryKey,
   useSendInvoice,
 } from '@/api/generated/endpoints'
-import { InvoiceMailForm } from '@/features/treatments/InvoiceMailForm'
+import { InvoiceMailForm, useQueuedToast } from '@/features/treatments/InvoiceMailForm'
 import { useGoBack } from '@/lib/trail'
 
 /**
@@ -21,6 +20,7 @@ export function InvoiceSendPage() {
   const { id } = useParams({ from: '/app/treatments/$id/invoice/send' })
   const treatmentId = Number(id)
   const client = useQueryClient()
+  const announce = useQueuedToast()
 
   // Back where the vet came from — the appointment with its animal's tab — rather than piling
   // another entry onto the history.
@@ -28,8 +28,9 @@ export function InvoiceSendPage() {
   const sendInvoice = useSendInvoice({
     mutation: {
       onSuccess: async (queued) => {
-        // Queued, not sent: the queue's next run delivers it, and the appointment says so.
-        toast(t('invoices.queued'))
+        // Queued, not sent: the queue delivers it with its next run or at the time chosen, and
+        // the appointment says so.
+        announce(queued.email_queue)
         await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
         await client.invalidateQueries({ queryKey: getGetInvoiceQueryKey(queued.id) })
         await back()
@@ -57,7 +58,10 @@ export function InvoiceSendPage() {
       pending={sendInvoice.isPending}
       failed={sendInvoice.isError}
       submit={(invoiceId, choice) =>
-        sendInvoice.mutate({ id: invoiceId, data: { recipient_emails: choice.recipients } })
+        sendInvoice.mutate({
+          id: invoiceId,
+          data: { recipient_emails: choice.recipients, send_at: choice.sendAt },
+        })
       }
     />
   )

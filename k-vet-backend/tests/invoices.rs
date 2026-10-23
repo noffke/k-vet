@@ -140,7 +140,7 @@ async fn accepting_freezes_the_treatment(pool: PgPool) {
     let accepted = app
         .post(
             &format!("/api/invoices/{invoice_id}/accept"),
-            json!({ "recipient_emails": ["kundin@example.com"] }),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(accepted.status, StatusCode::OK);
@@ -184,7 +184,7 @@ async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock(po
     let first_id = first["id"].as_i64().unwrap_or_default();
     app.post(
         &format!("/api/invoices/{first_id}/accept"),
-        json!({ "recipient_emails": ["kundin@example.com"] }),
+        json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
     )
     .await;
 
@@ -261,7 +261,7 @@ async fn cancelling_an_accepted_invoice_restores_the_stock(pool: PgPool) {
     let invoice_id = invoice["id"].as_i64().unwrap_or_default();
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": ["kundin@example.com"] }),
+        json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
     )
     .await;
 
@@ -322,7 +322,7 @@ async fn numbers_are_monotonic_and_never_reused(pool: PgPool) {
         // Accept and cancel: the number is burned.
         app.post(
             &format!("/api/invoices/{invoice_id}/accept"),
-            json!({ "recipient_emails": ["kundin@example.com"] }),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
         )
         .await;
         app.post_empty(&format!("/api/invoices/{invoice_id}/cancel"))
@@ -386,13 +386,13 @@ async fn only_a_created_invoice_can_be_accepted(pool: PgPool) {
 
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": ["kundin@example.com"] }),
+        json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
     )
     .await;
     let twice = app
         .post(
             &format!("/api/invoices/{invoice_id}/accept"),
-            json!({ "recipient_emails": ["kundin@example.com"] }),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
         )
         .await;
 
@@ -484,7 +484,7 @@ async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool
     let too_early = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": ["kundin@example.com"] }),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(too_early.status, StatusCode::CONFLICT);
@@ -493,13 +493,13 @@ async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool
     // because only `accept` could ever write the recipients.
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": [] }),
+        json!({ "recipient_emails": [], "send_at": Utc::now() }),
     )
     .await;
     let without_recipients = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": [] }),
+            json!({ "recipient_emails": [], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(without_recipients.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -510,7 +510,7 @@ async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool
     let queued = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": [" andere@example.com "] }),
+            json!({ "recipient_emails": [" andere@example.com "], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(queued.status, StatusCode::OK);
@@ -546,7 +546,7 @@ async fn a_postal_hand_over_is_recorded_by_hand(pool: PgPool) {
 
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": [] }),
+        json!({ "recipient_emails": [], "send_at": Utc::now() }),
     )
     .await;
 
@@ -774,7 +774,7 @@ async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
     let accepted = app
         .post(
             &format!("/api/invoices/{invoice_id}/accept"),
-            json!({ "recipient_emails": ["kundin@example.com"] }),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(accepted.status, StatusCode::OK);
@@ -809,7 +809,7 @@ async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
     let queued = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": ["andere@example.com"] }),
+            json!({ "recipient_emails": ["andere@example.com"], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(queued.status, StatusCode::OK);
@@ -902,7 +902,7 @@ async fn releasing_a_euthanasia_line_sets_the_animals_date_of_death(pool: PgPool
     let released = app
         .post(
             &format!("/api/invoices/{}/accept", invoice["id"]),
-            json!({ "recipient_emails": [] }),
+            json!({ "recipient_emails": [], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(released.status, StatusCode::OK);
@@ -926,7 +926,7 @@ async fn releasing_a_euthanasia_line_sets_the_animals_date_of_death(pool: PgPool
     let released_again = app
         .post(
             &format!("/api/invoices/{}/accept", updated["id"]),
-            json!({ "recipient_emails": [] }),
+            json!({ "recipient_emails": [], "send_at": Utc::now() }),
         )
         .await;
     assert_eq!(released_again.status, StatusCode::OK);

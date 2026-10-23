@@ -12,9 +12,8 @@ use k_vet_backend::jobs::{self, MailRun};
 use serde_json::{Value, json};
 use sqlx::PgPool;
 
-/// A treatment with one position and its invoice, released with `recipients` ticked. Returns
-/// the invoice's id.
-async fn released_invoice(app: &TestApp, pool: &PgPool, recipients: &[&str]) -> i64 {
+/// A treatment with one position and its invoice, written but not released yet.
+async fn written_invoice(app: &TestApp, pool: &PgPool) -> i64 {
     let customer_id = common::seed_customer(pool).await;
     let patient_id = common::seed_patient(pool, customer_id).await;
     let appointment_id = common::seed_appointment(pool, Utc::now()).await;
@@ -32,15 +31,30 @@ async fn released_invoice(app: &TestApp, pool: &PgPool, recipients: &[&str]) -> 
         )
         .await
         .json();
-    let invoice_id = invoice["id"].as_i64().expect("an invoice");
+    invoice["id"].as_i64().expect("an invoice")
+}
+
+/// Such an invoice, released with `recipients` ticked and its mail due at `send_at`.
+async fn released_at(
+    app: &TestApp,
+    pool: &PgPool,
+    recipients: &[&str],
+    send_at: chrono::DateTime<Utc>,
+) -> i64 {
+    let invoice_id = written_invoice(app, pool).await;
     let released = app
         .post(
             &format!("/api/invoices/{invoice_id}/accept"),
-            json!({ "recipient_emails": recipients }),
+            json!({ "recipient_emails": recipients, "send_at": send_at }),
         )
         .await;
     assert_eq!(released.status, StatusCode::OK);
     invoice_id
+}
+
+/// Released with "Gleich versenden".
+async fn released_invoice(app: &TestApp, pool: &PgPool, recipients: &[&str]) -> i64 {
+    released_at(app, pool, recipients, Utc::now()).await
 }
 
 async fn invoice(app: &TestApp, invoice_id: i64) -> Value {
@@ -235,7 +249,7 @@ async fn sending_again_replaces_the_waiting_mail(pool: PgPool) {
     let resent = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": ["neu@example.com"] }),
+            json!({ "recipient_emails": ["neu@example.com"], "send_at": Utc::now() }),
         )
         .await
         .json();
@@ -284,4 +298,92 @@ async fn cancelling_or_posting_drops_the_waiting_mail(pool: PgPool) {
         }
     );
     assert!(mail.delivered().is_empty());
+}
+
+/// "Später versenden": the mail waits for its time — the invoice is released and done with,
+/// the owners get it tomorrow morning — and goes out with the first run after it.
+#[sqlx::test]
+async fn a_mail_scheduled_for_later_waits_for_its_time(pool: PgPool) {
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
+    let invoice_id = released_at(&app, &pool, &["kundin@example.com"], tomorrow).await;
+
+    let scheduled = invoice(&app, invoice_id).await;
+    let send_after = scheduled["email_queue"]["send_after"]
+        .as_str()
+        .and_then(|value| value.parse::<chrono::DateTime<Utc>>().ok())
+        .expect("a schedule");
+    assert_eq!(send_after.timestamp(), tomorrow.timestamp());
+    assert_eq!(run(&app).await, MailRun::default(), "not before its time");
+    assert!(mail.delivered().is_empty());
+
+    // The dashboard tells it apart from an invoice nobody sent.
+    let dashboard = app.get("/api/dashboard").await.json();
+    let entry = dashboard["unsent"]["entries"]
+        .as_array()
+        .and_then(|entries| {
+            entries
+                .iter()
+                .find(|entry| entry["invoice_number"] == scheduled["invoice_number"])
+        })
+        .expect("still not at the customer");
+    assert!(!entry["mail_scheduled_for"].is_null());
+
+    sqlx::query("UPDATE mail_queue SET send_after = now() - interval '1 minute'")
+        .execute(&pool)
+        .await
+        .expect("the time has come");
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(mail.delivered(), ["kundin@example.com"]);
+}
+
+/// "Gleich versenden" is now: sending again with now turns a scheduled mail into one for the
+/// next run — and a time already past (a browser clock a little behind) means the same.
+#[sqlx::test]
+async fn now_or_a_past_time_goes_out_with_the_next_run(pool: PgPool) {
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let rescheduled = released_at(
+        &app,
+        &pool,
+        &["kundin@example.com"],
+        Utc::now() + chrono::TimeDelta::days(1),
+    )
+    .await;
+    let resent = app
+        .post(
+            &format!("/api/invoices/{rescheduled}/send"),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
+        )
+        .await;
+    assert_eq!(resent.status, StatusCode::OK);
+    released_at(
+        &app,
+        &pool,
+        &["nachbar@example.com"],
+        Utc::now() - chrono::TimeDelta::minutes(2),
+    )
+    .await;
+
+    assert_eq!(run(&app).await.sent, 2);
+    assert_eq!(
+        mail.delivered(),
+        ["kundin@example.com", "nachbar@example.com"]
+    );
+}
+
+/// When the mail goes out is always said: a release or send without `send_at` is refused.
+#[sqlx::test]
+async fn a_release_must_say_when_its_mail_goes_out(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+    let refused = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/accept"),
+            json!({ "recipient_emails": ["kundin@example.com"] }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(queued(&pool).await, 0);
 }

@@ -3900,8 +3900,8 @@ export const getRetryQueuedMailUrl = (id: number,) => {
 }
 
 /**
- * @summary Tries a failed mail again from the start: the next run of the queue (within five minutes)
-sends it, and a failure gets a fresh [`RETRY_HOURS`].
+ * @summary Tries a failed mail again from the start, and now: the next run of the queue (within five
+minutes) sends it, and a failure gets a fresh [`RETRY_HOURS`].
  */
 export const retryQueuedMail = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<QueuedEmail> => {
 
@@ -3953,8 +3953,8 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type RetryQueuedMailMutationVariables = {id: number}
 
     /**
- * @summary Tries a failed mail again from the start: the next run of the queue (within five minutes)
-sends it, and a failure gets a fresh [`RETRY_HOURS`].
+ * @summary Tries a failed mail again from the start, and now: the next run of the queue (within five
+minutes) sends it, and a failure gets a fresh [`RETRY_HOURS`].
  */
 export const useRetryQueuedMail = <TError = void,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryQueuedMail>>, TError,RetryQueuedMailMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}

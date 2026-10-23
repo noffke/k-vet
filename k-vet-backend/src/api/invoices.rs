@@ -92,6 +92,10 @@ pub struct AcceptInvoice {
     /// Customer email addresses the PDF is sent to.
     #[serde(default)]
     pub recipient_emails: Vec<String>,
+    /// When the mail may go out: the queue takes it with its first run at or after this. "Send
+    /// now" is now; a time already past means the next run, so a browser clock that lags the
+    /// server's never fails a send. Ignored when no address is given.
+    pub send_at: DateTime<Utc>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -100,6 +104,8 @@ pub struct SendInvoice {
     /// corrected and an invoice accepted without one can still be emailed.
     #[serde(default)]
     pub recipient_emails: Vec<String>,
+    /// When the mail may go out — as for releasing.
+    pub send_at: DateTime<Utc>,
 }
 
 #[utoipa::path(
@@ -352,7 +358,7 @@ pub async fn accept(
     // Released and queued together, or neither. The mail goes out with the queue's next run;
     // a failure there stays on the queue row and shows on the dashboard (FR-031).
     if !recipients.is_empty() {
-        mail_queue::queue(&mut transaction, id, &recipients).await?;
+        mail_queue::queue(&mut transaction, id, &recipients, body.send_at).await?;
     }
 
     // A euthanasia drug on a line ends that animal's record: its date of death is the day of the
@@ -443,7 +449,7 @@ pub async fn send(
     // Queued, not sent: the queue's next run delivers it, and a failure is kept there, on the
     // invoice and on the dashboard, rather than lost in a response. A mail already waiting —
     // or failing — for this invoice is replaced by this one.
-    mail_queue::queue(&mut transaction, id, &recipients).await?;
+    mail_queue::queue(&mut transaction, id, &recipients, body.send_at).await?;
     transaction.commit().await?;
 
     load(&state.pool, id).await.map(Json)
