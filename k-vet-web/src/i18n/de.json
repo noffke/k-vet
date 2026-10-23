@@ -266,7 +266,6 @@
     "date": "Rechnungsdatum",
     "euthanasiaNotice": "Mit der Freigabe wird für {{names}} das Todesdatum {{date}} eingetragen.",
     "includesFinding": "Therapie und weiteres Vorgehen aufführen",
-    "mailUnreachable": "Der Mailserver ist nicht erreichbar. Die Rechnung wurde nicht versendet — bitte die Mail-Einstellungen prüfen, oder die Rechnung ausdrucken und als „Per Post versendet“ markieren.",
     "markPosted": "Per Post versendet",
     "markPostedHint": "Hält fest, dass die Rechnung auf Papier beim Kunden ist. Erst danach geht sie an die Buchhaltung.",
     "missingCustomerData": "Rechnungsdaten des Kunden unvollständig",
@@ -280,6 +279,10 @@
     "pdf": "PDF",
     "pdfStale": "Die Positionen haben sich geändert, seit das PDF erstellt wurde — Rechnung neu erstellen.",
     "pending": "Noch nicht an die Buchhaltung übergeben",
+    "queueFailing": "Versand fehlgeschlagen ({{error}}) — wird bis {{time}} erneut versucht.",
+    "queueStopped": "E-Mail-Versand abgebrochen: {{error}}",
+    "queueWaiting": "E-Mail an {{recipients}} wartet auf den Versand — der nächste Durchlauf ist in höchstens 5 Minuten.",
+    "queued": "Die E-Mail wird in den nächsten Minuten versendet.",
     "recipients": "Empfänger",
     "saveEmailBody": "„{{email}}“ ist beim Kunden noch nicht gespeichert. Soll sie zu den Kontaktdaten hinzugefügt werden?",
     "saveEmailConfirm": "Übernehmen und freigeben",
@@ -381,7 +384,10 @@
     "andMore": "und {{count}} weitere",
     "expiringLots": "Chargen mit nahem Verfall",
     "expiringLotsHint": "die fünf nächsten mit Restbestand",
+    "failedMails": "E-Mail-Versand fehlgeschlagen",
+    "failedMailsHint": "Rechnungen, deren E-Mail der Mailserver nicht angenommen hat — erneut versuchen, oder entfernen und per Post schicken.",
     "noExpiring": "Keine Chargen mit Verfallsdatum und Restbestand.",
+    "noFailedMails": "Alle E-Mails sind beim Mailserver angekommen.",
     "noUnbilled": "Alles abgerechnet.",
     "noUnreleased": "Keine Rechnung wartet auf die Freigabe.",
     "noUnsent": "Alle Rechnungen sind beim Kunden.",
@@ -454,7 +460,6 @@
   },
   "invoice": {
     "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung",
-    "mailUnreachable": "Der Mailserver ist nicht erreichbar",
     "noLines": "Die Behandlung hat noch keine Positionen",
     "noPatient": "Der Behandlung ist noch kein Tier zugeordnet"
   },
@@ -475,5 +480,15 @@
     "customerRequired": "Bitte zuerst den Kunden des Termins wählen.",
     "onlyPatient": "Das einzige Tier des Kunden bleibt an der Behandlung.",
     "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden"
+  },
+  "mailQueue": {
+    "gaveUp": "Aufgegeben nach 6 Stunden",
+    "refused": "Abgelehnt — kein weiterer Versuch",
+    "remove": "Entfernen",
+    "removeLabel": "Aus der Warteschlange entfernen",
+    "removed": "Aus der Warteschlange entfernt. Die Rechnung ist weiterhin nicht beim Kunden.",
+    "retried": "Die E-Mail wird mit dem nächsten Durchlauf erneut versendet.",
+    "retry": "Erneut versuchen",
+    "retrying": "Wird alle 5 Minuten erneut versucht, bis {{time}}"
   }
 }

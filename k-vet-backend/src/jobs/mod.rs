@@ -1,12 +1,14 @@
-//! Scheduled maintenance (T076).
+//! Scheduled maintenance (T076), and the mail queue.
 //!
 //! Three chores the practice should never have to think about:
 //!   * the picker's usage weights, rebuilt nightly from what was actually billed
 //!   * drafts that were opened by accident and never filled in, dropped after a day
 //!   * uploaded files nothing points at any more, swept once a month
 //!
-//! Each job is a plain async function so the tests can run it directly; `spawn` is the
-//! only part that deals with the clock.
+//! And every five minutes, the invoice mail that is waiting to go out (`api::mail_queue`).
+//!
+//! Each job is a plain async function so the tests can run it directly; `spawn` and
+//! `spawn_mail_queue` are the only parts that deal with the clock.
 
 use std::time::Duration;
 
@@ -15,6 +17,8 @@ use sqlx::PgPool;
 use tokio::task::JoinHandle;
 
 use crate::AppState;
+use crate::api::{invoices, mail_queue};
+use crate::domain::enums::InvoiceStatus;
 use crate::domain::files::AttachmentStore;
 use crate::error::AppResult;
 
@@ -24,6 +28,8 @@ const NIGHTLY_HOUR: u32 = 3;
 const DRAFT_MAX_AGE_HOURS: i64 = 24;
 /// An upload nothing references is only swept once it is clearly not in flight.
 const ORPHAN_MAX_AGE_DAYS: i64 = 30;
+/// How often the mail queue is worked through.
+const MAIL_QUEUE_INTERVAL: Duration = Duration::from_secs(5 * 60);
 
 /// What the draft cleanup removed, per table — logged so a surprise is traceable.
 #[derive(Debug, Default, Clone, Copy)]
@@ -251,6 +257,129 @@ pub async fn sweep_orphan_attachments(pool: &PgPool, files: &AttachmentStore) ->
     }
 
     Ok(orphans.len() as u64)
+}
+
+/// What a run of the mail queue did — logged, and what the tests read.
+#[derive(Debug, Default, Clone, Copy, PartialEq, Eq)]
+pub struct MailRun {
+    pub sent: u64,
+    /// Failed, and will be tried again.
+    pub failed: u64,
+    /// Failed for the last time: refused, or still failing six hours after the first failure.
+    pub gave_up: u64,
+    /// Waiting for an invoice that was cancelled meanwhile — dropped, never sent.
+    pub dropped: u64,
+}
+
+/// Works through the mail queue once: every mail that has not been given up, oldest first.
+///
+/// Each is tried in a transaction of its own that locks the queue row and the invoice, so a
+/// resend, a retry, a removal or a cancel arriving meanwhile waits for the attempt rather than
+/// racing it. A delivered mail leaves the queue, and its delivery is recorded on the invoice in
+/// the same transaction. A failure stays on the row with the transport's own words; it is tried
+/// again on the next run until [`mail_queue::RETRY_HOURS`] after the first failure — unless it
+/// was a refusal, which is final at once.
+pub async fn send_queued_mail(state: &AppState) -> AppResult<MailRun> {
+    let waiting = sqlx::query_scalar!(
+        "SELECT id FROM mail_queue WHERE gave_up_at IS NULL ORDER BY queued_at, id"
+    )
+    .fetch_all(&state.pool)
+    .await?;
+
+    let mut run = MailRun::default();
+    for id in waiting {
+        let mut transaction = state.pool.begin().await?;
+        let row = sqlx::query!(
+            r#"SELECT queue.invoice_id, queue.recipients,
+                      invoice.status AS "status: InvoiceStatus"
+               FROM mail_queue queue
+               JOIN invoice ON invoice.id = queue.invoice_id
+               WHERE queue.id = $1 AND queue.gave_up_at IS NULL
+               FOR UPDATE OF queue, invoice"#,
+            id,
+        )
+        .fetch_optional(&mut *transaction)
+        .await?;
+        // Removed, or given up, since the list was read.
+        let Some(row) = row else {
+            continue;
+        };
+
+        if row.status == InvoiceStatus::Cancelled {
+            // Cancelling drops the queued mail itself; this only guards against a row that
+            // slipped past it.
+            sqlx::query!("DELETE FROM mail_queue WHERE id = $1", id)
+                .execute(&mut *transaction)
+                .await?;
+            transaction.commit().await?;
+            run.dropped += 1;
+            continue;
+        }
+
+        match invoices::deliver(state, &mut transaction, row.invoice_id, &row.recipients).await? {
+            Ok(()) => {
+                sqlx::query!("DELETE FROM mail_queue WHERE id = $1", id)
+                    .execute(&mut *transaction)
+                    .await?;
+                run.sent += 1;
+            }
+            Err(failure) => {
+                tracing::warn!(
+                    invoice_id = row.invoice_id,
+                    refused = failure.refused,
+                    error = %failure.detail,
+                    "an invoice mail did not go out"
+                );
+                // The right-hand side reads the row as it was, so `first_failure_at` here is
+                // the earlier failure, if there was one.
+                let gave_up = sqlx::query_scalar!(
+                    r#"UPDATE mail_queue
+                          SET attempts = attempts + 1, last_attempt_at = now(),
+                              last_error = $2, refused = $3,
+                              first_failure_at = COALESCE(first_failure_at, now()),
+                              gave_up_at = CASE
+                                  WHEN $3 OR first_failure_at <= now() - make_interval(hours => $4)
+                                  THEN now() END
+                        WHERE id = $1
+                       RETURNING gave_up_at IS NOT NULL AS "gave_up!""#,
+                    id,
+                    failure.detail,
+                    failure.refused,
+                    mail_queue::RETRY_HOURS,
+                )
+                .fetch_one(&mut *transaction)
+                .await?;
+                if gave_up {
+                    run.gave_up += 1;
+                } else {
+                    run.failed += 1;
+                }
+            }
+        }
+        transaction.commit().await?;
+    }
+    Ok(run)
+}
+
+/// Works through the mail queue every five minutes, the first time right at start-up. A run
+/// that fails logs and leaves the schedule intact.
+///
+/// Shutting down aborts the task, also in the middle of a send: the attempt's transaction rolls
+/// back, so a mail the server had already taken would go out once more on the next start — the
+/// price of never losing one.
+pub fn spawn_mail_queue(state: AppState) -> JoinHandle<()> {
+    tokio::spawn(async move {
+        let mut ticks = tokio::time::interval(MAIL_QUEUE_INTERVAL);
+        ticks.set_missed_tick_behavior(tokio::time::MissedTickBehavior::Delay);
+        loop {
+            ticks.tick().await;
+            match send_queued_mail(&state).await {
+                Ok(run) if run == MailRun::default() => tracing::debug!("no mail waiting"),
+                Ok(run) => tracing::info!(?run, "mail queue worked through"),
+                Err(error) => tracing::error!(%error, "working through the mail queue failed"),
+            }
+        }
+    })
 }
 
 /// Runs the nightly chores at 03:00 local time, and the orphan sweep on the first of the

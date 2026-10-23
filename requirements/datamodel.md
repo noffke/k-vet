@@ -205,12 +205,25 @@ Fields:
 * Sent To / CC / BCC (optional) — the addresses the email actually went to, recorded together
   with the timestamp once the mail server accepted it; shown on the invoice as "sent to"
 * Timestamp Sent by Post (optional)
+* Relation: 0..1 Mail Queue entry — the mail waiting to go out, or failing
 * Timestamp Submitted to Bookkeeping (optional)
 * Timestamp Cancelled (optional)
 * Includes Finding (bool)
 * Note (Anmerkung) (optional)
 * Status (enum: Created, Accepted, Sent, Submitted to Bookkeeping, Cancelled) — Sent is a precondition of Submitted
 * Relation: 1 Treatment
+
+### Mail Queue (E-Mail-Warteschlange)
+An invoice mail that has not gone out yet. Requests only queue; an in-process job works through
+the queue every five minutes. A delivered mail's entry is deleted — the delivery is recorded on
+the invoice — so the queue holds only what is waiting or failed.
+Fields:
+* Relation: 1 Invoice (unique: one waiting mail per invoice; sending again replaces it)
+* Recipients (at least one)
+* Queued At, Attempts, Last Attempt At
+* First Failure At, Last Error (the transport's own words) — both set together
+* Refused (bool) — the last failure was final (a 5xx answer, or a mail that cannot be built)
+* Gave Up At — refused, or still failing six hours after the first failure; no more attempts
 
 ### Invoice Number Sequence (Rechnungsnummernkreis)
 DB state for invoice number allocation (the pattern itself lives in global settings):

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next'
 import { useGetDashboard } from '@/api/generated/endpoints'
 import type { AtRisk } from '@/api/generated/model'
 import { PageHeader } from '@/components/PageHeader'
+import { FailedMailsCard } from '@/features/dashboard/FailedMailsCard'
 import { useLocaleFormat } from '@/lib/locale'
 
 /**
@@ -30,6 +31,8 @@ export function DashboardPage() {
       ) : null}
 
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        {/* First: an invoice mail that failed needs a decision, and nothing else would say so. */}
+        <FailedMailsCard mails={dashboard.data?.failed_mails} />
         {/* In the order the money moves: worked, billed, sent. */}
         <AtRiskCard
           icon={<ReceiptText className="size-3.5" />}

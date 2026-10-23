@@ -167,6 +167,8 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::invoices::submit,
         api::invoices::bulk_submit,
         api::invoices::pending_pdfs,
+        api::mail_queue::retry,
+        api::mail_queue::remove,
         api::dashboard::get_dashboard,
         api::config::get_config,
         api::drugs::units,

@@ -119,7 +119,8 @@ practice somewhere else.
 
 A staging instance also sets `environment_label` (a banner, so it cannot be mistaken for the
 practice's own) and `session_cookie = "kvet.sid.staging"`, and should point `[mail] smtp_host` at
-something dead. The cookie name matters because browsers keep cookies per host, not per port: with
+something dead — its invoice mails then collect on its dashboard as failed, which is harmless
+there. The cookie name matters because browsers keep cookies per host, not per port: with
 both instances answering on the Pi's address and the same name, signing in to one signs the other
 out.
 

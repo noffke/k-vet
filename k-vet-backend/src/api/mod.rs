@@ -13,6 +13,7 @@ pub mod dashboard;
 pub mod drugs;
 pub mod invoices;
 pub mod lots;
+pub mod mail_queue;
 pub mod manufacturers;
 pub mod patient_treatments;
 pub mod patients;
@@ -36,6 +37,7 @@ pub fn protected_routes() -> Router<AppState> {
         .merge(dashboard::routes())
         .merge(drugs::routes())
         .merge(lots::routes())
+        .merge(mail_queue::routes())
         .merge(manufacturers::routes())
         .merge(invoices::routes())
         .merge(patient_treatments::routes())

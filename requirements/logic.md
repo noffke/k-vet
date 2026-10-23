@@ -82,10 +82,16 @@ precondition of Submitted, which is why one status column suffices.
 An invoice reaches the customer by one of two routes, and both are recorded with their own
 timestamp:
 
-* by email — the timestamp is written only after the mail server accepted the message. Accepting
-  the invoice sends it as a side effect; if that fails, the invoice stays Accepted and can be
-  sent again from the treatment page, to addresses chosen at that moment (the last send may have
-  gone to the wrong one, or to none at all).
+* by email — the timestamp is written only after the mail server accepted the message. No
+  request talks to the mail server: accepting the invoice with addresses ticked, or sending it
+  again from the treatment page (to addresses chosen at that moment — the last send may have gone
+  to the wrong one, or to none at all), puts the mail in a queue. Every five minutes the queue is
+  worked through; a failure is kept with the mail server's own words and tried again on every
+  run until six hours after the first failure, then given up — at once when the mail server
+  refused for good (a 5xx answer, an address it does not take). One waiting mail per invoice:
+  sending again replaces it. Cancelling the invoice, or marking it as posted, drops the waiting
+  mail. Until it is delivered the invoice stays Accepted, and the treatment page says where the
+  mail is.
 * by post — nothing else can observe a letter going into a postbox, so the vet marks it by hand.
   Only an Accepted invoice can be marked as posted.
 
@@ -109,6 +115,10 @@ more there are:
   definition, and a dashboard that shouts about the work in hand teaches the vet to ignore it.
 * **not released** — invoices in Created.
 * **not sent** — invoices in Accepted, including the ones whose email failed on the way out.
+
+Above them, every invoice mail that failed — still being retried or given up — with the mail
+server's answer, to be tried again (from the start, with six fresh hours) or removed from the
+queue, which leaves the invoice Accepted for the vet to send again or post.
 
 The same two cases are marked on the records themselves: appointments and treatments carrying
 unbilled work, and released invoices that never went anywhere.

@@ -145,8 +145,12 @@ is pure and unit-tested, including path-traversal refusal).
 - `src/pdf/` (Typst) and `src/mail/` (minijinja + lettre) — see `docs/templates.md`. Only the
   fonts embedded in the binary are available; the email template's first line is the subject.
 - `src/jobs/mod.rs` — in-process scheduler: nightly at 03:00 rebuild picker weights and delete
-  abandoned drafts, monthly sweep of unreferenced attachments. Each job is a plain async
-  function so tests call it directly.
+  abandoned drafts, monthly sweep of unreferenced attachments; every five minutes the invoice
+  mail queue (`send_queued_mail`). Each job is a plain async function so tests call it directly
+  (`TestApp::state`; `common::MailServer` is a fake SMTP server that can refuse).
+- `src/api/mail_queue.rs` — **no request sends mail.** Releasing or "E-Mail senden" queues it;
+  the job delivers through `invoices::deliver`, keeps failures on the row, retries for six hours
+  and stops at once on a refusal (5xx). Cancel and mark-posted drop the waiting mail.
 
 ### Database and sqlx
 

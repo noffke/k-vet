@@ -266,7 +266,6 @@
     "date": "Invoice date",
     "euthanasiaNotice": "Releasing enters {{date}} as the date of death for {{names}}.",
     "includesFinding": "Print treatment and next steps",
-    "mailUnreachable": "The mail server cannot be reached. The invoice was not sent — check the mail settings, or print it and mark it as sent by post.",
     "markPosted": "Sent by post",
     "markPostedHint": "Records that the customer has the invoice on paper. Only then does it go to bookkeeping.",
     "missingCustomerData": "Customer invoice data incomplete",
@@ -280,6 +279,10 @@
     "pdf": "PDF",
     "pdfStale": "The positions changed after the PDF was made — create the invoice again.",
     "pending": "Not yet submitted to bookkeeping",
+    "queueFailing": "Sending failed ({{error}}) — tried again until {{time}}.",
+    "queueStopped": "Sending stopped: {{error}}",
+    "queueWaiting": "Mail to {{recipients}} is waiting to go out — the next run is at most 5 minutes away.",
+    "queued": "The mail goes out within the next few minutes.",
     "recipients": "Recipients",
     "saveEmailBody": "“{{email}}” is not stored with the customer yet. Add it to their contact details?",
     "saveEmailConfirm": "Save and release",
@@ -381,7 +384,10 @@
     "andMore": "and {{count}} more",
     "expiringLots": "Lots expiring soon",
     "expiringLotsHint": "the next five with remaining stock",
+    "failedMails": "Failed invoice mail",
+    "failedMailsHint": "Invoices whose mail the mail server did not take — try again, or remove it and send the invoice by post.",
     "noExpiring": "No lots with an expiry date and remaining stock.",
+    "noFailedMails": "Every mail reached the mail server.",
     "noUnbilled": "Everything is billed.",
     "noUnreleased": "No invoice is waiting to be released.",
     "noUnsent": "Every invoice reached its customer.",
@@ -454,7 +460,6 @@
   },
   "invoice": {
     "liveInvoiceExists": "This treatment already has an invoice",
-    "mailUnreachable": "The mail server cannot be reached",
     "noLines": "The treatment has no positions yet",
     "noPatient": "No animal is attached to the treatment yet"
   },
@@ -475,5 +480,15 @@
     "customerRequired": "Choose the appointment’s customer first.",
     "onlyPatient": "The customer's only animal stays on the treatment.",
     "patientOtherCustomer": "This animal belongs to a different customer"
+  },
+  "mailQueue": {
+    "gaveUp": "Given up after 6 hours",
+    "refused": "Refused — not tried again",
+    "remove": "Remove",
+    "removeLabel": "Remove from the queue",
+    "removed": "Removed from the queue. The invoice has still not reached the customer.",
+    "retried": "The mail goes out again with the next run.",
+    "retry": "Try again",
+    "retrying": "Tried again every 5 minutes, until {{time}}"
   }
 }

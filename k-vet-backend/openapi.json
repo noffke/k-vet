@@ -1263,7 +1263,7 @@
         },
         "responses": {
           "200": {
-            "description": "Accepted; the email is sent if SMTP accepts it",
+            "description": "Accepted; a mail to the recipients is queued",
             "content": {
               "application/json": {
                 "schema": {
@@ -1402,7 +1402,7 @@
         },
         "responses": {
           "200": {
-            "description": "Sent; the invoice is now `sent`",
+            "description": "Queued; the mail goes out with the queue's next run",
             "content": {
               "application/json": {
                 "schema": {
@@ -1416,9 +1416,6 @@
           },
           "422": {
             "description": "No recipient was given"
-          },
-          "500": {
-            "description": "The mail server rejected the message"
           }
         }
       }
@@ -1583,6 +1580,69 @@
           },
           "422": {
             "description": "The correction would not change anything, or is below zero"
+          }
+        }
+      }
+    },
+    "/api/mail-queue/{id}": {
+      "delete": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Takes a mail out of the queue. The invoice stays released and unsent: printed and posted,\nor emailed again, it moves on.",
+        "operationId": "removeQueuedMail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": ""
+          },
+          "404": {
+            "description": ""
+          }
+        }
+      }
+    },
+    "/api/mail-queue/{id}/retry": {
+      "post": {
+        "tags": [
+          "invoices"
+        ],
+        "summary": "Tries a failed mail again from the start: the next run of the queue (within five minutes)\nsends it, and a failure gets a fresh [`RETRY_HOURS`].",
+        "operationId": "retryQueuedMail",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QueuedEmail"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
           }
         }
       }
@@ -5043,7 +5103,8 @@
           "unbilled",
           "unreleased",
           "unsent",
-          "expiring_lots"
+          "expiring_lots",
+          "failed_mails"
         ],
         "properties": {
           "pending_invoice_count": {
@@ -5069,6 +5130,13 @@
               "$ref": "#/components/schemas/ExpiringLot"
             },
             "description": "The lots expiring soonest that still hold stock."
+          },
+          "failed_mails": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/FailedMail"
+            },
+            "description": "Every invoice mail that failed on the way out — still being retried, or given up —\noldest failure first, all of them: each needs a decision (retry, or remove and post)."
           }
         }
       },
@@ -5250,6 +5318,39 @@
           }
         }
       },
+      "FailedMail": {
+        "type": "object",
+        "description": "A failed invoice mail, with what the vet needs to recognise the invoice.",
+        "required": [
+          "mail",
+          "treatment_id",
+          "invoice_number",
+          "customer_name",
+          "patients"
+        ],
+        "properties": {
+          "mail": {
+            "$ref": "#/components/schemas/QueuedEmail"
+          },
+          "treatment_id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The appointment the invoice belongs to is where it is resolved."
+          },
+          "invoice_number": {
+            "type": "string"
+          },
+          "customer_name": {
+            "type": "string"
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          }
+        }
+      },
       "FieldError": {
         "type": "object",
         "description": "One field-level validation failure, as returned in `problem+json`.",
@@ -5368,6 +5469,17 @@
             ],
             "format": "date-time",
             "description": "When the invoice was handed over on paper — the only trace a postal send leaves."
+          },
+          "email_queue": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/QueuedEmail",
+                "description": "The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for."
+              }
+            ]
           },
           "ts_submitted": {
             "type": [
@@ -7114,6 +7226,76 @@
               "$ref": "#/components/schemas/FieldError"
             },
             "description": "Field-level errors — present for validation failures."
+          }
+        }
+      },
+      "QueuedEmail": {
+        "type": "object",
+        "description": "A mail waiting in the queue — or failing there.",
+        "required": [
+          "id",
+          "invoice_id",
+          "recipients",
+          "queued_at",
+          "attempts",
+          "refused"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "invoice_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "recipients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "queued_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "attempts": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "last_attempt_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time"
+          },
+          "last_error": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The transport's own words for the last failure: the host it could not reach, or the\nmail server's reply (\"permanent error (550): no such user\"). Empty while nothing failed."
+          },
+          "refused": {
+            "type": "boolean",
+            "description": "The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried."
+          },
+          "retry_until": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "Until when a failing mail is retried; empty while nothing failed."
+          },
+          "gave_up_at": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure."
           }
         }
       },

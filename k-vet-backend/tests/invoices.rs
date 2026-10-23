@@ -7,6 +7,7 @@ mod common;
 use axum::http::StatusCode;
 use chrono::{Datelike, Local, Utc};
 use common::TestApp;
+use k_vet_backend::jobs;
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
 use sqlx::PgPool;
@@ -503,24 +504,24 @@ async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool
         .await;
     assert_eq!(without_recipients.status, StatusCode::UNPROCESSABLE_ENTITY);
 
-    // With an address it gets that far: no SMTP server in tests, so the mail server rejects it
-    // and the invoice stays accepted — which is exactly what the dashboard calls "not sent".
-    //
-    // 502 rather than 500, carrying a key: an unreachable relay is upstream of the app and is
-    // the one server-side failure the vet can act on, so the screen has to be able to say so
-    // rather than print "something went wrong".
-    let no_mail_server = app
+    // With an address it is queued: no request talks to a mail server (migration 0026). The
+    // invoice stays accepted — what the dashboard calls "not sent" — until the queue's run
+    // delivers it.
+    let queued = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": ["andere@example.com"] }),
+            json!({ "recipient_emails": [" andere@example.com "] }),
         )
         .await;
-    assert_eq!(no_mail_server.status, StatusCode::BAD_GATEWAY);
-    assert_eq!(no_mail_server.json()["detail"], "invoice.mailUnreachable");
-
-    let after = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
+    assert_eq!(queued.status, StatusCode::OK);
+    let after = queued.json();
     assert_eq!(after["status"], "accepted");
     assert!(after["ts_sent_email"].is_null());
+    assert_eq!(
+        after["email_queue"]["recipients"],
+        json!(["andere@example.com"])
+    );
+    assert!(after["email_queue"]["last_error"].is_null());
     assert_eq!(
         after["email_recipients"][0], "andere@example.com",
         "the address the vet just typed is the one a retry uses"
@@ -777,16 +778,23 @@ async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
         )
         .await;
     assert_eq!(accepted.status, StatusCode::OK);
+    // Queued with the release; the queue's run delivers it.
+    let run = jobs::send_queued_mail(&app.state)
+        .await
+        .expect("the queue runs");
+    assert_eq!(run.sent, 1);
 
     let sent = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
     assert_eq!(sent["status"], "sent");
+    assert!(
+        sent["email_queue"].is_null(),
+        "a delivered mail leaves the queue"
+    );
     assert_eq!(sent["sent_email_to"], json!(["kundin@example.com"]));
     assert_eq!(sent["sent_email_cc"], json!(["buchhaltung@example.com"]));
     assert_eq!(sent["sent_email_bcc"], json!(["archiv@example.com"]));
-    let mut envelope = mail.recipients.lock().expect("recipients").clone();
-    envelope.sort();
     assert_eq!(
-        envelope,
+        mail.delivered(),
         [
             "archiv@example.com",
             "buchhaltung@example.com",
@@ -795,20 +803,32 @@ async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
         "and that is where the mail server was told to deliver it"
     );
 
-    // A resend through a mail server that turns it away: the new address is what a retry will
-    // use, but "sent to" still names the delivery that happened.
+    // A resend through a mail server that turns it away for now: the new address is what the
+    // queue keeps trying, but "sent to" still names the delivery that happened.
     mail.refuse();
-    let failed = app
+    let queued = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
             json!({ "recipient_emails": ["andere@example.com"] }),
         )
         .await;
-    assert_eq!(failed.status, StatusCode::BAD_GATEWAY);
+    assert_eq!(queued.status, StatusCode::OK);
+    let run = jobs::send_queued_mail(&app.state)
+        .await
+        .expect("the queue runs");
+    assert_eq!(run.failed, 1, "a 421 is worth another try");
     let after = app.get(&format!("/api/invoices/{invoice_id}")).await.json();
     assert_eq!(after["email_recipients"], json!(["andere@example.com"]));
     assert_eq!(after["sent_email_to"], json!(["kundin@example.com"]));
     assert_eq!(after["ts_sent_email"], sent["ts_sent_email"]);
+    assert!(after["email_queue"]["gave_up_at"].is_null());
+    assert!(
+        after["email_queue"]["last_error"]
+            .as_str()
+            .is_some_and(|error| error.contains("421")),
+        "the mail server's own answer is kept: {}",
+        after["email_queue"]["last_error"]
+    );
 }
 
 /// Two animals on one visit, a euthanasia drug dispensed for the first: its record and the

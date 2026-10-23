@@ -90,6 +90,7 @@ import type {
   PickerItemsParams,
   PricePreview,
   PricePreviewRequest,
+  QueuedEmail,
   SendInvoice,
   Service,
   SessionInfo,
@@ -3812,6 +3813,158 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getCreateCorrectionMutationOptions(options), queryClient);
+    }
+
+export const getRemoveQueuedMailUrl = (id: number,) => {
+
+
+
+
+  return `/api/mail-queue/${id}`
+}
+
+/**
+ * @summary Takes a mail out of the queue. The invoice stays released and unsent: printed and posted,
+or emailed again, it moves on.
+ */
+export const removeQueuedMail = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getRemoveQueuedMailUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getRemoveQueuedMailMutationKey = () => ['removeQueuedMail'] as const;
+
+export const getRemoveQueuedMailMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeQueuedMail>>, TError,RemoveQueuedMailMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof removeQueuedMail>>, TError,RemoveQueuedMailMutationVariables, TContext> => {
+
+const mutationKey = getRemoveQueuedMailMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof removeQueuedMail>>, RemoveQueuedMailMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  removeQueuedMail(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RemoveQueuedMailMutationResult = NonNullable<Awaited<ReturnType<typeof removeQueuedMail>>>
+
+    export type RemoveQueuedMailMutationError = void
+    export type RemoveQueuedMailMutationVariables = {id: number}
+
+    /**
+ * @summary Takes a mail out of the queue. The invoice stays released and unsent: printed and posted,
+or emailed again, it moves on.
+ */
+export const useRemoveQueuedMail = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof removeQueuedMail>>, TError,RemoveQueuedMailMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof removeQueuedMail>>,
+        TError,
+        RemoveQueuedMailMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRemoveQueuedMailMutationOptions(options), queryClient);
+    }
+
+export const getRetryQueuedMailUrl = (id: number,) => {
+
+
+
+
+  return `/api/mail-queue/${id}/retry`
+}
+
+/**
+ * @summary Tries a failed mail again from the start: the next run of the queue (within five minutes)
+sends it, and a failure gets a fresh [`RETRY_HOURS`].
+ */
+export const retryQueuedMail = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<QueuedEmail> => {
+
+  return apiFetch<QueuedEmail>(getRetryQueuedMailUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRetryQueuedMailMutationKey = () => ['retryQueuedMail'] as const;
+
+export const getRetryQueuedMailMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryQueuedMail>>, TError,RetryQueuedMailMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof retryQueuedMail>>, TError,RetryQueuedMailMutationVariables, TContext> => {
+
+const mutationKey = getRetryQueuedMailMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof retryQueuedMail>>, RetryQueuedMailMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  retryQueuedMail(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RetryQueuedMailMutationResult = NonNullable<Awaited<ReturnType<typeof retryQueuedMail>>>
+
+    export type RetryQueuedMailMutationError = void
+    export type RetryQueuedMailMutationVariables = {id: number}
+
+    /**
+ * @summary Tries a failed mail again from the start: the next run of the queue (within five minutes)
+sends it, and a failure gets a fresh [`RETRY_HOURS`].
+ */
+export const useRetryQueuedMail = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof retryQueuedMail>>, TError,RetryQueuedMailMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof retryQueuedMail>>,
+        TError,
+        RetryQueuedMailMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRetryQueuedMailMutationOptions(options), queryClient);
     }
 
 export const getListManufacturersUrl = (params?: ListManufacturersParams,) => {

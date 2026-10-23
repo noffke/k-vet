@@ -18,7 +18,7 @@ use sqlx::PgPool;
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::{invoices, treatment_items, treatments};
+use crate::api::{invoices, mail_queue, treatment_items, treatments};
 use crate::domain::enums::InvoiceStatus;
 use crate::error::AppResult;
 
@@ -40,6 +40,20 @@ pub struct Dashboard {
     pub unsent: AtRisk,
     /// The lots expiring soonest that still hold stock.
     pub expiring_lots: Vec<ExpiringLot>,
+    /// Every invoice mail that failed on the way out — still being retried, or given up —
+    /// oldest failure first, all of them: each needs a decision (retry, or remove and post).
+    pub failed_mails: Vec<FailedMail>,
+}
+
+/// A failed invoice mail, with what the vet needs to recognise the invoice.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct FailedMail {
+    pub mail: mail_queue::QueuedEmail,
+    /// The appointment the invoice belongs to is where it is resolved.
+    pub treatment_id: i64,
+    pub invoice_number: String,
+    pub customer_name: String,
+    pub patients: Vec<String>,
 }
 
 /// One money-at-risk list: the oldest few cases, and how many there are in all.
@@ -128,7 +142,25 @@ pub async fn get_dashboard(State(state): State<AppState>) -> AppResult<Json<Dash
         unreleased: invoices_at_risk(&state.pool, InvoiceStatus::Created).await?,
         unsent: invoices_at_risk(&state.pool, InvoiceStatus::Accepted).await?,
         expiring_lots,
+        failed_mails: failed_mails(&state.pool).await?,
     }))
+}
+
+/// The failed invoice mails, each with its invoice's number, customer and animals.
+async fn failed_mails(pool: &PgPool) -> AppResult<Vec<FailedMail>> {
+    let failed = mail_queue::failed(&mut *pool.acquire().await?).await?;
+    let mut entries = Vec::with_capacity(failed.len());
+    for mail in failed {
+        let invoice = invoices::load(pool, mail.invoice_id).await?;
+        entries.push(FailedMail {
+            treatment_id: invoice.treatment_id,
+            invoice_number: invoice.invoice_number,
+            customer_name: invoice.customer_name,
+            patients: invoice.patients,
+            mail,
+        });
+    }
+    Ok(entries)
 }
 
 /// Treatments that carry positions and no live invoice — worked and billed to nobody.

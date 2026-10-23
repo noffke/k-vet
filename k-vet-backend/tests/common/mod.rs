@@ -32,6 +32,8 @@ const TEST_PASSWORD_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$sv7lVNC/98GKqHK
 /// An in-process application under test, with a cookie jar for the session.
 pub struct TestApp {
     router: Router,
+    /// What the router runs on — for the jobs, which tests call directly.
+    pub state: AppState,
     pub pool: PgPool,
     pub config: Arc<Config>,
     pub attachments: TempDir,
@@ -121,9 +123,10 @@ impl TestApp {
         adjust(&mut settings);
         let config = Arc::new(settings);
         let state = AppState::new(pool.clone(), Arc::clone(&config)).expect("state builds");
-        let router = build_app(state).await.expect("app builds");
+        let router = build_app(state.clone()).await.expect("app builds");
         Self {
             router,
+            state,
             pool,
             config,
             attachments,
@@ -299,11 +302,14 @@ impl TestApp {
 /// sending is ever exercised.
 pub struct MailServer {
     pub port: u16,
-    /// The envelope recipients (`RCPT TO`) of every accepted message: where mail really went,
-    /// BCC included.
+    /// The envelope recipients (`RCPT TO`) of every message the server took: where mail
+    /// really went, BCC included. A message refused part-way delivers to nobody, so its
+    /// recipients are only counted once its `DATA` is in.
     pub recipients: Arc<Mutex<Vec<String>>>,
     /// Cleared, the server turns every connection away, as an unreachable relay would.
     pub accepting: Arc<AtomicBool>,
+    /// Addresses the server does not know: `550` on their `RCPT TO`.
+    pub unknown: Arc<Mutex<Vec<String>>>,
 }
 
 impl MailServer {
@@ -315,28 +321,54 @@ impl MailServer {
             .port();
         let recipients = Arc::new(Mutex::new(Vec::new()));
         let accepting = Arc::new(AtomicBool::new(true));
-        let (seen, open) = (Arc::clone(&recipients), Arc::clone(&accepting));
+        let unknown = Arc::new(Mutex::new(Vec::new()));
+        let (seen, open, strangers) = (
+            Arc::clone(&recipients),
+            Arc::clone(&accepting),
+            Arc::clone(&unknown),
+        );
         std::thread::spawn(move || {
             for connection in listener.incoming().flatten() {
-                let (seen, open) = (Arc::clone(&seen), Arc::clone(&open));
-                std::thread::spawn(move || serve_smtp(connection, &seen, &open));
+                let (seen, open, strangers) =
+                    (Arc::clone(&seen), Arc::clone(&open), Arc::clone(&strangers));
+                std::thread::spawn(move || serve_smtp(connection, &seen, &open, &strangers));
             }
         });
         MailServer {
             port,
             recipients,
             accepting,
+            unknown,
         }
     }
 
     pub fn refuse(&self) {
         self.accepting.store(false, Ordering::SeqCst);
     }
+
+    /// The server answers `550` for `address`, as one would for a mailbox it does not have.
+    pub fn refuse_recipient(&self, address: &str) {
+        if let Ok(mut unknown) = self.unknown.lock() {
+            unknown.push(address.to_owned());
+        }
+    }
+
+    /// Every envelope recipient of the messages taken so far, sorted.
+    pub fn delivered(&self) -> Vec<String> {
+        let mut delivered = self.recipients.lock().expect("recipients").clone();
+        delivered.sort();
+        delivered
+    }
 }
 
-/// Just enough SMTP for lettre without TLS or authentication: every command is fine, `DATA`
-/// takes everything up to the lone dot.
-fn serve_smtp(connection: TcpStream, seen: &Mutex<Vec<String>>, accepting: &AtomicBool) {
+/// Just enough SMTP for lettre without TLS or authentication: every command is fine but a
+/// recipient it was told not to know, `DATA` takes everything up to the lone dot.
+fn serve_smtp(
+    connection: TcpStream,
+    seen: &Mutex<Vec<String>>,
+    accepting: &AtomicBool,
+    unknown: &Mutex<Vec<String>>,
+) {
     let Ok(reader) = connection.try_clone() else {
         return;
     };
@@ -350,6 +382,7 @@ fn serve_smtp(connection: TcpStream, seen: &Mutex<Vec<String>>, accepting: &Atom
         return;
     }
     let mut in_data = false;
+    let mut envelope = Vec::new();
     for line in BufReader::new(reader).lines() {
         let Ok(line) = line else {
             return;
@@ -357,6 +390,9 @@ fn serve_smtp(connection: TcpStream, seen: &Mutex<Vec<String>>, accepting: &Atom
         if in_data {
             if line == "." {
                 in_data = false;
+                if let Ok(mut seen) = seen.lock() {
+                    seen.append(&mut envelope);
+                }
                 if !reply("250 queued") {
                     return;
                 }
@@ -370,10 +406,22 @@ fn serve_smtp(connection: TcpStream, seen: &Mutex<Vec<String>>, accepting: &Atom
         }
         let command = line.to_ascii_uppercase();
         let answer = if let Some(address) = command.strip_prefix("RCPT TO:") {
-            let address = line[line.len() - address.len()..].trim();
-            if let Ok(mut seen) = seen.lock() {
-                seen.push(address.trim_matches(['<', '>']).to_owned());
+            let address = line[line.len() - address.len()..]
+                .trim()
+                .trim_matches(['<', '>'])
+                .to_owned();
+            let stranger = unknown
+                .lock()
+                .map(|unknown| unknown.contains(&address))
+                .unwrap_or(false);
+            if stranger {
+                "550 no such user here"
+            } else {
+                envelope.push(address);
+                "250 ok"
             }
+        } else if command.starts_with("MAIL FROM:") || command.starts_with("RSET") {
+            envelope.clear();
             "250 ok"
         } else if command.starts_with("DATA") {
             in_data = true;

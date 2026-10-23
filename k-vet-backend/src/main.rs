@@ -86,6 +86,8 @@ async fn run() -> Result<(), String> {
     let state = AppState::new(pool, Arc::clone(&config)).map_err(|error| error.to_string())?;
     // Nightly maintenance runs inside the same process; there is no cron on the appliance.
     let maintenance = jobs::spawn(state.clone());
+    // The invoice mail goes out from here, never from a request (migration 0026).
+    let mail_queue = jobs::spawn_mail_queue(state.clone());
     let app = build_app(state).await.map_err(|error| error.to_string())?;
 
     let listener = tokio::net::TcpListener::bind(socket)
@@ -105,6 +107,7 @@ async fn run() -> Result<(), String> {
         .map_err(|error| format!("server error: {error}"));
 
     maintenance.abort();
+    mail_queue.abort();
     served
 }
 

@@ -79,6 +79,25 @@ pub struct OutgoingInvoice<'a> {
     pub pdf: Vec<u8>,
 }
 
+/// Why a mail did not go out, as the queue keeps it on the row.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct MailFailure {
+    /// Final: retrying cannot help — the mail server refused for good, or k-vet could not build
+    /// the mail (an address it cannot parse, no PDF). The queue stops at once.
+    pub refused: bool,
+    pub detail: String,
+}
+
+impl MailFailure {
+    /// A failure on k-vet's side, before any mail server was asked.
+    pub fn refused(detail: impl Into<String>) -> Self {
+        Self {
+            refused: true,
+            detail: detail.into(),
+        }
+    }
+}
+
 /// Sends invoice emails through the configured SMTP server.
 pub struct Mailer {
     transport: AsyncSmtpTransport<Tokio1Executor>,
@@ -164,18 +183,20 @@ impl Mailer {
             .map_err(|error| AppError::internal("building the invoice email", error))
     }
 
-    /// Sends a prepared message. Errors are returned so the caller can leave the invoice
-    /// accepted and let the vet retry (FR-031).
-    pub async fn send(&self, message: Message) -> AppResult<()> {
+    /// Hands a prepared message to the mail server. Only the mail queue calls this — no request
+    /// waits on a mail server (`jobs::send_queued_mail`).
+    pub async fn send(&self, message: Message) -> Result<(), MailFailure> {
         self.transport
             .send(message)
             .await
             .map(|_| ())
-            .map_err(|error| {
-                // Logged with the transport's own words, which name the host and the port; the
-                // client gets a key it can translate, because this is a failure the vet acts on.
-                tracing::error!(%error, "the mail server could not be reached");
-                AppError::MailTransport
+            .map_err(|error| MailFailure {
+                // A 5xx reply is the mail server's final word; an unreachable server, a timeout
+                // or a 4xx reply may pass, and the queue tries again.
+                refused: error.is_permanent(),
+                // The transport's own words: they name the host, or carry the server's reply
+                // ("permanent error (550): no such user").
+                detail: error.to_string(),
             })
     }
 }

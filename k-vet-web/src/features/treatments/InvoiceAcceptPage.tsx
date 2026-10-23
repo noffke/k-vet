@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router'
 import { AlertTriangle, Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   getGetInvoiceQueryKey,
   getGetPatientQueryKey,
@@ -46,7 +47,9 @@ export function InvoiceAcceptPage() {
   const back = useGoBack({ to: '/treatments/$id', params: { id: String(treatmentId) } })
   const acceptInvoice = useAcceptInvoice({
     mutation: {
-      onSuccess: async () => {
+      onSuccess: async (released) => {
+        // Released now; the mail goes out with the queue's next run.
+        if (released.email_queue) toast(t('invoices.queued'))
         await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
         // A euthanasia line has just ended an animal's record: its page and every list of
         // animals (the next visit's picker among them) must not show it alive.

@@ -6,6 +6,7 @@
  * OpenAPI spec version: 0.1.0
  */
 import type { InvoiceStatus } from './invoiceStatus';
+import type { QueuedEmail } from './queuedEmail';
 
 export interface Invoice {
   id: number;
@@ -39,6 +40,7 @@ export interface Invoice {
      * @nullable
      */
   ts_sent_post?: string | null;
+  email_queue?: null | QueuedEmail;
   /** @nullable */
   ts_submitted?: string | null;
   /** @nullable */

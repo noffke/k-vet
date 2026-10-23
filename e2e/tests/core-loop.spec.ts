@@ -122,6 +122,8 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
 
   await expect(page.getByText('Freigegeben').first()).toBeVisible()
   await expect(page.getByText(invoiceNumber).first()).toBeVisible()
+  // The mail is queued with the release; the queue's run sends it (migration 0026).
+  await expect(page.getByText(/E-Mail an erika@example\.com wartet auf den Versand/)).toBeVisible()
 
   // ── What the acceptance means underneath ────────────────────────────────────
   const listed = await request.get(`/api/invoices?q=${encodeURIComponent(invoiceNumber)}`)

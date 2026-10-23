@@ -1,5 +1,6 @@
 import type { APIRequestContext } from '@playwright/test'
 import { E2E_PASSWORD, E2E_USERNAME } from './credentials'
+import { Client } from 'pg'
 
 /**
  * API-driven seeding (T023): each spec asks for the master data it needs instead of
@@ -231,4 +232,28 @@ export async function clearPendingInvoices(request: APIRequestContext): Promise<
     await post(request, `/api/invoices/${invoice.id}/mark-posted`)
   }
   await post(request, '/api/invoices/bulk-submit')
+}
+
+/**
+ * A mail the queue gave up on — the mail server refused the address — for `invoiceId`. Written
+ * straight into the database: the suite has no mail server, and the queue runs only every five
+ * minutes, so a real failure would not arrive within a test.
+ */
+export async function seedFailedMail(invoiceId: number, address: string): Promise<void> {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL ?? 'postgres://kvet:kvet@localhost:5432/kvet_e2e',
+  })
+  await client.connect()
+  try {
+    await client.query(
+      `INSERT INTO mail_queue
+           (invoice_id, recipients, attempts, last_attempt_at, first_failure_at, last_error,
+            refused, gave_up_at)
+       VALUES ($1, ARRAY[$2], 1, now(), now(), 'permanent error (550): no such user here',
+               true, now())`,
+      [invoiceId, address],
+    )
+  } finally {
+    await client.end()
+  }
 }

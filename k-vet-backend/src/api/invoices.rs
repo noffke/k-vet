@@ -27,13 +27,13 @@ use zip::CompressionMethod;
 use zip::write::{SimpleFileOptions, ZipWriter};
 
 use crate::AppState;
-use crate::api::{treatment_items, treatments};
+use crate::api::{mail_queue, treatment_items, treatments};
 use crate::domain::enums::{InvoiceStatus, PackagingKind, Salutation};
 use crate::domain::files::BytesSource;
 use crate::domain::invoice_number::{NumberPattern, allocate_number, validate_pattern};
 use crate::domain::{giro, money, stock};
 use crate::error::{AppError, AppResult};
-use crate::mail::{InvoiceMail, OutgoingInvoice, greeting};
+use crate::mail::{InvoiceMail, MailFailure, OutgoingInvoice, greeting};
 use crate::pdf::{
     self, CustomerAddress, InvoiceBlock, InvoiceDocument, InvoiceLine, PatientGroup, PracticeBlock,
     date_de, money_de, number_de, percent_de,
@@ -66,6 +66,9 @@ pub struct Invoice {
     pub sent_email_bcc: Vec<String>,
     /// When the invoice was handed over on paper — the only trace a postal send leaves.
     pub ts_sent_post: Option<DateTime<Utc>>,
+    /// The mail waiting in the queue for this invoice, or failing there; empty once it went out
+    /// or when none was asked for.
+    pub email_queue: Option<mail_queue::QueuedEmail>,
     pub ts_submitted: Option<DateTime<Utc>>,
     pub ts_cancelled: Option<DateTime<Utc>>,
     pub customer_id: Option<i64>,
@@ -306,7 +309,7 @@ pub async fn pdf(State(state): State<AppState>, Path(id): Path<i64>) -> AppResul
     params(("id" = i64, Path,)),
     request_body = AcceptInvoice,
     responses(
-        (status = 200, description = "Accepted; the email is sent if SMTP accepts it", body = Invoice),
+        (status = 200, description = "Accepted; a mail to the recipients is queued", body = Invoice),
         (status = 409, description = "Only a created invoice can be accepted")
     )
 )]
@@ -336,15 +339,21 @@ pub async fn accept(
     }
 
     // Acceptance is the freeze point: from here the stock ledger is append-only.
+    let recipients = clean_recipients(body.recipient_emails);
     sqlx::query!(
         "UPDATE invoice
          SET status = 'accepted', ts_accepted = now(), email_recipients = $2
          WHERE id = $1",
         id,
-        &body.recipient_emails,
+        &recipients,
     )
     .execute(&mut *transaction)
     .await?;
+    // Released and queued together, or neither. The mail goes out with the queue's next run;
+    // a failure there stays on the queue row and shows on the dashboard (FR-031).
+    if !recipients.is_empty() {
+        mail_queue::queue(&mut transaction, id, &recipients).await?;
+    }
 
     // A euthanasia drug on a line ends that animal's record: its date of death is the day of the
     // appointment, in the practice's time zone as the invoice prints it, and — as entering a
@@ -370,14 +379,16 @@ pub async fn accept(
     }
     transaction.commit().await?;
 
-    // A failing send leaves the invoice accepted and retriable (FR-031).
-    if !body.recipient_emails.is_empty()
-        && let Err(error) = send_invoice_email(&state, id).await
-    {
-        tracing::error!(%error, invoice_id = id, "sending the invoice email failed");
-    }
-
     load(&state.pool, id).await.map(Json)
+}
+
+/// The addresses asked for, trimmed, without the empty ones.
+fn clean_recipients(recipients: Vec<String>) -> Vec<String> {
+    recipients
+        .into_iter()
+        .map(|email| email.trim().to_owned())
+        .filter(|email| !email.is_empty())
+        .collect()
 }
 
 #[utoipa::path(
@@ -388,10 +399,9 @@ pub async fn accept(
     params(("id" = i64, Path,)),
     request_body = SendInvoice,
     responses(
-        (status = 200, description = "Sent; the invoice is now `sent`", body = Invoice),
+        (status = 200, description = "Queued; the mail goes out with the queue's next run", body = Invoice),
         (status = 409, description = "The invoice is not released, or is cancelled"),
-        (status = 422, description = "No recipient was given"),
-        (status = 500, description = "The mail server rejected the message")
+        (status = 422, description = "No recipient was given")
     )
 )]
 pub async fn send(
@@ -399,11 +409,12 @@ pub async fn send(
     Path(id): Path<i64>,
     Json(body): Json<SendInvoice>,
 ) -> AppResult<Json<Invoice>> {
+    let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        r#"SELECT status AS "status: InvoiceStatus" FROM invoice WHERE id = $1"#,
+        r#"SELECT status AS "status: InvoiceStatus" FROM invoice WHERE id = $1 FOR UPDATE"#,
         id
     )
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::NotFound)?;
 
@@ -417,12 +428,7 @@ pub async fn send(
         ));
     }
 
-    let recipients: Vec<String> = body
-        .recipient_emails
-        .into_iter()
-        .map(|email| email.trim().to_owned())
-        .filter(|email| !email.is_empty())
-        .collect();
+    let recipients = clean_recipients(body.recipient_emails);
     if recipients.is_empty() {
         return Err(AppError::field("recipient_emails", "field.required"));
     }
@@ -432,11 +438,14 @@ pub async fn send(
         id,
         &recipients,
     )
-    .execute(&state.pool)
+    .execute(&mut *transaction)
     .await?;
+    // Queued, not sent: the queue's next run delivers it, and a failure is kept there, on the
+    // invoice and on the dashboard, rather than lost in a response. A mail already waiting —
+    // or failing — for this invoice is replaced by this one.
+    mail_queue::queue(&mut transaction, id, &recipients).await?;
+    transaction.commit().await?;
 
-    // Unlike accept, an explicit send reports the failure to the caller.
-    send_invoice_email(&state, id).await?;
     load(&state.pool, id).await.map(Json)
 }
 
@@ -456,14 +465,20 @@ pub async fn mark_posted(
     Path(id): Path<i64>,
 ) -> AppResult<Json<Invoice>> {
     // Nothing else can observe a letter going into a postbox, so the vet says so here.
+    let mut transaction = state.pool.begin().await?;
     let updated = sqlx::query_scalar!(
         "UPDATE invoice SET status = 'sent', ts_sent_post = now()
          WHERE id = $1 AND status = 'accepted'
          RETURNING id",
         id,
     )
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?;
+    if updated.is_some() {
+        // On paper it has arrived; a mail still waiting would only bring it a second time.
+        mail_queue::drop_for_invoice(&mut transaction, id).await?;
+    }
+    transaction.commit().await?;
 
     if updated.is_none() {
         // Distinguish "no such invoice" from "wrong stage" — the UI shows different things.
@@ -532,6 +547,8 @@ async fn cancel_in_transaction(
     )
     .execute(&mut **transaction)
     .await?;
+    // A cancelled invoice must not reach the customer — not even from the queue.
+    mail_queue::drop_for_invoice(transaction, invoice_id).await?;
 
     // Only frozen (released) dispenses need reversing — draft ones were never booked.
     if matches!(
@@ -548,10 +565,21 @@ async fn cancel_in_transaction(
     Ok(())
 }
 
-/// Renders the invoice email and sends it; records the timestamp only on success.
-async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> {
+/// Renders the invoice mail to `recipients` and hands it to the mail server — the mail queue's
+/// one way out (`jobs::send_queued_mail`); no request calls it. The delivery is recorded on the
+/// invoice, in the caller's transaction, only once the mail server took the message.
+///
+/// The outer result is the database; the inner one is the mail. What k-vet cannot build — no
+/// PDF, an address it cannot parse, a template that fails — is a refusal like the mail
+/// server's: trying again will not mend it.
+pub async fn deliver(
+    state: &AppState,
+    transaction: &mut Transaction<'_, Postgres>,
+    invoice_id: i64,
+    recipients: &[String],
+) -> AppResult<Result<(), MailFailure>> {
     let row = sqlx::query!(
-        r#"SELECT invoice.invoice_number, invoice.invoice_date, invoice.email_recipients,
+        r#"SELECT invoice.invoice_number, invoice.invoice_date,
                   attachment.sha256 AS "sha256?",
                   customer.salutation AS "salutation?: Salutation",
                   customer.first_name, customer.last_name,
@@ -572,14 +600,9 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
            LIMIT 1"#,
         invoice_id,
     )
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut **transaction)
     .await?
     .ok_or(AppError::NotFound)?;
-
-    let recipients = row.email_recipients.unwrap_or_default();
-    if recipients.is_empty() {
-        return Err(AppError::field("recipient_emails", "field.required"));
-    }
 
     let patients = sqlx::query_scalar!(
         "SELECT patient.name
@@ -590,7 +613,7 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
          ORDER BY patient.name",
         invoice_id,
     )
-    .fetch_all(&state.pool)
+    .fetch_all(&mut **transaction)
     .await?;
 
     let total = invoice_total(&state.pool, invoice_id).await?;
@@ -641,22 +664,49 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
         patients: patients.into_iter().flatten().collect(),
     };
 
-    let (subject, body) = state.mailer.render(&context)?;
-    let sha256 = row
-        .sha256
-        .ok_or_else(|| AppError::Internal("the invoice has no rendered PDF to send".to_owned()))?;
-    let pdf_bytes = tokio::fs::read(state.files.content_path(&sha256)).await?;
+    let (subject, body) = match state.mailer.render(&context) {
+        Ok(rendered) => rendered,
+        Err(error) => {
+            return Ok(Err(MailFailure::refused(format!(
+                "the mail template failed: {error}"
+            ))));
+        }
+    };
+    let Some(sha256) = row.sha256 else {
+        return Ok(Err(MailFailure::refused(
+            "the invoice has no PDF to attach",
+        )));
+    };
+    let pdf_bytes = match tokio::fs::read(state.files.content_path(&sha256)).await {
+        Ok(bytes) => bytes,
+        Err(error) => {
+            return Ok(Err(MailFailure::refused(format!(
+                "the invoice PDF could not be read: {error}"
+            ))));
+        }
+    };
 
-    let message = state.mailer.build_message(OutgoingInvoice {
-        recipients: &recipients,
+    let built = state.mailer.build_message(OutgoingInvoice {
+        recipients,
         cc: &row.cc_emails,
         bcc: &row.bcc_emails,
         subject: &subject,
         body: &body,
         pdf_name: &format!("Rechnung-{}.pdf", row.invoice_number),
         pdf: pdf_bytes,
-    })?;
-    state.mailer.send(message).await?;
+    });
+    let Ok(message) = built else {
+        // The one thing `build_message` refuses is an address it cannot parse — the customer's,
+        // or a CC/BCC from the settings; name them all, so the vet can find the bad one.
+        let addresses = [recipients, &row.cc_emails[..], &row.bcc_emails[..]].concat();
+        return Ok(Err(MailFailure::refused(format!(
+            "an address cannot be used: {}",
+            addresses.join(", ")
+        ))));
+    };
+    if let Err(failure) = state.mailer.send(message).await {
+        return Ok(Err(failure));
+    }
 
     // The timestamp is written only after the mail server accepted the message, and it is what
     // moves the invoice on. A resend must not drag a submitted invoice back a stage. With it go
@@ -671,13 +721,13 @@ async fn send_invoice_email(state: &AppState, invoice_id: i64) -> AppResult<()> 
              status = CASE WHEN status = 'accepted' THEN 'sent'::invoice_status ELSE status END
          WHERE id = $1",
         invoice_id,
-        &recipients,
+        recipients,
         &row.cc_emails,
         &row.bcc_emails,
     )
-    .execute(&state.pool)
+    .execute(&mut **transaction)
     .await?;
-    Ok(())
+    Ok(Ok(()))
 }
 
 /// Renders the PDF and links it to the invoice as a content-addressed attachment.
@@ -1261,6 +1311,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
     .ok_or(AppError::NotFound)?;
 
     let parties = treatments::parties(pool, row.treatment_id).await?;
+    let email_queue = mail_queue::for_invoice(&mut *pool.acquire().await?, id).await?;
 
     Ok(Invoice {
         id: row.id,
@@ -1278,6 +1329,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
         sent_email_cc: row.sent_email_cc.unwrap_or_default(),
         sent_email_bcc: row.sent_email_bcc.unwrap_or_default(),
         ts_sent_post: row.ts_sent_post,
+        email_queue,
         ts_submitted: row.ts_submitted,
         ts_cancelled: row.ts_cancelled,
         customer_id: parties.customer_id,

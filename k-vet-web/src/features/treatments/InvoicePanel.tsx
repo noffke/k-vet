@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Ban, FileText, Mail, ReceiptText, Send } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -11,7 +11,7 @@ import {
   useGetInvoice,
   useMarkInvoicePosted,
 } from '@/api/generated/endpoints'
-import type { Treatment } from '@/api/generated/model'
+import type { QueuedEmail, Treatment } from '@/api/generated/model'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { NotSentBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
@@ -104,6 +104,7 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
               <NotSentBadge status={status} />
             </p>
           ) : null}
+          {invoice.data?.email_queue ? <QueuedMailNote mail={invoice.data.email_queue} /> : null}
         </div>
 
         <div className="flex flex-wrap gap-2">
@@ -210,5 +211,41 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
         {t('invoices.cancelConfirm')}
       </ConfirmDialog>
     </section>
+  )
+}
+
+/**
+ * Where the invoice's mail is: waiting for the queue's next run, failing and tried again, or
+ * given up — then the dashboard is where it is retried or removed. No request sends mail any
+ * more, so this is the only place an appointment says what became of it.
+ */
+function QueuedMailNote({ mail }: { mail: QueuedEmail }) {
+  const { t } = useTranslation()
+  const { dateTime } = useLocaleFormat()
+  if (!mail.last_error) {
+    return (
+      <p className="mt-1 text-xs break-all text-ink-soft">
+        {t('invoices.queueWaiting', { recipients: mail.recipients.join(', ') })}
+      </p>
+    )
+  }
+  const stopped = mail.refused || mail.gave_up_at
+  return (
+    <p className="mt-1 text-xs break-all text-danger">
+      {stopped
+        ? t('invoices.queueStopped', { error: mail.last_error })
+        : t('invoices.queueFailing', {
+            error: mail.last_error,
+            time: dateTime(mail.retry_until),
+          })}
+      {stopped ? (
+        <>
+          {' · '}
+          <Link to="/" className="underline hover:text-rust">
+            {t('nav.dashboard')}
+          </Link>
+        </>
+      ) : null}
+    </p>
   )
 }

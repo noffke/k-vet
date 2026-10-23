@@ -1,0 +1,131 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id, invoice_id, recipients, queued_at, attempts, last_attempt_at, last_error,\n                  refused, gave_up_at,\n                  first_failure_at + make_interval(hours => $1) AS retry_until\n           FROM mail_queue WHERE last_error IS NOT NULL\n           ORDER BY first_failure_at, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "invoice_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "invoice_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "recipients",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "recipients"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "queued_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "queued_at"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "attempts",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "attempts"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "last_attempt_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "last_attempt_at"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "last_error",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "last_error"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "refused",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "refused"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "gave_up_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "gave_up_at"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "retry_until",
+        "type_info": "Timestamptz",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int4"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      false,
+      true,
+      true,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "9f092c7db27f9a756f42bc280b417dbdc1f24170ebcd26ee4fcdbe0ead7f18be"
+}

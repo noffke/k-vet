@@ -3,7 +3,7 @@ import { useParams } from '@tanstack/react-router'
 import { Mail } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiError } from '@/api/fetcher'
+import { toast } from 'sonner'
 import {
   getGetInvoiceQueryKey,
   getGetTreatmentQueryKey,
@@ -17,16 +17,6 @@ import { Button } from '@/components/ui/button'
 import { CheckboxField, TextField } from '@/components/ui/field'
 import { useRecipientLabel } from '@/features/treatments/useRecipientLabel'
 import { useGoBack } from '@/lib/trail'
-
-/** The problem detail the server sends when the SMTP relay did not answer. */
-const MAIL_UNREACHABLE = 'invoice.mailUnreachable'
-
-/**
- * The generated hooks type their error as `void`, so the thrown `ApiError` has to be narrowed
- * from `unknown` — the mutator does throw one, whatever the signature says.
- */
-const isMailUnreachable = (error: unknown): boolean =>
-  error instanceof ApiError && error.message === MAIL_UNREACHABLE
 
 /**
  * Sending a released invoice by e-mail, again or for the first time.
@@ -53,6 +43,8 @@ export function InvoiceSendPage() {
   const sendInvoice = useSendInvoice({
     mutation: {
       onSuccess: async () => {
+        // Queued, not sent: the queue's next run delivers it, and the appointment says so.
+        toast(t('invoices.queued'))
         await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
         if (invoiceId) {
           await client.invalidateQueries({ queryKey: getGetInvoiceQueryKey(invoiceId) })
@@ -138,19 +130,16 @@ export function InvoiceSendPage() {
       </section>
 
       {/*
-        "Nicht gespeichert" used to stand here, which named the wrong thing — nothing was being
-        saved — and said nothing about what to do. The server distinguishes an unreachable mail
-        server from anything else, because that is the failure the practice actually meets and
-        the one with an answer: fix the relay, or hand the invoice over on paper.
+        The mail server is never asked from here (migration 0026): the mail is queued, and
+        what the server makes of it shows on the appointment and on the dashboard. What can
+        still fail here is the request itself.
       */}
       {sendInvoice.isError ? (
         <p
           className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
           role="alert"
         >
-          {isMailUnreachable(sendInvoice.error)
-            ? t('invoices.mailUnreachable')
-            : t('invoices.sendFailed')}
+          {t('invoices.sendFailed')}
         </p>
       ) : null}
 
