@@ -24,6 +24,25 @@ test.describe('sending an invoice', () => {
     await expect(page.getByText('Nicht versendet', { exact: true })).toBeVisible()
   })
 
+  test('a new address typed when sending again is offered to the customer', async ({
+    page,
+    request,
+  }) => {
+    const invoice = await seedAcceptedInvoice(request)
+    const address = `neu-${invoice.invoiceId}@example.com`
+    await signIn(page)
+    await page.goto(`/treatments/${invoice.treatmentId}/invoice/send`)
+
+    // The same page as releasing: one more address, and the question whether to keep it.
+    await page.getByLabel('Weitere E-Mail-Adresse').fill(address)
+    await page.getByRole('button', { name: 'E-Mail senden', exact: true }).click()
+    const dialog = page.getByRole('dialog')
+    await expect(dialog).toContainText(address)
+    await dialog.getByRole('button', { name: 'Nur diesmal verwenden' }).click()
+
+    await expect(page.getByText(`E-Mail an erika@example.com, ${address} wartet`)).toBeVisible()
+  })
+
   test('a failed mail waits on the dashboard to be retried or removed', async ({
     page,
     request,
