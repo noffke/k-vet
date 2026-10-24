@@ -266,6 +266,11 @@ async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(po
     assert_eq!(items[0]["price_net"], "23.62", "prices are copied verbatim");
     assert_eq!(copied["patients"][0]["patient_id"], patient_id);
     assert_eq!(
+        copied["patients"][0]["treatment_reason"],
+        common::doc("Routinekontrolle"),
+        "the animal's record is copied with its text, formatting and all"
+    );
+    assert_eq!(
         items[0]["patient_treatment_id"], copied["patients"][0]["id"],
         "the copied line belongs to the copy's own record for that animal, not the source's"
     );

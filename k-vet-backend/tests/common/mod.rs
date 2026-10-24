@@ -706,6 +706,25 @@ pub async fn seed_appointment(pool: &PgPool, starts_at: DateTime<Utc>) -> i64 {
     id
 }
 
+/// A formatted text as the editor writes it, one plain paragraph per line — what a test means
+/// by "the reason is …" now that the reason is a document (migration `0030`).
+pub fn doc(text: &str) -> Value {
+    let paragraphs: Vec<Value> = text
+        .lines()
+        .map(|line| {
+            if line.is_empty() {
+                serde_json::json!({ "type": "paragraph" })
+            } else {
+                serde_json::json!({
+                    "type": "paragraph",
+                    "content": [{ "type": "text", "text": line }],
+                })
+            }
+        })
+        .collect();
+    serde_json::json!({ "type": "doc", "content": paragraphs })
+}
+
 pub async fn seed_treatment(pool: &PgPool, appointment_id: i64, patient_id: i64) -> i64 {
     seed_patient_treatment(pool, appointment_id, patient_id)
         .await
@@ -747,16 +766,28 @@ pub async fn seed_patient_treatment(
     .fetch_one(pool)
     .await
     .expect("seed treatment");
-    let record_id: i64 = sqlx::query_scalar(
-        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id, treatment_reason)
-         VALUES ($1, $2, $3, 'Routinekontrolle') RETURNING id",
+    // Some tests seed a database migrated only part of the way, to test one migration on the
+    // rows before it; until `0030` the reason was plain text.
+    let formatted: bool = sqlx::query_scalar(
+        "SELECT EXISTS (SELECT 1 FROM pg_proc WHERE proname = 'rich_text_from_plain')",
     )
-    .bind(treatment_id)
-    .bind(patient_id)
-    .bind(customer_id)
     .fetch_one(pool)
     .await
-    .expect("seed patient treatment");
+    .expect("look for migration 0030");
+    let insert = if formatted {
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id, treatment_reason)
+         VALUES ($1, $2, $3, rich_text_from_plain('Routinekontrolle')) RETURNING id"
+    } else {
+        "INSERT INTO patient_treatment (treatment_id, patient_id, customer_id, treatment_reason)
+         VALUES ($1, $2, $3, 'Routinekontrolle') RETURNING id"
+    };
+    let record_id: i64 = sqlx::query_scalar(insert)
+        .bind(treatment_id)
+        .bind(patient_id)
+        .bind(customer_id)
+        .fetch_one(pool)
+        .await
+        .expect("seed patient treatment");
     (treatment_id, record_id)
 }
 

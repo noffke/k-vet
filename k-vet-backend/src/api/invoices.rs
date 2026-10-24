@@ -21,6 +21,7 @@ use axum::{Json, Router};
 use chrono::{DateTime, Local, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::types::Json as Jsonb;
 use sqlx::{PgConnection, PgPool, Postgres, Transaction};
 use utoipa::{IntoParams, ToSchema};
 use zip::CompressionMethod;
@@ -31,6 +32,7 @@ use crate::api::{mail_queue, treatment_items, treatments};
 use crate::domain::enums::{InvoiceStatus, PackagingKind, Salutation};
 use crate::domain::files::BytesSource;
 use crate::domain::invoice_number::{NumberPattern, allocate_number, validate_pattern};
+use crate::domain::rich_text::RichText;
 use crate::domain::{giro, money, stock};
 use crate::error::{AppError, AppResult};
 use crate::mail::{InvoiceMail, MailFailure, OutgoingInvoice, TemplateProblem, greeting};
@@ -883,8 +885,9 @@ async fn build_document(
     .await?;
 
     let patients = sqlx::query!(
-        r#"SELECT patient_treatment.id, patient_treatment.treatment_reason,
-                  patient_treatment.finding,
+        r#"SELECT patient_treatment.id,
+                  patient_treatment.treatment_reason AS "treatment_reason: Jsonb<RichText>",
+                  patient_treatment.finding AS "finding: Jsonb<RichText>",
                   patient.name, patient.customer_id, patient.species, patient.race,
                   patient.date_of_birth, patient.chip_number
            FROM patient_treatment
@@ -1058,20 +1061,29 @@ async fn build_document(
             reports: patients
                 .iter()
                 .filter_map(|patient| {
-                    let reason = patient.treatment_reason.clone().unwrap_or_default();
-                    let finding = if invoice.includes_finding {
-                        patient.finding.clone().unwrap_or_default()
-                    } else {
-                        String::new()
-                    };
-                    if reason.trim().is_empty() && finding.trim().is_empty() {
+                    let reason = patient
+                        .treatment_reason
+                        .as_ref()
+                        .map(|document| &document.0);
+                    let finding = patient
+                        .finding
+                        .as_ref()
+                        .map(|document| &document.0)
+                        .filter(|_| invoice.includes_finding);
+                    if reason.is_none_or(RichText::is_blank)
+                        && finding.is_none_or(RichText::is_blank)
+                    {
                         return None;
                     }
                     Some(pdf::PatientReport {
                         patient: patient.name.clone().unwrap_or_default(),
                         description: descriptions.get(&patient.id).cloned().unwrap_or_default(),
-                        treatment_reason: reason,
-                        finding,
+                        treatment_reason: reason.map(RichText::plain_text).unwrap_or_default(),
+                        finding: finding.map(RichText::plain_text).unwrap_or_default(),
+                        treatment_reason_blocks: reason
+                            .map(RichText::print_blocks)
+                            .unwrap_or_default(),
+                        finding_blocks: finding.map(RichText::print_blocks).unwrap_or_default(),
                     })
                 })
                 .collect(),

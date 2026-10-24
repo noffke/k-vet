@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT record.id, record.treatment_id, record.treatment_reason,\n                  appointment.id AS appointment_id, appointment.starts_at,\n                  invoice.invoice_number AS \"invoice_number?\",\n                  invoice.status AS \"invoice_status?: InvoiceStatus\"\n           FROM patient_treatment record\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           LEFT JOIN invoice ON invoice.treatment_id = record.treatment_id\n                            AND invoice.status <> 'cancelled'\n           WHERE record.patient_id = $1\n           ORDER BY appointment.starts_at DESC NULLS LAST, record.id DESC",
+  "query": "SELECT record.id, record.treatment_id,\n                  record.treatment_reason AS \"treatment_reason: Jsonb<RichText>\",\n                  appointment.id AS appointment_id, appointment.starts_at,\n                  invoice.invoice_number AS \"invoice_number?\",\n                  invoice.status AS \"invoice_status?: InvoiceStatus\"\n           FROM patient_treatment record\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           LEFT JOIN invoice ON invoice.treatment_id = record.treatment_id\n                            AND invoice.status <> 'cancelled'\n           WHERE record.patient_id = $1\n           ORDER BY appointment.starts_at DESC NULLS LAST, record.id DESC",
   "describe": {
     "columns": [
       {
@@ -27,8 +27,8 @@
       },
       {
         "ordinal": 2,
-        "name": "treatment_reason",
-        "type_info": "Text",
+        "name": "treatment_reason: Jsonb<RichText>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
             "table": "patient_treatment",
@@ -109,5 +109,5 @@
       false
     ]
   },
-  "hash": "87e73e707efab6def64b3ae0d5da194fce3f58485c4773023a91089b88e8850b"
+  "hash": "af119530e3fb665c009cabd685033250125b51b2a5fc867aafb7f5ff52162da6"
 }

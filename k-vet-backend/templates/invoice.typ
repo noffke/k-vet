@@ -23,6 +23,38 @@
 // Joins the parts that are actually filled — empty settings must not leave stray separators.
 #let joined(parts, sep: " · ") = parts.filter(part => part != none and part != "").join(sep)
 
+// The vet's formatted text — the reason and the finding of each animal — arrives as blocks
+// (`report.treatment_reason_blocks`, `report.finding_blocks`): paragraphs, and lists whose items
+// are runs of spans with their bold, italic and underline spelt out (docs/templates.md). The
+// text is placed as content, never evaluated, so nothing the vet writes can act as markup.
+#let span-content(span) = {
+  let body = span.text.split("\n").map(part => [#part]).join(linebreak())
+  if span.underline { body = underline(body) }
+  if span.italic { body = emph(body) }
+  if span.bold { body = strong(body) }
+  body
+}
+#let spans-content(spans) = spans.map(span-content).join()
+
+// `label` leads the first paragraph, the way the plain text always followed it; a text that
+// opens with a list puts the label on a line of its own above it. An empty paragraph is a blank
+// line the vet left, so it keeps a little space rather than vanishing.
+#let formatted(label, blocks) = for (index, block) in blocks.enumerate() {
+  if block.kind == "paragraph" {
+    if block.spans.len() == 0 {
+      v(0.6em)
+    } else if index == 0 {
+      par[#label #spans-content(block.spans)]
+    } else {
+      par(spans-content(block.spans))
+    }
+  } else if block.kind == "list" {
+    if index == 0 { par(label) }
+    let items = block.items.map(spans-content)
+    if block.numbered { enum(start: block.start, ..items) } else { list(..items) }
+  }
+}
+
 // The header band is `margin.top - header-ascent` tall, so a page with a letterhead needs a
 // deeper top margin than one without — at 15mm the logo was taller than the band it sat in and
 // ran off the top of the sheet, which is how it came to print cut in half (issues.md 9). A
@@ -217,12 +249,12 @@ Vielen Dank für Ihr Vertrauen!
     #text(weight: "bold")[#report.patient]
     #if report.description != "" [ #text(fill: muted)[(#report.description)]]
     #v(1mm)
-    #if report.treatment_reason != "" [
-      *Vorbericht und Untersuchung:* #report.treatment_reason
+    #if report.treatment_reason_blocks.len() > 0 [
+      #formatted([*Vorbericht und Untersuchung:*], report.treatment_reason_blocks)
       #v(1mm)
     ]
-    #if report.finding != "" [
-      *Therapie und weiteres Vorgehen:* #report.finding
+    #if report.finding_blocks.len() > 0 [
+      #formatted([*Therapie und weiteres Vorgehen:*], report.finding_blocks)
     ]
     #v(3mm)
   ]

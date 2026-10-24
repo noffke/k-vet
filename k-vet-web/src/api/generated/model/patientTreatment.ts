@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { RichText } from './richText';
 
 export interface PatientTreatment {
   id: number;
@@ -17,10 +18,8 @@ export interface PatientTreatment {
      * @nullable
      */
   starts_at?: string | null;
-  /** @nullable */
-  treatment_reason?: string | null;
-  /** @nullable */
-  finding?: string | null;
+  treatment_reason?: null | RichText;
+  finding?: null | RichText;
   /** `true` once the treatment's invoice is accepted: the record reads read-only. */
   frozen: boolean;
   created_at: string;

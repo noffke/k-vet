@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT record.id, record.treatment_id, record.patient_id, record.treatment_reason,\n                  record.finding, record.created_at, record.updated_at,\n                  patient.name AS \"patient_name?\",\n                  appointment.starts_at,\n                  EXISTS (\n                      SELECT 1 FROM invoice\n                      WHERE invoice.treatment_id = record.treatment_id\n                        AND invoice.status IN ('accepted', 'sent', 'submitted')\n                  ) AS \"frozen?\"\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE record.id = $1",
+  "query": "SELECT record.id, record.treatment_id, record.patient_id,\n                  record.treatment_reason AS \"treatment_reason: Jsonb<RichText>\",\n                  record.finding AS \"finding: Jsonb<RichText>\",\n                  record.created_at, record.updated_at,\n                  patient.name AS \"patient_name?\",\n                  appointment.starts_at,\n                  EXISTS (\n                      SELECT 1 FROM invoice\n                      WHERE invoice.treatment_id = record.treatment_id\n                        AND invoice.status IN ('accepted', 'sent', 'submitted')\n                  ) AS \"frozen?\"\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           JOIN treatment ON treatment.id = record.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE record.id = $1",
   "describe": {
     "columns": [
       {
@@ -38,8 +38,8 @@
       },
       {
         "ordinal": 3,
-        "name": "treatment_reason",
-        "type_info": "Text",
+        "name": "treatment_reason: Jsonb<RichText>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
             "table": "patient_treatment",
@@ -49,8 +49,8 @@
       },
       {
         "ordinal": 4,
-        "name": "finding",
-        "type_info": "Text",
+        "name": "finding: Jsonb<RichText>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
             "table": "patient_treatment",
@@ -127,5 +127,5 @@
       null
     ]
   },
-  "hash": "2e1081049065cd5718e019d128428cafb3d0727bcd5d561849243177406cdb03"
+  "hash": "f54c2ffc28f1d98e06b847c2dc1b0e476ead578e42c2f6ba3a673f9fa45abd93"
 }

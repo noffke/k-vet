@@ -29,8 +29,11 @@ or sent again after the fix. Test a change on a throwaway invoice before billing
 customer with it.
 
 Everything reaching a template is **already formatted in German conventions** (`1.234,56 €`,
-`04.05.2026`). Templates place text; they never do arithmetic or formatting. That keeps the money
-rules — AMPreisV, GOT factors, VAT per rate — in one place, where they are unit-tested.
+`04.05.2026`). Templates place text; they never do arithmetic or turn numbers and dates into
+text. That keeps the money rules — AMPreisV, GOT factors, VAT per rate — in one place, where they
+are unit-tested. The one formatting a template does apply is the vet's own: the bold, italic,
+underline and lists of the reason and the finding arrive spelt out, for the template to lay out
+(see *Formatted text* below).
 
 ---
 
@@ -109,8 +112,50 @@ section:
 | --- | --- |
 | `patient` | Animal name. |
 | `description` | e.g. `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333`; empty parts are left out. |
-| `treatment_reason` | Why the animal was seen and what the examination showed — printed under *Vorbericht und Untersuchung*; may be empty. The wire name predates that heading. |
-| `finding` | What was treated and what happens next — printed under *Therapie und weiteres Vorgehen*. Only filled when the invoice was created with that box ticked; otherwise empty. |
+| `treatment_reason_blocks` | Why the animal was seen and what the examination showed, **formatted** — printed under *Vorbericht und Untersuchung*. Blocks as described below; empty when nothing was written. The wire name predates that heading. |
+| `finding_blocks` | What was treated and what happens next, **formatted** — printed under *Therapie und weiteres Vorgehen*. Only filled when the invoice was created with that box ticked; otherwise empty. |
+| `treatment_reason` | The same reason as **plain text**: a line per paragraph and per list item (`• …`, `1. …`), formatting dropped; may be empty. Kept for templates written before formatting. |
+| `finding` | The same finding as plain text, on the same terms. |
+
+#### Formatted text
+
+The reason and the finding carry the vet's formatting — bold, italic, underline, bullet and
+numbered lists one level deep. In `*_blocks` they arrive as a list of blocks, each a paragraph or a
+list, made of **spans**: runs of text with their formatting spelt out.
+
+| Block | Fields |
+| --- | --- |
+| `kind: "paragraph"` | `spans` — the paragraph's runs. Empty for a blank line the vet left between paragraphs; blank lines around the text are already dropped. |
+| `kind: "list"` | `numbered` (bool), `start` (the first number, for a numbered list), `items` — one array of spans per item. |
+
+A span is `text` plus `bold`, `italic` and `underline` (bools). A line break inside a paragraph is
+a span whose text is `"\n"` (or contains one).
+
+The default template lays them out with two helpers — copy them into a custom template rather than
+writing your own:
+
+```typst
+#let span-content(span) = {
+  let body = span.text.split("\n").map(part => [#part]).join(linebreak())
+  if span.underline { body = underline(body) }
+  if span.italic { body = emph(body) }
+  if span.bold { body = strong(body) }
+  body
+}
+#let spans-content(spans) = spans.map(span-content).join()
+```
+
+`formatted(label, blocks)` in the default template builds on them: the label leads the first
+paragraph (or stands on a line of its own above a leading list), lists become `list` and
+`enum(start: …)`. Place `span.text` as content, as above — never `eval` it: it is the vet's
+text, and evaluated it would act as Typst markup.
+
+> **Changed with formatted text.** A template written before the reason and the finding could be
+> formatted keeps working: `treatment_reason` and `finding` are still strings, now the plain text
+> of the formatted ones. It prints them **without** the formatting. To print bold, italic,
+> underline and lists, take the report section and the helpers above from the current default
+> template — in a container, a copy seeded into `/etc/k-vet/templates` on an earlier start is not
+> updated by the entrypoint.
 
 > **Changed with the Patientenbehandlung.** The reason and the finding used to be single
 > invoice-level fields, `invoice.treatment_reason` and `invoice.finding`, because a treatment

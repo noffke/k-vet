@@ -15,7 +15,8 @@ import { BackLink } from '@/components/BackLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
-import { TextAreaField, TextField } from '@/components/ui/field'
+import { TextField } from '@/components/ui/field'
+import { RichTextField } from '@/components/ui/richtext'
 import { useAutoSave } from '@/lib/autosave'
 
 /** One Textbaustein: what it is called, and the text it inserts. */
@@ -79,12 +80,12 @@ export function TextBlockDetailPage() {
           onChange={(event) => autoSave.set({ name: event.target.value || null })}
           onBlur={() => void autoSave.flush()}
         />
-        <TextAreaField
+        {/* Formatted like the texts it is inserted into, and inserted with its formatting. */}
+        <RichTextField
           label={t('field.content')}
-          rows={8}
-          defaultValue={record.content ?? ''}
+          defaultValue={record.content}
           error={autoSave.fieldErrors.content ? t(autoSave.fieldErrors.content ?? '') : undefined}
-          onChange={(event) => autoSave.set({ content: event.target.value || null })}
+          onChange={(content) => autoSave.set({ content })}
           onBlur={() => void autoSave.flush()}
         />
       </section>

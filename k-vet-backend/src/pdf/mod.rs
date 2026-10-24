@@ -15,6 +15,7 @@ use typst_layout::PagedDocument;
 use crate::config::Config;
 use crate::domain::enums::Salutation;
 use crate::domain::money::VatGroup;
+use crate::domain::rich_text::PrintBlock;
 use crate::error::{AppError, AppResult};
 
 /// The template compiled into the binary; the config may point at a file instead.
@@ -85,6 +86,9 @@ pub struct InvoiceBlock {
 }
 
 /// What was treated on one animal, and what was found.
+///
+/// Each text comes twice: formatted (`*_blocks`, what the default template prints) and as
+/// plain text, which is all a template written before formatting existed knows to print.
 #[derive(Debug, Serialize)]
 pub struct PatientReport {
     pub patient: String,
@@ -93,6 +97,9 @@ pub struct PatientReport {
     pub treatment_reason: String,
     /// Empty unless the invoice was created with "Befund aufführen".
     pub finding: String,
+    pub treatment_reason_blocks: Vec<PrintBlock>,
+    /// Empty unless the invoice was created with "Befund aufführen".
+    pub finding_blocks: Vec<PrintBlock>,
 }
 
 /// The billing lines of one animal, under a heading that identifies it.
@@ -365,6 +372,7 @@ pub fn vat_groups_de(groups: &[VatGroup], currency: &str) -> Vec<InvoiceVatGroup
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::domain::rich_text::RichText;
 
     fn dec(value: &str) -> Decimal {
         Decimal::from_str_exact(value).expect("test literal is a decimal")
@@ -603,18 +611,13 @@ mod tests {
                                     Minka (Katze) am 03.05.2026"
                     .to_owned(),
                 reports: vec![
-                    PatientReport {
-                        patient: "Bello".to_owned(),
-                        description: "Hund, Havaneser, Geburtsdatum: 01.01.2021".to_owned(),
-                        treatment_reason: "Routinekontrolle".to_owned(),
-                        finding: "Ohne Befund".to_owned(),
-                    },
-                    PatientReport {
-                        patient: "Minka".to_owned(),
-                        description: "Katze".to_owned(),
-                        treatment_reason: "Impfung".to_owned(),
-                        finding: String::new(),
-                    },
+                    report(
+                        "Bello",
+                        "Hund, Havaneser, Geburtsdatum: 01.01.2021",
+                        formatted_reason(),
+                        Some(formatted_finding()),
+                    ),
+                    report("Minka", "Katze", plain("Impfung"), None),
                 ],
                 patient_groups: vec![
                     PatientGroup {
@@ -685,6 +688,96 @@ mod tests {
             pdf.windows(12).any(|window| window == b"SourceSans3-"),
             "the invoice must set in Source Sans 3, not fall back to the bundled serif"
         );
+    }
+
+    /// A reason the way the editor writes one: bold and italic words, a line break, a blank
+    /// line, and a numbered list that does not start at 1.
+    fn formatted_reason() -> RichText {
+        serde_json::from_value(serde_json::json!({"type": "doc", "content": [
+            {"type": "paragraph", "content": [
+                {"type": "text", "text": "Ohr "},
+                {"type": "text", "text": "gerötet", "marks": [{"type": "bold"}]},
+                {"type": "text", "text": " → Otitis", "marks": [{"type": "italic"}, {"type": "underline"}]},
+                {"type": "hardBreak"},
+                {"type": "text", "text": "seit „drei“ Tagen …"}]},
+            {"type": "paragraph"},
+            {"type": "orderedList", "attrs": {"start": 2}, "content": [
+                {"type": "listItem", "content": [
+                    {"type": "paragraph", "content": [{"type": "text", "text": "spülen"}]}]},
+                {"type": "listItem", "content": [
+                    {"type": "paragraph", "content": [{"type": "text", "text": "½ Tablette"}]}]}]}]}))
+        .expect("a valid document")
+    }
+
+    /// A finding that opens with a bullet list, so the label stands on a line of its own.
+    fn formatted_finding() -> RichText {
+        serde_json::from_value(serde_json::json!({"type": "doc", "content": [
+            {"type": "bulletList", "content": [
+                {"type": "listItem", "content": [
+                    {"type": "paragraph", "content": [{"type": "text", "text": "Ruhe"}]}]}]},
+            {"type": "paragraph", "content": [{"type": "text", "text": "Kontrolle in 7 Tagen"}]}]}))
+        .expect("a valid document")
+    }
+
+    fn plain(text: &str) -> RichText {
+        serde_json::from_value(serde_json::json!({"type": "doc", "content": [
+            {"type": "paragraph", "content": [{"type": "text", "text": text}]}]}))
+        .expect("a valid document")
+    }
+
+    fn report(
+        patient: &str,
+        description: &str,
+        reason: RichText,
+        finding: Option<RichText>,
+    ) -> PatientReport {
+        PatientReport {
+            patient: patient.to_owned(),
+            description: description.to_owned(),
+            treatment_reason: reason.plain_text(),
+            finding: finding
+                .as_ref()
+                .map(RichText::plain_text)
+                .unwrap_or_default(),
+            treatment_reason_blocks: reason.print_blocks(),
+            finding_blocks: finding
+                .as_ref()
+                .map(RichText::print_blocks)
+                .unwrap_or_default(),
+        }
+    }
+
+    /// An operator's copy of the template from before formatting existed reads `treatment_reason`
+    /// and `finding` as strings. They are still there, as plain text, so such a copy keeps
+    /// rendering — without the formatting, but without an error at invoicing time either.
+    #[test]
+    fn a_template_from_before_formatting_still_renders() {
+        let folder = tempfile::tempdir().expect("a temporary folder");
+        let path = folder.path().join("invoice.typ");
+        std::fs::write(
+            &path,
+            r#"#import sys: inputs
+#let data = json(bytes(inputs.data))
+#for report in data.invoice.reports [
+  #if report.treatment_reason != "" [*Vorbericht und Untersuchung:* #report.treatment_reason]
+  #if report.finding != "" [*Therapie und weiteres Vorgehen:* #report.finding]
+]
+"#,
+        )
+        .expect("write the template");
+        let mut config = empty_config();
+        config.invoice.typst_template = Some(path);
+
+        let mut document = minimal_document();
+        document.invoice.reports = vec![report(
+            "Bello",
+            "Hund",
+            formatted_reason(),
+            Some(formatted_finding()),
+        )];
+        let pdf =
+            render_invoice(&config, &document, None, None).expect("the old template compiles");
+        assert!(pdf.starts_with(b"%PDF-"), "output is a PDF");
     }
 
     /// A fresh install has no logo, no bank details and no findings. The template must still

@@ -10,11 +10,13 @@ use axum::routing::{get, patch};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::types::Json as Jsonb;
 use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::double_option;
 use crate::api::patients::PatientFile;
+use crate::domain::rich_text::{self, RichText};
 use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -25,8 +27,10 @@ pub struct PatientTreatment {
     pub patient_name: Option<String>,
     /// The visit's date, for the page's heading — the record has no date of its own.
     pub starts_at: Option<DateTime<Utc>>,
-    pub treatment_reason: Option<String>,
-    pub finding: Option<String>,
+    /// "Vorbericht und Untersuchung", formatted; `null` when nothing is written.
+    pub treatment_reason: Option<RichText>,
+    /// "Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.
+    pub finding: Option<RichText>,
     /// `true` once the treatment's invoice is accepted: the record reads read-only.
     pub frozen: bool,
     pub created_at: DateTime<Utc>,
@@ -35,12 +39,13 @@ pub struct PatientTreatment {
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct PatchPatientTreatment {
+    /// A document without text is stored as `null`, the same as clearing the field.
     #[serde(default, deserialize_with = "double_option")]
-    #[schema(value_type = Option<String>)]
-    pub treatment_reason: Option<Option<String>>,
+    #[schema(value_type = Option<RichText>)]
+    pub treatment_reason: Option<Option<RichText>>,
     #[serde(default, deserialize_with = "double_option")]
-    #[schema(value_type = Option<String>)]
-    pub finding: Option<Option<String>>,
+    #[schema(value_type = Option<RichText>)]
+    pub finding: Option<Option<RichText>>,
 }
 
 #[utoipa::path(
@@ -81,9 +86,9 @@ pub async fn patch_record(
            WHERE id = $1"#,
         id,
         body.treatment_reason.is_some(),
-        body.treatment_reason.flatten(),
+        rich_text::column(body.treatment_reason.flatten()) as Option<Jsonb<RichText>>,
         body.finding.is_some(),
-        body.finding.flatten(),
+        rich_text::column(body.finding.flatten()) as Option<Jsonb<RichText>>,
     )
     .execute(&state.pool)
     .await?;
@@ -123,8 +128,10 @@ pub async fn list_files(
 
 async fn load(state: &AppState, id: i64) -> AppResult<PatientTreatment> {
     let row = sqlx::query!(
-        r#"SELECT record.id, record.treatment_id, record.patient_id, record.treatment_reason,
-                  record.finding, record.created_at, record.updated_at,
+        r#"SELECT record.id, record.treatment_id, record.patient_id,
+                  record.treatment_reason AS "treatment_reason: Jsonb<RichText>",
+                  record.finding AS "finding: Jsonb<RichText>",
+                  record.created_at, record.updated_at,
                   patient.name AS "patient_name?",
                   appointment.starts_at,
                   EXISTS (
@@ -149,8 +156,8 @@ async fn load(state: &AppState, id: i64) -> AppResult<PatientTreatment> {
         patient_id: row.patient_id,
         patient_name: row.patient_name,
         starts_at: row.starts_at,
-        treatment_reason: row.treatment_reason,
-        finding: row.finding,
+        treatment_reason: row.treatment_reason.map(|document| document.0),
+        finding: row.finding.map(|document| document.0),
         frozen: row.frozen.unwrap_or(false),
         created_at: row.created_at,
         updated_at: row.updated_at,

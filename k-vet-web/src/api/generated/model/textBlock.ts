@@ -5,13 +5,19 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { RichText } from './richText';
 
 export interface TextBlock {
   id: number;
   /** @nullable */
   name?: string | null;
-  /** @nullable */
-  content?: string | null;
+  content?: null | RichText;
+  /**
+     * The same text plain — a line per paragraph or list item, formatting dropped — for the
+     * previews in the list and the picker. Derived by the database (migration `0030`).
+     * @nullable
+     */
+  content_text?: string | null;
   archived: boolean;
   draft: boolean;
   missing_fields: string[];

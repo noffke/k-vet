@@ -7,9 +7,9 @@
       "Left": [
         "Int8",
         "Bool",
-        "Text",
+        "Jsonb",
         "Bool",
-        "Text"
+        "Jsonb"
       ]
     },
     "nullable": []

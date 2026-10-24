@@ -4627,6 +4627,17 @@
           "referenced"
         ]
       },
+      "Block": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Paragraph"
+          },
+          {
+            "$ref": "#/components/schemas/List"
+          }
+        ],
+        "description": "What a document is made of: paragraphs and lists, in reading order."
+      },
       "BulkDeleteItems": {
         "type": "object",
         "required": [
@@ -5184,6 +5195,12 @@
           }
         }
       },
+      "DocType": {
+        "type": "string",
+        "enum": [
+          "doc"
+        ]
+      },
       "Drug": {
         "type": "object",
         "required": [
@@ -5435,6 +5452,35 @@
           }
         }
       },
+      "HardBreak": {
+        "type": "object",
+        "description": "A line break inside a paragraph (Shift+Enter).",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/HardBreakType"
+          }
+        }
+      },
+      "HardBreakType": {
+        "type": "string",
+        "enum": [
+          "hardBreak"
+        ]
+      },
+      "Inline": {
+        "oneOf": [
+          {
+            "$ref": "#/components/schemas/Text"
+          },
+          {
+            "$ref": "#/components/schemas/HardBreak"
+          }
+        ],
+        "description": "What a paragraph is made of: runs of text and line breaks."
+      },
       "Invoice": {
         "type": "object",
         "required": [
@@ -5634,6 +5680,80 @@
           }
         }
       },
+      "List": {
+        "type": "object",
+        "description": "A bullet or numbered list. Its items hold paragraphs only — no list inside a list.",
+        "required": [
+          "type",
+          "content"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ListType"
+          },
+          "attrs": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/ListAttrs"
+              }
+            ]
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ListItem"
+            }
+          }
+        }
+      },
+      "ListAttrs": {
+        "type": "object",
+        "properties": {
+          "start": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "The first number of a numbered list; 1 when absent.",
+            "minimum": 0
+          }
+        }
+      },
+      "ListItem": {
+        "type": "object",
+        "required": [
+          "type",
+          "content"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ListItemType"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Paragraph"
+            }
+          }
+        }
+      },
+      "ListItemType": {
+        "type": "string",
+        "enum": [
+          "listItem"
+        ]
+      },
+      "ListType": {
+        "type": "string",
+        "enum": [
+          "bulletList",
+          "orderedList"
+        ]
+      },
       "LoginRequest": {
         "type": "object",
         "required": [
@@ -5764,6 +5884,25 @@
             "type": "string"
           }
         }
+      },
+      "Mark": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/MarkType"
+          }
+        }
+      },
+      "MarkType": {
+        "type": "string",
+        "enum": [
+          "bold",
+          "italic",
+          "underline"
+        ]
       },
       "MoveDirection": {
         "type": "string",
@@ -6034,6 +6173,30 @@
         "enum": [
           "original",
           "subset"
+        ]
+      },
+      "Paragraph": {
+        "type": "object",
+        "required": [
+          "type"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/ParagraphType"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Inline"
+            },
+            "description": "Absent on an empty paragraph — a blank line the vet left."
+          }
+        }
+      },
+      "ParagraphType": {
+        "type": "string",
+        "enum": [
+          "paragraph"
         ]
       },
       "PatchAddressBookEntry": {
@@ -6503,15 +6666,24 @@
         "type": "object",
         "properties": {
           "treatment_reason": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText",
+                "description": "A document without text is stored as `null`, the same as clearing the field."
+              }
             ]
           },
           "finding": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText"
+              }
             ]
           }
         }
@@ -6692,9 +6864,14 @@
             ]
           },
           "content": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText",
+                "description": "A document without text counts as no content: the block stays a draft."
+              }
             ]
           }
         }
@@ -6977,15 +7154,25 @@
             "description": "The visit's date, for the page's heading — the record has no date of its own."
           },
           "treatment_reason": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText",
+                "description": "\"Vorbericht und Untersuchung\", formatted; `null` when nothing is written."
+              }
             ]
           },
           "finding": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText",
+                "description": "\"Therapie und weiteres Vorgehen\", formatted; `null` when nothing is written."
+              }
             ]
           },
           "frozen": {
@@ -7037,7 +7224,8 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The reason as plain text, formatting dropped — the list shows it on one line."
           },
           "invoice_number": {
             "type": [
@@ -7385,6 +7573,25 @@
           }
         }
       },
+      "RichText": {
+        "type": "object",
+        "description": "A formatted text, as stored and as the editor reads and writes it.",
+        "required": [
+          "type",
+          "content"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/DocType"
+          },
+          "content": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Block"
+            }
+          }
+        }
+      },
       "Salutation": {
         "type": "string",
         "description": "Form of address; `familie` addresses a household.",
@@ -7727,6 +7934,27 @@
           "service"
         ]
       },
+      "Text": {
+        "type": "object",
+        "required": [
+          "type",
+          "text"
+        ],
+        "properties": {
+          "type": {
+            "$ref": "#/components/schemas/TextType"
+          },
+          "text": {
+            "type": "string"
+          },
+          "marks": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Mark"
+            }
+          }
+        }
+      },
       "TextBlock": {
         "type": "object",
         "required": [
@@ -7749,10 +7977,22 @@
             ]
           },
           "content": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText",
+                "description": "The block's formatted text, inserted as it is; `null` while none is written."
+              }
+            ]
+          },
+          "content_text": {
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`)."
           },
           "archived": {
             "type": "boolean"
@@ -7775,6 +8015,12 @@
             "format": "date-time"
           }
         }
+      },
+      "TextType": {
+        "type": "string",
+        "enum": [
+          "text"
+        ]
       },
       "Treatment": {
         "type": "object",
@@ -8076,15 +8322,23 @@
             ]
           },
           "treatment_reason": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText"
+              }
             ]
           },
           "finding": {
-            "type": [
-              "string",
-              "null"
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/RichText"
+              }
             ]
           }
         }

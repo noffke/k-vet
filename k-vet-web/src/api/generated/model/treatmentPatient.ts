@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { RichText } from './richText';
 
 export interface TreatmentPatient {
   /** The Patientenbehandlung — what positions and files hang on. */
@@ -14,8 +15,6 @@ export interface TreatmentPatient {
   customer_id: number;
   /** @nullable */
   warning_remark?: string | null;
-  /** @nullable */
-  treatment_reason?: string | null;
-  /** @nullable */
-  finding?: string | null;
+  treatment_reason?: null | RichText;
+  finding?: null | RichText;
 }

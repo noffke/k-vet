@@ -42,8 +42,7 @@ test.describe('text blocks', () => {
     await reason.fill('AnfangEnde')
     // Put the caret between the two words; the picker steals focus, so the position has to
     // survive the dialog opening.
-    await reason.evaluate((element: HTMLTextAreaElement) => element.setSelectionRange(6, 6))
-    await reason.dispatchEvent('select')
+    for (let step = 0; step < 'Ende'.length; step += 1) await reason.press('ArrowLeft')
 
     await page
       .getByRole('button', { name: 'Textbaustein einfügen' })
@@ -52,15 +51,17 @@ test.describe('text blocks', () => {
     await page.getByPlaceholder('Name oder Inhalt suchen …').fill(blockName)
     await page.getByRole('button', { name: new RegExp(blockName) }).click()
 
-    // Landed at the caret, on a line of its own — separated on both sides, so what follows
+    // Landed at the caret, as a paragraph of its own — separated on both sides, so what follows
     // starts fresh (issues.md 3) — and saved without a save button.
-    await expect(reason).toHaveValue(`Anfang\n${blockText}\nEnde`)
+    await expect(reason.locator('p')).toHaveText(['Anfang', blockText, 'Ende'])
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     // And it survives a reload, which is the only proof auto-save actually wrote it.
     await page.reload()
-    await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveValue(
-      `Anfang\n${blockText}\nEnde`,
-    )
+    await expect(page.getByLabel('Vorbericht und Untersuchung').locator('p')).toHaveText([
+      'Anfang',
+      blockText,
+      'Ende',
+    ])
   })
 })

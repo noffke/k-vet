@@ -80,6 +80,22 @@ export async function pdfText(bytes: Buffer): Promise<string> {
 }
 
 /**
+ * The font faces a PDF embeds, by PostScript name (poppler's pdffonts) — without the subset tag
+ * in front and the encoding Typst appends (`-Identity-H`).
+ */
+export async function pdfFonts(bytes: Buffer): Promise<string[]> {
+  const dir = await mkdtemp(join(tmpdir(), 'kvet-pdf-'))
+  const file = join(dir, 'invoice.pdf')
+  await writeFile(file, bytes)
+  const { stdout } = await run('pdffonts', [file])
+  return stdout
+    .split('\n')
+    .slice(2)
+    .map((line) => line.split(/\s+/)[0]?.replace(/^[A-Z]{6}\+/, '').replace(/-Identity-H$/, '') ?? '')
+    .filter((name) => name !== '')
+}
+
+/**
  * A page that scrolls sideways is a layout bug on a phone — and it also shrinks Chrome's
  * page scale, which moves the fixed tab bar out of the viewport. Checked on every
  * navigation so no screen can regress unnoticed (Constitution III).

@@ -7,4 +7,5 @@ pub mod files;
 pub mod giro;
 pub mod invoice_number;
 pub mod money;
+pub mod rich_text;
 pub mod stock;

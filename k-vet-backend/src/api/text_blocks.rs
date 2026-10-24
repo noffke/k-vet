@@ -9,18 +9,24 @@ use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use serde::{Deserialize, Serialize};
+use sqlx::types::Json as Jsonb;
 use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option};
 use crate::domain::draft::{missing_fields, recompute_draft};
+use crate::domain::rich_text::{self, RichText};
 use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Serialize, ToSchema)]
 pub struct TextBlock {
     pub id: i64,
     pub name: Option<String>,
-    pub content: Option<String>,
+    /// The block's formatted text, inserted as it is; `null` while none is written.
+    pub content: Option<RichText>,
+    /// The same text plain — a line per paragraph or list item, formatting dropped — for the
+    /// previews in the list and the picker. Derived by the database (migration `0030`).
+    pub content_text: Option<String>,
     pub archived: bool,
     pub draft: bool,
     pub missing_fields: Vec<String>,
@@ -33,23 +39,21 @@ pub struct PatchTextBlock {
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<String>)]
     pub name: Option<Option<String>>,
+    /// A document without text counts as no content: the block stays a draft.
     #[serde(default, deserialize_with = "double_option")]
-    #[schema(value_type = Option<String>)]
-    pub content: Option<Option<String>>,
+    #[schema(value_type = Option<RichText>)]
+    pub content: Option<Option<RichText>>,
 }
 
 /// Trims to `None`, so a field the vet blanked out is absent rather than an empty string.
-fn blank_to_null(value: &Option<Option<String>>) -> Option<String> {
+fn blank_to_null(value: Option<String>) -> Option<String> {
     value
-        .as_ref()
-        .and_then(|inner| inner.as_ref())
-        .map(|text| text.trim())
+        .map(|text| text.trim().to_owned())
         .filter(|text| !text.is_empty())
-        .map(str::to_owned)
 }
 
-fn block_missing_fields(name: &Option<String>, content: &Option<String>) -> Vec<String> {
-    missing_fields(&[("name", name.is_some()), ("content", content.is_some())])
+fn block_missing_fields(has_name: bool, has_content: bool) -> Vec<String> {
+    missing_fields(&[("name", has_name), ("content", has_content)])
         .into_iter()
         .map(str::to_owned)
         .collect()
@@ -70,12 +74,13 @@ pub async fn list(
     // Content is searched alongside the name: the vet remembers the wording of a block long
     // before they remember what they called it.
     let rows = sqlx::query!(
-        r#"SELECT id, name, content, archived, draft, created_at, updated_at
+        r#"SELECT id, name, content AS "content: Jsonb<RichText>", content_text, archived, draft,
+                  created_at, updated_at
            FROM text_block
            WHERE ($2 OR NOT archived)
              AND ($1::text IS NULL
                   OR name ILIKE '%' || $1 || '%'
-                  OR content ILIKE '%' || $1 || '%')
+                  OR content_text ILIKE '%' || $1 || '%')
            ORDER BY name NULLS LAST, id
            LIMIT $3 OFFSET $4"#,
         query.search(),
@@ -89,10 +94,11 @@ pub async fn list(
     Ok(Json(
         rows.into_iter()
             .map(|row| TextBlock {
-                missing_fields: block_missing_fields(&row.name, &row.content),
+                missing_fields: block_missing_fields(row.name.is_some(), row.content.is_some()),
                 id: row.id,
                 name: row.name,
-                content: row.content,
+                content: row.content.map(|document| document.0),
+                content_text: row.content_text,
                 archived: row.archived,
                 draft: row.draft,
                 created_at: row.created_at,
@@ -147,22 +153,29 @@ pub async fn patch(
 ) -> AppResult<Json<TextBlock>> {
     let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        "SELECT name, content, draft FROM text_block WHERE id = $1 FOR UPDATE",
+        r#"SELECT name IS NOT NULL AS "has_name!", content IS NOT NULL AS "has_content!", draft
+           FROM text_block WHERE id = $1 FOR UPDATE"#,
         id
     )
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::NotFound)?;
 
-    let present = |patched: &Option<Option<String>>, stored: &Option<String>| match patched {
-        Some(value) => value.as_ref().is_some_and(|text| !text.trim().is_empty()),
-        None => stored.is_some(),
-    };
+    let name = body.name.map(blank_to_null);
+    let content = body.content.map(rich_text::column);
     let draft = recompute_draft(
         current.draft,
         &[
-            ("name", present(&body.name, &current.name)),
-            ("content", present(&body.content, &current.content)),
+            (
+                "name",
+                name.as_ref().map_or(current.has_name, Option::is_some),
+            ),
+            (
+                "content",
+                content
+                    .as_ref()
+                    .map_or(current.has_content, Option::is_some),
+            ),
         ],
     )?;
 
@@ -173,10 +186,10 @@ pub async fn patch(
                draft   = $6
            WHERE id = $1"#,
         id,
-        body.name.is_some(),
-        blank_to_null(&body.name),
-        body.content.is_some(),
-        blank_to_null(&body.content),
+        name.is_some(),
+        name.flatten(),
+        content.is_some(),
+        content.flatten() as Option<Jsonb<RichText>>,
         draft,
     )
     .execute(&mut *transaction)
@@ -232,7 +245,8 @@ async fn set_archived(state: &AppState, id: i64, archived: bool) -> AppResult<Js
 
 async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<TextBlock> {
     let row = sqlx::query!(
-        r#"SELECT id, name, content, archived, draft, created_at, updated_at
+        r#"SELECT id, name, content AS "content: Jsonb<RichText>", content_text, archived, draft,
+                  created_at, updated_at
            FROM text_block WHERE id = $1"#,
         id,
     )
@@ -241,10 +255,11 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<TextBlock> {
     .ok_or(AppError::NotFound)?;
 
     Ok(TextBlock {
-        missing_fields: block_missing_fields(&row.name, &row.content),
+        missing_fields: block_missing_fields(row.name.is_some(), row.content.is_some()),
         id: row.id,
         name: row.name,
-        content: row.content,
+        content: row.content.map(|document| document.0),
+        content_text: row.content_text,
         archived: row.archived,
         draft: row.draft,
         created_at: row.created_at,

@@ -15,8 +15,10 @@ layouts are first-class — not one design squeezed onto a phone.
 
 - **Appointments and treatments** — an appointment holds one or more treatments; each animal's
   record carries the Vorbericht, the Therapie and the billed lines, in the order the vet wants
-  them. **Textbausteine** are a library of named snippets that drop into either text at the
-  cursor, so the sentences that repeat every visit are not retyped on a phone.
+  them. Both texts take bold, italic, underline and lists, with typography as you type
+  (`->` becomes `→`), and the invoice prints them that way. **Textbausteine** are a library of
+  named snippets, formatted too, that drop into either text at the cursor, so the sentences that
+  repeat every visit are not retyped on a phone.
 - **Pharmacy** — drugs with original and subset packagings, lot-based stock with FEFO
   dispensing, stocktakes that book the difference, and an append-only movement history.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV

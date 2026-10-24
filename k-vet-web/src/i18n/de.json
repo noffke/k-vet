@@ -493,6 +493,14 @@
     "searchPlaceholder": "Name oder Inhalt suchen …",
     "title": "Textbausteine"
   },
+  "richText": {
+    "toolbar": "Formatierung",
+    "bold": "Fett",
+    "italic": "Kursiv",
+    "underline": "Unterstrichen",
+    "bulletList": "Aufzählung",
+    "orderedList": "Nummerierte Liste"
+  },
   "treatment": {
     "customerRequired": "Bitte zuerst den Kunden des Termins wählen.",
     "onlyPatient": "Das einzige Tier des Kunden bleibt an der Behandlung.",

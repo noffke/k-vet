@@ -4,7 +4,14 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import {
+  doc,
+  seedCustomer,
+  seedDrug,
+  seedPatient,
+  seedService,
+  seedTreatment,
+} from '../fixtures/seed'
 import { signIn } from './helpers'
 
 const run = promisify(execFile)
@@ -70,7 +77,7 @@ test.describe('patient treatments', () => {
     // Helene's tab: her own record and lines — and the same "pro Termin" line, so the vet sees
     // the house call is already entered.
     await page.getByRole('tab', { name: 'Helene' }).click()
-    await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveValue('')
+    await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveText('')
     await picker.fill('Beratung im')
     await page.getByRole('option', { name: /Beratung/ }).first().click()
     await expect(panel.getByLabel('Name')).toHaveCount(2)
@@ -79,7 +86,7 @@ test.describe('patient treatments', () => {
 
     // Back to Eddie: what was typed is still there.
     await page.getByRole('tab', { name: 'Eddie' }).click()
-    await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveValue('Verbandswechsel')
+    await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveText('Verbandswechsel')
 
     // Three lines in all — the visit's one counted once, not per animal.
     const lines = (await (await request.get(`/api/treatments/${treatmentId}/items`)).json()) as {
@@ -157,8 +164,8 @@ test.describe('patient treatments', () => {
       })
       await request.patch(`/api/patient-treatments/${record.id}`, {
         data: {
-          treatment_reason: `Grund ${record.name}`,
-          finding: `Befund ${record.name}`,
+          treatment_reason: doc(`Grund ${record.name}`),
+          finding: doc(`Befund ${record.name}`),
         },
       })
     }

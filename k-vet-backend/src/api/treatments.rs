@@ -11,6 +11,7 @@ use axum::{Json, Router};
 use chrono::{DateTime, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::types::Json as Jsonb;
 use sqlx::{PgConnection, Postgres, Transaction};
 use utoipa::ToSchema;
 
@@ -20,6 +21,7 @@ use crate::api::treatment_items::{self, Attribution, CatalogLine, TreatmentItem}
 use crate::config::TravelExpenseConfig;
 use crate::domain::enums::{InvoiceStatus, TreatmentItemKind};
 use crate::domain::money;
+use crate::domain::rich_text::RichText;
 use crate::domain::stock;
 use crate::error::{AppError, AppResult};
 
@@ -59,8 +61,8 @@ pub struct TreatmentPatient {
     pub name: String,
     pub customer_id: i64,
     pub warning_remark: Option<String>,
-    pub treatment_reason: Option<String>,
-    pub finding: Option<String>,
+    pub treatment_reason: Option<RichText>,
+    pub finding: Option<RichText>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -511,7 +513,9 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
     .ok_or(AppError::NotFound)?;
 
     let patients = sqlx::query!(
-        r#"SELECT record.id, record.treatment_reason, record.finding,
+        r#"SELECT record.id,
+                  record.treatment_reason AS "treatment_reason: Jsonb<RichText>",
+                  record.finding AS "finding: Jsonb<RichText>",
                   patient.id AS patient_id, patient.name, patient.customer_id,
                   patient.warning_remark
            FROM patient_treatment record
@@ -592,8 +596,8 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
                 name: patient.name.unwrap_or_default(),
                 customer_id: patient.customer_id.unwrap_or_default(),
                 warning_remark: patient.warning_remark,
-                treatment_reason: patient.treatment_reason,
-                finding: patient.finding,
+                treatment_reason: patient.treatment_reason.map(|document| document.0),
+                finding: patient.finding.map(|document| document.0),
             })
             .collect(),
         customer_id,

@@ -7,6 +7,23 @@ import { Client } from 'pg'
  * driving another story's UI, so the story specs stay independently runnable.
  */
 
+/**
+ * A formatted text as the editor writes it, one plain paragraph per line — what the API takes
+ * for a reason, a finding or a text block (migration `0030`).
+ */
+export function doc(text: string) {
+  return {
+    type: 'doc',
+    content: text
+      .split('\n')
+      .map((line) =>
+        line === ''
+          ? { type: 'paragraph' }
+          : { type: 'paragraph', content: [{ type: 'text', text: line }] },
+      ),
+  }
+}
+
 /** Logs the request context in; every later call reuses the session cookie. */
 export async function login(request: APIRequestContext): Promise<void> {
   const response = await request.post('/api/auth/login', {

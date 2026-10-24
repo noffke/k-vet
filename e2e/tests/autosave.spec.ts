@@ -39,7 +39,7 @@ test.describe('auto-save', () => {
     await expect(page).toHaveURL(/\/customers$/)
 
     await page.goto(visit)
-    await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveValue('Impfung und Kontrolle')
+    await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveText('Impfung und Kontrolle')
   })
 
   test('an invalid value is not stored and the last valid one stays', async ({ page, request }) => {

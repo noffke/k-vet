@@ -89,7 +89,7 @@ export function TextBlocksPage() {
           </>
         )}
         // The text itself, not a column of it: a block runs to several sentences.
-        rowSubline={(row) => row.content ?? null}
+        rowSubline={(row) => row.content_text ?? null}
         onRowClick={(row) =>
           void navigate({ to: '/text-blocks/$id', params: { id: String(row.id) } })
         }

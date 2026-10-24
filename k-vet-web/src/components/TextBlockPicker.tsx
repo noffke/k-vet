@@ -60,7 +60,7 @@ export function TextBlockPicker({ open, onOpenChange, onPick }: TextBlockPickerP
             >
               <span className="block text-sm font-medium text-ink">{block.name}</span>
               <span className="mt-0.5 line-clamp-2 block text-xs text-ink-faint">
-                {block.content}
+                {block.content_text}
               </span>
             </button>
           </li>

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { beforeAll, describe, expect, it } from 'vitest'
-import { autoGrow, TextAreaField } from '@/components/ui/field'
+import { TextAreaField } from '@/components/ui/field'
 
 /**
  * jsdom lays nothing out, so `scrollHeight` is 0 for everything and the component would look
@@ -42,32 +42,5 @@ describe('TextAreaField', () => {
     await user.clear(field)
     // Collapsing first is what lets it come back down; without it the box only ever grows.
     expect(Number.parseInt(field.style.height, 10)).toBeLessThan(Number.parseInt(grown, 10))
-  })
-
-  it('resizes for a value written straight onto the element', () => {
-    // What the text-block picker does: assigning `value` fires no input event, so the field
-    // would otherwise keep its old height and hide the block just inserted.
-    render(<TextAreaField label="Vorbericht" defaultValue="" />)
-    const field = screen.getByLabelText('Vorbericht') as HTMLTextAreaElement
-    const before = field.style.height
-
-    field.value = 'eins\nzwei\ndrei\nvier\nfünf'
-    autoGrow(field)
-
-    expect(Number.parseInt(field.style.height, 10)).toBeGreaterThan(Number.parseInt(before, 10))
-  })
-
-  it('still forwards a ref, which the picker needs to reach the element', () => {
-    let node: HTMLTextAreaElement | null = null
-    render(
-      <TextAreaField
-        label="Befund"
-        defaultValue=""
-        ref={(element) => {
-          node = element
-        }}
-      />,
-    )
-    expect(node).toBe(screen.getByLabelText('Befund'))
   })
 })

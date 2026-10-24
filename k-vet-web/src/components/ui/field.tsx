@@ -1,18 +1,17 @@
 import type {
   InputHTMLAttributes,
   ReactNode,
-  Ref,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
-import { useCallback, useId, useLayoutEffect, useRef } from 'react'
+import { useId, useLayoutEffect, useRef } from 'react'
 import { cn } from '@/lib/utils'
 
 const controlClasses =
   'w-full rounded-control border border-line-strong bg-surface px-3 py-2 text-ink ' +
   'placeholder:text-ink-faint min-h-11 sm:min-h-9 disabled:bg-sunken disabled:text-ink-faint'
 
-const invalidClasses = 'border-danger bg-danger/5'
+export const invalidClasses = 'border-danger bg-danger/5'
 
 /**
  * A value that is not wrong, only not there yet — softer than {@link invalidClasses}, which
@@ -22,6 +21,12 @@ const warningClasses = 'border-rust bg-rust-soft/40'
 
 interface FieldShellProps {
   label: string
+  /**
+   * The control's id, for a control that has to know it before rendering — the rich-text
+   * editor, which is not a form control and is labelled through `aria-labelledby` with the
+   * label's id, `${id}-label`. Generated when absent.
+   */
+  id?: string | undefined
   error?: string | undefined
   /** Not-yet-filled rather than wrong: shown below the control, quieter than `error`. */
   warning?: string | undefined
@@ -31,11 +36,20 @@ interface FieldShellProps {
 }
 
 /** Label, control and field-level error — the one shape every form field uses. */
-export function Field({ label, error, warning, hint, className, children }: FieldShellProps) {
-  const id = useId()
+export function Field({
+  label,
+  id: given,
+  error,
+  warning,
+  hint,
+  className,
+  children,
+}: FieldShellProps) {
+  const generated = useId()
+  const id = given ?? generated
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <label htmlFor={id} className="text-xs font-semibold text-ink-soft">
+      <label id={`${id}-label`} htmlFor={id} className="text-xs font-semibold text-ink-soft">
         {label}
       </label>
       {children(id)}
@@ -92,21 +106,10 @@ export type TextAreaFieldProps = Omit<TextareaHTMLAttributes<HTMLTextAreaElement
   error?: string | undefined
   hint?: string | undefined
   wrapperClassName?: string | undefined
-  /**
-   * React 19 hands `ref` through as an ordinary prop, and it is spread onto the textarea below.
-   * Declared because `TextareaHTMLAttributes` does not carry it — the text-block picker needs
-   * the element to insert at the caret.
-   */
-  ref?: Ref<HTMLTextAreaElement> | undefined
 }
 
-/**
- * Sizes a textarea to its content, up to the cap the class list sets.
- *
- * Exported because a field written to directly — the text-block picker assigns `value` and no
- * input event follows — has to say so; everything typed goes through `onInput` below.
- */
-export function autoGrow(element: HTMLTextAreaElement | null) {
+/** Sizes a textarea to its content, up to the cap the class list sets. */
+function autoGrow(element: HTMLTextAreaElement | null) {
   if (!element) return
   // Collapse first: without this the box can only ever get taller, never shorter again.
   element.style.height = 'auto'
@@ -119,20 +122,10 @@ export function TextAreaField({
   hint,
   className,
   wrapperClassName,
-  ref,
   onInput,
   ...props
 }: TextAreaFieldProps) {
   const inner = useRef<HTMLTextAreaElement | null>(null)
-
-  const attach = useCallback(
-    (node: HTMLTextAreaElement | null) => {
-      inner.current = node
-      if (typeof ref === 'function') ref(node)
-      else if (ref) ref.current = node
-    },
-    [ref],
-  )
 
   // After every render, so a record arriving from the server opens at its full height rather
   // than three rows with the rest hidden.
@@ -156,7 +149,7 @@ export function TextAreaField({
             className,
           )}
           {...props}
-          ref={attach}
+          ref={inner}
           onInput={(event) => {
             autoGrow(event.currentTarget)
             onInput?.(event)

@@ -705,16 +705,16 @@ async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
     app.patch(
         &format!("/api/patient-treatments/{eddies_record}"),
         json!({
-            "treatment_reason": "Vorstellung zum Verbandswechsel.",
-            "finding": "Allgemeinbefinden: gut. Wunde sauber und trocken.",
+            "treatment_reason": common::doc("Vorstellung zum Verbandswechsel."),
+            "finding": common::doc("Allgemeinbefinden: gut. Wunde sauber und trocken."),
         }),
     )
     .await;
     app.patch(
         &format!("/api/patient-treatments/{helenes_record}"),
         json!({
-            "treatment_reason": "Ohrenkontrolle.",
-            "finding": "Otitis externa beidseitig, behandelt.",
+            "treatment_reason": common::doc("Ohrenkontrolle."),
+            "finding": common::doc("Otitis externa beidseitig, behandelt."),
         }),
     )
     .await;

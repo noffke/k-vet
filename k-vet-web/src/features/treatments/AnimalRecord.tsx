@@ -15,7 +15,7 @@ import {
 import type { Attachment, PatientTreatment, TextBlock } from '@/api/generated/model'
 import { TextBlockPicker } from '@/components/TextBlockPicker'
 import { Button } from '@/components/ui/button'
-import { autoGrow, TextAreaField } from '@/components/ui/field'
+import { RichTextField, type RichTextHandle } from '@/components/ui/richtext'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import type { SaveStatus } from '@/lib/saveState'
@@ -42,12 +42,11 @@ export function AnimalRecord({
   const { date } = useLocaleFormat()
   const fileInput = useRef<HTMLInputElement>(null)
 
-  // The two textareas are uncontrolled (`defaultValue`), so inserting is done on the element
-  // itself. The caret has to be remembered as it moves: opening the picker takes focus away,
-  // and by the time a block is chosen the selection is gone (issues.md 11).
-  const reasonInput = useRef<HTMLTextAreaElement>(null)
-  const findingInput = useRef<HTMLTextAreaElement>(null)
-  const caret = useRef<Record<TextField, number | null>>({ treatment_reason: null, finding: null })
+  // The two editors are uncontrolled, so a block is inserted through the editor itself. It
+  // keeps its selection while the picker has the focus, so the block lands where the caret was
+  // (issues.md 11).
+  const reasonEditor = useRef<RichTextHandle>(null)
+  const findingEditor = useRef<RichTextHandle>(null)
   const [pickerFor, setPickerFor] = useState<TextField | null>(null)
 
   const record = useGetPatientTreatment(recordId)
@@ -79,44 +78,16 @@ export function AnimalRecord({
   const current = record.data
 
   /**
-   * Drops a block's text in at the caret, or at the end when the field was never focused.
-   *
-   * Written straight onto the element and then handed to auto-save: the field is uncontrolled,
-   * so React will not re-render it from state, and an `onChange` is not fired by assigning
-   * `value`.
+   * Puts a block in at the caret, or at the end when the field was never focused, as
+   * paragraphs of their own with the caret on the line after them (issues.md 3). The editor
+   * reports the change like anything typed; it is saved at once rather than after the pause.
    */
   const insertBlock = (field: TextField, block: TextBlock) => {
-    const element = field === 'treatment_reason' ? reasonInput.current : findingInput.current
-    const text = block.content ?? ''
     setPickerFor(null)
-    if (!element || text === '') return
-
-    const at = caret.current[field] ?? element.value.length
-    const before = element.value.slice(0, at)
-    const after = element.value.slice(at)
-    // A block is a paragraph, not a word: separate it from text it lands next to, on both
-    // sides (issues.md 3). The trailing newline is what the vet asked for — after inserting,
-    // the caret sits on a fresh line, ready for the next block or for typing.
-    const lead = before !== '' && !before.endsWith('\n') ? '\n' : ''
-    const trail = text.endsWith('\n') ? '' : '\n'
-    const insert = lead + text + trail
-    element.value = before + insert + after
-
-    const caretAfter = at + insert.length
-    caret.current[field] = caretAfter
-    element.focus()
-    element.setSelectionRange(caretAfter, caretAfter)
-    // Assigning `value` fires no input event, so the field would keep the height it had and
-    // hide the block that was just put in it.
-    autoGrow(element)
-
-    autoSave.set({ [field]: element.value || null })
+    if (!block.content) return
+    const editor = field === 'treatment_reason' ? reasonEditor.current : findingEditor.current
+    editor?.insert(block.content)
     void autoSave.flush()
-  }
-
-  /** Remembers where the caret is, for as long as the field still knows. */
-  const rememberCaret = (field: TextField) => (event: { currentTarget: HTMLTextAreaElement }) => {
-    caret.current[field] = event.currentTarget.selectionStart
   }
 
   const upload = async (file: File) => {
@@ -134,16 +105,12 @@ export function AnimalRecord({
     <>
       <section className="mt-4 flex flex-col gap-4 rounded-card border border-line bg-surface p-4">
         <div>
-          <TextAreaField
-            ref={reasonInput}
+          <RichTextField
+            ref={reasonEditor}
             label={t('field.treatmentReason')}
-            defaultValue={current.treatment_reason ?? ''}
-            onChange={(event) => autoSave.set({ treatment_reason: event.target.value || null })}
-            onSelect={rememberCaret('treatment_reason')}
-            onBlur={(event) => {
-              rememberCaret('treatment_reason')(event)
-              void autoSave.flush()
-            }}
+            defaultValue={current.treatment_reason}
+            onChange={(treatment_reason) => autoSave.set({ treatment_reason })}
+            onBlur={() => void autoSave.flush()}
           />
           <Button size="small" className="mt-1.5" onClick={() => setPickerFor('treatment_reason')}>
             <NotebookPen className="size-4" />
@@ -151,16 +118,12 @@ export function AnimalRecord({
           </Button>
         </div>
         <div>
-          <TextAreaField
-            ref={findingInput}
+          <RichTextField
+            ref={findingEditor}
             label={t('field.finding')}
-            defaultValue={current.finding ?? ''}
-            onChange={(event) => autoSave.set({ finding: event.target.value || null })}
-            onSelect={rememberCaret('finding')}
-            onBlur={(event) => {
-              rememberCaret('finding')(event)
-              void autoSave.flush()
-            }}
+            defaultValue={current.finding}
+            onChange={(finding) => autoSave.set({ finding })}
+            onBlur={() => void autoSave.flush()}
           />
           <Button size="small" className="mt-1.5" onClick={() => setPickerFor('finding')}>
             <NotebookPen className="size-4" />

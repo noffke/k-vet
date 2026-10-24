@@ -195,6 +195,11 @@ server-state store — no Redux, no context for server data. Adding a page means
 `router.tsx` and an entry in `NAV` in `components/AppLayout.tsx` (desktop rail, phone tab bar,
 overflow sheet).
 
+- `components/ui/richtext.tsx` + `lib/richText.ts` — the formatted texts (reason, finding, text
+  blocks): TipTap with exactly the schema `domain/rich_text.rs` accepts (bold/italic/underline,
+  one level of list), German typography input rules, `null` for an emptied editor. Stored as
+  JSONB documents (migration `0030`); the PDF gets them as `*_blocks` plus a plain-text copy for
+  older templates.
 - `lib/autosave.ts` — `useAutoSave` debounces 600 ms and flushes on blur, `visibilitychange`,
   `pagehide` and unmount; it surfaces per-field server errors. Use it for every editable record.
 - `components/DataList.tsx` — one column definition renders a real table on desktop and cards on

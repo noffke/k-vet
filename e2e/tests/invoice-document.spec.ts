@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import { doc, seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { pdfText, signIn } from './helpers'
 
 /**
@@ -88,7 +88,12 @@ test.describe('the invoice document', () => {
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
     const recorded = await request.patch(
       `/api/patient-treatments/${treatment.patients[0].id}`,
-      { data: { treatment_reason: 'Routinekontrolle', finding: 'Kontrolle in vier Wochen' } },
+      {
+        data: {
+          treatment_reason: doc('Routinekontrolle'),
+          finding: doc('Kontrolle in vier Wochen'),
+        },
+      },
     )
     expect(recorded.status()).toBe(200)
 

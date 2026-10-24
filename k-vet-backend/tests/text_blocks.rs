@@ -34,12 +34,46 @@ async fn a_text_block_is_a_draft_until_it_has_a_name_and_a_text(pool: PgPool) {
     let filled = app
         .patch(
             &format!("/api/text-blocks/{id}"),
-            json!({ "content": "Impfung nach Schema, Tier zeigte keine Auffälligkeiten." }),
+            json!({ "content": common::doc("Impfung nach Schema, Tier zeigte keine Auffälligkeiten.") }),
         )
         .await
         .json();
     assert_eq!(filled["draft"], false);
     assert_eq!(filled["missing_fields"], json!([]));
+}
+
+/// A document of empty paragraphs is what an emptied editor sends. It is no text, so it neither
+/// completes a draft nor empties a finished block behind the vet's back.
+#[sqlx::test]
+async fn a_document_without_text_is_no_content(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let id = app.post_empty("/api/text-blocks").await.id();
+    let blank = json!({ "type": "doc", "content": [{ "type": "paragraph" }] });
+
+    let draft = app
+        .patch(
+            &format!("/api/text-blocks/{id}"),
+            json!({ "name": "Impfung", "content": blank }),
+        )
+        .await
+        .json();
+    assert_eq!(draft["draft"], true);
+    assert_eq!(draft["content"], json!(null));
+    assert_eq!(draft["missing_fields"], json!(["content"]));
+
+    app.patch(
+        &format!("/api/text-blocks/{id}"),
+        json!({ "content": common::doc("Impfung nach Schema.") }),
+    )
+    .await;
+    let emptied = app
+        .patch(
+            &format!("/api/text-blocks/{id}"),
+            json!({ "content": blank }),
+        )
+        .await;
+    assert_eq!(emptied.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(emptied.error_fields(), vec!["content"]);
 }
 
 /// The transition is one-way (datamodel.md): a complete record cannot be emptied back out.
@@ -49,7 +83,7 @@ async fn clearing_the_text_of_a_finished_block_is_rejected(pool: PgPool) {
     let id = app.post_empty("/api/text-blocks").await.id();
     app.patch(
         &format!("/api/text-blocks/{id}"),
-        json!({ "name": "Impfung", "content": "Impfung nach Schema." }),
+        json!({ "name": "Impfung", "content": common::doc("Impfung nach Schema.") }),
     )
     .await;
 
@@ -63,7 +97,7 @@ async fn clearing_the_text_of_a_finished_block_is_rejected(pool: PgPool) {
     assert_eq!(cleared.error_fields(), vec!["content"]);
 
     let still_there = app.get(&format!("/api/text-blocks/{id}")).await.json();
-    assert_eq!(still_there["content"], "Impfung nach Schema.");
+    assert_eq!(still_there["content"], common::doc("Impfung nach Schema."));
 }
 
 /// The vet remembers the wording long before they remember what they called it.
@@ -73,7 +107,7 @@ async fn search_covers_the_text_as_well_as_the_name(pool: PgPool) {
     let id = app.post_empty("/api/text-blocks").await.id();
     app.patch(
         &format!("/api/text-blocks/{id}"),
-        json!({ "name": "Impfung", "content": "Tier zeigte keine Auffälligkeiten." }),
+        json!({ "name": "Impfung", "content": common::doc("Tier zeigte keine Auffälligkeiten.") }),
     )
     .await;
 
@@ -94,13 +128,54 @@ async fn search_covers_the_text_as_well_as_the_name(pool: PgPool) {
     assert_eq!(nothing.as_array().map(Vec::len), Some(0));
 }
 
+/// A block is searched by its words, not by how they are stored: a word half in bold is two
+/// runs of text in the document, and still one word to the vet. The list shows the same plain
+/// text, list items on lines of their own.
+#[sqlx::test]
+async fn search_and_preview_read_the_words_not_the_formatting(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let id = app.post_empty("/api/text-blocks").await.id();
+    let content = json!({ "type": "doc", "content": [
+        { "type": "paragraph", "content": [
+            { "type": "text", "text": "Nach" },
+            { "type": "text", "text": "sorge", "marks": [{ "type": "bold" }] },
+        ] },
+        { "type": "bulletList", "content": [
+            { "type": "listItem", "content": [{ "type": "paragraph", "content": [
+                { "type": "text", "text": "Leine", "marks": [{ "type": "underline" }] },
+            ] }] },
+            { "type": "listItem", "content": [{ "type": "paragraph", "content": [
+                { "type": "text", "text": "Kragen" },
+            ] }] },
+        ] },
+    ] });
+    let block = app
+        .patch(
+            &format!("/api/text-blocks/{id}"),
+            json!({ "name": "OP", "content": content }),
+        )
+        .await
+        .json();
+    assert_eq!(
+        block["content"], content,
+        "the formatting is kept as written"
+    );
+    assert_eq!(block["content_text"], "Nachsorge\nLeine\nKragen");
+
+    let found = app.get("/api/text-blocks?q=nachsorge").await.json();
+    assert_eq!(found.as_array().map(Vec::len), Some(1));
+    // The markup is not text: searching for it finds nothing.
+    let markup = app.get("/api/text-blocks?q=bulletList").await.json();
+    assert_eq!(markup.as_array().map(Vec::len), Some(0));
+}
+
 #[sqlx::test]
 async fn archiving_hides_a_block_until_it_is_asked_for(pool: PgPool) {
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/text-blocks").await.id();
     app.patch(
         &format!("/api/text-blocks/{id}"),
-        json!({ "name": "Impfung", "content": "Impfung nach Schema." }),
+        json!({ "name": "Impfung", "content": common::doc("Impfung nach Schema.") }),
     )
     .await;
 

@@ -1485,13 +1485,14 @@ async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
     let patched = app
         .patch(
             &format!("/api/patient-treatments/{record_id}"),
-            json!({ "finding": "Ohne besonderen Befund" }),
+            json!({ "finding": common::doc("Ohne besonderen Befund") }),
         )
         .await
         .json();
-    assert_eq!(patched["finding"], "Ohne besonderen Befund");
+    assert_eq!(patched["finding"], common::doc("Ohne besonderen Befund"));
     assert_eq!(
-        patched["treatment_reason"], "Routinekontrolle",
+        patched["treatment_reason"],
+        common::doc("Routinekontrolle"),
         "untouched fields stay"
     );
 
@@ -1504,7 +1505,7 @@ async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
         .await
         .json();
     assert!(cleared["finding"].is_null());
-    assert_eq!(cleared["treatment_reason"], "Routinekontrolle");
+    assert_eq!(cleared["treatment_reason"], common::doc("Routinekontrolle"));
 }
 
 /// A draft appointment has its treatment too, but what is billed needs a date first.

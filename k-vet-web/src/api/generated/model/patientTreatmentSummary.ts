@@ -21,7 +21,10 @@ export interface PatientTreatmentSummary {
      * @nullable
      */
   starts_at?: string | null;
-  /** @nullable */
+  /**
+     * The reason as plain text, formatting dropped — the list shows it on one line.
+     * @nullable
+     */
   treatment_reason?: string | null;
   /**
      * The visit's invoice, when it has one that was not cancelled.

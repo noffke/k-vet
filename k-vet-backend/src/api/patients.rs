@@ -6,12 +6,14 @@ use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
 use rust_decimal::Decimal;
 use serde::{Deserialize, Serialize};
+use sqlx::types::Json as Jsonb;
 use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option};
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::InvoiceStatus;
+use crate::domain::rich_text::RichText;
 use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -414,6 +416,7 @@ pub struct PatientTreatmentSummary {
     pub appointment_id: i64,
     /// The visit's date; the record has none of its own.
     pub starts_at: Option<DateTime<Utc>>,
+    /// The reason as plain text, formatting dropped — the list shows it on one line.
     pub treatment_reason: Option<String>,
     /// The visit's invoice, when it has one that was not cancelled.
     pub invoice_number: Option<String>,
@@ -435,7 +438,8 @@ pub async fn list_treatments(
     // A cancelled invoice is history, not what this visit was billed under — the same rule the
     // treatment page applies (`api::invoices`), so the two cannot disagree about it.
     let rows = sqlx::query!(
-        r#"SELECT record.id, record.treatment_id, record.treatment_reason,
+        r#"SELECT record.id, record.treatment_id,
+                  record.treatment_reason AS "treatment_reason: Jsonb<RichText>",
                   appointment.id AS appointment_id, appointment.starts_at,
                   invoice.invoice_number AS "invoice_number?",
                   invoice.status AS "invoice_status?: InvoiceStatus"
@@ -458,7 +462,7 @@ pub async fn list_treatments(
                 treatment_id: row.treatment_id,
                 appointment_id: row.appointment_id,
                 starts_at: row.starts_at,
-                treatment_reason: row.treatment_reason,
+                treatment_reason: row.treatment_reason.map(|document| document.plain_text()),
                 invoice_number: row.invoice_number,
                 invoice_status: row.invoice_status,
             })

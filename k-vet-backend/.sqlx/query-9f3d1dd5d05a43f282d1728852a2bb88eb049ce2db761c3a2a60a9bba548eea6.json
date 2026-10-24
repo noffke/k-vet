@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT record.id, record.treatment_reason, record.finding,\n                  patient.id AS patient_id, patient.name, patient.customer_id,\n                  patient.warning_remark\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           WHERE record.treatment_id = $1\n           ORDER BY patient.name",
+  "query": "SELECT record.id,\n                  record.treatment_reason AS \"treatment_reason: Jsonb<RichText>\",\n                  record.finding AS \"finding: Jsonb<RichText>\",\n                  patient.id AS patient_id, patient.name, patient.customer_id,\n                  patient.warning_remark\n           FROM patient_treatment record\n           JOIN patient ON patient.id = record.patient_id\n           WHERE record.treatment_id = $1\n           ORDER BY patient.name",
   "describe": {
     "columns": [
       {
@@ -16,8 +16,8 @@
       },
       {
         "ordinal": 1,
-        "name": "treatment_reason",
-        "type_info": "Text",
+        "name": "treatment_reason: Jsonb<RichText>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
             "table": "patient_treatment",
@@ -27,8 +27,8 @@
       },
       {
         "ordinal": 2,
-        "name": "finding",
-        "type_info": "Text",
+        "name": "finding: Jsonb<RichText>",
+        "type_info": "Jsonb",
         "origin": {
           "Table": {
             "table": "patient_treatment",
@@ -96,5 +96,5 @@
       true
     ]
   },
-  "hash": "64e08eb3e227e96e6f9638a8ed794ceded4a629a9719db2962740fce6420c283"
+  "hash": "9f3d1dd5d05a43f282d1728852a2bb88eb049ce2db761c3a2a60a9bba548eea6"
 }

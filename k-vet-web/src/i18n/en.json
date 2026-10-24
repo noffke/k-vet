@@ -493,6 +493,14 @@
     "searchPlaceholder": "Search name or content …",
     "title": "Text blocks"
   },
+  "richText": {
+    "toolbar": "Formatting",
+    "bold": "Bold",
+    "italic": "Italic",
+    "underline": "Underline",
+    "bulletList": "Bulleted list",
+    "orderedList": "Numbered list"
+  },
   "treatment": {
     "customerRequired": "Choose the appointment’s customer first.",
     "onlyPatient": "The customer's only animal stays on the treatment.",

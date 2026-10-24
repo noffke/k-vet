@@ -1633,14 +1633,88 @@ export const GetPatientTreatmentParams = zod.object({
   "id": zod.int()
 })
 
+export const getPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+
+export const getPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const GetPatientTreatmentResponse = zod.object({
   "id": zod.int(),
   "treatment_id": zod.int(),
   "patient_id": zod.int(),
   "patient_name": zod.string().nullish(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date, for the page\'s heading — the record has no date of its own.'),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
+  "treatment_reason": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(getPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('"Vorbericht und Untersuchung", formatted; `null` when nothing is written.')]).optional(),
+  "finding": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(getPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('"Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the treatment\'s invoice is accepted: the record reads read-only.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -1651,10 +1725,90 @@ export const PatchPatientTreatmentParams = zod.object({
   "id": zod.int()
 })
 
+export const patchPatientTreatmentBodyTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+
+export const patchPatientTreatmentBodyFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const PatchPatientTreatmentBody = zod.object({
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
+  "treatment_reason": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(patchPatientTreatmentBodyTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A document without text is stored as `null`, the same as clearing the field.')]).optional(),
+  "finding": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(patchPatientTreatmentBodyFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
 })
+
+export const patchPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+
+export const patchPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
 
 export const PatchPatientTreatmentResponse = zod.object({
   "id": zod.int(),
@@ -1662,8 +1816,76 @@ export const PatchPatientTreatmentResponse = zod.object({
   "patient_id": zod.int(),
   "patient_name": zod.string().nullish(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date, for the page\'s heading — the record has no date of its own.'),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish(),
+  "treatment_reason": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(patchPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('"Vorbericht und Untersuchung", formatted; `null` when nothing is written.')]).optional(),
+  "finding": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(patchPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('"Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.')]).optional(),
   "frozen": zod.boolean().describe('`true` once the treatment\'s invoice is accepted: the record reads read-only.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -1894,7 +2116,7 @@ export const ListPatientTreatmentsOfPatientResponseItem = zod.object({
   "treatment_id": zod.int(),
   "appointment_id": zod.int().describe('The visit\'s appointment, whose page holds the animal\'s record as one of its tabs.'),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date; the record has none of its own.'),
-  "treatment_reason": zod.string().nullish(),
+  "treatment_reason": zod.string().nullish().describe('The reason as plain text, formatting dropped — the list shows it on one line.'),
   "invoice_number": zod.string().nullish().describe('The visit\'s invoice, when it has one that was not cancelled.'),
   "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
 }).describe('One visit this animal was part of, as the patient page lists them.')
@@ -2386,10 +2608,49 @@ export const ListTextBlocksQueryParams = zod.object({
   "offset": zod.int().optional()
 })
 
+export const listTextBlocksResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const ListTextBlocksResponseItem = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.string().nullish(),
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(listTextBlocksResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+  "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
@@ -2399,10 +2660,49 @@ export const ListTextBlocksResponseItem = zod.object({
 export const ListTextBlocksResponse = zod.array(ListTextBlocksResponseItem)
 
 
+export const createTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const CreateTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.string().nullish(),
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(createTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+  "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
@@ -2415,10 +2715,49 @@ export const GetTextBlockParams = zod.object({
   "id": zod.int()
 })
 
+export const getTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const GetTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.string().nullish(),
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(getTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+  "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
@@ -2431,15 +2770,92 @@ export const PatchTextBlockParams = zod.object({
   "id": zod.int()
 })
 
+export const patchTextBlockBodyContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const PatchTextBlockBody = zod.object({
   "name": zod.string().nullish(),
-  "content": zod.string().nullish()
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(patchTextBlockBodyContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A document without text counts as no content: the block stays a draft.')]).optional()
 })
+
+export const patchTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
 
 export const PatchTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.string().nullish(),
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(patchTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+  "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
@@ -2452,10 +2868,49 @@ export const ArchiveTextBlockParams = zod.object({
   "id": zod.int()
 })
 
+export const archiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const ArchiveTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.string().nullish(),
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(archiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+  "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
@@ -2468,10 +2923,49 @@ export const UnarchiveTextBlockParams = zod.object({
   "id": zod.int()
 })
 
+export const unarchiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const UnarchiveTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.string().nullish(),
+  "content": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(unarchiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+  "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
   "missing_fields": zod.array(zod.string()),
@@ -2773,6 +3267,12 @@ export const GetTreatmentParams = zod.object({
   "id": zod.int()
 })
 
+export const getTreatmentResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+
+export const getTreatmentResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const GetTreatmentResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
@@ -2783,8 +3283,76 @@ export const GetTreatmentResponse = zod.object({
   "name": zod.string(),
   "customer_id": zod.int(),
   "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
+  "treatment_reason": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(getTreatmentResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional(),
+  "finding": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(getTreatmentResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
@@ -3039,6 +3607,12 @@ export const AddTreatmentPatientBody = zod.object({
   "patient_id": zod.int()
 })
 
+export const addTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+
+export const addTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const AddTreatmentPatientResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
@@ -3049,8 +3623,76 @@ export const AddTreatmentPatientResponse = zod.object({
   "name": zod.string(),
   "customer_id": zod.int(),
   "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
+  "treatment_reason": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(addTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional(),
+  "finding": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(addTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
@@ -3073,6 +3715,12 @@ export const RemoveTreatmentPatientParams = zod.object({
   "patient_id": zod.int()
 })
 
+export const removeTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+
+export const removeTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+
+
+
 export const RemoveTreatmentPatientResponse = zod.object({
   "id": zod.int(),
   "appointment_id": zod.int(),
@@ -3083,8 +3731,76 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "name": zod.string(),
   "customer_id": zod.int(),
   "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.string().nullish(),
-  "finding": zod.string().nullish()
+  "treatment_reason": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(removeTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional(),
+  "finding": zod.union([zod.null(),zod.object({
+  "type": zod.enum(['doc']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}),zod.object({
+  "type": zod.enum(['bulletList', 'orderedList']),
+  "attrs": zod.union([zod.null(),zod.object({
+  "start": zod.int().min(removeTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+})]).optional(),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['listItem']),
+  "content": zod.array(zod.object({
+  "type": zod.enum(['paragraph']),
+  "content": zod.array(zod.union([zod.object({
+  "type": zod.enum(['text']),
+  "text": zod.string(),
+  "marks": zod.array(zod.object({
+  "type": zod.enum(['bold', 'italic', 'underline'])
+})).optional()
+}),zod.object({
+  "type": zod.enum(['hardBreak'])
+}).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
+}))
+}))
+}).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
+}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
