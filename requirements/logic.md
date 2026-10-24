@@ -96,13 +96,13 @@ timestamp:
   Releasing or sending also says which email template the mail is written with — one of those
   listed in the operator configuration, the first preselected; one whose file is missing is
   offered disabled, naming the file; the delivery records which one it went out with, next to
-  its addresses — and when the mail may go out: "Gleich versenden" (the default — with
-  the next run) or "Später versenden" at a chosen day and hour, offered as tomorrow at 08:00
-  local time. After a euthanasia the vet releases the invoice the same day but does not want it
-  to reach the grieving owners at once. A scheduled mail shows its time on the treatment page,
-  in the invoices list and in the dashboard's "not sent" list, so it does not look forgotten; the
-  send page reopens on that schedule. Every request carries the time — "Gleich" is now — and a
-  time already past simply means the next run.
+  its addresses — and when the mail may go out: "Später versenden" (the default) at a chosen
+  day and hour, offered as tomorrow at 08:00 local time, or "Gleich versenden" with the next
+  run. A scheduled mail shows its time on the treatment page, in the invoices list and in the
+  dashboard's "not sent" list, so it does not look forgotten. The send page reopens on what was
+  chosen for a mail already waiting — its schedule, or "Gleich" when it is due with the next
+  run. Every request carries the time — "Gleich" is now — and a time already past simply means
+  the next run.
 * by post — nothing else can observe a letter going into a postbox, so the vet marks it by hand.
   Only an Accepted invoice can be marked as posted.
 

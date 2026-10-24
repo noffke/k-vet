@@ -59,15 +59,20 @@ interface When {
 const HOURS = Array.from({ length: 24 }, (_, hour) => hour)
 
 /**
- * Where a page opens: on the schedule of a mail already waiting for later — so changing its
- * addresses does not send it now by accident — and otherwise on "Gleich", tomorrow at eight
- * ready for "Später".
+ * Where a page opens: on "Später", tomorrow at eight — the vet's default, so a bill never goes
+ * out the moment it is released unless she says so.
+ *
+ * A mail already waiting reopens on what was chosen for it, so changing its addresses neither
+ * sends a scheduled one now nor holds back one about to go: its own day and hour when that is
+ * still ahead, "Gleich" when it is due with the next run.
  */
 function initialWhen(waiting: QueuedEmail | null | undefined): When {
-  if (waiting && !waiting.last_error && isAhead(waiting.send_after)) {
-    return { later: true, schedule: scheduleOf(waiting.send_after) }
+  if (waiting && !waiting.last_error) {
+    return isAhead(waiting.send_after)
+      ? { later: true, schedule: scheduleOf(waiting.send_after) }
+      : { later: false, schedule: defaultSchedule() }
   }
-  return { later: false, schedule: defaultSchedule() }
+  return { later: true, schedule: defaultSchedule() }
 }
 
 /**
@@ -261,8 +266,8 @@ export function InvoiceMailForm({
         />
       </section>
 
-      {/* When the mail goes out — only when there is one. "Später" is for the kindness of not
-          sending a bill into a fresh loss, while the vet still gets it off her desk today. */}
+      {/* When the mail goes out — only when there is one: released today, sent at the time
+          chosen. */}
       {askTemplate ? (
         <fieldset className="mt-4 flex flex-col gap-1 rounded-card border border-line bg-surface p-4">
           <legend className="text-xs font-semibold text-ink-soft">{t('invoices.template')}</legend>

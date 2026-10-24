@@ -16,7 +16,7 @@ function localDate(moment: Date): string {
   return `${moment.getFullYear()}-${pad(moment.getMonth() + 1)}-${pad(moment.getDate())}`
 }
 
-/** Tomorrow at eight: late enough to be kind, early enough to be the next morning's post. */
+/** Tomorrow at eight: the next morning's post. */
 export function defaultSchedule(now: Date = new Date()): Schedule {
   const tomorrow = new Date(now)
   tomorrow.setDate(tomorrow.getDate() + 1)

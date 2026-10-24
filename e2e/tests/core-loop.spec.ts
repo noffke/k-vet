@@ -118,6 +118,9 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   // Each address is named by its type here too, not only on the send screen: choosing between
   // a private and a practice address is the same decision on both.
   await expect(page.getByText('erika@example.com').first()).toContainText('privat')
+  // "Später" is preselected; the core loop sends at once.
+  await expect(page.getByLabel('Später versenden')).toBeChecked()
+  await page.getByLabel('Gleich versenden').check()
   await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()
 
   await expect(page.getByText('Freigegeben').first()).toBeVisible()

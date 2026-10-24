@@ -9,10 +9,9 @@ import {
 import { navigate, signIn } from './helpers'
 
 /**
- * "Später versenden" (migration 0027): after a euthanasia the vet releases the invoice the same
- * day — documented, written, off her mind — but the owners get it the next morning, not in the
- * middle of their loss. Wherever the invoice shows up unsent, it says that it is waiting on
- * purpose, and until when.
+ * "Später versenden" (migration 0027): the invoice is released the same day, its mail goes out
+ * at the time chosen — by default the next morning. Wherever the invoice shows up unsent, it
+ * says that it is waiting on purpose, and until when.
  */
 test.describe('sending an invoice later', () => {
   test('a release can wait until tomorrow morning, and says so everywhere', async ({
@@ -42,9 +41,8 @@ test.describe('sending an invoice later', () => {
 
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}/invoice/accept`)
-    // "Gleich" unless the vet says otherwise; "Später" offers tomorrow at eight.
-    await expect(page.getByLabel('Gleich versenden')).toBeChecked()
-    await page.getByLabel('Später versenden').check()
+    // "Später" unless the vet says otherwise, offering tomorrow at eight.
+    await expect(page.getByLabel('Später versenden')).toBeChecked()
     await expect(page.getByLabel('Datum', { exact: true })).toHaveValue(day)
     await expect(page.getByLabel('Uhrzeit')).toHaveValue('8')
     await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()

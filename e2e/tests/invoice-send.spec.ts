@@ -14,6 +14,9 @@ test.describe('sending an invoice', () => {
     await page.goto(`/treatments/${invoice.treatmentId}/invoice/send`)
     await expect(page.getByText('erika@example.com').first()).toContainText('privat')
 
+    // Sending again opens on "Später" like releasing does; this one is meant to go now.
+    await expect(page.getByLabel('Später versenden')).toBeChecked()
+    await page.getByLabel('Gleich versenden').check()
     await page.getByRole('button', { name: 'E-Mail senden', exact: true }).click()
     await expect(page.getByText('Die E-Mail wird in den nächsten Minuten versendet.')).toBeVisible()
     // Back on the appointment, which says where the mail is.
@@ -34,6 +37,7 @@ test.describe('sending an invoice', () => {
     await page.goto(`/treatments/${invoice.treatmentId}/invoice/send`)
 
     // The same page as releasing: one more address, and the question whether to keep it.
+    await page.getByLabel('Gleich versenden').check()
     await page.getByLabel('Weitere E-Mail-Adresse').fill(address)
     await page.getByRole('button', { name: 'E-Mail senden', exact: true }).click()
     const dialog = page.getByRole('dialog')
