@@ -211,6 +211,8 @@ text, list it with a name in `config.toml`, and restart.
   is gone when the mail is due, the mail is not sent with another text: it is given up on with
   the reason, on the dashboard and on the appointment, to be retried once the file is back or
   sent again with another template.
+- **The invoice records which template each delivery used**, next to the addresses it went to
+  ("An … · Vorlage: Kurz"); a resend records its own.
 - **`file` is a file name**, not a path: every email template lives in the one folder.
 - Without any `[[invoice.email_templates]]` there is one template, "Standard", from
   `invoice-email.txt`. The former single key `email_template` is still accepted so an older

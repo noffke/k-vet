@@ -64,6 +64,9 @@ pub struct Invoice {
     pub sent_email_to: Vec<String>,
     pub sent_email_cc: Vec<String>,
     pub sent_email_bcc: Vec<String>,
+    /// The email template that delivery was written with, by its configured name — recorded
+    /// with it. Empty for invoices emailed before templates could be chosen.
+    pub sent_email_template: Option<String>,
     /// When the invoice was handed over on paper — the only trace a postal send leaves.
     pub ts_sent_post: Option<DateTime<Utc>>,
     /// The mail waiting in the queue for this invoice, or failing there; empty once it went out
@@ -404,7 +407,7 @@ pub async fn accept(
 /// Refuses a template the mail could not go out with: one not configured, or whose file is not
 /// in the templates folder — the form shows it disabled, but the folder may change meanwhile.
 fn usable_template(state: &AppState, name: &str) -> AppResult<()> {
-    match state.mailer.check_template(Some(name)) {
+    match state.mailer.resolve(Some(name)) {
         Ok(_) => Ok(()),
         Err(TemplateProblem::Unknown(_)) => {
             Err(AppError::field("template", "invoice.unknownTemplate"))
@@ -708,7 +711,7 @@ pub async fn deliver(
 
     // The template chosen when the mail was queued, read now: gone or broken since, the mail
     // is refused with the reason rather than sent with another text.
-    let (subject, body) = match state.mailer.render(&context, template) {
+    let rendered = match state.mailer.render(&context, template) {
         Ok(rendered) => rendered,
         Err(failure) => return Ok(Err(failure)),
     };
@@ -730,8 +733,8 @@ pub async fn deliver(
         recipients,
         cc: &row.cc_emails,
         bcc: &row.bcc_emails,
-        subject: &subject,
-        body: &body,
+        subject: &rendered.subject,
+        body: &rendered.body,
         pdf_name: &format!("Rechnung-{}.pdf", row.invoice_number),
         pdf: pdf_bytes,
     });
@@ -751,19 +754,22 @@ pub async fn deliver(
     // The timestamp is written only after the mail server accepted the message, and it is what
     // moves the invoice on. A resend must not drag a submitted invoice back a stage. With it go
     // the addresses this message actually went to, CC and BCC included — what the screen shows
-    // as "sent to", unlike `email_recipients`, which is only what was last asked for.
+    // as "sent to", unlike `email_recipients`, which is only what was last asked for — and the
+    // template it was written with.
     sqlx::query!(
         "UPDATE invoice
          SET ts_sent_email = now(),
              sent_email_to = $2,
              sent_email_cc = $3,
              sent_email_bcc = $4,
+             sent_email_template = $5,
              status = CASE WHEN status = 'accepted' THEN 'sent'::invoice_status ELSE status END
          WHERE id = $1",
         invoice_id,
         recipients,
         &row.cc_emails,
         &row.bcc_emails,
+        rendered.template,
     )
     .execute(&mut **transaction)
     .await?;
@@ -1341,6 +1347,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
                   invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,
                   invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,
                   invoice.sent_email_to, invoice.sent_email_cc, invoice.sent_email_bcc,
+                  invoice.sent_email_template,
                   invoice.ts_submitted,
                   invoice.ts_cancelled, invoice.created_at
            FROM invoice WHERE invoice.id = $1"#,
@@ -1368,6 +1375,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Invoice> {
         sent_email_to: row.sent_email_to.unwrap_or_default(),
         sent_email_cc: row.sent_email_cc.unwrap_or_default(),
         sent_email_bcc: row.sent_email_bcc.unwrap_or_default(),
+        sent_email_template: row.sent_email_template,
         ts_sent_post: row.ts_sent_post,
         email_queue,
         ts_submitted: row.ts_submitted,

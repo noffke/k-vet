@@ -119,6 +119,15 @@ pub enum TemplateProblem {
     Missing { name: String, path: PathBuf },
 }
 
+/// A mail rendered for sending, with the name of the template it was written with — which the
+/// invoice records once the mail server took it.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct RenderedMail {
+    pub template: String,
+    pub subject: String,
+    pub body: String,
+}
+
 /// Sends invoice emails through the configured SMTP server.
 pub struct Mailer {
     transport: AsyncSmtpTransport<Tokio1Executor>,
@@ -176,8 +185,8 @@ impl Mailer {
     }
 
     /// The template of that name — or, for a mail queued before templates could be chosen, the
-    /// first one — with its file in place.
-    pub fn check_template(&self, name: Option<&str>) -> Result<PathBuf, TemplateProblem> {
+    /// first one — as its configured name and its file, which must be in place.
+    pub fn resolve(&self, name: Option<&str>) -> Result<(String, PathBuf), TemplateProblem> {
         let template = match name {
             Some(name) => self
                 .templates
@@ -191,7 +200,7 @@ impl Mailer {
         };
         let path = self.templates_dir.join(&template.file);
         if is_readable_file(&path) {
-            Ok(path)
+            Ok((template.name.clone(), path))
         } else {
             Err(TemplateProblem::Missing {
                 name: template.name.clone(),
@@ -207,9 +216,9 @@ impl Mailer {
         &self,
         context: &InvoiceMail,
         name: Option<&str>,
-    ) -> Result<(String, String), MailFailure> {
-        let path = self
-            .check_template(name)
+    ) -> Result<RenderedMail, MailFailure> {
+        let (template_name, path) = self
+            .resolve(name)
             .map_err(|problem| MailFailure::refused(problem.to_string()))?;
         let template = std::fs::read_to_string(&path).map_err(|error| {
             MailFailure::refused(format!(
@@ -217,11 +226,16 @@ impl Mailer {
                 path.display()
             ))
         })?;
-        render_template(&template, context).map_err(|error| {
+        let (subject, body) = render_template(&template, context).map_err(|error| {
             MailFailure::refused(format!(
                 "the email template {} does not render: {error}",
                 path.display()
             ))
+        })?;
+        Ok(RenderedMail {
+            template: template_name,
+            subject,
+            body,
         })
     }
 
@@ -442,7 +456,15 @@ mod tests {
         config.invoice.templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
         let mailer = Mailer::from_config(&config).expect("mailer builds");
 
-        let (subject, body) = mailer.render(&context(), None).expect("renders");
+        let RenderedMail {
+            template,
+            subject,
+            body,
+        } = mailer.render(&context(), None).expect("renders");
+        assert_eq!(
+            template, "Standard",
+            "a mail without a choice uses the first"
+        );
 
         let message = mailer
             .build_message(OutgoingInvoice {

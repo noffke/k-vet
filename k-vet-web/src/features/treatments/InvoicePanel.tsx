@@ -99,6 +99,7 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
               to={invoice.data.sent_email_to}
               cc={invoice.data.sent_email_cc}
               bcc={invoice.data.sent_email_bcc}
+              template={invoice.data.sent_email_template}
             />
           ) : null}
           {isUnsent ? (

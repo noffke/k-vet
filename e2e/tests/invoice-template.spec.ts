@@ -1,5 +1,12 @@
 import { expect, test } from '@playwright/test'
-import { seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import {
+  markEmailed,
+  seedAcceptedInvoice,
+  seedCustomer,
+  seedPatient,
+  seedService,
+  seedTreatment,
+} from '../fixtures/seed'
 import { signIn } from './helpers'
 
 /**
@@ -36,5 +43,14 @@ test.describe('choosing the email template', () => {
     // "E-Mail senden" reopens on the template the mail waits with.
     await page.goto(`/treatments/${treatmentId}/invoice/send`)
     await expect(page.getByLabel('Kurz', { exact: true })).toBeChecked()
+  })
+
+  test('a delivered invoice says which template it went out with', async ({ page, request }) => {
+    const invoice = await seedAcceptedInvoice(request)
+    await markEmailed(invoice.invoiceId, 'erika@example.com', 'Kurz')
+
+    await signIn(page)
+    await page.goto(`/treatments/${invoice.treatmentId}`)
+    await expect(page.getByText('An erika@example.com · Vorlage: Kurz')).toBeVisible()
   })
 })

@@ -5528,6 +5528,13 @@
               "type": "string"
             }
           },
+          "sent_email_template": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen."
+          },
           "ts_sent_post": {
             "type": [
               "string",

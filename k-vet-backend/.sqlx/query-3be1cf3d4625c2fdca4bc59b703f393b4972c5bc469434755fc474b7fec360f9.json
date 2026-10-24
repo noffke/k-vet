@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,\n                  invoice.sent_email_to, invoice.sent_email_cc, invoice.sent_email_bcc,\n                  invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
+  "query": "SELECT invoice.id, invoice.treatment_id, invoice.invoice_number, invoice.invoice_date,\n                  invoice.status AS \"status: InvoiceStatus\", invoice.includes_finding,\n                  invoice.note, invoice.pdf_attachment_id, invoice.email_recipients,\n                  invoice.ts_accepted, invoice.ts_sent_email, invoice.ts_sent_post,\n                  invoice.sent_email_to, invoice.sent_email_cc, invoice.sent_email_bcc,\n                  invoice.sent_email_template,\n                  invoice.ts_submitted,\n                  invoice.ts_cancelled, invoice.created_at\n           FROM invoice WHERE invoice.id = $1",
   "describe": {
     "columns": [
       {
@@ -183,6 +183,17 @@
       },
       {
         "ordinal": 15,
+        "name": "sent_email_template",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "sent_email_template"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
         "name": "ts_submitted",
         "type_info": "Timestamptz",
         "origin": {
@@ -193,7 +204,7 @@
         }
       },
       {
-        "ordinal": 16,
+        "ordinal": 17,
         "name": "ts_cancelled",
         "type_info": "Timestamptz",
         "origin": {
@@ -204,7 +215,7 @@
         }
       },
       {
-        "ordinal": 17,
+        "ordinal": 18,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -238,8 +249,9 @@
       true,
       true,
       true,
+      true,
       false
     ]
   },
-  "hash": "70fc155c4b1c4966cb3a4255a2f5a259631ac4b615c99df01fc65a01496a91d4"
+  "hash": "3be1cf3d4625c2fdca4bc59b703f393b4972c5bc469434755fc474b7fec360f9"
 }

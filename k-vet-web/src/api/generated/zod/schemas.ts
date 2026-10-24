@@ -954,6 +954,7 @@ export const ListInvoicesResponseItem = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -1008,6 +1009,7 @@ export const GetInvoiceResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -1058,6 +1060,7 @@ export const AcceptInvoiceResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -1102,6 +1105,7 @@ export const CancelInvoiceResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -1146,6 +1150,7 @@ export const MarkInvoicePostedResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -1203,6 +1208,7 @@ export const SendInvoiceResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -1247,6 +1253,7 @@ export const SubmitInvoiceResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),
@@ -2864,6 +2871,7 @@ export const CreateInvoiceResponse = zod.object({
   "sent_email_to": zod.array(zod.string()).describe('Where the email of `ts_sent_email` actually went. Empty until a mail was accepted by the\nmail server; CC/BCC are unknown for invoices sent before this was recorded.'),
   "sent_email_cc": zod.array(zod.string()),
   "sent_email_bcc": zod.array(zod.string()),
+  "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
   "email_queue": zod.union([zod.null(),zod.object({
   "id": zod.int(),

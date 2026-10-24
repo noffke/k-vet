@@ -36,6 +36,12 @@ export interface Invoice {
   sent_email_cc: string[];
   sent_email_bcc: string[];
   /**
+     * The email template that delivery was written with, by its configured name — recorded
+     * with it. Empty for invoices emailed before templates could be chosen.
+     * @nullable
+     */
+  sent_email_template?: string | null;
+  /**
      * When the invoice was handed over on paper — the only trace a postal send leaves.
      * @nullable
      */

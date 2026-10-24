@@ -417,6 +417,11 @@ async fn the_mail_goes_out_with_the_template_chosen(pool: PgPool) {
     );
 
     assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(
+        invoice(&app, invoice_id).await["sent_email_template"],
+        "Kurz",
+        "the delivery records the text it went out with"
+    );
     let messages = mail.messages.lock().expect("messages").clone();
     assert_eq!(messages.len(), 1);
     assert!(
@@ -489,4 +494,61 @@ async fn a_template_file_gone_since_queueing_refuses_the_mail(pool: PgPool) {
         refused["email_queue"]["last_error"]
     );
     assert!(mail.delivered().is_empty());
+}
+
+/// The invoice records which template each delivery used — the one actually rendered: the first
+/// for a mail queued before there was a choice, nothing for an attempt that failed, and the
+/// latest on a resend, as the addresses are.
+#[sqlx::test]
+async fn the_delivery_records_the_template_it_was_written_with(pool: PgPool) {
+    let mail = MailServer::start();
+    mail.refuse();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    sqlx::query("UPDATE mail_queue SET template = NULL")
+        .execute(&pool)
+        .await
+        .expect("a mail queued before templates could be chosen");
+
+    assert_eq!(run(&app).await.failed, 1);
+    assert!(
+        invoice(&app, invoice_id).await["sent_email_template"].is_null(),
+        "nothing went out, nothing is recorded"
+    );
+
+    mail.accepting
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let id = invoice(&app, invoice_id).await["email_queue"]["id"].clone();
+    app.post_empty(&format!("/api/mail-queue/{id}/retry")).await;
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(
+        invoice(&app, invoice_id).await["sent_email_template"],
+        "Standard",
+        "no choice means the first template, and that is what is recorded"
+    );
+
+    let resent = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({
+                "recipient_emails": ["kundin@example.com"],
+                "send_at": Utc::now(),
+                "template": "Kurz"
+            }),
+        )
+        .await;
+    assert_eq!(resent.status, StatusCode::OK);
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(
+        invoice(&app, invoice_id).await["sent_email_template"],
+        "Kurz"
+    );
+
+    // A template only goes with an email delivery.
+    let posted_only = written_invoice(&app, &pool).await;
+    let refused = sqlx::query("UPDATE invoice SET sent_email_template = 'Kurz' WHERE id = $1")
+        .bind(posted_only)
+        .execute(&pool)
+        .await;
+    assert!(refused.is_err(), "no template without an email delivery");
 }

@@ -261,3 +261,26 @@ export async function seedFailedMail(invoiceId: number, address: string): Promis
     await client.end()
   }
 }
+
+/**
+ * Records `invoiceId` as emailed with `template`, as a delivery would — written straight into
+ * the database, since the suite has no mail server for the queue to deliver to.
+ */
+export async function markEmailed(invoiceId: number, address: string, template: string) {
+  const client = new Client({
+    connectionString: process.env.DATABASE_URL ?? 'postgres://kvet:kvet@localhost:5432/kvet_e2e',
+  })
+  await client.connect()
+  try {
+    await client.query(
+      `UPDATE invoice
+          SET status = 'sent', ts_sent_email = now(), sent_email_to = ARRAY[$2],
+              sent_email_template = $3
+        WHERE id = $1`,
+      [invoiceId, address, template],
+    )
+  } finally {
+    await client.end()
+  }
+}
+

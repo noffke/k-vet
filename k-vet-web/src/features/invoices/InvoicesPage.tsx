@@ -108,7 +108,7 @@ export function InvoicesPage() {
           >
             {t(`invoices.status_${row.status}`)}
           </span>
-          <SentTo to={row.sent_email_to} />
+          <SentTo to={row.sent_email_to} template={row.sent_email_template} />
           {/* Released and waiting on purpose — not to be marked "Per Post versendet" by
               mistake. Waiting and failed mails stay off the list: the appointment and the
               dashboard say those. */}

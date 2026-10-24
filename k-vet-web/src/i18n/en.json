@@ -308,6 +308,7 @@
     "sentByEmail": "Sent by e-mail",
     "sentByPost": "Sent by post",
     "sentCc": "CC {{recipients}}",
+    "sentTemplate": "Template: {{name}}",
     "sentTo": "To {{recipients}}",
     "showCancelled": "Show cancelled",
     "status": "Status",

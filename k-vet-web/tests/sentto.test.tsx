@@ -24,6 +24,14 @@ describe('SentTo', () => {
     ).toBeInTheDocument()
   })
 
+  it('names the template the mail was written with, last', () => {
+    render(<SentTo to={['kundin@example.com']} cc={['buchhaltung@example.com']} template="Kurz" />)
+
+    expect(
+      screen.getByText('An kundin@example.com · CC buchhaltung@example.com · Vorlage: Kurz'),
+    ).toBeInTheDocument()
+  })
+
   it('leaves out CC and BCC that were not used', () => {
     render(<SentTo to={['kundin@example.com']} />)
 

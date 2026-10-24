@@ -1,0 +1,18 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE invoice\n         SET ts_sent_email = now(),\n             sent_email_to = $2,\n             sent_email_cc = $3,\n             sent_email_bcc = $4,\n             sent_email_template = $5,\n             status = CASE WHEN status = 'accepted' THEN 'sent'::invoice_status ELSE status END\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "TextArray",
+        "TextArray",
+        "TextArray",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3b99532edc6c477481dbca2d74940d165f41744f18200e1670366c4113bf7fc3"
+}

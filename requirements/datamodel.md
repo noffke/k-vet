@@ -204,6 +204,8 @@ Fields:
 * Timestamp Sent by Email (optional)
 * Sent To / CC / BCC (optional) — the addresses the email actually went to, recorded together
   with the timestamp once the mail server accepted it; shown on the invoice as "sent to"
+* Sent With Template (optional) — the email template that delivery was written with, recorded
+  with the timestamp; empty for invoices emailed before templates could be chosen
 * Timestamp Sent by Post (optional)
 * Relation: 0..1 Mail Queue entry — the mail waiting to go out, or failing
 * Timestamp Submitted to Bookkeeping (optional)

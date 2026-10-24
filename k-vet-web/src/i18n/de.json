@@ -308,6 +308,7 @@
     "sentByEmail": "Per E-Mail versendet",
     "sentByPost": "Per Post versendet",
     "sentCc": "CC {{recipients}}",
+    "sentTemplate": "Vorlage: {{name}}",
     "sentTo": "An {{recipients}}",
     "showCancelled": "Stornierte anzeigen",
     "status": "Status",
