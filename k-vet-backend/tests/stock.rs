@@ -216,7 +216,7 @@ async fn the_lot_history_links_every_dispense_to_its_treatment_and_customer(pool
     let invoice_id = invoice["id"].as_i64().unwrap_or_default();
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": [], "send_at": Utc::now() }),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
     )
     .await;
 
@@ -267,7 +267,7 @@ async fn cancelling_an_invoice_appends_a_linked_counter_movement(pool: PgPool) {
         .id();
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": [], "send_at": Utc::now() }),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
     )
     .await;
     app.post_empty(&format!("/api/invoices/{invoice_id}/cancel"))
@@ -373,7 +373,7 @@ async fn frozen_movements_are_append_only(pool: PgPool) {
         .id();
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": [], "send_at": Utc::now() }),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
     )
     .await;
 

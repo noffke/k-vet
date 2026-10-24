@@ -1,5 +1,5 @@
 import { spawn } from 'node:child_process'
-import { existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
+import { copyFileSync, existsSync, mkdirSync, mkdtempSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
@@ -15,11 +15,23 @@ const binary =
   process.env.KVET_BINARY ?? resolve(here, '../k-vet-backend/target/debug/k-vet-backend')
 // The frontend is served from disk (`server.web_dir`), so the suite needs a built dist.
 const webDir = process.env.KVET_WEB_DIR ?? resolve(here, '../k-vet-web/dist')
+// The template the container seeds as "Standard".
+const seededEmailTemplate = resolve(here, '../k-vet-backend/templates/invoice-email.txt')
 
-function writeConfig(): { configPath: string; attachmentsDir: string } {
+function writeConfig(): { configPath: string; attachmentsDir: string; templatesDir: string } {
   const dir = mkdtempSync(join(tmpdir(), 'kvet-e2e-'))
   const attachmentsDir = join(dir, 'attachments')
   mkdirSync(attachmentsDir, { recursive: true })
+  // The templates folder as the container seeds it, plus one template of the suite's own; a
+  // third is configured without a file, to be offered disabled.
+  const templatesDir = join(dir, 'templates')
+  mkdirSync(templatesDir, { recursive: true })
+  copyFileSync(seededEmailTemplate, join(templatesDir, 'invoice-email.txt'))
+  writeFileSync(
+    join(templatesDir, 'invoice-email-kurz.txt'),
+    'Kurz: Rechnung {{ invoice_number }}\n\n{{ greeting }},\nanbei die Rechnung.\n',
+    'utf8',
+  )
   const configPath = join(dir, 'config.toml')
   writeFileSync(
     configPath,
@@ -52,13 +64,25 @@ number_pattern = "{year}-{counter:4}"
 currency = "EUR"
 vat_rates = ["19.000", "7.000"]
 
+[[invoice.email_templates]]
+name = "Standard"
+file = "invoice-email.txt"
+
+[[invoice.email_templates]]
+name = "Kurz"
+file = "invoice-email-kurz.txt"
+
+[[invoice.email_templates]]
+name = "Fehlt"
+file = "invoice-email-fehlt.txt"
+
 [travel_expenses]
 rate_per_double_km = "3.50"
 minimum = "13.00"
 `,
     'utf8',
   )
-  return { configPath, attachmentsDir }
+  return { configPath, attachmentsDir, templatesDir }
 }
 
 async function waitForHealth(timeoutMs = 60_000): Promise<void> {
@@ -87,7 +111,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
       `no built frontend at ${webDir} — run \`npm run build\` in k-vet-web/ or set KVET_WEB_DIR`,
     )
   }
-  const { configPath } = writeConfig()
+  const { configPath, templatesDir } = writeConfig()
 
   // Deterministic start: empty the database and let the binary's own migrations rebuild it.
   //
@@ -107,7 +131,9 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   }
 
   const child = spawn(binary, [], {
-    env: { ...process.env, KVET_CONFIG: configPath },
+    // The templates folder is not a config key: the binary reads it from the environment, as
+    // in the container image.
+    env: { ...process.env, KVET_CONFIG: configPath, KVET_TEMPLATES_DIR: templatesDir },
     stdio: ['ignore', 'inherit', 'inherit'],
   })
   child.on('exit', (code) => {

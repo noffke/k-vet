@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, invoice_id, recipients, queued_at, send_after, attempts, last_attempt_at,\n                  last_error, refused, gave_up_at,\n                  first_failure_at + make_interval(hours => $2) AS retry_until\n           FROM mail_queue WHERE invoice_id = $1",
+  "query": "SELECT id, invoice_id, recipients, queued_at, send_after, template, attempts,\n                  last_attempt_at,\n                  last_error, refused, gave_up_at,\n                  first_failure_at + make_interval(hours => $2) AS retry_until\n           FROM mail_queue WHERE invoice_id = $1",
   "describe": {
     "columns": [
       {
@@ -60,6 +60,17 @@
       },
       {
         "ordinal": 5,
+        "name": "template",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "mail_queue",
+            "name": "template"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
         "name": "attempts",
         "type_info": "Int4",
         "origin": {
@@ -70,7 +81,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 7,
         "name": "last_attempt_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -81,7 +92,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 8,
         "name": "last_error",
         "type_info": "Text",
         "origin": {
@@ -92,7 +103,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 9,
         "name": "refused",
         "type_info": "Bool",
         "origin": {
@@ -103,7 +114,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 10,
         "name": "gave_up_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -114,7 +125,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 11,
         "name": "retry_until",
         "type_info": "Timestamptz",
         "origin": "Expression"
@@ -132,6 +143,7 @@
       false,
       false,
       false,
+      true,
       false,
       true,
       true,
@@ -140,5 +152,5 @@
       null
     ]
   },
-  "hash": "5cc27c2b2e7836062a3bb291a86d48f4d260a074104d4b97e0c14e4ef915a7bd"
+  "hash": "19f95c2a0a9f792c1fc9911a9a0e58fb98266f578f1c47fd27af8d88a97b2482"
 }

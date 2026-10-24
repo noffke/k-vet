@@ -273,6 +273,7 @@
     "missingCustomerData": "Rechnungsdaten des Kunden unvollständig",
     "missingCustomerDataBody": "Für diesen Kunden fehlt: {{fields}}. Die Rechnung kann trotzdem erstellt werden.",
     "noInvoice": "Noch keine Rechnung",
+    "noTemplateAvailable": "Keine Vorlage ist verfügbar — ihre Dateien fehlen im Vorlagenordner. Ohne E-Mail-Adresse lässt sich die Rechnung trotzdem freigeben.",
     "notSent": "Noch nicht versendet",
     "noteInternal": "Notiz (intern)",
     "nothingPending": "Nichts offen — alles übergeben",
@@ -285,6 +286,7 @@
     "queueFailing": "Versand fehlgeschlagen ({{error}}) — wird bis {{time}} erneut versucht.",
     "queueScheduled": "E-Mail an {{recipients}} geplant für {{time}}.",
     "queueStopped": "E-Mail-Versand abgebrochen: {{error}}",
+    "queueTemplate": "Vorlage: {{name}}",
     "queueWaiting": "E-Mail an {{recipients}} wartet auf den Versand — der nächste Durchlauf ist in höchstens 5 Minuten.",
     "queued": "Die E-Mail wird in den nächsten Minuten versendet.",
     "recipients": "Empfänger",
@@ -316,6 +318,8 @@
     "status_submitted": "Übergeben",
     "submit": "An Buchhaltung übergeben",
     "submitShort": "Übergeben",
+    "template": "Vorlage",
+    "templateFileMissing": "Datei „{{file}}“ fehlt im Vorlagenordner.",
     "title": "Rechnungen",
     "update": "Rechnung aktualisieren"
   },
@@ -471,7 +475,9 @@
   "invoice": {
     "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung",
     "noLines": "Die Behandlung hat noch keine Positionen",
-    "noPatient": "Der Behandlung ist noch kein Tier zugeordnet"
+    "noPatient": "Der Behandlung ist noch kein Tier zugeordnet",
+    "templateMissing": "Die Datei dieser Vorlage fehlt im Vorlagenordner.",
+    "unknownTemplate": "Diese Vorlage ist nicht eingerichtet."
   },
   "patient": {
     "sex": {

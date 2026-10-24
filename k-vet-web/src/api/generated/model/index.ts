@@ -32,6 +32,7 @@ export * from './customerEmail';
 export * from './dashboard';
 export * from './drug';
 export * from './duplicateRequest';
+export * from './emailTemplate';
 export * from './emailType';
 export * from './expiringLot';
 export * from './failedMail';

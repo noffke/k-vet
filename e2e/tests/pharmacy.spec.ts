@@ -281,7 +281,7 @@ test.describe('pharmacy', () => {
     const invoice = await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
     const invoiceId = (await invoice.json()).id
     await request.post(`/api/invoices/${invoiceId}/accept`, {
-      data: { recipient_emails: [], send_at: new Date().toISOString() },
+      data: { recipient_emails: [], send_at: new Date().toISOString(), template: 'Standard' },
     })
 
     await signIn(page)

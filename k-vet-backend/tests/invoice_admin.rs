@@ -67,7 +67,7 @@ async fn accepted_invoice(app: &TestApp, pool: &PgPool) -> Value {
     let accepted = app
         .post(
             &format!("/api/invoices/{id}/accept"),
-            json!({ "recipient_emails": [], "send_at": Utc::now() }),
+            json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
         )
         .await;
     assert_eq!(accepted.status, StatusCode::OK);

@@ -15,4 +15,9 @@ export interface AcceptInvoice {
      * server's never fails a send. Ignored when no address is given.
      */
   send_at: string;
+  /**
+     * The email template, by its configured name (`GET /api/email-templates`). It must be
+     * configured and its file in place when an address is given; ignored otherwise.
+     */
+  template: string;
 }

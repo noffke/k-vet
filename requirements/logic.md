@@ -93,7 +93,9 @@ timestamp:
   mail. Until it is delivered the invoice stays Accepted, and the treatment page says where the
   mail is.
 
-  Releasing or sending also says when the mail may go out: "Gleich versenden" (the default — with
+  Releasing or sending also says which email template the mail is written with — one of those
+  listed in the operator configuration, the first preselected; one whose file is missing is
+  offered disabled, naming the file — and when the mail may go out: "Gleich versenden" (the default — with
   the next run) or "Später versenden" at a chosen day and hour, offered as tomorrow at 08:00
   local time. After a euthanasia the vet releases the invoice the same day but does not want it
   to reach the grieving owners at once. A scheduled mail shows its time on the treatment page,

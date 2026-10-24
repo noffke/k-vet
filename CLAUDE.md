@@ -143,7 +143,11 @@ is pure and unit-tested, including path-traversal refusal).
   other line names an animal. The line keeps a `per_visit` snapshot that a CHECK ties to
   `patient_treatment_id IS NULL`, so it moves between animals but never to or from the visit.
 - `src/pdf/` (Typst) and `src/mail/` (minijinja + lettre) — see `docs/templates.md`. Only the
-  fonts embedded in the binary are available; the email template's first line is the subject.
+  fonts embedded in the binary are available; an email template's first line is the subject.
+  Email templates are listed in `config.toml` (`[[invoice.email_templates]]`, name + file, the
+  first the default) and live in the templates folder (`KVET_TEMPLATES_DIR`, the container's
+  `/etc/k-vet/templates`); files are read when a mail is rendered, and a missing one is shown in
+  the app rather than stopping the start.
 - `src/jobs/mod.rs` — in-process scheduler: nightly at 03:00 rebuild picker weights and delete
   abandoned drafts, monthly sweep of unreferenced attachments; every five minutes the invoice
   mail queue (`send_queued_mail`). Each job is a plain async function so tests call it directly
@@ -252,6 +256,6 @@ the identical image on `k-vet@prod`; `KVET_VERSION` in `/etc/k-vet/<instance>.en
 thing that decides what an instance runs. Migrations are forward-only, so rollback is a restore,
 not a restart — see [docs/releasing.md](docs/releasing.md). Practice name, structured
 address, e-mail, IBAN, BIC, bank name, VAT ID, logo and CC/BCC live in the database (settings page);
-mail server, invoice number pattern, currency, VAT choices, default country, payment term, `web_dir`
-and the template paths are operator configuration in `config.toml` (`config.example.toml` is
+mail server, invoice number pattern, currency, VAT choices, default country, payment term, `web_dir`,
+the PDF template path and the email template list are operator configuration in `config.toml` (`config.example.toml` is
 commented in both languages — keep it that way).

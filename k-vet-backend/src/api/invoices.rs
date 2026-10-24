@@ -33,7 +33,7 @@ use crate::domain::files::BytesSource;
 use crate::domain::invoice_number::{NumberPattern, allocate_number, validate_pattern};
 use crate::domain::{giro, money, stock};
 use crate::error::{AppError, AppResult};
-use crate::mail::{InvoiceMail, MailFailure, OutgoingInvoice, greeting};
+use crate::mail::{InvoiceMail, MailFailure, OutgoingInvoice, TemplateProblem, greeting};
 use crate::pdf::{
     self, CustomerAddress, InvoiceBlock, InvoiceDocument, InvoiceLine, PatientGroup, PracticeBlock,
     date_de, money_de, number_de, percent_de,
@@ -96,6 +96,9 @@ pub struct AcceptInvoice {
     /// now" is now; a time already past means the next run, so a browser clock that lags the
     /// server's never fails a send. Ignored when no address is given.
     pub send_at: DateTime<Utc>,
+    /// The email template, by its configured name (`GET /api/email-templates`). It must be
+    /// configured and its file in place when an address is given; ignored otherwise.
+    pub template: String,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -106,6 +109,8 @@ pub struct SendInvoice {
     pub recipient_emails: Vec<String>,
     /// When the mail may go out — as for releasing.
     pub send_at: DateTime<Utc>,
+    /// The email template, by its configured name — as for releasing.
+    pub template: String,
 }
 
 #[utoipa::path(
@@ -358,7 +363,15 @@ pub async fn accept(
     // Released and queued together, or neither. The mail goes out with the queue's next run;
     // a failure there stays on the queue row and shows on the dashboard (FR-031).
     if !recipients.is_empty() {
-        mail_queue::queue(&mut transaction, id, &recipients, body.send_at).await?;
+        usable_template(&state, &body.template)?;
+        mail_queue::queue(
+            &mut transaction,
+            id,
+            &recipients,
+            body.send_at,
+            &body.template,
+        )
+        .await?;
     }
 
     // A euthanasia drug on a line ends that animal's record: its date of death is the day of the
@@ -386,6 +399,20 @@ pub async fn accept(
     transaction.commit().await?;
 
     load(&state.pool, id).await.map(Json)
+}
+
+/// Refuses a template the mail could not go out with: one not configured, or whose file is not
+/// in the templates folder — the form shows it disabled, but the folder may change meanwhile.
+fn usable_template(state: &AppState, name: &str) -> AppResult<()> {
+    match state.mailer.check_template(Some(name)) {
+        Ok(_) => Ok(()),
+        Err(TemplateProblem::Unknown(_)) => {
+            Err(AppError::field("template", "invoice.unknownTemplate"))
+        }
+        Err(TemplateProblem::Missing { .. }) => {
+            Err(AppError::field("template", "invoice.templateMissing"))
+        }
+    }
 }
 
 /// The addresses asked for, trimmed, without the empty ones.
@@ -449,7 +476,15 @@ pub async fn send(
     // Queued, not sent: the queue's next run delivers it, and a failure is kept there, on the
     // invoice and on the dashboard, rather than lost in a response. A mail already waiting —
     // or failing — for this invoice is replaced by this one.
-    mail_queue::queue(&mut transaction, id, &recipients, body.send_at).await?;
+    usable_template(&state, &body.template)?;
+    mail_queue::queue(
+        &mut transaction,
+        id,
+        &recipients,
+        body.send_at,
+        &body.template,
+    )
+    .await?;
     transaction.commit().await?;
 
     load(&state.pool, id).await.map(Json)
@@ -583,6 +618,7 @@ pub async fn deliver(
     transaction: &mut Transaction<'_, Postgres>,
     invoice_id: i64,
     recipients: &[String],
+    template: Option<&str>,
 ) -> AppResult<Result<(), MailFailure>> {
     let row = sqlx::query!(
         r#"SELECT invoice.invoice_number, invoice.invoice_date,
@@ -670,13 +706,11 @@ pub async fn deliver(
         patients: patients.into_iter().flatten().collect(),
     };
 
-    let (subject, body) = match state.mailer.render(&context) {
+    // The template chosen when the mail was queued, read now: gone or broken since, the mail
+    // is refused with the reason rather than sent with another text.
+    let (subject, body) = match state.mailer.render(&context, template) {
         Ok(rendered) => rendered,
-        Err(error) => {
-            return Ok(Err(MailFailure::refused(format!(
-                "the mail template failed: {error}"
-            ))));
-        }
+        Err(failure) => return Ok(Err(failure)),
     };
     let Some(sha256) = row.sha256 else {
         return Ok(Err(MailFailure::refused(

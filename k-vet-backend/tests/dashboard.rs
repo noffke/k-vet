@@ -72,7 +72,7 @@ async fn accepted_invoice(app: &TestApp, pool: &PgPool) -> i64 {
     let accepted = app
         .post(
             &format!("/api/invoices/{id}/accept"),
-            json!({ "recipient_emails": [], "send_at": Utc::now() }),
+            json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
         )
         .await;
     assert_eq!(accepted.status, StatusCode::OK);
@@ -153,7 +153,7 @@ async fn the_dashboard_lists_the_three_ways_money_goes_missing(pool: PgPool) {
     let invoice_id = invoice.id();
     app.post(
         &format!("/api/invoices/{invoice_id}/accept"),
-        json!({ "recipient_emails": [], "send_at": Utc::now() }),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
     )
     .await;
 

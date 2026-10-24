@@ -14,4 +14,6 @@ export interface SendInvoice {
   recipient_emails?: string[];
   /** When the mail may go out — as for releasing. */
   send_at: string;
+  /** The email template, by its configured name — as for releasing. */
+  template: string;
 }

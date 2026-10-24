@@ -1094,6 +1094,29 @@
         }
       }
     },
+    "/api/email-templates": {
+      "get": {
+        "tags": [
+          "invoices"
+        ],
+        "operationId": "listEmailTemplates",
+        "responses": {
+          "200": {
+            "description": "The configured templates, the default first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/EmailTemplate"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/invoices": {
       "get": {
         "tags": [
@@ -4242,7 +4265,8 @@
       "AcceptInvoice": {
         "type": "object",
         "required": [
-          "send_at"
+          "send_at",
+          "template"
         ],
         "properties": {
           "recipient_emails": {
@@ -4256,6 +4280,10 @@
             "type": "string",
             "format": "date-time",
             "description": "When the mail may go out: the queue takes it with its first run at or after this. \"Send\nnow\" is now; a time already past means the next run, so a browser clock that lags the\nserver's never fails a send. Ignored when no address is given."
+          },
+          "template": {
+            "type": "string",
+            "description": "The email template, by its configured name (`GET /api/email-templates`). It must be\nconfigured and its file in place when an address is given; ignored otherwise."
           }
         }
       },
@@ -5279,6 +5307,28 @@
         "properties": {
           "price_mode": {
             "$ref": "#/components/schemas/PriceMode"
+          }
+        }
+      },
+      "EmailTemplate": {
+        "type": "object",
+        "required": [
+          "name",
+          "file",
+          "available"
+        ],
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "What the vet sees, and what a release or send names."
+          },
+          "file": {
+            "type": "string",
+            "description": "The file in the templates folder — said when it is missing, so it can be put back."
+          },
+          "available": {
+            "type": "boolean",
+            "description": "The file is there and readable; a template without one cannot be chosen."
           }
         }
       },
@@ -7281,6 +7331,13 @@
             "format": "date-time",
             "description": "Not sent before this: now for \"send now\", a chosen hour for \"send later\"."
           },
+          "template": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first."
+          },
           "attempts": {
             "type": "integer",
             "format": "int32"
@@ -7333,7 +7390,8 @@
       "SendInvoice": {
         "type": "object",
         "required": [
-          "send_at"
+          "send_at",
+          "template"
         ],
         "properties": {
           "recipient_emails": {
@@ -7347,6 +7405,10 @@
             "type": "string",
             "format": "date-time",
             "description": "When the mail may go out — as for releasing."
+          },
+          "template": {
+            "type": "string",
+            "description": "The email template, by its configured name — as for releasing."
           }
         }
       },

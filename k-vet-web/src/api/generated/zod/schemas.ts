@@ -668,6 +668,7 @@ export const GetDashboardResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -922,6 +923,14 @@ export const UnarchiveDrugResponse = zod.object({
 })
 
 
+export const ListEmailTemplatesResponseItem = zod.object({
+  "name": zod.string().describe('What the vet sees, and what a release or send names.'),
+  "file": zod.string().describe('The file in the templates folder — said when it is missing, so it can be put back.'),
+  "available": zod.boolean().describe('The file is there and readable; a template without one cannot be chosen.')
+})
+export const ListEmailTemplatesResponse = zod.array(ListEmailTemplatesResponseItem)
+
+
 export const ListInvoicesQueryParams = zod.object({
   "q": zod.string().optional().describe('Matches the invoice number or the customer\'s name.'),
   "pending": zod.boolean().optional().describe('Only invoices waiting for the bookkeeper (sent, not yet submitted).'),
@@ -952,6 +961,7 @@ export const ListInvoicesResponseItem = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1005,6 +1015,7 @@ export const GetInvoiceResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1028,7 +1039,8 @@ export const AcceptInvoiceParams = zod.object({
 
 export const AcceptInvoiceBody = zod.object({
   "recipient_emails": zod.array(zod.string()).optional().describe('Customer email addresses the PDF is sent to.'),
-  "send_at": zod.iso.datetime({"offset":true}).describe('When the mail may go out: the queue takes it with its first run at or after this. "Send\nnow" is now; a time already past means the next run, so a browser clock that lags the\nserver\'s never fails a send. Ignored when no address is given.')
+  "send_at": zod.iso.datetime({"offset":true}).describe('When the mail may go out: the queue takes it with its first run at or after this. "Send\nnow" is now; a time already past means the next run, so a browser clock that lags the\nserver\'s never fails a send. Ignored when no address is given.'),
+  "template": zod.string().describe('The email template, by its configured name (`GET /api/email-templates`). It must be\nconfigured and its file in place when an address is given; ignored otherwise.')
 })
 
 export const AcceptInvoiceResponse = zod.object({
@@ -1053,6 +1065,7 @@ export const AcceptInvoiceResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1096,6 +1109,7 @@ export const CancelInvoiceResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1139,6 +1153,7 @@ export const MarkInvoicePostedResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1169,7 +1184,8 @@ export const SendInvoiceParams = zod.object({
 
 export const SendInvoiceBody = zod.object({
   "recipient_emails": zod.array(zod.string()).optional().describe('Where this send goes. Replaces the stored recipients, so a mistyped address can be\ncorrected and an invoice accepted without one can still be emailed.'),
-  "send_at": zod.iso.datetime({"offset":true}).describe('When the mail may go out — as for releasing.')
+  "send_at": zod.iso.datetime({"offset":true}).describe('When the mail may go out — as for releasing.'),
+  "template": zod.string().describe('The email template, by its configured name — as for releasing.')
 })
 
 export const SendInvoiceResponse = zod.object({
@@ -1194,6 +1210,7 @@ export const SendInvoiceResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1237,6 +1254,7 @@ export const SubmitInvoiceResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -1386,6 +1404,7 @@ export const RetryQueuedMailResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
@@ -2852,6 +2871,7 @@ export const CreateInvoiceResponse = zod.object({
   "recipients": zod.array(zod.string()),
   "queued_at": zod.iso.datetime({"offset":true}),
   "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
   "attempts": zod.int(),
   "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
   "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),

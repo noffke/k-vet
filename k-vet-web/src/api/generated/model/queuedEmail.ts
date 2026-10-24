@@ -16,6 +16,12 @@ export interface QueuedEmail {
   queued_at: string;
   /** Not sent before this: now for "send now", a chosen hour for "send later". */
   send_after: string;
+  /**
+     * The email template it goes out with, by name; empty for a mail queued before templates
+     * could be chosen, which goes out with the first.
+     * @nullable
+     */
+  template?: string | null;
   attempts: number;
   /** @nullable */
   last_attempt_at?: string | null;

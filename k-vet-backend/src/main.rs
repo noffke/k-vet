@@ -58,6 +58,18 @@ async fn run() -> Result<(), String> {
     let config = Arc::new(config);
 
     init_tracing(&config.server.log_level)?;
+    if let Some(path) = &config.invoice.email_template {
+        // Accepted so a configuration written before the list keeps starting — but not read.
+        tracing::warn!(
+            path = %path.display(),
+            "[invoice] email_template is no longer read: list the templates under \
+             [[invoice.email_templates]], each a file in the templates folder"
+        );
+    }
+    tracing::info!(
+        folder = %config.invoice.templates_dir.display(),
+        "invoice email templates are read from this folder"
+    );
 
     // Checked before the database, so a fresh install reports its filesystem mistakes first.
     AttachmentStore::new(config.storage.attachments_dir.clone())

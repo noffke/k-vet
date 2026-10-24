@@ -67,10 +67,11 @@ Getting this wrong shows up as one of three things, all of them loud except the 
   with the `chown` to run,
 - it exits saying the attachments directory is not writable — uploads and invoice PDFs would
   otherwise fail at the first use, so this is checked before anything else starts,
-- `templates/` stays empty and a warning says seeding was skipped. What happens next depends on
-  the configuration: with `typst_template`/`email_template` pointing into that directory the
-  container then exits naming the missing file; with those keys empty the compiled-in templates
-  are used and only your ability to edit them is lost.
+- `templates/` stays empty and a warning says seeding was skipped. The container still starts:
+  the email templates show as unavailable in the app (each naming its missing file), so invoices
+  can be released but not emailed until the files are there; a `typst_template` pointing into
+  that directory fails the PDF until its file is there, an empty one uses the compiled-in
+  layout.
 
 Adding `--user` to the unit's `docker run` works if 1000 is taken on your host, but then the same
 ownership rule applies to whichever uid/gid you substitute.
@@ -103,7 +104,8 @@ The remaining decisions:
 | `[storage]` | `max_upload_mb` | Larger uploads are rejected with 413. |
 | `[mail]` | `smtp_*`, `from_*` | The practice's own mail server; `smtp_tls` is `starttls`, `tls` or `none`. |
 | `[invoice]` | `number_pattern` | e.g. `{year}-{counter:4}` → `2026-0042`. The counter's scope follows the date placeholders: with `{year}` it restarts yearly, with `{year}`+`{month}` monthly, without any date part it runs forever. It never decrements and a number is never reissued. |
-| | `typst_template`, `email_template` | Empty uses the compiled-in templates and leaves the mount inert. To edit them, point at `/etc/k-vet/templates/invoice.typ` and `/etc/k-vet/templates/invoice-email.txt` — the entrypoint seeds both files on first start. See [templates.md](templates.md). |
+| | `typst_template` | Empty uses the compiled-in PDF template. To edit it, point at `/etc/k-vet/templates/invoice.typ` — the entrypoint seeds it on first start. See [templates.md](templates.md). |
+| | `[[invoice.email_templates]]` | The email templates to choose from, `name` and `file` each, the first preselected. `file` is a name in `/etc/k-vet/templates`, where the entrypoint seeds `invoice-email.txt`; without the list that one is "Standard". A missing file is shown in the app, not a reason to stop. See [templates.md](templates.md). |
 | `[travel_expenses]` | `rate_per_double_km`, `minimum` | GOT § 10 values: `3.50` per double kilometre, `13.00` minimum. Update when the fee schedule changes. |
 
 The database password lives here and nowhere else — it is the role's password from

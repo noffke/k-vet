@@ -65,7 +65,11 @@ export function InvoiceAcceptPage() {
       submit={(invoiceId, choice) =>
         acceptInvoice.mutate({
           id: invoiceId,
-          data: { recipient_emails: choice.recipients, send_at: choice.sendAt },
+          data: {
+            recipient_emails: choice.recipients,
+            send_at: choice.sendAt,
+            template: choice.template,
+          },
         })
       }
     />

@@ -68,7 +68,8 @@ cd k-vet-backend
 cp ../config.example.toml config.toml              # bilingual comments; set user + password,
                                                    # and attachments_dir to a writable path
 cargo run -- --hash-password                       # argon2id hash for the config file
-cargo run                                          # API on :8080, migrations run at start
+KVET_TEMPLATES_DIR=templates cargo run             # API on :8080, migrations run at start;
+                                                   # email templates from k-vet-backend/templates
 
 cd ../k-vet-web
 npm ci && npm run dev                              # UI on :5173, proxies /api to :8080

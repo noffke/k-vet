@@ -273,6 +273,7 @@
     "missingCustomerData": "Customer invoice data incomplete",
     "missingCustomerDataBody": "This customer is missing: {{fields}}. The invoice can still be created.",
     "noInvoice": "No invoice yet",
+    "noTemplateAvailable": "No template is available — their files are missing from the templates folder. Without an e-mail address the invoice can still be released.",
     "notSent": "Not sent yet",
     "noteInternal": "Note (internal)",
     "nothingPending": "Nothing pending — all handed over",
@@ -285,6 +286,7 @@
     "queueFailing": "Sending failed ({{error}}) — tried again until {{time}}.",
     "queueScheduled": "Mail to {{recipients}} scheduled for {{time}}.",
     "queueStopped": "Sending stopped: {{error}}",
+    "queueTemplate": "Template: {{name}}",
     "queueWaiting": "Mail to {{recipients}} is waiting to go out — the next run is at most 5 minutes away.",
     "queued": "The mail goes out within the next few minutes.",
     "recipients": "Recipients",
@@ -316,6 +318,8 @@
     "status_submitted": "Submitted",
     "submit": "Mark submitted to bookkeeping",
     "submitShort": "Hand over",
+    "template": "Template",
+    "templateFileMissing": "File “{{file}}” is missing from the templates folder.",
     "title": "Invoices",
     "update": "Update invoice"
   },
@@ -471,7 +475,9 @@
   "invoice": {
     "liveInvoiceExists": "This treatment already has an invoice",
     "noLines": "The treatment has no positions yet",
-    "noPatient": "No animal is attached to the treatment yet"
+    "noPatient": "No animal is attached to the treatment yet",
+    "templateMissing": "The file of this template is missing from the templates folder.",
+    "unknownTemplate": "This template is not configured."
   },
   "patient": {
     "sex": {

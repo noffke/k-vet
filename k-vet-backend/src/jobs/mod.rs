@@ -293,7 +293,7 @@ pub async fn send_queued_mail(state: &AppState) -> AppResult<MailRun> {
     for id in waiting {
         let mut transaction = state.pool.begin().await?;
         let row = sqlx::query!(
-            r#"SELECT queue.invoice_id, queue.recipients,
+            r#"SELECT queue.invoice_id, queue.recipients, queue.template,
                       invoice.status AS "status: InvoiceStatus"
                FROM mail_queue queue
                JOIN invoice ON invoice.id = queue.invoice_id
@@ -319,7 +319,15 @@ pub async fn send_queued_mail(state: &AppState) -> AppResult<MailRun> {
             continue;
         }
 
-        match invoices::deliver(state, &mut transaction, row.invoice_id, &row.recipients).await? {
+        let delivered = invoices::deliver(
+            state,
+            &mut transaction,
+            row.invoice_id,
+            &row.recipients,
+            row.template.as_deref(),
+        )
+        .await?;
+        match delivered {
             Ok(()) => {
                 sqlx::query!("DELETE FROM mail_queue WHERE id = $1", id)
                     .execute(&mut *transaction)

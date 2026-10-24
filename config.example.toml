@@ -186,15 +186,32 @@ payment_terms_days = 14
 #        "/etc/k-vet/templates/invoice.typ".
 typst_template = ""
 
-# de-DE: Optionaler Pfad zur Vorlage der Rechnungs-E-Mail (minijinja/Jinja,
-#        reiner Text, UTF-8). Die erste Zeile ist die Betreffvorlage, danach
-#        eine Leerzeile, dann der Text. Leer = eingebettete Vorlage. Im Container:
-#        "/etc/k-vet/templates/invoice-email.txt".
-# en-US: Optional path to the invoice email template (minijinja/Jinja, plain
-#        text, UTF-8). The first line is the subject template, followed by a
-#        blank line and the body. Empty = embedded template. In the container:
-#        "/etc/k-vet/templates/invoice-email.txt".
-email_template = ""
+# de-DE: Die Vorlagen der Rechnungs-E-Mail, aus denen beim Freigeben und beim
+#        Versenden gewählt wird — in dieser Reihenfolge angeboten, die erste ist
+#        vorausgewählt. "name" ist, was in der Auswahl steht; "file" ist der Name
+#        einer Datei im Vorlagenordner (im Container /etc/k-vet/templates, sonst
+#        $KVET_TEMPLATES_DIR) — kein Pfad. Jede Datei: minijinja/Jinja, reiner Text,
+#        UTF-8; die erste Zeile ist der Betreff, dann eine Leerzeile, dann der Text.
+#        Fehlt eine Datei, startet k-vet trotzdem und zeigt die Vorlage als nicht
+#        verfügbar. Eine Datei wird bei jedem Versand gelesen; eine neue Vorlage hier
+#        einzutragen braucht dagegen einen Neustart. Ohne diese Liste gilt nur
+#        "Standard" mit invoice-email.txt.
+# en-US: The invoice email templates to choose from when releasing or sending —
+#        offered in this order, the first preselected. "name" is what the choice
+#        shows; "file" is the name of a file in the templates folder
+#        (/etc/k-vet/templates in the container, else $KVET_TEMPLATES_DIR) — not a
+#        path. Each file: minijinja/Jinja, plain text, UTF-8; the first line is the
+#        subject, then a blank line, then the body. A missing file does not stop
+#        k-vet; the template shows as unavailable. A file is read on every send;
+#        listing a new template here, though, needs a restart. Without this list
+#        there is only "Standard" with invoice-email.txt.
+[[invoice.email_templates]]
+name = "Standard"
+file = "invoice-email.txt"
+
+# [[invoice.email_templates]]
+# name = "Kurz"
+# file = "invoice-email-kurz.txt"
 
 [travel_expenses]
 # de-DE: Wegegeld nach GOT 2022 § 10: je Doppelkilometer 3,50 €, mindestens

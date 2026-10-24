@@ -1,21 +1,23 @@
 //! Outbound invoice email: minijinja template, lettre transport (research R6, R17).
 //!
-//! The template is a plain-text UTF-8 file the operator can edit next to the config; the
-//! first line is the subject template, then a blank line, then the body. A default is
-//! embedded in the binary. Invoice emails are always German (FR-030).
+//! The templates are plain-text UTF-8 files in the templates folder, listed with a name in the
+//! configuration (`[[invoice.email_templates]]`); the vet picks one when releasing or sending.
+//! The first line of a file is the subject template, then a blank line, then the body. A file
+//! is read when a mail is rendered, so an edit takes effect with the next mail and a missing one
+//! is a state the app shows rather than a reason not to start. Invoice emails are always German
+//! (FR-030).
 
 use lettre::message::header::ContentType;
 use lettre::message::{Attachment, Mailbox, MessageBuilder, MultiPart, SinglePart};
 use lettre::transport::smtp::authentication::Credentials;
+use std::path::PathBuf;
+
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
 use serde::Serialize;
 
-use crate::config::{Config, SmtpTls};
+use crate::config::{Config, EmailTemplateConfig, SmtpTls};
 use crate::domain::enums::Salutation;
 use crate::error::{AppError, AppResult};
-
-/// The template compiled into the binary; the config may point at a file instead.
-const DEFAULT_TEMPLATE: &str = include_str!("../../templates/invoice-email.txt");
 
 /// Template variables of the invoice email.
 #[derive(Debug, Clone, Serialize)]
@@ -98,11 +100,31 @@ impl MailFailure {
     }
 }
 
+/// A configured template, and whether its file is there to be read right now.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct TemplateState {
+    pub name: String,
+    pub file: String,
+    pub available: bool,
+}
+
+/// Why a template cannot be used.
+#[derive(Debug, Clone, PartialEq, Eq, thiserror::Error)]
+pub enum TemplateProblem {
+    /// No template of that name is configured — or no longer, since a mail was queued with it.
+    #[error("the email template \"{0}\" is not configured")]
+    Unknown(String),
+    /// Configured, but its file is not in the templates folder (or cannot be read).
+    #[error("the file of the email template \"{name}\" is missing: {}", path.display())]
+    Missing { name: String, path: PathBuf },
+}
+
 /// Sends invoice emails through the configured SMTP server.
 pub struct Mailer {
     transport: AsyncSmtpTransport<Tokio1Executor>,
     from: Mailbox,
-    template: String,
+    templates: Vec<EmailTemplateConfig>,
+    templates_dir: PathBuf,
 }
 
 impl Mailer {
@@ -131,18 +153,76 @@ impl Mailer {
         };
 
         let from = format_mailbox(&config.mail.from_name, &config.mail.from_address)?;
-        let template = load_template(config)?;
 
         Ok(Self {
             transport: builder.build(),
             from,
-            template,
+            templates: config.invoice.email_templates.clone(),
+            templates_dir: config.invoice.templates_dir.clone(),
         })
     }
 
-    /// Renders subject and body from the template.
-    pub fn render(&self, context: &InvoiceMail) -> AppResult<(String, String)> {
-        render_template(&self.template, context)
+    /// The configured templates in the order offered, each with whether its file is there.
+    /// Looked at on every call: a file put in place shows up without a restart.
+    pub fn templates(&self) -> Vec<TemplateState> {
+        self.templates
+            .iter()
+            .map(|template| TemplateState {
+                name: template.name.clone(),
+                file: template.file.clone(),
+                available: is_readable_file(&self.templates_dir.join(&template.file)),
+            })
+            .collect()
+    }
+
+    /// The template of that name — or, for a mail queued before templates could be chosen, the
+    /// first one — with its file in place.
+    pub fn check_template(&self, name: Option<&str>) -> Result<PathBuf, TemplateProblem> {
+        let template = match name {
+            Some(name) => self
+                .templates
+                .iter()
+                .find(|template| template.name == name)
+                .ok_or_else(|| TemplateProblem::Unknown(name.to_owned()))?,
+            None => self
+                .templates
+                .first()
+                .ok_or_else(|| TemplateProblem::Unknown(String::new()))?,
+        };
+        let path = self.templates_dir.join(&template.file);
+        if is_readable_file(&path) {
+            Ok(path)
+        } else {
+            Err(TemplateProblem::Missing {
+                name: template.name.clone(),
+                path,
+            })
+        }
+    }
+
+    /// Renders subject and body from the named template, read from its file now. Anything that
+    /// keeps it from rendering — not configured, no file, a broken template — fails the mail
+    /// for good: trying again later would not change it.
+    pub fn render(
+        &self,
+        context: &InvoiceMail,
+        name: Option<&str>,
+    ) -> Result<(String, String), MailFailure> {
+        let path = self
+            .check_template(name)
+            .map_err(|problem| MailFailure::refused(problem.to_string()))?;
+        let template = std::fs::read_to_string(&path).map_err(|error| {
+            MailFailure::refused(format!(
+                "the email template {} cannot be read: {error}",
+                path.display()
+            ))
+        })?;
+        render_template(&template, context).map_err(|error| {
+            MailFailure::refused(format!(
+                "the email template {} does not render: {error}",
+                path.display()
+            ))
+        })
     }
 
     /// Builds the message: plain-text UTF-8 body plus the invoice PDF as attachment.
@@ -201,16 +281,11 @@ impl Mailer {
     }
 }
 
-fn load_template(config: &Config) -> AppResult<String> {
-    match &config.invoice.email_template {
-        Some(path) => std::fs::read_to_string(path).map_err(|error| {
-            AppError::internal(
-                format!("reading the email template {}", path.display()),
-                error,
-            )
-        }),
-        None => Ok(DEFAULT_TEMPLATE.to_owned()),
-    }
+/// A regular file this process can open.
+fn is_readable_file(path: &std::path::Path) -> bool {
+    std::fs::File::open(path)
+        .and_then(|file| file.metadata())
+        .is_ok_and(|metadata| metadata.is_file())
 }
 
 /// Splits the template into subject and body and renders both with minijinja.
@@ -317,9 +392,12 @@ mod tests {
         assert_eq!(both, "Sehr geehrte Frau Müller, sehr geehrter Herr Schmidt");
     }
 
+    /// The template the container seeds as "Standard".
+    const SEEDED_TEMPLATE: &str = include_str!("../../templates/invoice-email.txt");
+
     #[test]
     fn template_first_line_is_the_subject() {
-        let (subject, body) = render_template(DEFAULT_TEMPLATE, &context()).expect("renders");
+        let (subject, body) = render_template(SEEDED_TEMPLATE, &context()).expect("renders");
         assert_eq!(
             subject,
             "Ihre Rechnung 2026-0042 – Tierärztin Dr. Musterfrau"
@@ -360,9 +438,11 @@ mod tests {
             "test.toml",
         )
         .expect("test config");
+        let mut config = config;
+        config.invoice.templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
         let mailer = Mailer::from_config(&config).expect("mailer builds");
 
-        let (subject, body) = mailer.render(&context()).expect("renders");
+        let (subject, body) = mailer.render(&context(), None).expect("renders");
 
         let message = mailer
             .build_message(OutgoingInvoice {

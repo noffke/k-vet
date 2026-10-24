@@ -29,6 +29,9 @@ pub struct QueuedEmail {
     pub queued_at: DateTime<Utc>,
     /// Not sent before this: now for "send now", a chosen hour for "send later".
     pub send_after: DateTime<Utc>,
+    /// The email template it goes out with, by name; empty for a mail queued before templates
+    /// could be chosen, which goes out with the first.
+    pub template: Option<String>,
     pub attempts: i32,
     pub last_attempt_at: Option<DateTime<Utc>>,
     /// The transport's own words for the last failure: the host it could not reach, or the
@@ -44,23 +47,27 @@ pub struct QueuedEmail {
 }
 
 /// Queues the invoice's mail to `recipients`, to go out with the first run at or after
-/// `send_after`. A mail already waiting for the invoice — scheduled, failing or given up — is
+/// `send_after`, rendered with the template named `template`. A mail already waiting for the invoice — scheduled, failing or given up — is
 /// replaced, with a fresh start: there is only ever one per invoice.
 pub async fn queue(
     connection: &mut PgConnection,
     invoice_id: i64,
     recipients: &[String],
     send_after: DateTime<Utc>,
+    template: &str,
 ) -> AppResult<()> {
     sqlx::query!(
-        "INSERT INTO mail_queue (invoice_id, recipients, send_after) VALUES ($1, $2, $3)
+        "INSERT INTO mail_queue (invoice_id, recipients, send_after, template)
+         VALUES ($1, $2, $3, $4)
          ON CONFLICT (invoice_id) DO UPDATE
             SET recipients = EXCLUDED.recipients, send_after = EXCLUDED.send_after,
-                queued_at = now(), attempts = 0, last_attempt_at = NULL,
-                first_failure_at = NULL, last_error = NULL, refused = false, gave_up_at = NULL",
+                template = EXCLUDED.template, queued_at = now(), attempts = 0,
+                last_attempt_at = NULL, first_failure_at = NULL, last_error = NULL,
+                refused = false, gave_up_at = NULL",
         invoice_id,
         recipients,
         send_after,
+        template,
     )
     .execute(connection)
     .await?;
@@ -83,7 +90,8 @@ pub async fn for_invoice(
 ) -> AppResult<Option<QueuedEmail>> {
     Ok(sqlx::query_as!(
         QueuedEmail,
-        r#"SELECT id, invoice_id, recipients, queued_at, send_after, attempts, last_attempt_at,
+        r#"SELECT id, invoice_id, recipients, queued_at, send_after, template, attempts,
+                  last_attempt_at,
                   last_error, refused, gave_up_at,
                   first_failure_at + make_interval(hours => $2) AS retry_until
            FROM mail_queue WHERE invoice_id = $1"#,
@@ -98,7 +106,8 @@ pub async fn for_invoice(
 pub async fn failed(connection: &mut PgConnection) -> AppResult<Vec<QueuedEmail>> {
     Ok(sqlx::query_as!(
         QueuedEmail,
-        r#"SELECT id, invoice_id, recipients, queued_at, send_after, attempts, last_attempt_at,
+        r#"SELECT id, invoice_id, recipients, queued_at, send_after, template, attempts,
+                  last_attempt_at,
                   last_error, refused, gave_up_at,
                   first_failure_at + make_interval(hours => $1) AS retry_until
            FROM mail_queue WHERE last_error IS NOT NULL

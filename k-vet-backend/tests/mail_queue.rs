@@ -45,7 +45,7 @@ async fn released_at(
     let released = app
         .post(
             &format!("/api/invoices/{invoice_id}/accept"),
-            json!({ "recipient_emails": recipients, "send_at": send_at }),
+            json!({ "recipient_emails": recipients, "send_at": send_at, "template": "Standard" }),
         )
         .await;
     assert_eq!(released.status, StatusCode::OK);
@@ -249,7 +249,7 @@ async fn sending_again_replaces_the_waiting_mail(pool: PgPool) {
     let resent = app
         .post(
             &format!("/api/invoices/{invoice_id}/send"),
-            json!({ "recipient_emails": ["neu@example.com"], "send_at": Utc::now() }),
+            json!({ "recipient_emails": ["neu@example.com"], "send_at": Utc::now(), "template": "Standard" }),
         )
         .await
         .json();
@@ -354,7 +354,7 @@ async fn now_or_a_past_time_goes_out_with_the_next_run(pool: PgPool) {
     let resent = app
         .post(
             &format!("/api/invoices/{rescheduled}/send"),
-            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now() }),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now(), "template": "Standard" }),
         )
         .await;
     assert_eq!(resent.status, StatusCode::OK);
@@ -386,4 +386,107 @@ async fn a_release_must_say_when_its_mail_goes_out(pool: PgPool) {
         .await;
     assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(queued(&pool).await, 0);
+}
+
+/// Releases a written invoice with `template` for its mail, going out now.
+async fn release_with(app: &TestApp, invoice_id: i64, template: &str) -> common::TestResponse {
+    app.post(
+        &format!("/api/invoices/{invoice_id}/accept"),
+        json!({
+            "recipient_emails": ["kundin@example.com"],
+            "send_at": Utc::now(),
+            "template": template
+        }),
+    )
+    .await
+}
+
+/// The mail goes out with the template the vet chose — read from its file when it is sent.
+#[sqlx::test]
+async fn the_mail_goes_out_with_the_template_chosen(pool: PgPool) {
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+    assert_eq!(
+        release_with(&app, invoice_id, "Kurz").await.status,
+        StatusCode::OK
+    );
+    assert_eq!(
+        invoice(&app, invoice_id).await["email_queue"]["template"],
+        "Kurz"
+    );
+
+    assert_eq!(run(&app).await.sent, 1);
+    let messages = mail.messages.lock().expect("messages").clone();
+    assert_eq!(messages.len(), 1);
+    assert!(
+        messages[0].contains(&format!("Subject: {}", common::SHORT_TEMPLATE_SUBJECT)),
+        "the chosen template's subject: {}",
+        messages[0]
+    );
+}
+
+/// A template that is not configured, or whose file is missing, cannot be chosen — the form
+/// shows the latter disabled, and the server holds to it too. Nothing is released.
+#[sqlx::test]
+async fn an_unknown_or_missing_template_is_refused(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+
+    let unknown = release_with(&app, invoice_id, "Gibt es nicht").await;
+    assert_eq!(unknown.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(unknown.error_fields(), vec!["template"]);
+    let missing = release_with(&app, invoice_id, "Fehlt").await;
+    assert_eq!(missing.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(missing.error_fields(), vec!["template"]);
+
+    assert_eq!(queued(&pool).await, 0);
+    assert_eq!(invoice(&app, invoice_id).await["status"], "created");
+}
+
+/// Sending again with another template replaces the waiting mail's.
+#[sqlx::test]
+async fn sending_again_can_change_the_template(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    let resent = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({
+                "recipient_emails": ["kundin@example.com"],
+                "send_at": Utc::now(),
+                "template": "Kurz"
+            }),
+        )
+        .await
+        .json();
+    assert_eq!(resent["email_queue"]["template"], "Kurz");
+    assert_eq!(queued(&pool).await, 1);
+}
+
+/// A template whose file went away after the mail was queued does not send another text: the
+/// mail is refused, naming the file, until it is back or another template is chosen.
+#[sqlx::test]
+async fn a_template_file_gone_since_queueing_refuses_the_mail(pool: PgPool) {
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+    assert_eq!(
+        release_with(&app, invoice_id, "Kurz").await.status,
+        StatusCode::OK
+    );
+    std::fs::remove_file(app.templates.path().join("invoice-email-kurz.txt"))
+        .expect("the file goes");
+
+    assert_eq!(run(&app).await.gave_up, 1);
+    let refused = invoice(&app, invoice_id).await;
+    assert_eq!(refused["email_queue"]["refused"], true);
+    assert!(
+        refused["email_queue"]["last_error"]
+            .as_str()
+            .is_some_and(|error| error.contains("invoice-email-kurz.txt")),
+        "names the file: {}",
+        refused["email_queue"]["last_error"]
+    );
+    assert!(mail.delivered().is_empty());
 }

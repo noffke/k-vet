@@ -1,9 +1,20 @@
-import { Mail } from 'lucide-react'
+import { Mail, TriangleAlert } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
-import { useAddCustomerEmail, useGetInvoice, useGetTreatment } from '@/api/generated/endpoints'
-import type { Invoice, InvoiceStatus, QueuedEmail, Treatment } from '@/api/generated/model'
+import {
+  useAddCustomerEmail,
+  useGetInvoice,
+  useGetTreatment,
+  useListEmailTemplates,
+} from '@/api/generated/endpoints'
+import type {
+  EmailTemplate,
+  Invoice,
+  InvoiceStatus,
+  QueuedEmail,
+  Treatment,
+} from '@/api/generated/model'
 import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
 import { PageHeader } from '@/components/PageHeader'
@@ -15,12 +26,28 @@ import { formatTimeOfDay } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
 import { defaultSchedule, isAhead, type Schedule, scheduleAt, scheduleOf } from '@/lib/schedule'
 import { useGoBack } from '@/lib/trail'
+import { cn } from '@/lib/utils'
 
 /** What the vet decided on the form: who the mail goes to, and when it may go. */
 interface MailChoice {
   recipients: string[]
   /** The instant the mail may go out — now for "Gleich versenden". */
   sendAt: string
+  /** The email template, by its configured name. */
+  template: string
+}
+
+/**
+ * The template a page opens on: the waiting mail's, while its file is there — reopening it
+ * should not switch its text — else the first one that can be used. None when no file is there.
+ */
+function initialTemplate(
+  templates: EmailTemplate[],
+  waiting: QueuedEmail | null | undefined,
+): string | null {
+  const usable = templates.filter((template) => template.available)
+  const kept = usable.find((template) => template.name === waiting?.template)
+  return (kept ?? usable[0])?.name ?? null
 }
 
 /** "Gleich" or "Später", with the day and hour kept while "Gleich" is chosen. */
@@ -121,6 +148,10 @@ export function InvoiceMailForm({
   const [extra, setExtra] = useState('')
   const [confirmSaveEmail, setConfirmSaveEmail] = useState(false)
   const [chosenWhen, setWhen] = useState<When | null>(null)
+  const [chosenTemplate, setTemplate] = useState<string | null>(null)
+  // Fetched fresh whenever the form opens: whether a template's file is there is the state of
+  // the folder now, and a file just put in place should be choosable.
+  const emailTemplates = useListEmailTemplates({ query: { staleTime: 0 } })
   const addEmail = useAddCustomerEmail()
   // Back where the vet came from — the appointment with its animal's tab.
   const back = useGoBack({ to: '/treatments/$id', params: { id: String(treatmentId) } })
@@ -175,11 +206,21 @@ export function InvoiceMailForm({
   const pastSchedule = when.later && !isAhead(scheduleAt(when.schedule))
   const withMail = everyone.length > 0
 
+  const templates = emailTemplates.data ?? []
+  const template = chosenTemplate ?? initialTemplate(templates, invoice.data?.email_queue)
+  // Asked only when there is a choice, or something to say: one usable template is no
+  // question, a missing file is.
+  const askTemplate =
+    withMail && (templates.length > 1 || templates.some((entry) => !entry.available))
+  const noTemplate = withMail && !emailTemplates.isPending && template === null
+
   const go = () => {
     setConfirmSaveEmail(false)
     submit(current.id, {
       recipients: everyone,
       sendAt: when.later ? scheduleAt(when.schedule) : new Date().toISOString(),
+      // Without addresses nothing is queued and the server ignores it.
+      template: template ?? templates[0]?.name ?? '',
     })
   }
 
@@ -222,6 +263,48 @@ export function InvoiceMailForm({
 
       {/* When the mail goes out — only when there is one. "Später" is for the kindness of not
           sending a bill into a fresh loss, while the vet still gets it off her desk today. */}
+      {askTemplate ? (
+        <fieldset className="mt-4 flex flex-col gap-1 rounded-card border border-line bg-surface p-4">
+          <legend className="text-xs font-semibold text-ink-soft">{t('invoices.template')}</legend>
+          {templates.map((entry) => (
+            <label
+              key={entry.name}
+              className={cn(
+                'flex min-h-11 items-center gap-2 text-sm sm:min-h-9',
+                entry.available ? 'text-ink' : 'text-ink-faint',
+              )}
+            >
+              <input
+                type="radio"
+                name="mail-template"
+                className="size-4 accent-ink"
+                checked={entry.name === template}
+                disabled={!entry.available}
+                onChange={() => setTemplate(entry.name)}
+              />
+              {entry.name}
+              {/* The file is listed in config.toml but not in the templates folder: the
+                  template cannot be used until it is put back. */}
+              {entry.available ? null : (
+                <span className="inline-flex items-center gap-1 text-xs text-danger">
+                  <TriangleAlert
+                    className="size-3.5 shrink-0"
+                    role="img"
+                    aria-label={t('invoices.templateFileMissing', { file: entry.file })}
+                  />
+                  <span aria-hidden>{t('invoices.templateFileMissing', { file: entry.file })}</span>
+                </span>
+              )}
+            </label>
+          ))}
+          {noTemplate ? (
+            <p className="mt-1 text-sm text-danger" role="alert">
+              {t('invoices.noTemplateAvailable')}
+            </p>
+          ) : null}
+        </fieldset>
+      ) : null}
+
       {withMail ? (
         <fieldset className="mt-4 flex flex-col gap-1 rounded-card border border-line bg-surface p-4">
           <legend className="text-xs font-semibold text-ink-soft">{t('invoices.sendWhen')}</legend>
@@ -298,7 +381,11 @@ export function InvoiceMailForm({
         <Button onClick={() => void back()}>{t('action.cancel')}</Button>
         <Button
           variant="primary"
-          disabled={pending || (requiresRecipient && !withMail) || (withMail && pastSchedule)}
+          disabled={
+            pending ||
+            (requiresRecipient && !withMail) ||
+            (withMail && (pastSchedule || noTemplate))
+          }
           onClick={() => (isNewAddress ? setConfirmSaveEmail(true) : go())}
         >
           <Mail className="size-4" />

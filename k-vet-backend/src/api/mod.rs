@@ -11,6 +11,7 @@ pub mod config;
 pub mod customers;
 pub mod dashboard;
 pub mod drugs;
+pub mod email_templates;
 pub mod invoices;
 pub mod lots;
 pub mod mail_queue;
@@ -36,6 +37,7 @@ pub fn protected_routes() -> Router<AppState> {
         .merge(customers::routes())
         .merge(dashboard::routes())
         .merge(drugs::routes())
+        .merge(email_templates::routes())
         .merge(lots::routes())
         .merge(mail_queue::routes())
         .merge(manufacturers::routes())

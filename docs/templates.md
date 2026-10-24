@@ -1,19 +1,31 @@
 # Templates
 
 Two documents leave the practice: the invoice PDF and the email that carries it. Both come from
-templates that ship inside the binary and can be replaced with a file, so the layout and wording
-can change without a new release.
+templates, so the layout and wording can change without a new release. The PDF template ships
+inside the binary and can be replaced with a file; the email templates are files in the
+**templates folder** — `/etc/k-vet/templates` in the container, where the entrypoint seeds
+`invoice-email.txt` on first start, and `$KVET_TEMPLATES_DIR` elsewhere.
 
 ```toml
 [invoice]
-typst_template = "/etc/k-vet/invoice.typ"        # empty = embedded default
-email_template = "/etc/k-vet/invoice-email.txt"  # empty = embedded default
+typst_template = "/etc/k-vet/templates/invoice.typ"   # empty = embedded default
+
+# The email templates to choose from, in this order — the first is preselected.
+[[invoice.email_templates]]
+name = "Standard"             # what the vet sees when releasing or sending
+file = "invoice-email.txt"    # a file in the templates folder, not a path
+
+[[invoice.email_templates]]
+name = "Kurz"
+file = "invoice-email-kurz.txt"
 ```
 
-The **PDF template is read on every render**, so an edit takes effect with the next invoice. The
-**email template is read once at startup**, so restart the service after changing it. A template
-that fails fails that one request with a 500 and logs the error; the invoice keeps its number and
-can be rendered or sent again after the fix. Test a change on a throwaway invoice before billing a
+Both kinds are **read when used** — the PDF template on every render, an email template on
+every send — so an edit takes effect with the next invoice or mail. Listing a *new* email
+template is a change to `config.toml`, which is read at startup: restart for that. A template
+that fails to render fails that one invoice or mail and says so (the PDF with a 500; a mail is
+given up on, with the reason, on the dashboard); the invoice keeps its number and can be rendered
+or sent again after the fix. Test a change on a throwaway invoice before billing a
 customer with it.
 
 Everything reaching a template is **already formatted in German conventions** (`1.234,56 €`,
@@ -183,8 +195,26 @@ Rechnungsdatum: #invoice.date
 
 ## Invoice email (minijinja)
 
-The default template is
+The template the container seeds as "Standard" is
 [`k-vet-backend/templates/invoice-email.txt`](../k-vet-backend/templates/invoice-email.txt).
+
+### Several templates
+
+Each `[[invoice.email_templates]]` entry is a template the vet can choose when releasing an
+invoice or sending it again; the first listed is preselected, and a waiting mail reopens on its
+own. To add one, copy `invoice-email.txt` in the templates folder under a new name, change the
+text, list it with a name in `config.toml`, and restart.
+
+- **A missing file does not stop k-vet.** The template is still offered, disabled, with the file
+  name that is missing; once the file is put in place it can be chosen — no restart.
+- **A queued mail keeps its template's name.** If that template is no longer listed, or its file
+  is gone when the mail is due, the mail is not sent with another text: it is given up on with
+  the reason, on the dashboard and on the appointment, to be retried once the file is back or
+  sent again with another template.
+- **`file` is a file name**, not a path: every email template lives in the one folder.
+- Without any `[[invoice.email_templates]]` there is one template, "Standard", from
+  `invoice-email.txt`. The former single key `email_template` is still accepted so an older
+  `config.toml` starts, but it is no longer read — the start-up log says so.
 
 ### Structure: first line is the subject
 

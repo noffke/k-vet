@@ -37,6 +37,9 @@ pub struct TestApp {
     pub pool: PgPool,
     pub config: Arc<Config>,
     pub attachments: TempDir,
+    /// The templates folder: the seeded `invoice-email.txt` and `invoice-email-kurz.txt`; the
+    /// third configured template, "Fehlt", has no file.
+    pub templates: TempDir,
     /// Session cookie jar — interior mutability keeps every request method `&self`.
     cookie: RefCell<Option<String>>,
 }
@@ -119,7 +122,9 @@ impl TestApp {
 
     async fn anonymous_with_config(pool: PgPool, adjust: impl FnOnce(&mut Config)) -> Self {
         let attachments = TempDir::new().expect("temp dir for attachments");
+        let templates = templates_folder();
         let mut settings = test_config(attachments.path().to_string_lossy().as_ref());
+        settings.invoice.templates_dir = templates.path().to_path_buf();
         adjust(&mut settings);
         let config = Arc::new(settings);
         let state = AppState::new(pool.clone(), Arc::clone(&config)).expect("state builds");
@@ -130,6 +135,7 @@ impl TestApp {
             pool,
             config,
             attachments,
+            templates,
             cookie: RefCell::new(None),
         }
     }
@@ -310,6 +316,8 @@ pub struct MailServer {
     pub accepting: Arc<AtomicBool>,
     /// Addresses the server does not know: `550` on their `RCPT TO`.
     pub unknown: Arc<Mutex<Vec<String>>>,
+    /// The text of every message the server took, headers included.
+    pub messages: Arc<Mutex<Vec<String>>>,
 }
 
 impl MailServer {
@@ -322,16 +330,17 @@ impl MailServer {
         let recipients = Arc::new(Mutex::new(Vec::new()));
         let accepting = Arc::new(AtomicBool::new(true));
         let unknown = Arc::new(Mutex::new(Vec::new()));
-        let (seen, open, strangers) = (
-            Arc::clone(&recipients),
-            Arc::clone(&accepting),
-            Arc::clone(&unknown),
-        );
+        let messages = Arc::new(Mutex::new(Vec::new()));
+        let mailbox = Mailbox {
+            seen: Arc::clone(&recipients),
+            accepting: Arc::clone(&accepting),
+            unknown: Arc::clone(&unknown),
+            messages: Arc::clone(&messages),
+        };
         std::thread::spawn(move || {
             for connection in listener.incoming().flatten() {
-                let (seen, open, strangers) =
-                    (Arc::clone(&seen), Arc::clone(&open), Arc::clone(&strangers));
-                std::thread::spawn(move || serve_smtp(connection, &seen, &open, &strangers));
+                let mailbox = mailbox.clone();
+                std::thread::spawn(move || serve_smtp(connection, &mailbox));
             }
         });
         MailServer {
@@ -339,6 +348,7 @@ impl MailServer {
             recipients,
             accepting,
             unknown,
+            messages,
         }
     }
 
@@ -361,14 +371,24 @@ impl MailServer {
     }
 }
 
+/// What a connection of the test mail server shares with the test.
+#[derive(Clone)]
+struct Mailbox {
+    seen: Arc<Mutex<Vec<String>>>,
+    accepting: Arc<AtomicBool>,
+    unknown: Arc<Mutex<Vec<String>>>,
+    messages: Arc<Mutex<Vec<String>>>,
+}
+
 /// Just enough SMTP for lettre without TLS or authentication: every command is fine but a
 /// recipient it was told not to know, `DATA` takes everything up to the lone dot.
-fn serve_smtp(
-    connection: TcpStream,
-    seen: &Mutex<Vec<String>>,
-    accepting: &AtomicBool,
-    unknown: &Mutex<Vec<String>>,
-) {
+fn serve_smtp(connection: TcpStream, mailbox: &Mailbox) {
+    let Mailbox {
+        seen,
+        accepting,
+        unknown,
+        messages,
+    } = mailbox;
     let Ok(reader) = connection.try_clone() else {
         return;
     };
@@ -383,6 +403,7 @@ fn serve_smtp(
     }
     let mut in_data = false;
     let mut envelope = Vec::new();
+    let mut text = String::new();
     for line in BufReader::new(reader).lines() {
         let Ok(line) = line else {
             return;
@@ -393,9 +414,15 @@ fn serve_smtp(
                 if let Ok(mut seen) = seen.lock() {
                     seen.append(&mut envelope);
                 }
+                if let Ok(mut messages) = messages.lock() {
+                    messages.push(std::mem::take(&mut text));
+                }
                 if !reply("250 queued") {
                     return;
                 }
+            } else {
+                text.push_str(&line);
+                text.push('\n');
             }
             continue;
         }
@@ -458,12 +485,40 @@ pub fn test_config(attachments_dir: &str) -> Config {
         from_name = "Tierarztpraxis Test"
         [invoice]
         number_pattern = "{{year}}-{{counter:4}}"
+        [[invoice.email_templates]]
+        name = "Standard"
+        file = "invoice-email.txt"
+        [[invoice.email_templates]]
+        name = "Kurz"
+        file = "invoice-email-kurz.txt"
+        [[invoice.email_templates]]
+        name = "Fehlt"
+        file = "invoice-email-fehlt.txt"
         [travel_expenses]
         rate_per_double_km = "3.50"
         minimum = "13.00"
         "#
     );
     Config::parse(&raw, "test.toml").expect("test config is valid")
+}
+
+/// The subject line of the "Kurz" template, so a test can tell which template a mail used.
+pub const SHORT_TEMPLATE_SUBJECT: &str = "Kurz: Rechnung";
+
+/// A templates folder as the container seeds it, plus a second template of the test's own.
+fn templates_folder() -> TempDir {
+    let folder = TempDir::new().expect("temp dir for templates");
+    std::fs::write(
+        folder.path().join("invoice-email.txt"),
+        include_str!("../../templates/invoice-email.txt"),
+    )
+    .expect("the seeded template");
+    std::fs::write(
+        folder.path().join("invoice-email-kurz.txt"),
+        format!("{SHORT_TEMPLATE_SUBJECT} {{{{ invoice_number }}}}\n\n{{{{ greeting }}}},\nanbei die Rechnung.\n"),
+    )
+    .expect("a second template");
+    folder
 }
 
 // ---------------------------------------------------------------------------

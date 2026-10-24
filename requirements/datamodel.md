@@ -221,6 +221,7 @@ Fields:
 * Relation: 1 Invoice (unique: one waiting mail per invoice; sending again replaces it)
 * Recipients (at least one)
 * Send After — not sent before this; "Gleich versenden" is the time of the request
+* Template — the email template's configured name; empty (queued before the choice) = the first
 * Queued At, Attempts, Last Attempt At
 * First Failure At, Last Error (the transport's own words) — both set together
 * Refused (bool) — the last failure was final (a 5xx answer, or a mail that cannot be built)

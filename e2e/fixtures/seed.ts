@@ -208,6 +208,7 @@ export async function seedAcceptedInvoice(request: APIRequestContext): Promise<S
   await post(request, `/api/invoices/${invoice.id}/accept`, {
     recipient_emails: [],
     send_at: new Date().toISOString(),
+    template: 'Standard',
   })
 
   return { invoiceId: invoice.id, invoiceNumber: invoice.invoice_number, treatmentId }

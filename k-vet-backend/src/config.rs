@@ -4,6 +4,7 @@
 //! SMTP, invoice number pattern, VAT choices and travel expense rates. The shipped
 //! `config.example.toml` documents every field in de-DE and en-US.
 
+use std::ffi::OsString;
 use std::net::SocketAddr;
 use std::path::{Path, PathBuf};
 
@@ -14,6 +15,17 @@ use serde::Deserialize;
 pub const CONFIG_PATH_ENV: &str = "KVET_CONFIG";
 /// Fallback path when neither an argument nor the environment names a file.
 pub const DEFAULT_CONFIG_PATH: &str = "/etc/k-vet/config.toml";
+/// The templates folder. The image sets it for `docker-entrypoint.sh`, which seeds the folder
+/// there, so the folder that is seeded and the folder that is read are one setting.
+pub const TEMPLATES_DIR_ENV: &str = "KVET_TEMPLATES_DIR";
+/// Where the container mounts the templates, when nothing says otherwise.
+pub const DEFAULT_TEMPLATES_DIR: &str = "/etc/k-vet/templates";
+
+/// The templates folder: `KVET_TEMPLATES_DIR` when it is set, else the container's.
+pub fn templates_dir(env: Option<OsString>) -> PathBuf {
+    env.filter(|value| !value.is_empty())
+        .map_or_else(|| PathBuf::from(DEFAULT_TEMPLATES_DIR), PathBuf::from)
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ConfigError {
@@ -162,8 +174,45 @@ pub struct InvoiceConfig {
     pub payment_terms_days: i64,
     #[serde(default, deserialize_with = "empty_path_as_none")]
     pub typst_template: Option<PathBuf>,
+    /// The single email template of configurations written before `email_templates`. Still
+    /// accepted, so such a configuration keeps starting, and ignored: the start-up log says so.
     #[serde(default, deserialize_with = "empty_path_as_none")]
     pub email_template: Option<PathBuf>,
+    /// The invoice email templates the vet chooses from, in the order offered; the first is
+    /// the default. Each is a file in the templates folder.
+    #[serde(default = "default_email_templates")]
+    pub email_templates: Vec<EmailTemplateConfig>,
+    /// The templates folder — not set in the file: [`templates_dir`] resolves it when the
+    /// configuration is loaded, and tests point it at a folder of their own.
+    #[serde(skip, default = "default_templates_dir")]
+    pub templates_dir: PathBuf,
+}
+
+/// One invoice email template: what the vet sees, and its file in the templates folder.
+#[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct EmailTemplateConfig {
+    pub name: String,
+    /// A file name, not a path: the templates live in one folder, which the container mounts.
+    pub file: String,
+}
+
+/// Without a list, the one template the container seeds — which is what a configuration
+/// written before the list was used, too.
+fn default_email_templates() -> Vec<EmailTemplateConfig> {
+    vec![EmailTemplateConfig {
+        name: "Standard".to_owned(),
+        file: "invoice-email.txt".to_owned(),
+    }]
+}
+
+fn default_templates_dir() -> PathBuf {
+    PathBuf::from(DEFAULT_TEMPLATES_DIR)
+}
+
+/// A plain file name: no folder of its own, nothing that leads out of the templates folder.
+fn is_plain_file_name(file: &str) -> bool {
+    !file.is_empty() && file != "." && file != ".." && !file.contains(['/', '\\'])
 }
 
 /// Deviations from the statutory drug price, decided per practice.
@@ -207,7 +256,9 @@ impl Config {
                 source,
             },
         })?;
-        Self::parse(&raw, path)
+        let mut config = Self::parse(&raw, path)?;
+        config.invoice.templates_dir = templates_dir(std::env::var_os(TEMPLATES_DIR_ENV));
+        Ok(config)
     }
 
     /// Parses and validates configuration text. `path` is only used for error messages.
@@ -305,6 +356,40 @@ impl Config {
             return Err(ConfigError::Invalid(
                 "storage.max_upload_mb must be greater than zero".into(),
             ));
+        }
+        self.validate_email_templates()
+    }
+
+    /// The list must be usable as a list: something to choose, each choice named once, each
+    /// file in the templates folder. A file that is not there yet is not a mistake in the
+    /// configuration — it is a state of the folder, and the app shows it.
+    fn validate_email_templates(&self) -> Result<(), ConfigError> {
+        let templates = &self.invoice.email_templates;
+        if templates.is_empty() {
+            return Err(ConfigError::Invalid(
+                "invoice.email_templates must list at least one template".into(),
+            ));
+        }
+        let mut names = std::collections::HashSet::new();
+        for template in templates {
+            if template.name.trim().is_empty() {
+                return Err(ConfigError::Invalid(
+                    "invoice.email_templates: every template needs a name".into(),
+                ));
+            }
+            if !names.insert(template.name.trim()) {
+                return Err(ConfigError::Invalid(format!(
+                    "invoice.email_templates: the name `{}` is used twice",
+                    template.name
+                )));
+            }
+            if !is_plain_file_name(&template.file) {
+                return Err(ConfigError::Invalid(format!(
+                    "invoice.email_templates: `{}` must be a file name in the templates folder, \
+                     not a path",
+                    template.file
+                )));
+            }
         }
         Ok(())
     }
@@ -522,6 +607,109 @@ mod tests {
         let raw = with_invoice_keys("currency = \"Euro\"");
         let error = parse(&raw).expect_err("currency must be an ISO code");
         assert!(matches!(error, ConfigError::Invalid(_)), "got {error:?}");
+    }
+
+    #[test]
+    fn email_templates_are_offered_in_the_order_listed() {
+        let raw = format!(
+            "{MINIMAL}
+            [[invoice.email_templates]]
+            name = \"Standard\"
+            file = \"invoice-email.txt\"
+            [[invoice.email_templates]]
+            name = \"Kurz\"
+            file = \"invoice-email-kurz.txt\"
+            "
+        );
+        let config = parse(&raw).expect("two templates");
+        let names: Vec<_> = config
+            .invoice
+            .email_templates
+            .iter()
+            .map(|template| template.name.as_str())
+            .collect();
+        assert_eq!(names, ["Standard", "Kurz"], "the first is the default");
+    }
+
+    #[test]
+    fn without_a_list_the_seeded_template_is_the_one() {
+        let config = parse(MINIMAL).expect("minimal config parses");
+        assert_eq!(
+            config.invoice.email_templates,
+            vec![EmailTemplateConfig {
+                name: "Standard".to_owned(),
+                file: "invoice-email.txt".to_owned(),
+            }]
+        );
+        assert_eq!(
+            config.invoice.templates_dir,
+            PathBuf::from(DEFAULT_TEMPLATES_DIR)
+        );
+    }
+
+    #[test]
+    fn an_email_template_is_a_file_in_the_templates_folder_not_a_path() {
+        for file in [
+            "/etc/k-vet/mail.txt",
+            "../mail.txt",
+            "sub/mail.txt",
+            "..",
+            "",
+        ] {
+            let raw = format!(
+                "{MINIMAL}
+                [[invoice.email_templates]]
+                name = \"Standard\"
+                file = \"{file}\"
+                "
+            );
+            let error = parse(&raw).expect_err("a path is refused");
+            assert!(
+                matches!(error, ConfigError::Invalid(_)),
+                "{file}: {error:?}"
+            );
+        }
+    }
+
+    #[test]
+    fn email_templates_need_a_name_used_once() {
+        let unnamed = format!(
+            "{MINIMAL}
+            [[invoice.email_templates]]
+            name = \" \"
+            file = \"invoice-email.txt\"
+            "
+        );
+        assert!(parse(&unnamed).is_err());
+        let twice = format!(
+            "{MINIMAL}
+            [[invoice.email_templates]]
+            name = \"Standard\"
+            file = \"invoice-email.txt\"
+            [[invoice.email_templates]]
+            name = \"Standard\"
+            file = \"invoice-email-kurz.txt\"
+            "
+        );
+        assert!(parse(&twice).is_err());
+        let none = with_invoice_keys("email_templates = []");
+        assert!(parse(&none).is_err(), "there must be something to choose");
+    }
+
+    #[test]
+    fn the_templates_folder_comes_from_the_environment_or_is_the_containers() {
+        assert_eq!(
+            templates_dir(Some(OsString::from("templates"))),
+            PathBuf::from("templates")
+        );
+        assert_eq!(templates_dir(None), PathBuf::from(DEFAULT_TEMPLATES_DIR));
+        assert_eq!(
+            templates_dir(Some(OsString::new())),
+            PathBuf::from(DEFAULT_TEMPLATES_DIR)
+        );
+        // Not a key of the file: one setting, the one the container seeds.
+        let raw = with_invoice_keys("templates_dir = \"/srv/templates\"");
+        assert!(parse(&raw).is_err());
     }
 
     #[test]

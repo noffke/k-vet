@@ -9,6 +9,7 @@ import {
   getInvoicePdfUrl,
   useCancelInvoice,
   useGetInvoice,
+  useListEmailTemplates,
   useMarkInvoicePosted,
 } from '@/api/generated/endpoints'
 import type { QueuedEmail, Treatment } from '@/api/generated/model'
@@ -223,6 +224,12 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
 function QueuedMailNote({ mail }: { mail: QueuedEmail }) {
   const { t } = useTranslation()
   const { dateTime } = useLocaleFormat()
+  const templates = useListEmailTemplates()
+  // Which text is about to go out — worth saying only where there is more than one.
+  const templateLine =
+    (templates.data?.length ?? 0) > 1 && mail.template ? (
+      <span className="block">{t('invoices.queueTemplate', { name: mail.template })}</span>
+    ) : null
   if (!mail.last_error) {
     const recipients = mail.recipients.join(', ')
     return (
@@ -230,6 +237,7 @@ function QueuedMailNote({ mail }: { mail: QueuedEmail }) {
         {isAhead(mail.send_after)
           ? t('invoices.queueScheduled', { recipients, time: dateTime(mail.send_after) })
           : t('invoices.queueWaiting', { recipients })}
+        {templateLine}
       </p>
     )
   }
