@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedService } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -26,9 +27,7 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   // ── Appointment for today ────────────────────────────────────────────────────
   await navigate(page, 'Termine')
   await page.getByRole('button', { name: 'Neuer Termin' }).click()
-  const today = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  const todayText = `${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`
+  const todayText = germanDate()
   // The date field opens on today, so the vet only types the time.
   await expect(page.getByLabel('Datum')).toHaveValue(todayText)
   await page.getByLabel('Uhrzeit').fill('09:30')

@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { americanDate, germanDate } from '../fixtures/clock'
 import { seedAcceptedInvoice } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -8,10 +9,8 @@ import { navigate, signIn } from './helpers'
  */
 test('numbers, money and dates follow the active locale', async ({ page, request }) => {
   const invoice = await seedAcceptedInvoice(request)
-  const today = new Date()
-  const pad = (value: number) => String(value).padStart(2, '0')
-  const german = `${pad(today.getDate())}.${pad(today.getMonth() + 1)}.${today.getFullYear()}`
-  const american = `${pad(today.getMonth() + 1)}/${pad(today.getDate())}/${today.getFullYear()}`
+  const german = germanDate()
+  const american = americanDate()
 
   await signIn(page)
   await page.goto('/invoices')

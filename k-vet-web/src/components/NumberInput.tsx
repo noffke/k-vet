@@ -49,7 +49,7 @@ export interface NumberInputProps {
   action?: FieldAction | undefined
 }
 
-export interface FieldAction {
+interface FieldAction {
   label: string
   icon: ReactNode
   onClick: () => void

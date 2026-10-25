@@ -4,6 +4,7 @@ import { tmpdir } from 'node:os'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Client } from 'pg'
+import { TIME_ZONE } from './fixtures/clock'
 import { E2E_PASSWORD_HASH, E2E_USERNAME } from './fixtures/credentials'
 import { startFakeGoogle } from './fixtures/fakeGoogle'
 
@@ -138,9 +139,11 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   const google = await startFakeGoogle()
   const child = spawn(binary, [], {
     // The templates folder is not a config key: the binary reads it from the environment, as
-    // in the container image. Nor is where Google is: only a fake is ever put there.
+    // in the container image. Nor is where Google is: only a fake is ever put there. The time
+    // zone is the practice's, as the image sets it, whatever the machine running the suite uses.
     env: {
       ...process.env,
+      TZ: TIME_ZONE,
       KVET_CONFIG: configPath,
       KVET_TEMPLATES_DIR: templatesDir,
       KVET_MAPS_ENDPOINT: google.url,

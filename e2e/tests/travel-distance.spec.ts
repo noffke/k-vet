@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { germanDate } from '../fixtures/clock'
 import { ROUTED_KM, ROUTED_STREET } from '../fixtures/fakeGoogle'
 import {
   seedCustomer,
@@ -15,11 +16,7 @@ import { signIn } from './helpers'
  * vet's to change. Google is the suite's fake (`fixtures/fakeGoogle.ts`).
  */
 test.describe('Wegegeld kilometres', () => {
-  const today = new Date().toLocaleDateString('de-DE', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric',
-  })
+  const today = germanDate()
 
   async function pick(page: Page, treatmentId: number, serviceName: string) {
     await page.goto(`/treatments/${treatmentId}`)

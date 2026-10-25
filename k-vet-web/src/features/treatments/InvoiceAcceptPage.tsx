@@ -14,6 +14,7 @@ import {
 import { InvoiceMailForm, useQueuedToast } from '@/features/treatments/InvoiceMailForm'
 import { linesWithoutKm } from '@/features/treatments/travelKm'
 import { useLocaleFormat } from '@/lib/locale'
+import { scheduleOf } from '@/lib/schedule'
 import { useGoBack } from '@/lib/trail'
 
 /**
@@ -110,7 +111,9 @@ function EuthanasiaNotice({ treatmentId }: { treatmentId: number }) {
       <p className="text-sm font-medium text-ink">
         {t('invoices.euthanasiaNotice', {
           names: putDown.map((patient) => patient.name).join(', '),
-          date: date(record.starts_at),
+          // The visit's own day where the practice is — the one the server enters — not the
+          // UTC one, which before 01:00 or 02:00 is the day before.
+          date: record.starts_at ? date(scheduleOf(record.starts_at).date) : '',
         })}
       </p>
     </aside>

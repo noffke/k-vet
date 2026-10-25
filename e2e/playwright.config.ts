@@ -1,4 +1,5 @@
 import { defineConfig, devices } from '@playwright/test'
+import { TIME_ZONE } from './fixtures/clock'
 
 const port = Number(process.env.KVET_PORT ?? 8081)
 
@@ -31,7 +32,7 @@ export default defineConfig({
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     locale: 'de-DE',
-    timezoneId: 'Europe/Berlin',
+    timezoneId: TIME_ZONE,
   },
   projects: [
     {

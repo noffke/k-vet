@@ -1,4 +1,5 @@
 import { expect, type Page, test } from '@playwright/test'
+import { practiceYear } from '../fixtures/clock'
 import { seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { signIn } from './helpers'
 
@@ -76,7 +77,7 @@ test('a created invoice keeps its number, an accepted one burns it', async ({ pa
   expect(counter(third)).toBeGreaterThan(counter(second))
 
   // The pattern is the configured one: four-digit counter, scoped to the year.
-  const year = String(new Date().getFullYear())
+  const year = practiceYear()
   for (const number of [first, second, third]) {
     expect(number).toMatch(new RegExp(`^${year}-\\d{4}$`))
   }

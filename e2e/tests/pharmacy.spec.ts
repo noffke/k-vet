@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -70,11 +71,7 @@ test.describe('pharmacy', () => {
     await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
 
     // The release page says it before the button does it.
-    const today = new Date().toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
+    const today = germanDate()
     await page.goto(`/treatments/${treatmentId}/invoice/accept`)
     await expect(
       page.getByText(`Mit der Freigabe wird für ${name} das Todesdatum ${today} eingetragen.`),

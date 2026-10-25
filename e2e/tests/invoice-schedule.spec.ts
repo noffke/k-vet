@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { germanDate } from '../fixtures/clock'
 import {
   clearPendingInvoices,
   seedCustomer,
@@ -31,13 +32,7 @@ test.describe('sending an invoice later', () => {
       await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
     ).json()) as { invoice_number: string }
 
-    const tomorrow = new Date()
-    tomorrow.setDate(tomorrow.getDate() + 1)
-    const day = tomorrow.toLocaleDateString('de-DE', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-    })
+    const day = germanDate(1)
 
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}/invoice/accept`)
