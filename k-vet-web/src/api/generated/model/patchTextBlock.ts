@@ -10,5 +10,5 @@ import type { RichText } from './richText';
 export interface PatchTextBlock {
   /** @nullable */
   name?: string | null;
-  content?: null | RichText;
+  content?: RichText | null;
 }

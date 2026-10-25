@@ -15,12 +15,12 @@ export interface Customer {
      * @nullable
      */
   company?: string | null;
-  salutation?: null | Salutation;
+  salutation?: Salutation | null;
   /** @nullable */
   first_name?: string | null;
   /** @nullable */
   last_name?: string | null;
-  second_salutation?: null | Salutation;
+  second_salutation?: Salutation | null;
   /** @nullable */
   second_first_name?: string | null;
   /** @nullable */
@@ -40,7 +40,7 @@ export interface Customer {
   home_country?: string | null;
   /** @nullable */
   invoice_company?: string | null;
-  invoice_salutation?: null | Salutation;
+  invoice_salutation?: Salutation | null;
   /** @nullable */
   invoice_first_name?: string | null;
   /** @nullable */

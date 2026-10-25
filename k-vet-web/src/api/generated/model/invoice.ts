@@ -46,7 +46,7 @@ export interface Invoice {
      * @nullable
      */
   ts_sent_post?: string | null;
-  email_queue?: null | QueuedEmail;
+  email_queue?: QueuedEmail | null;
   /** @nullable */
   ts_submitted?: string | null;
   /** @nullable */

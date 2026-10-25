@@ -4460,11 +4460,11 @@
           "suggestion": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/AddressSuggestion",
                 "description": "`verdict = corrected`: the address as Google writes it."
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -5083,10 +5083,10 @@
           "salutation": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Salutation"
               },
               {
-                "$ref": "#/components/schemas/Salutation"
+                "type": "null"
               }
             ]
           },
@@ -5105,11 +5105,11 @@
           "second_salutation": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/Salutation",
                 "description": "Optional second person of the household, addressed on the invoice as well."
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -5165,10 +5165,10 @@
           "invoice_salutation": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Salutation"
               },
               {
-                "$ref": "#/components/schemas/Salutation"
+                "type": "null"
               }
             ]
           },
@@ -5744,11 +5744,11 @@
           "email_queue": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/QueuedEmail",
                 "description": "The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for."
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -5865,10 +5865,10 @@
           "source": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/KmSource"
               },
               {
-                "$ref": "#/components/schemas/KmSource"
+                "type": "null"
               }
             ]
           },
@@ -5887,11 +5887,11 @@
           "problem": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/KmProblem",
                 "description": "Why there are no kilometres."
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -5911,10 +5911,10 @@
           "attrs": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/ListAttrs"
               },
               {
-                "$ref": "#/components/schemas/ListAttrs"
+                "type": "null"
               }
             ]
           },
@@ -6236,10 +6236,10 @@
           "invoice_status": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/InvoiceStatus"
               },
               {
-                "$ref": "#/components/schemas/InvoiceStatus"
+                "type": "null"
               }
             ]
           }
@@ -6493,10 +6493,10 @@
           "salutation": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Salutation"
               },
               {
-                "$ref": "#/components/schemas/Salutation"
+                "type": "null"
               }
             ]
           },
@@ -6515,10 +6515,10 @@
           "second_salutation": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Salutation"
               },
               {
-                "$ref": "#/components/schemas/Salutation"
+                "type": "null"
               }
             ]
           },
@@ -6573,10 +6573,10 @@
           "invoice_salutation": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/Salutation"
               },
               {
-                "$ref": "#/components/schemas/Salutation"
+                "type": "null"
               }
             ]
           },
@@ -6648,10 +6648,10 @@
           "email_type": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/EmailType"
               },
               {
-                "$ref": "#/components/schemas/EmailType"
+                "type": "null"
               }
             ]
           }
@@ -6890,21 +6890,21 @@
           "treatment_reason": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/RichText",
                 "description": "A document without text is stored as `null`, the same as clearing the field."
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "finding": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/RichText"
               },
               {
-                "$ref": "#/components/schemas/RichText"
+                "type": "null"
               }
             ]
           }
@@ -7088,11 +7088,11 @@
           "content": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/RichText",
                 "description": "A document without text counts as no content: the block stays a draft."
+              },
+              {
+                "type": "null"
               }
             ]
           }
@@ -7378,22 +7378,22 @@
           "treatment_reason": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/RichText",
                 "description": "\"Vorbericht und Untersuchung\", formatted; `null` when nothing is written."
+              },
+              {
+                "type": "null"
               }
             ]
           },
           "finding": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/RichText",
                 "description": "\"Therapie und weiteres Vorgehen\", formatted; `null` when nothing is written."
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -7459,10 +7459,10 @@
           "invoice_status": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/InvoiceStatus"
               },
               {
-                "$ref": "#/components/schemas/InvoiceStatus"
+                "type": "null"
               }
             ]
           }
@@ -8201,11 +8201,11 @@
           "content": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/RichText",
                 "description": "The block's formatted text, inserted as it is; `null` while none is written."
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -8299,11 +8299,11 @@
           "invoice": {
             "oneOf": [
               {
-                "type": "null"
-              },
-              {
                 "$ref": "#/components/schemas/TreatmentInvoice",
                 "description": "The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again."
+              },
+              {
+                "type": "null"
               }
             ]
           },
@@ -8523,11 +8523,11 @@
               "km_suggestion": {
                 "oneOf": [
                   {
-                    "type": "null"
-                  },
-                  {
                     "$ref": "#/components/schemas/KmSuggestion",
                     "description": "Set when kilometres were looked up for this line."
+                  },
+                  {
+                    "type": "null"
                   }
                 ]
               }
@@ -8570,20 +8570,20 @@
           "treatment_reason": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/RichText"
               },
               {
-                "$ref": "#/components/schemas/RichText"
+                "type": "null"
               }
             ]
           },
           "finding": {
             "oneOf": [
               {
-                "type": "null"
+                "$ref": "#/components/schemas/RichText"
               },
               {
-                "$ref": "#/components/schemas/RichText"
+                "type": "null"
               }
             ]
           }

@@ -12,5 +12,5 @@ import type { TreatmentItem } from './treatmentItem';
  * A line together with how its kilometres were found, for the requests that look them up.
  */
 export type TreatmentItemWithKm = TreatmentItem & ({
-  km_suggestion?: null | KmSuggestion;
+  km_suggestion?: KmSuggestion | null;
 });

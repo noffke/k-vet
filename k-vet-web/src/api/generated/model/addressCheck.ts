@@ -10,5 +10,5 @@ import type { AddressSuggestion } from './addressSuggestion';
 
 export interface AddressCheck {
   verdict: AddressCheckVerdict;
-  suggestion?: null | AddressSuggestion;
+  suggestion?: AddressSuggestion | null;
 }
