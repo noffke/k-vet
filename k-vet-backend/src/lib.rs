@@ -182,6 +182,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::settings::patch_settings,
     ),
     components(schemas(error::ProblemDetails, error::FieldError)),
+    modifiers(&DescribeResponses),
     tags(
         (name = "auth", description = "Login and session"),
         (name = "attachments", description = "Uploaded files, photos and generated PDFs"),
@@ -200,6 +201,45 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
     )
 )]
 pub struct ApiDoc;
+
+/// Gives every response a description — the status's reason phrase where the handler gave none.
+///
+/// OpenAPI 3.1 requires one on every response, and orval validates the document before it
+/// generates anything. utoipa 5 wrote `""` for a bare `(status = 404)`; utoipa 6 leaves an empty
+/// description out altogether, which made those responses invalid and the client ungeneratable.
+struct DescribeResponses;
+
+impl utoipa::Modify for DescribeResponses {
+    fn modify(&self, openapi: &mut utoipa::openapi::OpenApi) {
+        for item in openapi.paths.paths.values_mut() {
+            let operations = [
+                &mut item.get,
+                &mut item.put,
+                &mut item.post,
+                &mut item.delete,
+                &mut item.options,
+                &mut item.head,
+                &mut item.patch,
+                &mut item.trace,
+            ];
+            for operation in operations.into_iter().flatten() {
+                for (status, response) in &mut operation.responses.responses {
+                    if let utoipa::openapi::RefOr::T(response) = response
+                        && response.description.is_empty()
+                    {
+                        response.description = status
+                            .parse::<u16>()
+                            .ok()
+                            .and_then(|code| StatusCode::from_u16(code).ok())
+                            .and_then(|code| code.canonical_reason())
+                            .unwrap_or("Response")
+                            .to_owned();
+                    }
+                }
+            }
+        }
+    }
+}
 
 /// Shared, cheap-to-clone application state.
 #[derive(Clone)]

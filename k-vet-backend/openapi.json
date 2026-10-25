@@ -27,7 +27,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -98,7 +98,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -129,7 +129,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -160,7 +160,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -170,7 +170,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -227,7 +227,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -237,10 +237,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -274,7 +274,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -284,7 +284,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -494,10 +494,10 @@
         ],
         "responses": {
           "204": {
-            "description": ""
+            "description": "No Content"
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -529,7 +529,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -539,10 +539,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -593,7 +593,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -645,7 +645,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -655,7 +655,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -687,7 +687,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -697,10 +697,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -724,7 +724,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -765,7 +765,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -775,7 +775,7 @@
             }
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -799,7 +799,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -819,7 +819,7 @@
         "operationId": "getDashboard",
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -877,7 +877,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -929,7 +929,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -939,7 +939,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -971,7 +971,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -981,10 +981,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -1008,7 +1008,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1039,7 +1039,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1115,7 +1115,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1205,7 +1205,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1228,7 +1228,7 @@
         "operationId": "bulkSubmitInvoices",
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1275,7 +1275,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1285,7 +1285,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -1356,7 +1356,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1427,7 +1427,7 @@
             "description": "The invoice PDF"
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -1498,7 +1498,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1550,7 +1550,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1584,7 +1584,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1594,7 +1594,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -1628,7 +1628,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1663,10 +1663,10 @@
         ],
         "responses": {
           "204": {
-            "description": ""
+            "description": "No Content"
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -1691,7 +1691,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1701,7 +1701,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -1752,7 +1752,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1804,7 +1804,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1814,7 +1814,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -1846,7 +1846,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1856,10 +1856,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -1883,7 +1883,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1914,7 +1914,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1955,7 +1955,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -1965,10 +1965,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -2046,7 +2046,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2056,7 +2056,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -2080,7 +2080,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2090,7 +2090,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -2122,7 +2122,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2132,7 +2132,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -2156,7 +2156,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2227,7 +2227,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2323,7 +2323,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2333,7 +2333,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -2365,7 +2365,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2375,10 +2375,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -2402,7 +2402,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2433,7 +2433,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2501,7 +2501,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2558,7 +2558,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2591,7 +2591,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2666,7 +2666,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2728,7 +2728,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2738,7 +2738,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -2770,7 +2770,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2780,10 +2780,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -2807,7 +2807,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2838,7 +2838,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2858,7 +2858,7 @@
         "operationId": "getSettings",
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2886,7 +2886,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -2970,7 +2970,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3022,7 +3022,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3032,7 +3032,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -3064,7 +3064,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3074,10 +3074,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3101,7 +3101,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3132,7 +3132,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3163,10 +3163,10 @@
         ],
         "responses": {
           "204": {
-            "description": ""
+            "description": "No Content"
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -3198,7 +3198,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3211,10 +3211,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3248,7 +3248,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3261,7 +3261,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -3312,7 +3312,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3364,7 +3364,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3374,7 +3374,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -3406,7 +3406,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3416,10 +3416,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3443,7 +3443,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3474,7 +3474,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3505,10 +3505,10 @@
         ],
         "responses": {
           "204": {
-            "description": ""
+            "description": "No Content"
           },
           "409": {
-            "description": ""
+            "description": "Conflict"
           }
         }
       },
@@ -3540,7 +3540,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3550,10 +3550,10 @@
             }
           },
           "409": {
-            "description": ""
+            "description": "Conflict"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3590,7 +3590,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3600,10 +3600,10 @@
             }
           },
           "409": {
-            "description": ""
+            "description": "Conflict"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3637,7 +3637,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3681,7 +3681,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "409": {
             "description": "The treatment's invoice is accepted"
@@ -3738,7 +3738,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3790,7 +3790,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3800,7 +3800,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       },
@@ -3832,7 +3832,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3842,10 +3842,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3869,7 +3869,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3900,7 +3900,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3942,7 +3942,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -3955,7 +3955,7 @@
             }
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -3979,7 +3979,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4010,7 +4010,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4020,7 +4020,7 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           }
         }
       }
@@ -4054,7 +4054,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4067,10 +4067,10 @@
             }
           },
           "404": {
-            "description": ""
+            "description": "Not Found"
           },
           "409": {
-            "description": ""
+            "description": "Conflict"
           }
         }
       }
@@ -4138,7 +4138,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4180,7 +4180,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4190,10 +4190,10 @@
             }
           },
           "409": {
-            "description": ""
+            "description": "Conflict"
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -4277,7 +4277,7 @@
         },
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4287,7 +4287,7 @@
             }
           },
           "422": {
-            "description": ""
+            "description": "Unprocessable Entity"
           }
         }
       }
@@ -4320,7 +4320,7 @@
         ],
         "responses": {
           "200": {
-            "description": "",
+            "description": "OK",
             "content": {
               "application/json": {
                 "schema": {
@@ -4330,7 +4330,7 @@
             }
           },
           "409": {
-            "description": ""
+            "description": "Conflict"
           }
         }
       }
