@@ -585,6 +585,26 @@ export const AddCustomerEmailResponse = zod.object({
 })
 
 
+export const ListCustomerQuotesParams = zod.object({
+  "id": zod.int()
+})
+
+export const ListCustomerQuotesResponseItem = zod.object({
+  "id": zod.int(),
+  "customer_id": zod.int().nullish(),
+  "name": zod.string().nullish(),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "removed_on": zod.iso.date().nullish(),
+  "address": zod.string().nullish().describe('A typed address as one line, for an open quote.'),
+  "positions": zod.array(zod.string()).describe('The first positions\' names.'),
+  "line_count": zod.int(),
+  "total_gross": zod.string().describe('As quoted.'),
+  "prices_changed": zod.boolean()
+}).describe('One quote in a list: the customer\'s, or the open ones.')
+export const ListCustomerQuotesResponse = zod.array(ListCustomerQuotesResponseItem)
+
+
 export const UnarchiveCustomerParams = zod.object({
   "id": zod.int()
 })
@@ -2207,46 +2227,6 @@ export const PickerItemsResponseItem = zod.union([zod.object({
 export const PickerItemsResponse = zod.array(PickerItemsResponseItem)
 
 
-export const PriceQuoteBody = zod.object({
-  "lines": zod.array(zod.object({
-  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
-  "id": zod.int().describe('The drug packaging\'s or the service\'s id, as the picker gives it.'),
-  "quantity": zod.string(),
-  "factor": zod.string().nullish().describe('Services: the factor in percent (100 = single rate); absent, the catalogue\'s. Drug lines\nhave none.'),
-  "km": zod.string().nullish().describe('Wegegeld: kilometres one way; absent, the line costs the catalogue price.'),
-  "km_multiplier": zod.string().nullish().describe('Wegegeld: the factor for adverse travel conditions (1–3).')
-}))
-})
-
-export const PriceQuoteResponse = zod.object({
-  "lines": zod.array(zod.object({
-  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
-  "id": zod.int(),
-  "name": zod.string(),
-  "got_number": zod.string().nullish(),
-  "factor": zod.string().nullish().describe('The factor the line is priced at: the one asked for, else the catalogue\'s.'),
-  "vat_percent": zod.string(),
-  "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
-  "quantity": zod.string(),
-  "km": zod.string().nullish(),
-  "km_multiplier": zod.string().nullish(),
-  "price_net": zod.string().describe('Net per unit before the factor — the catalogue price, or the Wegegeld for `km`.'),
-  "price_gross": zod.string().describe('Gross per unit after the factor.'),
-  "line_net": zod.string(),
-  "line_gross": zod.string()
-})).describe('In the order asked.'),
-  "vat_groups": zod.array(zod.object({
-  "vat_percent": zod.string(),
-  "net": zod.string(),
-  "vat": zod.string(),
-  "gross": zod.string()
-})).describe('One entry per VAT rate, highest first — as the invoice lists them.'),
-  "total_net": zod.string(),
-  "total_vat": zod.string(),
-  "total_gross": zod.string().describe('What the caller is told.')
-})
-
-
 export const QuoteDistanceBody = zod.object({
   "customer_id": zod.int().nullish().describe('An existing customer: their last Wegegeld km, else Google to their home.'),
   "street": zod.string().optional().describe('Otherwise an address typed for a new caller — Google only.'),
@@ -2281,6 +2261,199 @@ export const PreviewPriceResponse = zod.object({
   "net": zod.string(),
   "gross": zod.string(),
   "rule": zod.string().describe('Which rule produced the price, for the hint next to the field.')
+})
+
+
+export const CreateQuoteBody = zod.object({
+  "customer_id": zod.int().nullish().describe('For an existing customer the quote is complete at once; without one it is a draft.')
+})
+
+export const CreateQuoteResponse = zod.object({
+  "id": zod.int(),
+  "customer_id": zod.int().nullish(),
+  "customer_name": zod.string().nullish(),
+  "name": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "address_street": zod.string().nullish().describe('A new caller\'s address, for the Wegegeld, until they are a customer.'),
+  "address_zip": zod.string().nullish(),
+  "address_city": zod.string().nullish(),
+  "draft": zod.boolean().describe('No customer yet: an open quote.'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "removed_on": zod.iso.date().nullish().describe('An open quote: the day the cleanup takes it, 28 days after its last change.'),
+  "lines": zod.array(zod.object({
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "id": zod.int(),
+  "name": zod.string().describe('As quoted.'),
+  "got_number": zod.string().nullish(),
+  "factor": zod.string().nullish(),
+  "vat_percent": zod.string(),
+  "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
+  "quantity": zod.string(),
+  "km": zod.string().nullish(),
+  "km_multiplier": zod.string().nullish(),
+  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.'),
+  "price_gross": zod.string().describe('Gross per unit after the factor, as quoted.'),
+  "line_net": zod.string(),
+  "line_gross": zod.string(),
+  "today_price_net": zod.string().nullish().describe('Net per unit before the factor at today\'s catalogue; absent when the position can no\nlonger be priced.'),
+  "today_vat_percent": zod.string().nullish(),
+  "today_line_gross": zod.string().nullish().describe('The line at today\'s catalogue, gross — what the page shows beside the quoted one.'),
+  "price_changed": zod.boolean().describe('Today\'s price or VAT differs from the quoted one, or the position is gone.')
+})).describe('In order; priced as quoted.'),
+  "vat_groups": zod.array(zod.object({
+  "vat_percent": zod.string(),
+  "net": zod.string(),
+  "vat": zod.string(),
+  "gross": zod.string()
+})).describe('As quoted, one entry per VAT rate, highest first — as the invoice lists them.'),
+  "total_net": zod.string(),
+  "total_vat": zod.string(),
+  "total_gross": zod.string().describe('As quoted: what the caller was told.'),
+  "today_total_gross": zod.string().describe('What the same positions cost at today\'s catalogue.'),
+  "prices_changed": zod.boolean().describe('A line\'s price or VAT is no longer what was quoted.')
+})
+
+
+export const ListOpenQuotesResponseItem = zod.object({
+  "id": zod.int(),
+  "customer_id": zod.int().nullish(),
+  "name": zod.string().nullish(),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "removed_on": zod.iso.date().nullish(),
+  "address": zod.string().nullish().describe('A typed address as one line, for an open quote.'),
+  "positions": zod.array(zod.string()).describe('The first positions\' names.'),
+  "line_count": zod.int(),
+  "total_gross": zod.string().describe('As quoted.'),
+  "prices_changed": zod.boolean()
+}).describe('One quote in a list: the customer\'s, or the open ones.')
+export const ListOpenQuotesResponse = zod.array(ListOpenQuotesResponseItem)
+
+
+export const GetQuoteParams = zod.object({
+  "id": zod.int()
+})
+
+export const GetQuoteResponse = zod.object({
+  "id": zod.int(),
+  "customer_id": zod.int().nullish(),
+  "customer_name": zod.string().nullish(),
+  "name": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "address_street": zod.string().nullish().describe('A new caller\'s address, for the Wegegeld, until they are a customer.'),
+  "address_zip": zod.string().nullish(),
+  "address_city": zod.string().nullish(),
+  "draft": zod.boolean().describe('No customer yet: an open quote.'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "removed_on": zod.iso.date().nullish().describe('An open quote: the day the cleanup takes it, 28 days after its last change.'),
+  "lines": zod.array(zod.object({
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "id": zod.int(),
+  "name": zod.string().describe('As quoted.'),
+  "got_number": zod.string().nullish(),
+  "factor": zod.string().nullish(),
+  "vat_percent": zod.string(),
+  "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
+  "quantity": zod.string(),
+  "km": zod.string().nullish(),
+  "km_multiplier": zod.string().nullish(),
+  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.'),
+  "price_gross": zod.string().describe('Gross per unit after the factor, as quoted.'),
+  "line_net": zod.string(),
+  "line_gross": zod.string(),
+  "today_price_net": zod.string().nullish().describe('Net per unit before the factor at today\'s catalogue; absent when the position can no\nlonger be priced.'),
+  "today_vat_percent": zod.string().nullish(),
+  "today_line_gross": zod.string().nullish().describe('The line at today\'s catalogue, gross — what the page shows beside the quoted one.'),
+  "price_changed": zod.boolean().describe('Today\'s price or VAT differs from the quoted one, or the position is gone.')
+})).describe('In order; priced as quoted.'),
+  "vat_groups": zod.array(zod.object({
+  "vat_percent": zod.string(),
+  "net": zod.string(),
+  "vat": zod.string(),
+  "gross": zod.string()
+})).describe('As quoted, one entry per VAT rate, highest first — as the invoice lists them.'),
+  "total_net": zod.string(),
+  "total_vat": zod.string(),
+  "total_gross": zod.string().describe('As quoted: what the caller was told.'),
+  "today_total_gross": zod.string().describe('What the same positions cost at today\'s catalogue.'),
+  "prices_changed": zod.boolean().describe('A line\'s price or VAT is no longer what was quoted.')
+})
+
+
+export const DeleteQuoteParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteQuoteResponse = zod.void()
+
+
+export const PatchQuoteParams = zod.object({
+  "id": zod.int()
+})
+
+export const PatchQuoteBody = zod.object({
+  "name": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "address_street": zod.string().nullish(),
+  "address_zip": zod.string().nullish(),
+  "address_city": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Attaches the quote to a customer, which completes it; the typed address gives way to\ntheir home. A quote never loses its customer.'),
+  "lines": zod.array(zod.object({
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "id": zod.int().describe('The drug packaging\'s or the service\'s id, as the picker gives it.'),
+  "quantity": zod.string(),
+  "factor": zod.string().nullish().describe('Services: the factor in percent (100 = single rate); absent, the catalogue\'s. Drug lines\nhave none.'),
+  "km": zod.string().nullish().describe('Wegegeld: kilometres one way; absent, the line costs the catalogue price.'),
+  "km_multiplier": zod.string().nullish().describe('Wegegeld: the factor for adverse travel conditions (1–3).')
+})).nullish().describe('The whole list, in order, re-priced at today\'s catalogue — a quote being worked on is\ncurrent; one left alone keeps what it was quoted at.')
+})
+
+export const PatchQuoteResponse = zod.object({
+  "id": zod.int(),
+  "customer_id": zod.int().nullish(),
+  "customer_name": zod.string().nullish(),
+  "name": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "address_street": zod.string().nullish().describe('A new caller\'s address, for the Wegegeld, until they are a customer.'),
+  "address_zip": zod.string().nullish(),
+  "address_city": zod.string().nullish(),
+  "draft": zod.boolean().describe('No customer yet: an open quote.'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true}),
+  "removed_on": zod.iso.date().nullish().describe('An open quote: the day the cleanup takes it, 28 days after its last change.'),
+  "lines": zod.array(zod.object({
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "id": zod.int(),
+  "name": zod.string().describe('As quoted.'),
+  "got_number": zod.string().nullish(),
+  "factor": zod.string().nullish(),
+  "vat_percent": zod.string(),
+  "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
+  "quantity": zod.string(),
+  "km": zod.string().nullish(),
+  "km_multiplier": zod.string().nullish(),
+  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.'),
+  "price_gross": zod.string().describe('Gross per unit after the factor, as quoted.'),
+  "line_net": zod.string(),
+  "line_gross": zod.string(),
+  "today_price_net": zod.string().nullish().describe('Net per unit before the factor at today\'s catalogue; absent when the position can no\nlonger be priced.'),
+  "today_vat_percent": zod.string().nullish(),
+  "today_line_gross": zod.string().nullish().describe('The line at today\'s catalogue, gross — what the page shows beside the quoted one.'),
+  "price_changed": zod.boolean().describe('Today\'s price or VAT differs from the quoted one, or the position is gone.')
+})).describe('In order; priced as quoted.'),
+  "vat_groups": zod.array(zod.object({
+  "vat_percent": zod.string(),
+  "net": zod.string(),
+  "vat": zod.string(),
+  "gross": zod.string()
+})).describe('As quoted, one entry per VAT rate, highest first — as the invoice lists them.'),
+  "total_net": zod.string(),
+  "total_vat": zod.string(),
+  "total_gross": zod.string().describe('As quoted: what the caller was told.'),
+  "today_total_gross": zod.string().describe('What the same positions cost at today\'s catalogue.'),
+  "prices_changed": zod.boolean().describe('A line\'s price or VAT is no longer what was quoted.')
 })
 
 
@@ -3492,6 +3665,52 @@ export const GetTreatmentResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+export const ApplyQuoteParams = zod.object({
+  "id": zod.int()
+})
+
+export const ApplyQuoteBody = zod.object({
+  "quote_id": zod.int(),
+  "patient_treatment_id": zod.int().nullish().describe('The animal the positions go to; a per-visit service goes to the visit whatever is asked.'),
+  "prices": zod.enum(['quoted', 'today']).optional().describe('Which prices a quote\'s positions are taken into a visit at.')
+})
+
+export const ApplyQuoteResponseItem = zod.object({
+  "id": zod.int(),
+  "treatment_id": zod.int(),
+  "position": zod.int(),
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "drug_packaging_id": zod.int().nullish(),
+  "service_id": zod.int().nullish(),
+  "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
+  "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
+  "quantity": zod.string(),
+  "unit": zod.string().nullish(),
+  "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
+  "got_number": zod.string().nullish(),
+  "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
+  "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
+  "vat_percent": zod.string(),
+  "km": zod.string().nullish().describe('Travel-expense lines: the kilometres the price was computed from.'),
+  "km_multiplier": zod.string().nullish(),
+  "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
+  "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
+  "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "lots": zod.array(zod.object({
+  "lot_id": zod.int(),
+  "quantity": zod.string(),
+  "batch_number": zod.string().nullish(),
+  "expiration_date": zod.iso.date().nullish()
+})).describe('Lots the dispense was booked against (drug lines).'),
+  "created_at": zod.iso.datetime({"offset":true})
+})
+export const ApplyQuoteResponse = zod.array(ApplyQuoteResponseItem)
 
 
 export const ApplyTemplateParams = zod.object({

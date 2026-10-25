@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM price_quote WHERE draft AND updated_at < $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "54bcbb56a7b649c4367c07ba98850cd04efc14bf923bf62f591dc332785b1c53"
+}

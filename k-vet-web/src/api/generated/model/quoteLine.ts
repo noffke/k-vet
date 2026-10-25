@@ -10,13 +10,11 @@ import type { TreatmentItemKind } from './treatmentItemKind';
 export interface QuoteLine {
   kind: TreatmentItemKind;
   id: number;
+  /** As quoted. */
   name: string;
   /** @nullable */
   got_number?: string | null;
-  /**
-     * The factor the line is priced at: the one asked for, else the catalogue's.
-     * @nullable
-     */
+  /** @nullable */
   factor?: string | null;
   vat_percent: string;
   /** The service bills travel expenses: the line takes kilometres. */
@@ -26,10 +24,25 @@ export interface QuoteLine {
   km?: string | null;
   /** @nullable */
   km_multiplier?: string | null;
-  /** Net per unit before the factor — the catalogue price, or the Wegegeld for `km`. */
+  /** Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`. */
   price_net: string;
-  /** Gross per unit after the factor. */
+  /** Gross per unit after the factor, as quoted. */
   price_gross: string;
   line_net: string;
   line_gross: string;
+  /**
+     * Net per unit before the factor at today's catalogue; absent when the position can no
+     * longer be priced.
+     * @nullable
+     */
+  today_price_net?: string | null;
+  /** @nullable */
+  today_vat_percent?: string | null;
+  /**
+     * The line at today's catalogue, gross — what the page shows beside the quoted one.
+     * @nullable
+     */
+  today_line_gross?: string | null;
+  /** Today's price or VAT differs from the quoted one, or the position is gone. */
+  price_changed: boolean;
 }

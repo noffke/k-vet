@@ -1,0 +1,146 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT kind AS \"kind: TreatmentItemKind\", drug_packaging_id, service_id, quantity,\n                  factor, km, km_multiplier, name, price_net, vat_percent\n           FROM price_quote_line WHERE quote_id = $1 ORDER BY position",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "kind: TreatmentItemKind",
+        "type_info": {
+          "Custom": {
+            "name": "treatment_item_kind",
+            "kind": {
+              "Enum": [
+                "drug_packaging",
+                "service"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "kind"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "drug_packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "drug_packaging_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "service_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "service_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "factor",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "factor"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "km",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "km"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "km_multiplier",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "km_multiplier"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "name"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "vat_percent"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      true,
+      false,
+      true,
+      true,
+      true,
+      false,
+      false,
+      false
+    ]
+  },
+  "hash": "6fc73a5265c40bb3d5e741a4a95827c2edbfde7c0ddf71851cb4d93102f5b53e"
+}

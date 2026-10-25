@@ -196,6 +196,13 @@ Fields:
   * Price (copied from the current sales price; allow to override)
   * VAT Percent (copied)
 
+### Preisauskunft (Price Quote)
+* Customer (optional while open; a quote with a customer is complete — one way)
+* Name (optional), Note (optional)
+* Address (street, postcode, city; optional) — a new caller's, for the Wegegeld, until they are a customer
+* Lines, ordered: a drug packaging or a service, quantity, factor (services), kilometres and travel multiplier (Wegegeld), and as quoted: name, net price, VAT
+* An open quote (no customer) is removed 28 days after its last change
+
 ### Invoice (Rechnung)
 Status is the lifecycle; the timestamps are the audit record (e.g. Timestamp Cancelled records when cancellation happened). Listings exclude Cancelled invoices unless stated otherwise.
 Fields:

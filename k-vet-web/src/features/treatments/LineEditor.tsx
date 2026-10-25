@@ -30,6 +30,7 @@ import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { ApplyQuote } from '@/features/quote/ApplyQuoteDialog'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
@@ -198,6 +199,26 @@ export function PositionGroup({
           }
           disabled={addItem.isPending}
         />
+        {/* A Preisauskunft the customer was given goes in whole, like a group. */}
+        {patientTreatmentId === null ? null : (
+          <ApplyQuote
+            treatmentId={treatment.id}
+            customerId={treatment.customer_id}
+            patientTreatmentId={patientTreatmentId}
+            disabled={addItem.isPending}
+            onApplied={(applied, name) => {
+              const before = new Set(
+                (
+                  client.getQueryData<TreatmentItem[]>(
+                    getListTreatmentItemsQueryKey(treatment.id),
+                  ) ?? []
+                ).map((item) => item.id),
+              )
+              void invalidate()
+              offerUndo(applied, before, name)
+            }}
+          />
+        )}
       </div>
     )
 

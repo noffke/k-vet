@@ -35,7 +35,8 @@ layouts are first-class — not one design squeezed onto a phone.
   and the dashboard lists the ones that did not and every mail that failed.
 - **Preisauskunft** — for a caller asking what a treatment would cost: positions, groups and
   Wegegeld (for a customer or a typed address) priced exactly as an invoice would, with the gross
-  total to tell. Nothing is saved.
+  total to tell. Kept on the customer's page and taken into their visit at the prices quoted,
+  with any change since shown.
 - **Bookkeeping hand-off** — every pending PDF as one ZIP, then one click to mark them handed
   over.
 - **Everything auto-saves.** A record is created as a draft on the first keystroke and completes

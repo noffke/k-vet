@@ -180,10 +180,15 @@ const serviceDetailRoute = createRoute({
   component: ServiceDetailPage,
 })
 
-// Preisauskunft: pricing positions for a caller; nothing is saved.
+// Preisauskunft: positions priced for a caller, kept with the customer.
 const quoteRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/quote',
+  // The quote being worked on, by its id; without one the page starts a new one.
+  validateSearch: (search: Record<string, unknown>): { id?: number } => {
+    const id = Number(search.id)
+    return Number.isInteger(id) && id > 0 ? { id } : {}
+  },
   component: QuotePage,
 })
 

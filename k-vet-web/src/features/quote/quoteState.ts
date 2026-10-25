@@ -1,16 +1,15 @@
-import { useEffect, useState } from 'react'
-import type { TreatmentItemKind } from '@/api/generated/model'
+import type { Quote, QuoteLineInput, TreatmentItemKind } from '@/api/generated/model'
 
 /**
- * The Preisauskunft lives in the browser tab and nowhere else: nothing about it is saved on
- * the server. `sessionStorage` keeps it across a reload, as `lib/trail.ts` keeps the trail.
- * It holds what the vet chose — positions, quantities, factors, kilometres — never a price:
- * those come from the server, which prices a quote as it prices a treatment.
+ * What the Preisauskunft page edits, before the server has it. A quote is saved as it is put
+ * together (auto-save, migration 0032); this is the page's working copy — the vet's choices,
+ * never a price: prices come back from the server, which prices a quote as it prices a
+ * treatment.
  */
 
-/** One position of the quote, as the vet set it. */
-export interface DraftLine {
-  /** Stable while the line exists, for React and for editing one line; not a database id. */
+/** One position as the vet set it. */
+export interface EditableLine {
+  /** Stable while the line is on the page, for React and for editing one line. */
   key: string
   kind: TreatmentItemKind
   /** The drug packaging's or the service's id. */
@@ -23,7 +22,7 @@ export interface DraftLine {
   factor: string | null
   km: string | null
   kmMultiplier: string | null
-  /** The vet typed the kilometres herself: a lookup never overwrites them. */
+  /** The vet typed the kilometres herself, or they were already there: never overwritten. */
   kmTyped: boolean
   /** The destination the kilometres were last looked up for, so each is asked once. */
   kmFor: string | null
@@ -35,30 +34,61 @@ export interface QuoteAddress {
   city: string
 }
 
-export interface QuoteState {
-  /** An existing customer — or none, and perhaps a typed address instead. Their name and home
-   * are read from the server, which keeps them current. */
-  customer: { id: number } | null
+export interface QuoteDraft {
+  customerId: number | null
+  name: string
+  note: string
+  /** A new caller's address, for the Wegegeld. */
   address: QuoteAddress
   /** The vet has finished typing the address and moved on: only then is it asked about. */
   addressDone: boolean
-  lines: DraftLine[]
+  lines: EditableLine[]
 }
 
-export const EMPTY_QUOTE: QuoteState = {
-  customer: null,
+export const EMPTY_DRAFT: QuoteDraft = {
+  customerId: null,
+  name: '',
+  note: '',
   address: { street: '', zip: '', city: '' },
   addressDone: false,
   lines: [],
 }
-
-const STORAGE_KEY = 'kvet.quote'
 
 let counter = 0
 /** `crypto.randomUUID` needs a secure context, which a practice LAN on plain HTTP is not. */
 function newKey(): string {
   counter += 1
   return `${Date.now().toString(36)}-${counter}`
+}
+
+/** The page's copy of a stored quote. Kilometres already there count as settled. */
+export function fromQuote(quote: Quote): QuoteDraft {
+  const draft: QuoteDraft = {
+    customerId: quote.customer_id ?? null,
+    name: quote.name ?? '',
+    note: quote.note ?? '',
+    address: {
+      street: quote.address_street ?? '',
+      zip: quote.address_zip ?? '',
+      city: quote.address_city ?? '',
+    },
+    addressDone: true,
+    lines: [],
+  }
+  const destination = destinationKey(draft)
+  draft.lines = quote.lines.map((line) => ({
+    key: newKey(),
+    kind: line.kind,
+    id: line.id,
+    name: line.name,
+    quantity: line.quantity,
+    factor: line.factor ?? null,
+    km: line.km ?? null,
+    kmMultiplier: line.km_multiplier ?? null,
+    kmTyped: line.km != null,
+    kmFor: destination,
+  }))
+  return draft
 }
 
 /** What a picked position or a group's entry brings along. */
@@ -69,9 +99,9 @@ export interface PickedPosition {
   quantity?: string
 }
 
-export function addPositions(state: QuoteState, picked: PickedPosition[]): QuoteState {
+export function addPositions(draft: QuoteDraft, picked: PickedPosition[]): QuoteDraft {
   const lines = picked.map(
-    (position): DraftLine => ({
+    (position): EditableLine => ({
       key: newKey(),
       kind: position.kind,
       id: position.id,
@@ -84,31 +114,34 @@ export function addPositions(state: QuoteState, picked: PickedPosition[]): Quote
       kmFor: null,
     }),
   )
-  return { ...state, lines: [...state.lines, ...lines] }
+  return { ...draft, lines: [...draft.lines, ...lines] }
 }
 
-export function updateLine(state: QuoteState, key: string, patch: Partial<DraftLine>): QuoteState {
+export function updateLine(
+  draft: QuoteDraft,
+  key: string,
+  patch: Partial<EditableLine>,
+): QuoteDraft {
   return {
-    ...state,
-    lines: state.lines.map((line) => (line.key === key ? { ...line, ...patch } : line)),
+    ...draft,
+    lines: draft.lines.map((line) => (line.key === key ? { ...line, ...patch } : line)),
   }
 }
 
-export function removeLine(state: QuoteState, key: string): QuoteState {
-  return { ...state, lines: state.lines.filter((line) => line.key !== key) }
+export function removeLine(draft: QuoteDraft, key: string): QuoteDraft {
+  return { ...draft, lines: draft.lines.filter((line) => line.key !== key) }
 }
 
 /** A customer replaces a typed address: the drive goes to their home. */
-export function setCustomer(state: QuoteState, customer: QuoteState['customer']): QuoteState {
-  return { ...state, customer, address: EMPTY_QUOTE.address, addressDone: false }
+export function setCustomer(draft: QuoteDraft, customerId: number | null): QuoteDraft {
+  return { ...draft, customerId, address: EMPTY_DRAFT.address, addressDone: false }
 }
 
 /** Typing an address is for a caller who is not a customer yet. */
-export function setAddress(state: QuoteState, address: QuoteAddress): QuoteState {
-  return { ...state, customer: null, address, addressDone: false }
+export function setAddress(draft: QuoteDraft, address: QuoteAddress): QuoteDraft {
+  return { ...draft, customerId: null, address, addressDone: false }
 }
 
-/** The address is complete enough to drive to. */
 function addressComplete(address: QuoteAddress): boolean {
   return [address.street, address.zip, address.city].every((part) => part.trim() !== '')
 }
@@ -117,52 +150,32 @@ function addressComplete(address: QuoteAddress): boolean {
  * Where the Wegegeld goes, as one key: the customer, or a typed address once the vet has moved
  * on from it. `null` when there is nowhere to drive to yet.
  */
-export function destinationKey(state: QuoteState): string | null {
-  if (state.customer) return `customer:${state.customer.id}`
-  if (state.addressDone && addressComplete(state.address)) {
-    const { street, zip, city } = state.address
+export function destinationKey(draft: QuoteDraft): string | null {
+  if (draft.customerId !== null) return `customer:${draft.customerId}`
+  if (draft.addressDone && addressComplete(draft.address)) {
+    const { street, zip, city } = draft.address
     return `address:${street.trim()}|${zip.trim()}|${city.trim()}`
   }
   return null
 }
 
-/** The stored quote, or an empty one when there is none or storage is out of reach. */
-export function readQuote(storage: Pick<Storage, 'getItem'> | undefined): QuoteState {
-  try {
-    const raw = storage?.getItem(STORAGE_KEY)
-    if (!raw) return EMPTY_QUOTE
-    const parsed = JSON.parse(raw) as Partial<QuoteState>
-    if (!Array.isArray(parsed.lines)) return EMPTY_QUOTE
-    return {
-      customer: parsed.customer ?? null,
-      address: { ...EMPTY_QUOTE.address, ...parsed.address },
-      addressDone: Boolean(parsed.addressDone),
-      lines: parsed.lines,
-    }
-  } catch {
-    return EMPTY_QUOTE
-  }
+/** Whether there is anything worth saving yet: a position, a name, a note or an address. */
+export function hasContent(draft: QuoteDraft): boolean {
+  const { street, zip, city } = draft.address
+  return (
+    draft.lines.length > 0 ||
+    [draft.name, draft.note, street, zip, city].some((text) => text.trim() !== '')
+  )
 }
 
-export function writeQuote(storage: Pick<Storage, 'setItem'> | undefined, state: QuoteState) {
-  try {
-    storage?.setItem(STORAGE_KEY, JSON.stringify(state))
-  } catch {
-    // A full or locked-down storage only costs the quote a reload.
-  }
-}
-
-function sessionStore(): Storage | undefined {
-  try {
-    return window.sessionStorage
-  } catch {
-    return undefined
-  }
-}
-
-/** The quote of this tab, kept across a reload. */
-export function useQuote(): [QuoteState, (change: (state: QuoteState) => QuoteState) => void] {
-  const [state, setState] = useState<QuoteState>(() => readQuote(sessionStore()))
-  useEffect(() => writeQuote(sessionStore(), state), [state])
-  return [state, setState]
+/** What the server is asked to price: the vet's choices, never an amount. */
+export function toLineInputs(lines: EditableLine[]): QuoteLineInput[] {
+  return lines.map((line) => ({
+    kind: line.kind,
+    id: line.id,
+    quantity: line.quantity,
+    factor: line.factor,
+    km: line.km,
+    km_multiplier: line.kmMultiplier,
+  }))
 }

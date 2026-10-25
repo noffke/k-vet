@@ -42,6 +42,7 @@ import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { CustomerQuotes } from '../quote/CustomerQuotes'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
 const EMAIL_TYPES: EmailType[] = ['private', 'work', 'other']
@@ -582,6 +583,7 @@ export function CustomerDetailPage() {
       </section>
 
       <CustomerAppointments customerId={customerId} />
+      <CustomerQuotes customerId={customerId} />
     </div>
   )
 }

@@ -780,6 +780,40 @@
         }
       }
     },
+    "/api/customers/{id}/quotes": {
+      "get": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "listCustomerQuotes",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The customer's quotes, newest first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuoteSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/customers/{id}/unarchive": {
       "post": {
         "tags": [
@@ -2573,39 +2607,6 @@
         }
       }
     },
-    "/api/price-quote": {
-      "post": {
-        "tags": [
-          "quote"
-        ],
-        "operationId": "priceQuote",
-        "requestBody": {
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/PriceQuoteRequest"
-              }
-            }
-          },
-          "required": true
-        },
-        "responses": {
-          "200": {
-            "description": "The lines priced and totalled; nothing is stored",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/PriceQuote"
-                }
-              }
-            }
-          },
-          "422": {
-            "description": "A position is unknown or incomplete, or a number is out of range"
-          }
-        }
-      }
-    },
     "/api/price-quote/distance": {
       "post": {
         "tags": [
@@ -2665,6 +2666,166 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/quotes": {
+      "post": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "createQuote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateQuote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "Unknown customer"
+          }
+        }
+      }
+    },
+    "/api/quotes/open": {
+      "get": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "listOpenQuotes",
+        "responses": {
+          "200": {
+            "description": "Quotes without a customer, last changed first",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/QuoteSummary"
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/quotes/{id}": {
+      "get": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "getQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "deleteQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted, with its lines"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "patchQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchQuote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Quote"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "A position is unknown or incomplete, a number is out of range, or the customer is unknown"
           }
         }
       }
@@ -4091,6 +4252,59 @@
         }
       }
     },
+    "/api/treatments/{id}/apply-quote": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "applyQuote",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ApplyQuote"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The treatment's lines, the quote's appended",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/TreatmentItem"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "The treatment's invoice is accepted"
+          },
+          "422": {
+            "description": "The quote is open, belongs to another customer, or a position cannot be added"
+          }
+        }
+      }
+    },
     "/api/treatments/{id}/apply-template": {
       "post": {
         "tags": [
@@ -4564,6 +4778,29 @@
           }
         }
       },
+      "ApplyQuote": {
+        "type": "object",
+        "required": [
+          "quote_id"
+        ],
+        "properties": {
+          "quote_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "patient_treatment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The animal the positions go to; a per-visit service goes to the visit whatever is asked."
+          },
+          "prices": {
+            "$ref": "#/components/schemas/QuotePrices"
+          }
+        }
+      },
       "ApplyTemplate": {
         "type": "object",
         "required": [
@@ -5021,6 +5258,19 @@
             ],
             "format": "int64",
             "description": "Pre-selects the owner when the patient is created from a customer page."
+          }
+        }
+      },
+      "CreateQuote": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "For an existing customer the quote is complete at once; without one it is a draft."
           }
         }
       },
@@ -6976,6 +7226,59 @@
           }
         }
       },
+      "PatchQuote": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "Attaches the quote to a customer, which completes it; the typed address gives way to\ntheir home. A quote never loses its customer."
+          },
+          "lines": {
+            "type": [
+              "array",
+              "null"
+            ],
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineInput"
+            },
+            "description": "The whole list, in order, re-priced at today's catalogue — a quote being worked on is\ncurrent; one left alone keeps what it was quoted at."
+          }
+        }
+      },
       "PatchService": {
         "type": "object",
         "properties": {
@@ -7741,56 +8044,6 @@
           }
         }
       },
-      "PriceQuote": {
-        "type": "object",
-        "required": [
-          "lines",
-          "vat_groups",
-          "total_net",
-          "total_vat",
-          "total_gross"
-        ],
-        "properties": {
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QuoteLine"
-            },
-            "description": "In the order asked."
-          },
-          "vat_groups": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QuoteVatGroup"
-            },
-            "description": "One entry per VAT rate, highest first — as the invoice lists them."
-          },
-          "total_net": {
-            "type": "string"
-          },
-          "total_vat": {
-            "type": "string"
-          },
-          "total_gross": {
-            "type": "string",
-            "description": "What the caller is told."
-          }
-        }
-      },
-      "PriceQuoteRequest": {
-        "type": "object",
-        "required": [
-          "lines"
-        ],
-        "properties": {
-          "lines": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/QuoteLineInput"
-            }
-          }
-        }
-      },
       "ProblemDetails": {
         "type": "object",
         "description": "RFC 7807 problem details.",
@@ -7911,6 +8164,124 @@
           }
         }
       },
+      "Quote": {
+        "type": "object",
+        "required": [
+          "id",
+          "draft",
+          "created_at",
+          "updated_at",
+          "lines",
+          "vat_groups",
+          "total_net",
+          "total_vat",
+          "total_gross",
+          "today_total_gross",
+          "prices_changed"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_street": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A new caller's address, for the Wegegeld, until they are a customer."
+          },
+          "address_zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "address_city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "draft": {
+            "type": "boolean",
+            "description": "No customer yet: an open quote."
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removed_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date",
+            "description": "An open quote: the day the cleanup takes it, 28 days after its last change."
+          },
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteLine"
+            },
+            "description": "In order; priced as quoted."
+          },
+          "vat_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteVatGroup"
+            },
+            "description": "As quoted, one entry per VAT rate, highest first — as the invoice lists them."
+          },
+          "total_net": {
+            "type": "string"
+          },
+          "total_vat": {
+            "type": "string"
+          },
+          "total_gross": {
+            "type": "string",
+            "description": "As quoted: what the caller was told."
+          },
+          "today_total_gross": {
+            "type": "string",
+            "description": "What the same positions cost at today's catalogue."
+          },
+          "prices_changed": {
+            "type": "boolean",
+            "description": "A line's price or VAT is no longer what was quoted."
+          }
+        }
+      },
       "QuoteDistance": {
         "type": "object",
         "properties": {
@@ -7969,7 +8340,8 @@
           "price_net",
           "price_gross",
           "line_net",
-          "line_gross"
+          "line_gross",
+          "price_changed"
         ],
         "properties": {
           "kind": {
@@ -7980,7 +8352,8 @@
             "format": "int64"
           },
           "name": {
-            "type": "string"
+            "type": "string",
+            "description": "As quoted."
           },
           "got_number": {
             "type": [
@@ -7992,8 +8365,7 @@
             "type": [
               "string",
               "null"
-            ],
-            "description": "The factor the line is priced at: the one asked for, else the catalogue's."
+            ]
           },
           "vat_percent": {
             "type": "string"
@@ -8019,17 +8391,41 @@
           },
           "price_net": {
             "type": "string",
-            "description": "Net per unit before the factor — the catalogue price, or the Wegegeld for `km`."
+            "description": "Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`."
           },
           "price_gross": {
             "type": "string",
-            "description": "Gross per unit after the factor."
+            "description": "Gross per unit after the factor, as quoted."
           },
           "line_net": {
             "type": "string"
           },
           "line_gross": {
             "type": "string"
+          },
+          "today_price_net": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Net per unit before the factor at today's catalogue; absent when the position can no\nlonger be priced."
+          },
+          "today_vat_percent": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "today_line_gross": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The line at today's catalogue, gross — what the page shows beside the quoted one."
+          },
+          "price_changed": {
+            "type": "boolean",
+            "description": "Today's price or VAT differs from the quoted one, or the position is gone."
           }
         }
       },
@@ -8072,6 +8468,86 @@
               "null"
             ],
             "description": "Wegegeld: the factor for adverse travel conditions (1–3)."
+          }
+        }
+      },
+      "QuotePrices": {
+        "type": "string",
+        "description": "Which prices a quote's positions are taken into a visit at.",
+        "enum": [
+          "quoted",
+          "today"
+        ]
+      },
+      "QuoteSummary": {
+        "type": "object",
+        "description": "One quote in a list: the customer's, or the open ones.",
+        "required": [
+          "id",
+          "created_at",
+          "updated_at",
+          "positions",
+          "line_count",
+          "total_gross",
+          "prices_changed"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64"
+          },
+          "name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "created_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "updated_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "removed_on": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "address": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A typed address as one line, for an open quote."
+          },
+          "positions": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The first positions' names."
+          },
+          "line_count": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "total_gross": {
+            "type": "string",
+            "description": "As quoted."
+          },
+          "prices_changed": {
+            "type": "boolean"
           }
         }
       },
@@ -8945,7 +9421,7 @@
     },
     {
       "name": "quote",
-      "description": "Preisauskunft: pricing positions without storing them"
+      "description": "Preisauskünfte: positions priced for a caller, kept with the customer"
     },
     {
       "name": "dashboard",

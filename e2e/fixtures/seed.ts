@@ -215,6 +215,19 @@ export async function seedPracticeAddress(request: APIRequestContext): Promise<v
   })
 }
 
+/** A Preisauskunft kept with `customerId`, its positions priced as of now. */
+export async function seedQuote(
+  request: APIRequestContext,
+  customerId: number,
+  name: string,
+  lines: { kind: 'service' | 'drug_packaging'; id: number; quantity: string }[],
+): Promise<{ quoteId: number }> {
+  await login(request)
+  const quote = await post<{ id: number }>(request, '/api/quotes', { customer_id: customerId })
+  await patch(request, `/api/quotes/${quote.id}`, { name, lines })
+  return { quoteId: quote.id }
+}
+
 export interface SeededInvoice {
   invoiceId: number
   invoiceNumber: string

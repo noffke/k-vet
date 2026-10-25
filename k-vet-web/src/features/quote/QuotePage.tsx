@@ -1,79 +1,67 @@
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
+import { useQueryClient } from '@tanstack/react-query'
+import { useBlocker, useNavigate, useSearch } from '@tanstack/react-router'
 import { Pill, RefreshCw, Stethoscope, Trash2 } from 'lucide-react'
-import { type FocusEvent, useEffect, useState } from 'react'
+import { type FocusEvent, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import { ApiError } from '@/api/fetcher'
 import {
+  createCustomer,
+  createQuote,
+  deleteQuote,
+  getGetQuoteQueryKey,
+  getListCustomerQuotesQueryKey,
+  getListOpenQuotesQueryKey,
   listTemplateItems,
-  priceQuote,
+  patchCustomer,
+  patchQuote,
   quoteDistance,
   useGetCustomer,
+  useGetQuote,
 } from '@/api/generated/endpoints'
 import type {
-  Customer,
+  PatchQuote,
   PickerItem,
+  Quote,
   QuoteDistanceRequest,
   QuoteLine,
-  QuoteLineInput,
   Template,
 } from '@/api/generated/model'
 import { AddressCheck } from '@/components/AddressCheck'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CustomerPicker } from '@/components/CustomerPicker'
 import { ItemPicker } from '@/components/ItemPicker'
 import { MapsLink } from '@/components/MapsLink'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
+import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
-import { TextField } from '@/components/ui/field'
+import { TextAreaField, TextField } from '@/components/ui/field'
 import { useKmToast } from '@/features/treatments/kmToast'
+import type { SaveState } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { addressLine } from '@/lib/maps'
 import { cn } from '@/lib/utils'
+import { type KeepChoice, KeepQuoteDialog } from './KeepQuoteDialog'
+import { OpenQuotes } from './OpenQuotes'
 import {
   addPositions,
-  type DraftLine,
   destinationKey,
-  EMPTY_QUOTE,
-  type QuoteState,
+  type EditableLine,
+  EMPTY_DRAFT,
+  fromQuote,
+  hasContent,
+  type QuoteDraft,
   removeLine,
   setAddress,
   setCustomer,
+  toLineInputs,
   updateLine,
-  useQuote,
 } from './quoteState'
 
-/** How long "Neue Preisauskunft" can be taken back. */
-const UNDO_MS = 10_000
-/** Prices are asked a moment after the last keystroke, not on every one. */
-const PRICE_DEBOUNCE_MS = 200
-
-function customerName(customer: Customer | undefined): string | null {
-  if (!customer) return null
-  return [customer.first_name, customer.last_name].filter(Boolean).join(' ') || null
-}
-
-/** What the server is asked to price: the vet's choices, never an amount. */
-function toPayload(lines: DraftLine[]): QuoteLineInput[] {
-  return lines.map((line) => ({
-    kind: line.kind,
-    id: line.id,
-    quantity: line.quantity,
-    factor: line.factor,
-    km: line.km,
-    km_multiplier: line.kmMultiplier,
-  }))
-}
-
-function useDebounced<T>(value: T, ms: number): T {
-  const [debounced, setDebounced] = useState(value)
-  useEffect(() => {
-    const timer = setTimeout(() => setDebounced(value), ms)
-    return () => clearTimeout(timer)
-  }, [value, ms])
-  return debounced
-}
+/** Saved a moment after the last keystroke, as every record is. */
+const SAVE_DEBOUNCE_MS = 400
 
 /** The line a server refusal names: `lines.3.quantity` is the fourth. */
 function refusedLine(error: unknown): { index: number; message: string } | null {
@@ -88,34 +76,140 @@ function refusedLine(error: unknown): { index: number; message: string } | null 
 /**
  * Preisauskunft: a caller asks what a treatment would cost. The vet puts the positions
  * together — for a customer, or for an address when the caller is new — and reads off the
- * gross total. Priced by the server exactly as a treatment is; nothing is saved.
+ * gross total. Saved as she types (migration 0032): a quote with a customer is kept on their
+ * page; one without stays open, and leaving it asks whether to keep or discard it.
  */
 export function QuotePage() {
   const { t } = useTranslation()
-  const { money, percent } = useLocaleFormat()
+  const { money } = useLocaleFormat()
   const { maps_enabled: mapsEnabled, default_country: defaultCountry } = useOperatorConfig()
   const kmToast = useKmToast()
-  const [quote, change] = useQuote()
-  const destination = destinationKey(quote)
+  const client = useQueryClient()
+  const navigate = useNavigate()
+  const { id } = useSearch({ from: '/app/quote' })
 
-  const customer = useGetCustomer(quote.customer?.id ?? 0, {
-    query: { enabled: Boolean(quote.customer) },
+  const quote = useGetQuote(id ?? 0, { query: { enabled: id !== undefined } })
+  const [draft, setDraft] = useState<QuoteDraft>(EMPTY_DRAFT)
+  const draftRef = useRef(draft)
+  draftRef.current = draft
+  /** The quote the draft was taken from: a save's answer never overwrites what is typed. */
+  const [loadedFor, setLoadedFor] = useState<number | undefined>(undefined)
+  const quoteId = useRef<number | undefined>(id)
+  const dirty = useRef({ fields: false, lines: false })
+  const chain = useRef<Promise<void>>(Promise.resolve())
+  const [saveState, setSaveState] = useState<SaveState>('idle')
+  const [saveError, setSaveError] = useState<unknown>(null)
+  const [confirmDelete, setConfirmDelete] = useState(false)
+  /** Set before a navigation that must not ask — after the quote was just deleted. */
+  const skipBlock = useRef(false)
+
+  // A quote opened by its id becomes the page's draft, once; the page without an id is a new one.
+  useEffect(() => {
+    quoteId.current = id
+    if (id === undefined) {
+      if (loadedFor !== undefined) {
+        setDraft(EMPTY_DRAFT)
+        setLoadedFor(undefined)
+        setSaveState('idle')
+      }
+      return
+    }
+    if (loadedFor !== id && quote.data?.id === id) {
+      setDraft(fromQuote(quote.data))
+      setLoadedFor(id)
+    }
+  }, [id, quote.data, loadedFor])
+
+  const edit = (change: (current: QuoteDraft) => QuoteDraft, what: 'fields' | 'lines') => {
+    setDraft(change)
+    dirty.current[what] = true
+  }
+
+  /** Writes what changed; the first save creates the record. Saves run one after another. */
+  const save = useCallback((): Promise<void> => {
+    chain.current = chain.current.then(async () => {
+      const current = draftRef.current
+      const { fields, lines } = dirty.current
+      if (!fields && !lines) return
+      let target = quoteId.current
+      if (target === undefined) {
+        if (!hasContent(current)) return
+        const created = await createQuote({ customer_id: null })
+        target = created.id
+        quoteId.current = target
+        setLoadedFor(target)
+        void navigate({ to: '/quote', search: { id: target }, replace: true })
+      }
+      dirty.current = { fields: false, lines: false }
+      const data: PatchQuote =
+        current.customerId !== null
+          ? { customer_id: current.customerId }
+          : {
+              address_street: current.address.street.trim() || null,
+              address_zip: current.address.zip.trim() || null,
+              address_city: current.address.city.trim() || null,
+            }
+      data.name = current.name.trim() || null
+      data.note = current.note.trim() || null
+      // Lines only when they changed: saving them prices them at today's catalogue, and a
+      // quote reopened just to fix its note keeps what it was quoted at.
+      if (lines) data.lines = toLineInputs(current.lines)
+      setSaveState('saving')
+      try {
+        const saved = await patchQuote(target, data)
+        client.setQueryData(getGetQuoteQueryKey(target), saved)
+        setSaveError(null)
+        setSaveState('saved')
+      } catch (error) {
+        setSaveError(error)
+        setSaveState('error')
+      }
+      void client.invalidateQueries({ queryKey: getListOpenQuotesQueryKey() })
+    })
+    return chain.current
+  }, [client, navigate])
+
+  // Saved a moment after the last change.
+  const fingerprint = JSON.stringify({
+    customerId: draft.customerId,
+    name: draft.name,
+    note: draft.note,
+    address: draft.address,
+    lines: toLineInputs(draft.lines),
+  })
+  // biome-ignore lint/correctness/useExhaustiveDependencies: the timer restarts on every change of the content, which `fingerprint` stands for; the save reads the latest draft itself
+  useEffect(() => {
+    if (!dirty.current.fields && !dirty.current.lines) return
+    const timer = setTimeout(() => void save(), SAVE_DEBOUNCE_MS)
+    return () => clearTimeout(timer)
+  }, [fingerprint, save])
+
+  const answer = id !== undefined && quote.data?.id === id ? quote.data : undefined
+  const kept = answer ? !answer.draft : false
+  /** Still open — no customer — with positions on it: leaving asks keep or discard. */
+  const open = draft.customerId === null && draft.lines.length > 0 && !kept
+  const blocker = useBlocker({
+    shouldBlockFn: ({ next }) => {
+      if (skipBlock.current) {
+        skipBlock.current = false
+        return false
+      }
+      if (!open) return false
+      const nextId = (next.search as { id?: number }).id
+      return !(next.pathname === '/quote' && nextId !== undefined && nextId === quoteId.current)
+    },
+    // Closing the tab loses nothing: the quote is saved and listed as open.
+    enableBeforeUnload: false,
+    withResolver: true,
   })
 
-  // Priced on the server a moment after the last change; the page adds nothing up itself.
-  const payload = useDebounced(JSON.stringify(toPayload(quote.lines)), PRICE_DEBOUNCE_MS)
-  const hasLines = quote.lines.length > 0
-  const priced = useQuery({
-    queryKey: ['price-quote', payload],
-    queryFn: () => priceQuote({ lines: JSON.parse(payload) as QuoteLineInput[] }),
-    enabled: payload !== '[]',
-    placeholderData: keepPreviousData,
-    retry: false,
+  const destination = destinationKey(draft)
+  const customer = useGetCustomer(draft.customerId ?? 0, {
+    query: { enabled: draft.customerId !== null },
   })
-  const answer = hasLines ? priced.data : undefined
-  const refusal = refusedLine(priced.error)
+  const refusal = refusedLine(saveError)
   /** A line's price, once the answer is about the same position at the same place. */
-  const pricedLine = (index: number, line: DraftLine): QuoteLine | undefined => {
+  const pricedLine = (index: number, line: EditableLine): QuoteLine | undefined => {
     const candidate = answer?.lines[index]
     return candidate && candidate.id === line.id && candidate.kind === line.kind
       ? candidate
@@ -123,64 +217,101 @@ export function QuotePage() {
   }
 
   // Wegegeld kilometres: asked once per line and destination, never over the vet's own.
+  // biome-ignore lint/correctness/useExhaustiveDependencies: `edit` and `kmToast` are recreated each render and change nothing about what to ask
   useEffect(() => {
     if (!destination) return
-    const body: QuoteDistanceRequest = quote.customer
-      ? { customer_id: quote.customer.id }
-      : { ...quote.address, country: defaultCountry }
-    quote.lines.forEach((line, index) => {
+    const body: QuoteDistanceRequest =
+      draft.customerId !== null
+        ? { customer_id: draft.customerId }
+        : { ...draft.address, country: defaultCountry }
+    draft.lines.forEach((line, index) => {
       const candidate = answer?.lines[index]
       const travel = candidate?.id === line.id && candidate.travel_expenses
       if (!travel || line.kmTyped || line.kmFor === destination) return
       // The kilometres of another destination are no answer for this one.
-      change((state) => updateLine(state, line.key, { kmFor: destination, km: null }))
+      edit((current) => updateLine(current, line.key, { kmFor: destination, km: null }), 'lines')
       quoteDistance(body)
         .then(({ km_suggestion: suggestion }) => {
-          change((state) => {
-            const current = state.lines.find((entry) => entry.key === line.key)
-            // Moved on meanwhile — another destination, or typed over: this answer is stale.
-            if (!current || current.kmFor !== destination || current.kmTyped) return state
-            return suggestion?.km ? updateLine(state, line.key, { km: suggestion.km }) : state
-          })
+          const current = draftRef.current.lines.find((entry) => entry.key === line.key)
+          // Moved on meanwhile — another destination, or typed over: this answer is stale.
+          if (!current || current.kmFor !== destination || current.kmTyped) return
+          if (suggestion?.km) {
+            const km = suggestion.km
+            edit((state) => updateLine(state, line.key, { km }), 'lines')
+          }
           kmToast(suggestion, candidate.name)
         })
         .catch(() => toast.error(t('quote.distanceFailed')))
     })
-  }, [destination, quote, answer, change, defaultCountry, kmToast, t])
+  }, [destination, draft, answer, defaultCountry, t])
 
   const pick = (item: PickerItem) =>
-    change((state) => addPositions(state, [{ kind: item.kind, id: item.id, name: item.name }]))
+    edit(
+      (current) => addPositions(current, [{ kind: item.kind, id: item.id, name: item.name }]),
+      'lines',
+    )
 
   const pickGroup = async (template: Template) => {
     const items = await listTemplateItems(template.id)
-    change((state) =>
-      addPositions(
-        state,
-        items.flatMap((item) => {
-          const id = item.kind === 'drug_packaging' ? item.drug_packaging_id : item.service_id
-          return id == null
-            ? []
-            : [{ kind: item.kind, id, name: item.name, quantity: item.quantity }]
-        }),
-      ),
+    edit(
+      (current) =>
+        addPositions(
+          current,
+          items.flatMap((item) => {
+            const id = item.kind === 'drug_packaging' ? item.drug_packaging_id : item.service_id
+            return id == null
+              ? []
+              : [{ kind: item.kind, id, name: item.name, quantity: item.quantity }]
+          }),
+        ),
+      'lines',
     )
     toast(t('quote.groupAdded', { count: items.length, name: template.name ?? '' }))
-  }
-
-  const clear = () => {
-    const previous: QuoteState = quote
-    change(() => EMPTY_QUOTE)
-    toast(t('quote.cleared'), {
-      duration: UNDO_MS,
-      action: { label: t('action.undo'), onClick: () => change(() => previous) },
-    })
   }
 
   /** Leaving the typed address, as a whole: now it may be asked about. */
   const leaveAddress = (event: FocusEvent<HTMLFieldSetElement>) => {
     if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
-      change((state) => ({ ...state, addressDone: true }))
+      setDraft((current) => ({ ...current, addressDone: true }))
     }
+  }
+
+  const keep = async (choice: KeepChoice) => {
+    let customerId = draftRef.current.customerId
+    if (choice.customer.kind === 'existing') {
+      customerId = choice.customer.id
+    } else if (choice.customer.kind === 'new') {
+      const created = await createCustomer()
+      const { street, zip, city } = draftRef.current.address
+      await patchCustomer(created.id, {
+        salutation: choice.customer.salutation,
+        first_name: choice.customer.firstName.trim() || null,
+        last_name: choice.customer.lastName.trim() || null,
+        home_street: street.trim() || null,
+        home_zip: zip.trim() || null,
+        home_city: city.trim() || null,
+      })
+      customerId = created.id
+    }
+    const next = { ...draftRef.current, customerId, name: choice.name }
+    draftRef.current = next
+    setDraft(next)
+    dirty.current.fields = true
+    await save()
+    if (customerId !== null) {
+      void client.invalidateQueries({ queryKey: getListCustomerQuotesQueryKey(customerId) })
+    }
+    toast(t('quote.kept'))
+  }
+
+  const discard = async () => {
+    const target = quoteId.current
+    if (target !== undefined) {
+      await chain.current
+      await deleteQuote(target)
+      void client.invalidateQueries({ queryKey: getListOpenQuotesQueryKey() })
+    }
+    dirty.current = { fields: false, lines: false }
   }
 
   const home = customer.data
@@ -191,28 +322,65 @@ export function QuotePage() {
         country: customer.data.home_country ?? defaultCountry,
       }
     : null
+  const customerName =
+    answer?.customer_name ??
+    ([customer.data?.first_name, customer.data?.last_name].filter(Boolean).join(' ') || null)
 
   return (
     <div className="mx-auto max-w-3xl">
       <PageHeader
         title={t('quote.title')}
         actions={
-          hasLines || quote.customer || destination ? (
-            <Button onClick={clear}>{t('quote.clear')}</Button>
-          ) : null
+          <>
+            {id !== undefined ? <SaveIndicator state={saveState} error={null} /> : null}
+            {id !== undefined || hasContent(draft) ? (
+              <Button onClick={() => void navigate({ to: '/quote', search: {} })}>
+                {t('quote.new')}
+              </Button>
+            ) : null}
+            {id !== undefined ? (
+              <Button variant="danger" onClick={() => setConfirmDelete(true)}>
+                <Trash2 className="size-4" />
+                {t('action.delete')}
+              </Button>
+            ) : null}
+          </>
         }
       >
         <p className="text-sm text-ink-soft">{t('quote.intro')}</p>
       </PageHeader>
 
-      <section className="mt-5 rounded-card border border-line bg-surface p-4">
+      <section className="mt-5 grid gap-3 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
+        <TextField
+          label={t('quote.name')}
+          value={draft.name}
+          placeholder={t('quote.namePlaceholder')}
+          onChange={(event) => {
+            const name = event.target.value
+            edit((current) => ({ ...current, name }), 'fields')
+          }}
+        />
+        <TextAreaField
+          label={t('quote.note')}
+          value={draft.note}
+          wrapperClassName="sm:col-span-2"
+          onChange={(event) => {
+            const note = event.target.value
+            edit((current) => ({ ...current, note }), 'fields')
+          }}
+        />
+      </section>
+
+      <section className="mt-4 rounded-card border border-line bg-surface p-4">
         <p className="eyebrow">{t('quote.forWhom')}</p>
         <p className="mt-0.5 mb-2 text-xs text-ink-faint">{t('quote.forWhomHint')}</p>
         <CustomerPicker
-          customerId={quote.customer?.id ?? null}
-          customerName={customerName(customer.data)}
-          onPick={(id) => change((state) => setCustomer(state, { id }))}
-          onClear={() => change((state) => setCustomer(state, null))}
+          customerId={draft.customerId}
+          customerName={customerName}
+          // A kept quote stays its customer's.
+          locked={kept}
+          onPick={(customerId) => edit((current) => setCustomer(current, customerId), 'fields')}
+          onClear={() => edit((current) => setCustomer(current, null), 'fields')}
         />
         {home ? (
           <MapsLink className="mt-1.5" address={home}>
@@ -220,7 +388,7 @@ export function QuotePage() {
           </MapsLink>
         ) : null}
 
-        {quote.customer ? null : (
+        {draft.customerId !== null ? null : (
           <>
             <fieldset className="mt-4 border-0 p-0" onBlur={leaveAddress}>
               <legend className="text-xs font-semibold text-ink-soft">
@@ -229,55 +397,55 @@ export function QuotePage() {
               <div className="mt-2 grid gap-3 sm:grid-cols-4">
                 <TextField
                   label={t('field.street')}
-                  value={quote.address.street}
+                  value={draft.address.street}
                   wrapperClassName="sm:col-span-4"
                   autoComplete="off"
-                  onChange={(event) =>
-                    change((state) =>
-                      setAddress(state, { ...state.address, street: event.target.value }),
-                    )
-                  }
+                  onChange={(event) => {
+                    const street = event.target.value
+                    edit((current) => setAddress(current, { ...current.address, street }), 'fields')
+                  }}
                 />
                 <TextField
                   label={t('field.zip')}
-                  value={quote.address.zip}
+                  value={draft.address.zip}
                   inputMode="numeric"
                   autoComplete="off"
-                  onChange={(event) =>
-                    change((state) =>
-                      setAddress(state, { ...state.address, zip: event.target.value }),
-                    )
-                  }
+                  onChange={(event) => {
+                    const zip = event.target.value
+                    edit((current) => setAddress(current, { ...current.address, zip }), 'fields')
+                  }}
                 />
                 <TextField
                   label={t('field.city')}
-                  value={quote.address.city}
+                  value={draft.address.city}
                   wrapperClassName="sm:col-span-3"
                   autoComplete="off"
-                  onChange={(event) =>
-                    change((state) =>
-                      setAddress(state, { ...state.address, city: event.target.value }),
-                    )
-                  }
+                  onChange={(event) => {
+                    const city = event.target.value
+                    edit((current) => setAddress(current, { ...current.address, city }), 'fields')
+                  }}
                 />
               </div>
             </fieldset>
             <div className="mt-2">
               <AddressCheck
-                street={quote.address.street}
-                zip={quote.address.zip}
-                city={quote.address.city}
+                street={draft.address.street}
+                zip={draft.address.zip}
+                city={draft.address.city}
                 country={defaultCountry}
-                active={quote.addressDone}
+                active={draft.addressDone}
                 onApply={(suggestion) =>
-                  change((state) => ({
-                    ...setAddress(state, {
-                      street: suggestion.street,
-                      zip: suggestion.zip,
-                      city: suggestion.city,
+                  edit(
+                    (current) => ({
+                      ...setAddress(current, {
+                        street: suggestion.street,
+                        zip: suggestion.zip,
+                        city: suggestion.city,
+                      }),
+                      addressDone: true,
                     }),
-                    addressDone: true,
-                  }))
+                    'fields',
+                  )
                 }
               />
             </div>
@@ -290,22 +458,26 @@ export function QuotePage() {
         <div className="mt-2">
           <ItemPicker onPick={pick} onPickTemplate={(template) => void pickGroup(template)} />
         </div>
-        {hasLines ? (
+        {draft.lines.length > 0 ? (
           <ul className="mt-3 flex flex-col gap-2">
-            {quote.lines.map((line, index) => (
+            {draft.lines.map((line, index) => (
               <QuoteLineCard
                 key={line.key}
                 line={line}
                 priced={pricedLine(index, line)}
                 error={refusal?.index === index ? t(refusal.message) : undefined}
                 canLookUp={mapsEnabled && destination !== null}
-                onChange={(patch) => change((state) => updateLine(state, line.key, patch))}
+                onChange={(patch) =>
+                  edit((current) => updateLine(current, line.key, patch), 'lines')
+                }
                 onLookUp={() =>
-                  change((state) =>
-                    updateLine(state, line.key, { km: null, kmTyped: false, kmFor: null }),
+                  edit(
+                    (current) =>
+                      updateLine(current, line.key, { km: null, kmTyped: false, kmFor: null }),
+                    'lines',
                   )
                 }
-                onRemove={() => change((state) => removeLine(state, line.key))}
+                onRemove={() => edit((current) => removeLine(current, line.key), 'lines')}
               />
             ))}
           </ul>
@@ -316,7 +488,7 @@ export function QuotePage() {
         )}
       </section>
 
-      {hasLines ? (
+      {draft.lines.length > 0 ? (
         <section
           aria-label={t('quote.total')}
           className={cn(
@@ -331,37 +503,80 @@ export function QuotePage() {
               {answer ? money(answer.total_gross) : '—'}
             </span>
           </div>
-          {answer ? (
-            <p className="numeric mt-1 text-right text-xs text-ink-soft">
-              {[
-                t('quote.net', { amount: money(answer.total_net) }),
-                ...answer.vat_groups.map((group) =>
-                  t('quote.vatGroup', {
-                    rate: percent(group.vat_percent),
-                    amount: money(group.vat),
-                  }),
-                ),
-              ].join(' · ')}
-            </p>
-          ) : null}
-          {priced.isError && !refusal ? (
+          {answer ? <TotalDetails quote={answer} /> : null}
+          {saveState === 'error' && !refusal ? (
             <p className="mt-1 text-xs text-danger" role="alert">
               {t('quote.failed')}
             </p>
           ) : null}
         </section>
       ) : null}
+
+      <OpenQuotes exclude={id} />
+
+      <KeepQuoteDialog
+        open={blocker.status === 'blocked'}
+        name={draft.name}
+        customerId={draft.customerId}
+        address={draft.address}
+        onKeep={async (choice) => {
+          await keep(choice)
+          blocker.proceed?.()
+        }}
+        onDiscard={async () => {
+          await discard()
+          blocker.proceed?.()
+        }}
+        onCancel={() => blocker.reset?.()}
+      />
+      <ConfirmDialog
+        open={confirmDelete}
+        onOpenChange={setConfirmDelete}
+        title={t('quote.deleteTitle')}
+        confirmLabel={t('action.delete')}
+        onConfirm={async () => {
+          await discard()
+          setConfirmDelete(false)
+          skipBlock.current = true
+          await navigate({ to: '/quote', search: {} })
+        }}
+      >
+        <p className="text-sm text-ink-soft">{t('quote.deleteBody')}</p>
+      </ConfirmDialog>
     </div>
   )
 }
 
+/** Net and VAT under the total, and today's total where prices have moved since. */
+function TotalDetails({ quote }: { quote: Quote }) {
+  const { t } = useTranslation()
+  const { money, percent } = useLocaleFormat()
+  return (
+    <>
+      <p className="numeric mt-1 text-right text-xs text-ink-soft">
+        {[
+          t('quote.net', { amount: money(quote.total_net) }),
+          ...quote.vat_groups.map((group) =>
+            t('quote.vatGroup', { rate: percent(group.vat_percent), amount: money(group.vat) }),
+          ),
+        ].join(' · ')}
+      </p>
+      {quote.prices_changed ? (
+        <p className="numeric mt-1 text-right text-xs font-semibold text-rust">
+          {t('quote.todayTotal', { amount: money(quote.today_total_gross) })}
+        </p>
+      ) : null}
+    </>
+  )
+}
+
 interface QuoteLineCardProps {
-  line: DraftLine
+  line: EditableLine
   /** The server's price for it; absent while it is being asked. */
   priced: QuoteLine | undefined
   error: string | undefined
   canLookUp: boolean
-  onChange: (patch: Partial<DraftLine>) => void
+  onChange: (patch: Partial<EditableLine>) => void
   /** Asks for the kilometres again. */
   onLookUp: () => void
   onRemove: () => void
@@ -413,6 +628,16 @@ function QuoteLineCard({
           <Trash2 className="size-4" />
         </Button>
       </div>
+      {priced?.price_changed ? (
+        <p className="numeric mt-1 text-xs font-semibold text-rust">
+          {priced.today_line_gross
+            ? t('quote.priceChanged', {
+                today: money(priced.today_line_gross),
+                quoted: money(priced.line_gross),
+              })
+            : t('quote.priceGone')}
+        </p>
+      ) : null}
       {error ? (
         <p className="mt-1 text-xs text-danger" role="alert">
           {error}

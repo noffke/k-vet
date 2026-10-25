@@ -17,7 +17,7 @@ use sqlx::PgPool;
 use tokio::task::JoinHandle;
 
 use crate::AppState;
-use crate::api::{invoices, mail_queue};
+use crate::api::{invoices, mail_queue, price_quotes};
 use crate::domain::enums::InvoiceStatus;
 use crate::domain::files::AttachmentStore;
 use crate::error::AppResult;
@@ -43,6 +43,7 @@ pub struct DraftCleanup {
     pub services: u64,
     pub templates: u64,
     pub appointments: u64,
+    pub quotes: u64,
 }
 
 impl DraftCleanup {
@@ -56,6 +57,7 @@ impl DraftCleanup {
             + self.services
             + self.templates
             + self.appointments
+            + self.quotes
     }
 }
 
@@ -114,7 +116,8 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
            AND salutation IS NULL AND first_name IS NULL AND last_name IS NULL
            AND home_street IS NULL AND home_zip IS NULL AND home_city IS NULL
            AND NOT EXISTS (SELECT 1 FROM patient WHERE customer_id = customer.id)
-           AND NOT EXISTS (SELECT 1 FROM customer_email WHERE customer_id = customer.id)",
+           AND NOT EXISTS (SELECT 1 FROM customer_email WHERE customer_id = customer.id)
+           AND NOT EXISTS (SELECT 1 FROM price_quote WHERE customer_id = customer.id)",
         cutoff,
     )
     .execute(&mut *transaction)
@@ -212,6 +215,19 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
                         OR EXISTS (SELECT 1 FROM invoice
                                    WHERE invoice.treatment_id = treatment.id)))",
         cutoff,
+    )
+    .execute(&mut *transaction)
+    .await?
+    .rows_affected();
+
+    // An open quote — a call nobody attached to a customer — stays reachable for 28 days after
+    // anyone last worked on it, not the one day of a draft nobody typed into: it holds a call's
+    // work. A quote with a customer is never taken.
+    let quote_cutoff = chrono::Utc::now()
+        - TimeDelta::try_days(price_quotes::DRAFT_QUOTE_MAX_AGE_DAYS).unwrap_or_default();
+    removed.quotes = sqlx::query!(
+        "DELETE FROM price_quote WHERE draft AND updated_at < $1",
+        quote_cutoff,
     )
     .execute(&mut *transaction)
     .await?
