@@ -11,6 +11,7 @@ import {
   useDeleteAppointment,
   useDuplicateAppointment,
   useGetAppointment,
+  useGetCustomer,
   useGetTreatment,
   usePatchAppointment,
 } from '@/api/generated/endpoints'
@@ -19,6 +20,7 @@ import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { CustomerPicker } from '@/components/CustomerPicker'
 import { DateInput } from '@/components/DateInput'
+import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
 import { IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -28,8 +30,10 @@ import { Dialog } from '@/components/ui/dialog'
 import { TextAreaField } from '@/components/ui/field'
 import { TreatmentSection } from '@/features/treatments/TreatmentSection'
 import { useAutoSave } from '@/lib/autosave'
+import { useOperatorConfig } from '@/lib/config'
 import { todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
+import { addressLine } from '@/lib/maps'
 import { combineSaveStatus, type SaveStatus } from '@/lib/saveState'
 
 /**
@@ -53,6 +57,10 @@ export function AppointmentDetailPage() {
   const appointment = useGetAppointment(appointmentId)
   const treatmentId = appointment.data?.treatment_id ?? 0
   const treatment = useGetTreatment(treatmentId, { query: { enabled: treatmentId > 0 } })
+  // Only for where to drive: the appointment itself carries the customer's name, not the address.
+  const customerId = appointment.data?.customer_id ?? 0
+  const customer = useGetCustomer(customerId, { query: { enabled: customerId > 0 } })
+  const { default_country } = useOperatorConfig()
   const patchAppointment = usePatchAppointment()
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
@@ -232,6 +240,24 @@ export function AppointmentDetailPage() {
               void autoSave.flush()
             }}
           />
+          {/* Where the house call goes: the address, opening the drive there in Google Maps. */}
+          {record.customer_id && customer.data?.id === record.customer_id ? (
+            <MapsLink
+              className="mt-1.5"
+              address={{
+                street: customer.data.home_street,
+                zip: customer.data.home_zip,
+                city: customer.data.home_city,
+                country: customer.data.home_country ?? default_country,
+              }}
+            >
+              {addressLine({
+                street: customer.data.home_street,
+                zip: customer.data.home_zip,
+                city: customer.data.home_city,
+              })}
+            </MapsLink>
+          ) : null}
           {/* The one refusal the lock above cannot foresee: files on an animal's record. */}
           {autoSave.fieldErrors.customer_id ? (
             <p className="mt-1.5 text-xs text-danger" role="alert">

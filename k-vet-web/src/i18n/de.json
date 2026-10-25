@@ -249,7 +249,20 @@
     "removePatientConfirm": "„{{name}}“ wirklich von dieser Behandlung nehmen? Die Positionen dieses Tieres gehen mit.",
     "title": "Behandlung",
     "total": "Summe",
-    "withoutPatientHint": "Solange kein Tier gewählt ist, nur Leistungen pro Termin – z. B. Hausbesuch, Wegegeld."
+    "withoutPatientHint": "Solange kein Tier gewählt ist, nur Leistungen pro Termin – z. B. Hausbesuch, Wegegeld.",
+    "kmFromPrevious": "{{name}}: {{km}} km wie beim Termin am {{date}} — bitte prüfen.",
+    "kmFromPreviousUndated": "{{name}}: {{km}} km wie beim letzten Termin — bitte prüfen.",
+    "kmFromRoute": "{{name}}: {{km}} km, kürzeste Strecke laut Google Maps — bitte prüfen.",
+    "kmApproximate": "Google Maps hat die Adresse nur ungefähr gefunden — die Kilometer bitte besonders prüfen.",
+    "kmNotComputed": "{{name}}: Entfernung nicht ermittelt. {{reason}} Bitte Kilometer eintragen.",
+    "kmProblem": {
+      "no_practice_address": "In den Einstellungen fehlt die Praxisadresse.",
+      "no_customer_address": "Die Wohnadresse des Kunden ist unvollständig.",
+      "not_found": "Google Maps kennt keine Route zu dieser Adresse.",
+      "unavailable": "Google Maps ist gerade nicht erreichbar."
+    },
+    "recomputeKm": "Entfernung neu berechnen (Google Maps)",
+    "kmRequiredForInvoice": "Ohne Kilometer kann keine Rechnung erstellt werden."
   },
   "invoices": {
     "accept": "Rechnung freigeben",
@@ -322,7 +335,8 @@
     "template": "Vorlage",
     "templateFileMissing": "Datei „{{file}}“ fehlt im Vorlagenordner.",
     "title": "Rechnungen",
-    "update": "Rechnung aktualisieren"
+    "update": "Rechnung aktualisieren",
+    "travelWithoutKm": "{{names}}: bitte erst die Kilometer eintragen — ohne sie kann keine Rechnung erstellt werden."
   },
   "pharmacy": {
     "approvalNumber": "Zulassungsnummer",
@@ -453,7 +467,8 @@
     "patientNotInTreatment": "Dieses Tier gehört nicht zu dieser Behandlung",
     "patientRequired": "Diese Position braucht ein Tier",
     "perVisit": "Diese Leistung gilt pro Termin, nicht für ein Tier",
-    "stockShort": "Der Bestand dieser Charge reicht für diese Menge nicht aus. Bitte zuerst eine Inventur für die Charge erfassen."
+    "stockShort": "Der Bestand dieser Charge reicht für diese Menge nicht aus. Bitte zuerst eine Inventur für die Charge erfassen.",
+    "notTravel": "Nur eine Wegegeld-Position hat eine Entfernung"
   },
   "packaging": {
     "originalAlreadyExists": "Es gibt bereits eine Originalpackung",
@@ -478,7 +493,8 @@
     "noLines": "Die Behandlung hat noch keine Positionen",
     "noPatient": "Der Behandlung ist noch kein Tier zugeordnet",
     "templateMissing": "Die Datei dieser Vorlage fehlt im Vorlagenordner.",
-    "unknownTemplate": "Diese Vorlage ist nicht eingerichtet."
+    "unknownTemplate": "Diese Vorlage ist nicht eingerichtet.",
+    "travelWithoutKm": "Eine Wegegeld-Position hat noch keine Kilometer"
   },
   "patient": {
     "sex": {
@@ -515,5 +531,19 @@
     "retried": "Die E-Mail wird mit dem nächsten Durchlauf erneut versendet.",
     "retry": "Erneut versuchen",
     "retrying": "Wird alle 5 Minuten erneut versucht, bis {{time}}"
+  },
+  "route": {
+    "notConfigured": "Google Maps ist nicht eingerichtet"
+  },
+  "maps": {
+    "open": "In Google Maps öffnen",
+    "routeTo": "Route zu {{address}} in Google Maps"
+  },
+  "addressCheck": {
+    "checking": "Adresse wird geprüft …",
+    "found": "Adresse gefunden",
+    "corrected": "Meinten Sie: {{address}}?",
+    "apply": "Übernehmen",
+    "notFound": "Adresse nicht gefunden — bitte prüfen."
   }
 }

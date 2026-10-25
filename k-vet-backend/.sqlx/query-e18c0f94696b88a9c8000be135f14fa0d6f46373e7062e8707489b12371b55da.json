@@ -1,0 +1,23 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT EXISTS (\n               SELECT 1 FROM treatment_item item\n               JOIN service ON service.id = item.service_id\n               WHERE item.treatment_id = $1 AND service.travel_expenses AND item.km IS NULL\n           ) AS \"missing!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "missing!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e18c0f94696b88a9c8000be135f14fa0d6f46373e7062e8707489b12371b55da"
+}

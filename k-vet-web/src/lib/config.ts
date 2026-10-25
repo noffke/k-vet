@@ -16,6 +16,8 @@ const FALLBACK: OperatorConfig = {
   // exists to prevent. The banner simply waits.
   version: '',
   environment_label: null,
+  // Nothing that would ask Google is offered until the server says a key is there.
+  maps_enabled: false,
 }
 
 export function useOperatorConfig(): OperatorConfig {

@@ -139,6 +139,8 @@ pub async fn create_or_update(
         .map_err(|error| AppError::internal("invoice number pattern", error))?;
 
     let mut transaction = state.pool.begin().await?;
+    // Before either branch: updating a created invoice prints the lines as they are now.
+    ensure_travel_has_km(&mut transaction, treatment_id).await?;
 
     let existing = sqlx::query!(
         r#"SELECT id, invoice_number, invoice_date, status AS "status: InvoiceStatus"
@@ -193,6 +195,28 @@ pub async fn create_or_update(
     attach_pdf(&state, invoice_id, document).await?;
 
     load(&state.pool, invoice_id).await.map(Json)
+}
+
+/// A Wegegeld line is priced from its kilometres; without them it would bill the bare catalogue
+/// price, so there is no invoice until they are entered. Zero counts as entered.
+async fn ensure_travel_has_km(
+    transaction: &mut Transaction<'_, Postgres>,
+    treatment_id: i64,
+) -> AppResult<()> {
+    let missing = sqlx::query_scalar!(
+        r#"SELECT EXISTS (
+               SELECT 1 FROM treatment_item item
+               JOIN service ON service.id = item.service_id
+               WHERE item.treatment_id = $1 AND service.travel_expenses AND item.km IS NULL
+           ) AS "missing!""#,
+        treatment_id,
+    )
+    .fetch_one(&mut **transaction)
+    .await?;
+    if missing {
+        return Err(AppError::field("items", "invoice.travelWithoutKm"));
+    }
+    Ok(())
 }
 
 /// Allocates a number and inserts the invoice, retrying on a number collision.
@@ -326,7 +350,8 @@ pub async fn pdf(State(state): State<AppState>, Path(id): Path<i64>) -> AppResul
     request_body = AcceptInvoice,
     responses(
         (status = 200, description = "Accepted; a mail to the recipients is queued", body = Invoice),
-        (status = 409, description = "Only a created invoice can be accepted")
+        (status = 409, description = "Only a created invoice can be accepted"),
+        (status = 422, description = "A Wegegeld line has no kilometres")
     )
 )]
 pub async fn accept(
@@ -336,7 +361,8 @@ pub async fn accept(
 ) -> AppResult<Json<Invoice>> {
     let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        r#"SELECT invoice.status AS "status: InvoiceStatus", appointment.starts_at
+        r#"SELECT invoice.status AS "status: InvoiceStatus", appointment.starts_at,
+                  invoice.treatment_id
            FROM invoice
            JOIN treatment ON treatment.id = invoice.treatment_id
            JOIN appointment ON appointment.id = treatment.appointment_id
@@ -353,6 +379,8 @@ pub async fn accept(
             "only a created invoice can be accepted".to_owned(),
         ));
     }
+    // Lines stay editable until here, so a Wegegeld line may have come after the invoice.
+    ensure_travel_has_km(&mut transaction, current.treatment_id).await?;
 
     // Acceptance is the freeze point: from here the stock ledger is append-only.
     let recipients = clean_recipients(body.recipient_emails);

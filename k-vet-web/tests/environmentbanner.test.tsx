@@ -15,6 +15,7 @@ const base: OperatorConfig = {
   default_country: 'DE',
   version: '1.2.3',
   environment_label: null,
+  maps_enabled: false,
 }
 
 describe('EnvironmentBanner', () => {

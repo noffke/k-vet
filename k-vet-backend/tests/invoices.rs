@@ -962,3 +962,80 @@ async fn the_migration_marks_release_as_a_euthanasia_drug(pool: PgPool) {
     marked.sort_unstable();
     assert_eq!(marked, vec![ids[0], ids[1]]);
 }
+
+#[sqlx::test]
+async fn a_wegegeld_line_without_kilometres_holds_the_invoice_back(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let treatment_id = billed.treatment_id;
+    let wegegeld = common::seed_travel_service(&pool).await;
+    let add_wegegeld = || async {
+        app.post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "service", "service_id": wegegeld, "quantity": "1" }),
+        )
+        .await
+        .json()
+    };
+    let invoice_count = || async {
+        sqlx::query_scalar::<_, i64>("SELECT count(*) FROM invoice")
+            .fetch_one(&pool)
+            .await
+            .unwrap()
+    };
+
+    // Without kilometres the line would bill the bare catalogue price.
+    let line = add_wegegeld().await;
+    assert_eq!(line["km"], Value::Null);
+    let refused = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({ "includes_finding": true }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        refused.json()["errors"][0]["message"],
+        "invoice.travelWithoutKm"
+    );
+    assert_eq!(invoice_count().await, 0, "no number is spent on a refusal");
+
+    // Zero is a distance too.
+    app.patch(
+        &format!("/api/treatment-items/{}", line["id"]),
+        json!({ "km": "0" }),
+    )
+    .await;
+    let invoice = create_invoice(&app, treatment_id).await;
+    let invoice_id = invoice["id"].as_i64().unwrap();
+
+    // Lines stay editable until the release: one added now holds back updating and releasing.
+    let late = add_wegegeld().await;
+    let update = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({ "includes_finding": true }),
+        )
+        .await;
+    assert_eq!(update.status, StatusCode::UNPROCESSABLE_ENTITY);
+    let accept = || async {
+        app.post(
+            &format!("/api/invoices/{invoice_id}/accept"),
+            json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+        )
+        .await
+    };
+    let release = accept().await;
+    assert_eq!(release.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        release.json()["errors"][0]["message"],
+        "invoice.travelWithoutKm"
+    );
+
+    app.patch(
+        &format!("/api/treatment-items/{}", late["id"]),
+        json!({ "km": "5" }),
+    )
+    .await;
+    assert_eq!(accept().await.status, StatusCode::OK);
+}

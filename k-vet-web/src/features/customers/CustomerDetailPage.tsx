@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
 import { Plus, Trash2 } from 'lucide-react'
-import { useState } from 'react'
+import { type FocusEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   getGetCustomerQueryKey,
@@ -19,11 +19,18 @@ import {
   usePatchCustomerEmail,
   useUnarchiveCustomer,
 } from '@/api/generated/endpoints'
-import type { Customer, CustomerEmail, EmailType, Salutation } from '@/api/generated/model'
+import type {
+  AddressSuggestion,
+  Customer,
+  CustomerEmail,
+  EmailType,
+  Salutation,
+} from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LoadMore } from '@/components/LoadMore'
+import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -34,9 +41,23 @@ import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { AddressCheck } from './AddressCheck'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
 const EMAIL_TYPES: EmailType[] = ['private', 'work', 'other']
+
+/** The customer's two addresses, each checked on its own once typed. */
+type AddressGroup = 'home' | 'invoice'
+const ADDRESS_PARTS = ['street', 'zip', 'city', 'country']
+
+/** Which address a field is part of, for the parts an address check reads. */
+function addressGroupOf(key: string): AddressGroup | null {
+  const [group, ...rest] = key.split('_')
+  if ((group !== 'home' && group !== 'invoice') || !ADDRESS_PARTS.includes(rest.join('_'))) {
+    return null
+  }
+  return group
+}
 
 /**
  * One customer. Every field auto-saves on the keystroke after the last; the record stays
@@ -75,6 +96,18 @@ export function CustomerDetailPage() {
   /** The stored address a removal is being confirmed for; its bin sits right beside its fields. */
   const [pendingEmailRemoval, setPendingEmailRemoval] = useState<CustomerEmail | null>(null)
   const [showInvoiceAddress, setShowInvoiceAddress] = useState(false)
+  /** Addresses the vet changed on this visit to the page — the only ones worth checking. */
+  const [edited, setEdited] = useState<Record<AddressGroup, boolean>>({
+    home: false,
+    invoice: false,
+  })
+  /** The address the vet is still typing in; it is checked once she has moved on. */
+  const [typingIn, setTypingIn] = useState<AddressGroup | null>(null)
+  /**
+   * Bumped when a correction is taken over, to remount that address's fields: they are
+   * uncontrolled, so a value set from outside shows only in a fresh input.
+   */
+  const [revision, setRevision] = useState<Record<AddressGroup, number>>({ home: 0, invoice: 0 })
 
   const store = (updated: Customer) => {
     client.setQueryData(getGetCustomerQueryKey(customerId), updated)
@@ -163,10 +196,36 @@ export function CustomerDetailPage() {
       error={autoSave.fieldErrors[key] ? t(autoSave.fieldErrors[key] ?? '') : undefined}
       warning={record.invoice_missing_fields.includes(key) ? t('record.notInvoiceable') : undefined}
       wrapperClassName={options.className}
-      onChange={(event) => autoSave.set({ [key]: event.target.value || null } as Partial<Customer>)}
+      onChange={(event) => {
+        autoSave.set({ [key]: event.target.value || null } as Partial<Customer>)
+        const group = addressGroupOf(key)
+        if (group && !edited[group]) setEdited((current) => ({ ...current, [group]: true }))
+      }}
       onBlur={() => void autoSave.flush()}
     />
   )
+
+  /** Focus entering and leaving an address, as a whole rather than field by field. */
+  const addressFocus = (group: AddressGroup) => ({
+    onFocus: () => setTypingIn(group),
+    onBlur: (event: FocusEvent<HTMLFieldSetElement>) => {
+      if (!event.currentTarget.contains(event.relatedTarget as Node | null)) setTypingIn(null)
+    },
+  })
+
+  /** Checked once typed, moved on from, and saved — so the stored address is the one asked about. */
+  const checkActive = (group: AddressGroup) =>
+    edited[group] && typingIn !== group && autoSave.state !== 'saving'
+
+  const takeOver = async (group: AddressGroup, suggestion: AddressSuggestion) => {
+    autoSave.set({
+      [`${group}_street`]: suggestion.street,
+      [`${group}_zip`]: suggestion.zip,
+      [`${group}_city`]: suggestion.city,
+    } as Partial<Customer>)
+    await autoSave.flush()
+    setRevision((current) => ({ ...current, [group]: current[group] + 1 }))
+  }
 
   const displayName =
     [record.first_name, record.last_name].filter(Boolean).join(' ') || t('customers.new')
@@ -238,17 +297,39 @@ export function CustomerDetailPage() {
           </div>
         </fieldset>
 
-        <fieldset className="border-0 p-0 sm:col-span-2">
-          <legend className="eyebrow">{t('field.homeAddress')}</legend>
-          <div className="mt-2 grid gap-4 sm:grid-cols-4">
-            {field('company', t('field.company'), { className: 'sm:col-span-4' })}
-            {field('home_addon', t('field.addon'), { className: 'sm:col-span-4' })}
-            {field('home_street', t('field.street'), { className: 'sm:col-span-4' })}
-            {field('home_zip', t('field.zip'))}
-            {field('home_city', t('field.city'), { className: 'sm:col-span-2' })}
-            {field('home_country', t('field.country'), { fallback: default_country })}
+        {/* The check sits outside the fieldset: taking over a correction is not typing in it. */}
+        <div className="sm:col-span-2">
+          <fieldset className="border-0 p-0" {...addressFocus('home')}>
+            <legend className="eyebrow">{t('field.homeAddress')}</legend>
+            <div key={revision.home} className="mt-2 grid gap-4 sm:grid-cols-4">
+              {field('company', t('field.company'), { className: 'sm:col-span-4' })}
+              {field('home_addon', t('field.addon'), { className: 'sm:col-span-4' })}
+              {field('home_street', t('field.street'), { className: 'sm:col-span-4' })}
+              {field('home_zip', t('field.zip'))}
+              {field('home_city', t('field.city'), { className: 'sm:col-span-2' })}
+              {field('home_country', t('field.country'), { fallback: default_country })}
+            </div>
+          </fieldset>
+          <div className="mt-2 flex flex-wrap items-center justify-between gap-x-4 gap-y-1">
+            <AddressCheck
+              street={record.home_street}
+              zip={record.home_zip}
+              city={record.home_city}
+              country={record.home_country ?? default_country}
+              active={checkActive('home')}
+              onApply={(suggestion) => void takeOver('home', suggestion)}
+            />
+            <MapsLink
+              className="ml-auto"
+              address={{
+                street: record.home_street,
+                zip: record.home_zip,
+                city: record.home_city,
+                country: record.home_country ?? default_country,
+              }}
+            />
           </div>
-        </fieldset>
+        </div>
 
         <TextField
           label={t('field.phone')}
@@ -267,35 +348,47 @@ export function CustomerDetailPage() {
         />
 
         {invoiceAddressVisible ? (
-          <fieldset className="border-0 p-0 sm:col-span-2">
-            <legend className="eyebrow">{t('field.invoiceAddress')}</legend>
-            <div className="mt-2 grid gap-4 sm:grid-cols-4">
-              <SelectField
-                label={t('field.salutation')}
-                defaultValue={record.invoice_salutation ?? ''}
-                onChange={(event) =>
-                  autoSave.set({
-                    invoice_salutation: (event.target.value || null) as Salutation,
-                  })
-                }
-              >
-                <option value="">—</option>
-                {SALUTATIONS.map((salutation) => (
-                  <option key={salutation} value={salutation}>
-                    {t(`salutation.${salutation}`)}
-                  </option>
-                ))}
-              </SelectField>
-              {field('invoice_company', t('field.company'), { className: 'sm:col-span-4' })}
-              {field('invoice_first_name', t('field.firstName'))}
-              {field('invoice_last_name', t('field.lastName'), { className: 'sm:col-span-2' })}
-              {field('invoice_addon', t('field.addon'), { className: 'sm:col-span-4' })}
-              {field('invoice_street', t('field.street'), { className: 'sm:col-span-4' })}
-              {field('invoice_zip', t('field.zip'))}
-              {field('invoice_city', t('field.city'), { className: 'sm:col-span-2' })}
-              {field('invoice_country', t('field.country'), { fallback: default_country })}
+          <div className="sm:col-span-2">
+            <fieldset className="border-0 p-0" {...addressFocus('invoice')}>
+              <legend className="eyebrow">{t('field.invoiceAddress')}</legend>
+              <div key={revision.invoice} className="mt-2 grid gap-4 sm:grid-cols-4">
+                <SelectField
+                  label={t('field.salutation')}
+                  defaultValue={record.invoice_salutation ?? ''}
+                  onChange={(event) =>
+                    autoSave.set({
+                      invoice_salutation: (event.target.value || null) as Salutation,
+                    })
+                  }
+                >
+                  <option value="">—</option>
+                  {SALUTATIONS.map((salutation) => (
+                    <option key={salutation} value={salutation}>
+                      {t(`salutation.${salutation}`)}
+                    </option>
+                  ))}
+                </SelectField>
+                {field('invoice_company', t('field.company'), { className: 'sm:col-span-4' })}
+                {field('invoice_first_name', t('field.firstName'))}
+                {field('invoice_last_name', t('field.lastName'), { className: 'sm:col-span-2' })}
+                {field('invoice_addon', t('field.addon'), { className: 'sm:col-span-4' })}
+                {field('invoice_street', t('field.street'), { className: 'sm:col-span-4' })}
+                {field('invoice_zip', t('field.zip'))}
+                {field('invoice_city', t('field.city'), { className: 'sm:col-span-2' })}
+                {field('invoice_country', t('field.country'), { fallback: default_country })}
+              </div>
+            </fieldset>
+            <div className="mt-2">
+              <AddressCheck
+                street={record.invoice_street}
+                zip={record.invoice_zip}
+                city={record.invoice_city}
+                country={record.invoice_country ?? default_country}
+                active={checkActive('invoice')}
+                onApply={(suggestion) => void takeOver('invoice', suggestion)}
+              />
             </div>
-          </fieldset>
+          </div>
         ) : (
           <Button
             className="sm:col-span-2 sm:justify-self-start"

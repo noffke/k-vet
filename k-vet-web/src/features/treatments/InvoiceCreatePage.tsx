@@ -3,6 +3,7 @@ import { useParams } from '@tanstack/react-router'
 import { ReceiptText } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { ApiError } from '@/api/fetcher'
 import {
   getGetInvoiceQueryKey,
   getGetTreatmentQueryKey,
@@ -18,6 +19,7 @@ import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { CheckboxField, TextAreaField } from '@/components/ui/field'
+import { linesWithoutKm } from '@/features/treatments/travelKm'
 import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
 import { toCamelCase } from '@/lib/utils'
@@ -83,6 +85,11 @@ export function InvoiceCreatePage() {
   const isAccepted = status === 'accepted' || status === 'submitted'
   const live = record.invoice && status !== 'cancelled' ? record.invoice : null
   const hasItems = (items.data ?? []).length > 0
+  const withoutKm = linesWithoutKm(items.data)
+  // A refusal this page did not see coming is said, not swallowed. (The generated hook types
+  // its error as void; what the fetcher throws is an ApiError.)
+  const failure: unknown = createInvoice.error
+  const refusal = failure instanceof ApiError ? failure.fieldErrors[0]?.message : undefined
 
   // A new invoice lists the finding; an existing one keeps what it was created with.
   const finding = includesFinding ?? invoice.data?.includes_finding ?? true
@@ -140,11 +147,27 @@ export function InvoiceCreatePage() {
         </p>
       </section>
 
+      {withoutKm.length > 0 ? (
+        <p
+          className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+          role="alert"
+        >
+          {t('invoices.travelWithoutKm', { names: withoutKm.map((item) => item.name).join(', ') })}
+        </p>
+      ) : refusal ? (
+        <p
+          className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+          role="alert"
+        >
+          {t(refusal)}
+        </p>
+      ) : null}
+
       <div className="mt-4 flex justify-end gap-2">
         <Button onClick={() => void back()}>{t('action.cancel')}</Button>
         <Button
           variant="primary"
-          disabled={!hasItems || createInvoice.isPending}
+          disabled={!hasItems || withoutKm.length > 0 || createInvoice.isPending}
           onClick={() => (missingCustomerFields.length > 0 ? setConfirmIncomplete(true) : create())}
         >
           <ReceiptText className="size-4" />

@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment_id, km_multiplier FROM treatment_item WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "treatment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "km_multiplier",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "km_multiplier"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      true
+    ]
+  },
+  "hash": "8e785ab59e626a4acf85db28257d1eb2d4893c24bd03e1f9de24d3a0fb218cff"
+}

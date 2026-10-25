@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE treatment_item SET km = $2, price_net = $3 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "b7042fe91c5e4320f0ca8420fb13171a2583de53ea23c5d8c5b21f3439d2d4fe"
+}

@@ -31,6 +31,16 @@ that should be added as a migration. If possible, mark all GOT positions for sur
 
 Decision: for services flagged Travel Expenses, the vet enters the kilometers driven; the price is computed per the GOT Wegegeld rule (rate per double kilometer with the legal minimum; rates live in the config file) and appears as a normal invoice line.
 
+Decision: a new Wegegeld line fills in its kilometres (one way), and they stay the vet's to change:
+* first the kilometres of the customer's most recent Wegegeld line on another visit, so a correction she made carries forward;
+* else, with a Google Maps key configured, Google's shortest driving route (not the most fuel-efficient: the vet's choice) from the practice address to the customer's home address, without live traffic so the same addresses give the same distance, rounded to 0.1 km;
+* once the customer's home address or the practice address changes, the customer is marked and the next new line asks Google again; lines and invoices already written keep their kilometres. The mark clears when new kilometres come in, from Google or typed;
+* a Behandlungsgruppe with a Wegegeld line fills it in the same way;
+* the toast says where the kilometres came from (the visit's date, or Google), or why there are none — a line without them keeps an empty field;
+* an icon beside the field asks Google again for that line (only with a key).
+
+No invoice is created, updated or released while a Wegegeld line has no kilometres: it would bill the bare catalogue price. Zero counts as entered.
+
 ## Treatment Templates (Behandlungsgruppen)
 For treatment templates, we need normal CRUD functionality. Additionally, functionality for changing the position ordering
 of the items within a group is needed: move one step up or down, move to top or bottom. 
@@ -39,6 +49,10 @@ of the items within a group is needed: move one step up or down, move to top or 
 For master data, we need normal CRUD functionality. Master data is archived instead of deleted (soft delete): archived customers and patients are hidden from search and select boxes by default (with the option to show them); patients with a date of death are archived automatically. Data referenced by invoiced treatments is never hard-deleted.
 
 If a warning remark has been set for a customer, it must be prominently displayed when "opening" the customer data.
+
+A customer's home and invoice addresses are checked against Google (Address Validation) once the vet has typed one and moved on — with a key configured, and never merely by opening the customer. It is a hint, never a block: "Adresse gefunden", a spelling Google writes differently offered to take over, or "nicht gefunden — bitte prüfen". Nothing of the answer is stored.
+
+The customer page and the appointment link the customer's home address to Google Maps, opening the drive there (on the phone, the Maps app with the route from where the vet is). The links need no key.
 The customer page lists the customer's animals and all of the customer's appointments, newest first, each opening the appointment.
 
 Every list loads page by page: the first fifty rows, then "Mehr laden" for the next fifty while there are more — a list that ends without the button is complete.

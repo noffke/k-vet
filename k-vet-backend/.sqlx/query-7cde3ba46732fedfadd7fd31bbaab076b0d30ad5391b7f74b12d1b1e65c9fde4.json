@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT invoice.status AS \"status: InvoiceStatus\", appointment.starts_at\n           FROM invoice\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE invoice.id = $1\n           FOR UPDATE OF invoice",
+  "query": "SELECT invoice.status AS \"status: InvoiceStatus\", appointment.starts_at,\n                  invoice.treatment_id\n           FROM invoice\n           JOIN treatment ON treatment.id = invoice.treatment_id\n           JOIN appointment ON appointment.id = treatment.appointment_id\n           WHERE invoice.id = $1\n           FOR UPDATE OF invoice",
   "describe": {
     "columns": [
       {
@@ -37,6 +37,17 @@
             "name": "starts_at"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "treatment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "treatment_id"
+          }
+        }
       }
     ],
     "parameters": {
@@ -46,8 +57,9 @@
     },
     "nullable": [
       false,
-      true
+      true,
+      false
     ]
   },
-  "hash": "112502b879ea82a9c73bf1dcff0c927ce66c717930ea06446d0ec95d530d85de"
+  "hash": "7cde3ba46732fedfadd7fd31bbaab076b0d30ad5391b7f74b12d1b1e65c9fde4"
 }

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer SET travel_distance_outdated = false\n         WHERE travel_distance_outdated\n           AND id = (SELECT customer_id FROM treatment WHERE id = $1)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3ab1482957cbbed565454fa18f1dfb0be59402dfa846adf723b6c8c05cc3c182"
+}

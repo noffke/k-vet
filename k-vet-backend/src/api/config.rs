@@ -36,6 +36,9 @@ pub struct OperatorConfig {
     /// Set on every instance that is not the practice's own, and drawn as a banner. `None` on
     /// production.
     pub environment_label: Option<String>,
+    /// A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses
+    /// checked. The key itself never leaves the server.
+    pub maps_enabled: bool,
 }
 
 #[utoipa::path(
@@ -69,6 +72,7 @@ pub async fn get_config(State(state): State<AppState>) -> AppResult<Json<Operato
             .as_deref()
             .filter(|label| !label.trim().is_empty())
             .map(str::to_owned),
+        maps_enabled: state.maps.is_some(),
     }))
 }
 

@@ -41,6 +41,19 @@ export interface NumberInputProps {
   className?: string | undefined
   wrapperClassName?: string | undefined
   onBlur?: (() => void) | undefined
+  /**
+   * A button at the end of the field, inside its border like the stepper's: for a value that
+   * can be fetched from elsewhere — the kilometres of a Wegegeld line, from Google Maps.
+   * Icon-only, so `label` is what a screen reader and a mouse-over say.
+   */
+  action?: FieldAction | undefined
+}
+
+export interface FieldAction {
+  label: string
+  icon: ReactNode
+  onClick: () => void
+  disabled?: boolean | undefined
 }
 
 /**
@@ -68,6 +81,7 @@ export function NumberInput({
   className,
   wrapperClassName,
   onBlur,
+  action,
 }: NumberInputProps) {
   const { t } = useTranslation()
   const { locale, currency, parseNumber } = useLocaleFormat()
@@ -120,7 +134,7 @@ export function NumberInput({
 
   // With a stepper the border belongs to the row, so the whole thing reads as one control —
   // the way the calendar button sits inside a date field rather than beside it.
-  const boxed = step !== undefined
+  const boxed = step !== undefined || action !== undefined
 
   return (
     <Field label={label} error={shown} hint={hint} className={wrapperClassName}>
@@ -208,6 +222,17 @@ export function NumberInput({
               </StepButton>
             </>
           ) : null}
+          {action ? (
+            <StepButton
+              label={action.label}
+              disabled={Boolean(disabled || action.disabled)}
+              onClick={action.onClick}
+              last
+              title
+            >
+              {action.icon}
+            </StepButton>
+          ) : null}
         </div>
       )}
     </Field>
@@ -223,18 +248,22 @@ function StepButton({
   disabled,
   onClick,
   last,
+  title,
   children,
 }: {
   label: string
   disabled: boolean
   onClick: () => void
   last?: boolean
+  /** Shows `label` on hover too — for an icon whose meaning is not as plain as − and +. */
+  title?: boolean
   children: ReactNode
 }) {
   return (
     <button
       type="button"
       aria-label={label}
+      title={title ? label : undefined}
       disabled={disabled}
       onClick={onClick}
       className={cn(

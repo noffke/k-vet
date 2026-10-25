@@ -13,6 +13,11 @@ email_address = "0.2.9"
 fast_qr = { version = "0.14.0", default-features = false, features = ["svg"] }
 futures = "0.3.33"
 hex = "0.4.3"
+http-body-util = "0.1.5"
+# Google Maps only (src/maps): the client half of the hyper that axum already serves with, and
+# the TLS stack lettre and sqlx already use — rustls on ring with the bundled Mozilla roots.
+hyper-rustls = { version = "0.27.10", default-features = false, features = ["http1", "tls12", "ring", "webpki-tokio"] }
+hyper-util = { version = "0.1.20", features = ["client-legacy", "http1", "tokio"] }
 image = { version = "0.25.10", default-features = false, features = ["jpeg", "png", "webp", "gif"] }
 lettre = { version = "0.11.22", default-features = false, features = ["tokio1-rustls", "ring", "webpki-roots", "smtp-transport", "builder", "pool"] }
 metrics = { version = "0.24.6", default-features = false }
@@ -21,6 +26,7 @@ mime_guess = "2.0.5"
 minijinja = "2.21.0"
 phonenumber = "0.3.10"
 rust_iso3166 = "0.2.0"
+rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rust_decimal = { version = "1.42.1", features = ["serde-str", "serde-with-str"] }
 serde = { version = "1.0.229", features = ["derive"] }
 serde_json = "1.0.151"
@@ -44,7 +50,6 @@ utoipa = { version = "5.5.0", features = ["axum_extras", "chrono", "decimal", "p
 zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
-http-body-util = "0.1.4"
 tower = { version = "0.5.3", features = ["util"] }
 
 # Constitution I: clippy warnings are denied, `unwrap`/`expect` are forbidden in library code

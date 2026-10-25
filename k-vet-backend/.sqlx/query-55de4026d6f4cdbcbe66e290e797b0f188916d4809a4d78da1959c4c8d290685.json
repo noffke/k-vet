@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT travel_expenses FROM service WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "travel_expenses",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "service",
+            "name": "travel_expenses"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "55de4026d6f4cdbcbe66e290e797b0f188916d4809a4d78da1959c4c8d290685"
+}

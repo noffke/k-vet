@@ -253,3 +253,27 @@ minimum = "13.00"
 #        on where the practice has deliberately decided to. It never bites on
 #        veterinary medicines, whose § 3 Abs. 3/4 bands stay below 100 percent.
 subset_never_below_proportional = false
+
+# ── Google Maps ───────────────────────────────────────────────────────────────
+[maps]
+
+# de-DE: Schlüssel für die Google Maps Platform. Damit trägt eine neue Wegegeld-
+#        Position die Kilometer selbst ein — die des letzten Termins beim Kunden,
+#        sonst die kürzeste Strecke laut Google Maps von der Praxisadresse zur
+#        Wohnadresse —, und eine Kundenadresse wird beim Eingeben geprüft.
+#        In der Google Cloud Console die "Routes API" und die "Address
+#        Validation API" aktivieren und den Schlüssel auf genau diese beiden
+#        beschränken. Gesendet werden nur Adressen (Straße, PLZ, Ort, Land),
+#        nie ein Name. Leer = es geht keine Anfrage an Google; die Kilometer
+#        werden dann von Hand eingetragen. Die Links "In Google Maps öffnen"
+#        brauchen keinen Schlüssel.
+# en-US: Key for the Google Maps Platform. With it a new Wegegeld line fills in
+#        its kilometres — those of the customer's last visit, else Google
+#        Maps' shortest route from the practice address to the home address —
+#        and a customer's address is checked as it is typed. In the Google
+#        Cloud Console enable the "Routes API" and the "Address Validation
+#        API" and restrict the key to exactly those two. Only addresses are
+#        sent (street, postcode, town, country), never a name. Empty = no
+#        request ever goes to Google; the kilometres are then typed by hand.
+#        The "Open in Google Maps" links need no key.
+api_key = ""

@@ -53,8 +53,14 @@ export interface SeededCustomer {
   lastName: string
 }
 
-/** A complete customer with one email address. */
-export async function seedCustomer(request: APIRequestContext): Promise<SeededCustomer> {
+/**
+ * A complete customer with one email address, at home on Musterweg 5 unless `street` says
+ * otherwise (the fake Google routes only to `ROUTED_STREET`).
+ */
+export async function seedCustomer(
+  request: APIRequestContext,
+  options: { street?: string } = {},
+): Promise<SeededCustomer> {
   await login(request)
   const customer = await post<{ id: number }>(request, '/api/customers')
   // Unique per run: the specs share one database.
@@ -63,7 +69,7 @@ export async function seedCustomer(request: APIRequestContext): Promise<SeededCu
     salutation: 'frau',
     first_name: 'Erika',
     last_name: lastName,
-    home_street: 'Musterweg 5',
+    home_street: options.street ?? 'Musterweg 5',
     home_zip: '12345',
     home_city: 'Musterstadt',
     phone: '030 12345678',
@@ -181,11 +187,11 @@ export interface SeededService {
  */
 export async function seedService(
   request: APIRequestContext,
-  options: { netPrice?: string; travelExpenses?: boolean; perVisit?: boolean } = {},
+  options: { netPrice?: string; travelExpenses?: boolean; perVisit?: boolean; name?: string } = {},
 ): Promise<SeededService> {
   await login(request)
   const service = await post<{ id: number }>(request, '/api/services', { type: 'self_defined' })
-  const serviceName = `Untersuchung-${Date.now().toString().slice(-6)}`
+  const serviceName = `${options.name ?? 'Untersuchung'}-${Date.now().toString().slice(-6)}`
   await patch(request, `/api/services/${service.id}`, {
     name: serviceName,
     vat_percent: '19.000',
@@ -194,6 +200,19 @@ export async function seedService(
     ...(options.perVisit === undefined ? {} : { per_visit: options.perVisit }),
   })
   return { serviceId: service.id, serviceName }
+}
+
+/**
+ * The practice's address, to drive from. Setting it to what it already is changes nothing;
+ * moving it would mark every customer's kilometres as outdated (migration 0031).
+ */
+export async function seedPracticeAddress(request: APIRequestContext): Promise<void> {
+  await login(request)
+  await patch(request, '/api/settings', {
+    practice_street: 'Praxisweg 1',
+    practice_zip: '12345',
+    practice_city: 'Praxisstadt',
+  })
 }
 
 export interface SeededInvoice {

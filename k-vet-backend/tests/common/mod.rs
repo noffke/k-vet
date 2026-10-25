@@ -799,3 +799,172 @@ pub async fn lot_remaining(pool: &PgPool, lot_id: i64) -> Decimal {
         .await
         .expect("lot remaining")
 }
+
+// ---------------------------------------------------------------------------
+// Google Maps
+// ---------------------------------------------------------------------------
+
+/// A stand-in for Google's Routes and Address Validation APIs, so the Maps code runs without a
+/// key or a network: it records every request and gives the answer the test set.
+pub struct FakeGoogle {
+    pub url: String,
+    state: Arc<Mutex<FakeGoogleState>>,
+}
+
+struct FakeGoogleState {
+    requests: Vec<GoogleRequest>,
+    routes: (StatusCode, Value),
+    address: (StatusCode, Value),
+}
+
+/// One request the fake took.
+#[derive(Debug, Clone)]
+pub struct GoogleRequest {
+    pub path: String,
+    pub api_key: Option<String>,
+    pub field_mask: Option<String>,
+    pub body: Value,
+}
+
+impl FakeGoogle {
+    /// Answers routes with two of them — the default 12.4 km, the shorter 11.9 km — to a house,
+    /// and addresses as found.
+    pub async fn start() -> Self {
+        let listener = tokio::net::TcpListener::bind("127.0.0.1:0")
+            .await
+            .expect("a free port for the fake Google");
+        let port = listener.local_addr().expect("the fake's address").port();
+        let state = Arc::new(Mutex::new(FakeGoogleState {
+            requests: Vec::new(),
+            routes: (StatusCode::OK, two_routes(12_437, 11_902)),
+            address: (
+                StatusCode::OK,
+                address_answer("PREMISE", "CONFIRMED", false, "Musterweg 5"),
+            ),
+        }));
+        let shared = Arc::clone(&state);
+        let app = Router::new().fallback(move |request: Request<Body>| {
+            let shared = Arc::clone(&shared);
+            async move { fake_google(shared, request).await }
+        });
+        tokio::spawn(async move {
+            axum::serve(listener, app).await.ok();
+        });
+        Self {
+            url: format!("http://127.0.0.1:{port}"),
+            state,
+        }
+    }
+
+    /// Points a test configuration at this fake, with a key.
+    pub fn configure(&self, config: &mut Config) {
+        config.maps.api_key = "test-key".to_owned();
+        config.maps.endpoint_override = Some(self.url.clone());
+    }
+
+    pub fn answer_routes(&self, status: StatusCode, body: Value) {
+        self.state.lock().expect("fake state").routes = (status, body);
+    }
+
+    pub fn answer_address(&self, status: StatusCode, body: Value) {
+        self.state.lock().expect("fake state").address = (status, body);
+    }
+
+    pub fn requests(&self) -> Vec<GoogleRequest> {
+        self.state.lock().expect("fake state").requests.clone()
+    }
+}
+
+/// A Routes API answer: the default route and the shorter one, to a house.
+pub fn two_routes(default_meters: u64, shorter_meters: u64) -> Value {
+    serde_json::json!({
+        "routes": [
+            { "distanceMeters": default_meters, "routeLabels": ["DEFAULT_ROUTE"] },
+            { "distanceMeters": shorter_meters, "routeLabels": ["SHORTER_DISTANCE"] },
+        ],
+        "geocodingResults": {
+            "origin": { "type": ["street_address"] },
+            "destination": { "type": ["street_address"] },
+        },
+    })
+}
+
+/// An Address Validation answer for `line` in 12345 Musterstadt.
+pub fn address_answer(granularity: &str, confirmation: &str, corrected: bool, line: &str) -> Value {
+    serde_json::json!({
+        "result": {
+            "verdict": { "validationGranularity": granularity, "addressComplete": true },
+            "address": {
+                "formattedAddress": format!("{line}, 12345 Musterstadt, Deutschland"),
+                "postalAddress": {
+                    "regionCode": "DE",
+                    "postalCode": "12345",
+                    "locality": "Musterstadt",
+                    "addressLines": [line],
+                },
+                "addressComponents": [
+                    {
+                        "componentName": { "text": line },
+                        "componentType": "route",
+                        "confirmationLevel": confirmation,
+                        "spellCorrected": corrected,
+                    },
+                ],
+            },
+        },
+    })
+}
+
+async fn fake_google(
+    state: Arc<Mutex<FakeGoogleState>>,
+    request: Request<Body>,
+) -> axum::response::Response {
+    use axum::response::IntoResponse;
+
+    let path = request.uri().path().to_owned();
+    // Read before the body is awaited: a borrow of the request would make the future !Send.
+    let (api_key, field_mask) = {
+        let header = |name: &str| {
+            request
+                .headers()
+                .get(name)
+                .and_then(|value| value.to_str().ok())
+                .map(str::to_owned)
+        };
+        (header("x-goog-api-key"), header("x-goog-fieldmask"))
+    };
+    let bytes = request
+        .into_body()
+        .collect()
+        .await
+        .expect("the request body")
+        .to_bytes();
+    let body = serde_json::from_slice(&bytes).unwrap_or(Value::Null);
+
+    let mut state = state.lock().expect("fake state");
+    state.requests.push(GoogleRequest {
+        path: path.clone(),
+        api_key,
+        field_mask,
+        body,
+    });
+    let (status, answer) = if path.ends_with(":computeRoutes") {
+        state.routes.clone()
+    } else {
+        state.address.clone()
+    };
+    (status, axum::Json(answer)).into_response()
+}
+
+/// Gives the practice an address to drive from. Done before any customer is seeded: moving the
+/// practice marks every existing customer's kilometres as outdated (migration 0031).
+pub async fn seed_practice_address(pool: &PgPool) {
+    sqlx::query(
+        "UPDATE global_settings
+         SET practice_street = 'Praxisweg 1', practice_zip = '12345', practice_city = 'Praxisstadt'
+         WHERE id",
+    )
+    .execute(pool)
+    .await
+    .expect("seed the practice address");
+}

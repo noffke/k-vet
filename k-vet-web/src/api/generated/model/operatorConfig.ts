@@ -25,4 +25,9 @@ export interface OperatorConfig {
      * @nullable
      */
   environment_label?: string | null;
+  /**
+     * A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses
+     * checked. The key itself never leaves the server.
+     */
+  maps_enabled: boolean;
 }

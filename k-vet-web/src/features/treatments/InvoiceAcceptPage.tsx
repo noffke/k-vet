@@ -12,6 +12,7 @@ import {
   useListTreatmentItems,
 } from '@/api/generated/endpoints'
 import { InvoiceMailForm, useQueuedToast } from '@/features/treatments/InvoiceMailForm'
+import { linesWithoutKm } from '@/features/treatments/travelKm'
 import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
 
@@ -26,6 +27,8 @@ export function InvoiceAcceptPage() {
   const client = useQueryClient()
   const announce = useQueuedToast()
   const treatment = useGetTreatment(treatmentId)
+  // A Wegegeld line may have come after the invoice was created; the release waits for its km.
+  const withoutKm = linesWithoutKm(useListTreatmentItems(treatmentId).data)
 
   // Back where the vet came from — the appointment with its animal's tab — rather than piling
   // another entry onto the history.
@@ -59,6 +62,11 @@ export function InvoiceAcceptPage() {
       offered={(record) => ({ addresses: record.customer_emails, ticked: record.customer_emails })}
       requiresRecipient={false}
       notice={<EuthanasiaNotice treatmentId={treatmentId} />}
+      blocked={
+        withoutKm.length > 0
+          ? t('invoices.travelWithoutKm', { names: withoutKm.map((item) => item.name).join(', ') })
+          : null
+      }
       failedText={t('invoices.acceptFailed')}
       pending={acceptInvoice.isPending}
       failed={acceptInvoice.isError}

@@ -31,6 +31,7 @@ const DYNAMIC_KEY_PREFIXES = [
   'pharmacy.flags.',
   'salutation.',
   'sex.',
+  'treatments.kmProblem.',
 ]
 
 function leaves(tree: Tree, prefix = ''): Map<string, string> {

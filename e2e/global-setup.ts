@@ -5,6 +5,7 @@ import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { Client } from 'pg'
 import { E2E_PASSWORD_HASH, E2E_USERNAME } from './fixtures/credentials'
+import { startFakeGoogle } from './fixtures/fakeGoogle'
 
 const port = Number(process.env.KVET_PORT ?? 8081)
 const baseUrl = process.env.KVET_BASE_URL ?? `http://127.0.0.1:${port}`
@@ -79,6 +80,10 @@ file = "invoice-email-fehlt.txt"
 [travel_expenses]
 rate_per_double_km = "3.50"
 minimum = "13.00"
+
+# Google is the suite's own fake (KVET_MAPS_ENDPOINT); the key only has to be there.
+[maps]
+api_key = "e2e"
 `,
     'utf8',
   )
@@ -130,10 +135,16 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
     await client.end()
   }
 
+  const google = await startFakeGoogle()
   const child = spawn(binary, [], {
     // The templates folder is not a config key: the binary reads it from the environment, as
-    // in the container image.
-    env: { ...process.env, KVET_CONFIG: configPath, KVET_TEMPLATES_DIR: templatesDir },
+    // in the container image. Nor is where Google is: only a fake is ever put there.
+    env: {
+      ...process.env,
+      KVET_CONFIG: configPath,
+      KVET_TEMPLATES_DIR: templatesDir,
+      KVET_MAPS_ENDPOINT: google.url,
+    },
     stdio: ['ignore', 'inherit', 'inherit'],
   })
   child.on('exit', (code) => {
@@ -147,6 +158,7 @@ export default async function globalSetup(): Promise<() => Promise<void>> {
   process.env.KVET_E2E_CONFIG = configPath
 
   return async () => {
+    google.server.close()
     child.kill('SIGTERM')
     await new Promise((done) => setTimeout(done, 250))
     if (!child.killed) child.kill('SIGKILL')

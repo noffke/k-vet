@@ -249,7 +249,20 @@
     "removePatientConfirm": "Really take “{{name}}” off this treatment? This animal’s positions go with it.",
     "title": "Treatment",
     "total": "Total",
-    "withoutPatientHint": "Until an animal is chosen, only per-visit services – e.g. house call, Wegegeld."
+    "withoutPatientHint": "Until an animal is chosen, only per-visit services – e.g. house call, Wegegeld.",
+    "kmFromPrevious": "{{name}}: {{km}} km as on the visit of {{date}} — please check.",
+    "kmFromPreviousUndated": "{{name}}: {{km}} km as on the last visit — please check.",
+    "kmFromRoute": "{{name}}: {{km}} km, the shortest route according to Google Maps — please check.",
+    "kmApproximate": "Google Maps found the address only roughly — please check the kilometres closely.",
+    "kmNotComputed": "{{name}}: no distance found. {{reason}} Please enter the kilometres.",
+    "kmProblem": {
+      "no_practice_address": "The settings have no practice address.",
+      "no_customer_address": "The customer's home address is incomplete.",
+      "not_found": "Google Maps knows no route to this address.",
+      "unavailable": "Google Maps cannot be reached right now."
+    },
+    "recomputeKm": "Recompute the distance (Google Maps)",
+    "kmRequiredForInvoice": "No invoice can be created without the kilometres."
   },
   "invoices": {
     "accept": "Accept invoice",
@@ -322,7 +335,8 @@
     "template": "Template",
     "templateFileMissing": "File “{{file}}” is missing from the templates folder.",
     "title": "Invoices",
-    "update": "Update invoice"
+    "update": "Update invoice",
+    "travelWithoutKm": "{{names}}: please enter the kilometres first — no invoice can be created without them."
   },
   "pharmacy": {
     "approvalNumber": "Approval number",
@@ -453,7 +467,8 @@
     "patientNotInTreatment": "This animal is not part of this treatment",
     "patientRequired": "This line needs an animal",
     "perVisit": "This service is per visit, not for one animal",
-    "stockShort": "This lot does not hold enough for that quantity. Record a stocktake for the lot first."
+    "stockShort": "This lot does not hold enough for that quantity. Record a stocktake for the lot first.",
+    "notTravel": "Only a Wegegeld line has a distance"
   },
   "packaging": {
     "originalAlreadyExists": "This drug already has an original packaging",
@@ -478,7 +493,8 @@
     "noLines": "The treatment has no positions yet",
     "noPatient": "No animal is attached to the treatment yet",
     "templateMissing": "The file of this template is missing from the templates folder.",
-    "unknownTemplate": "This template is not configured."
+    "unknownTemplate": "This template is not configured.",
+    "travelWithoutKm": "A Wegegeld line has no kilometres yet"
   },
   "patient": {
     "sex": {
@@ -515,5 +531,19 @@
     "retried": "The mail goes out again with the next run.",
     "retry": "Try again",
     "retrying": "Tried again every 5 minutes, until {{time}}"
+  },
+  "route": {
+    "notConfigured": "Google Maps is not set up"
+  },
+  "maps": {
+    "open": "Open in Google Maps",
+    "routeTo": "Route to {{address}} in Google Maps"
+  },
+  "addressCheck": {
+    "checking": "Checking the address …",
+    "found": "Address found",
+    "corrected": "Did you mean: {{address}}?",
+    "apply": "Take over",
+    "notFound": "Address not found — please check."
   }
 }

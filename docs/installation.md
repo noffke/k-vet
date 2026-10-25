@@ -107,6 +107,14 @@ The remaining decisions:
 | | `typst_template` | Empty uses the compiled-in PDF template. To edit it, point at `/etc/k-vet/templates/invoice.typ` — the entrypoint seeds it on first start. See [templates.md](templates.md). |
 | | `[[invoice.email_templates]]` | The email templates to choose from, `name` and `file` each, the first preselected. `file` is a name in `/etc/k-vet/templates`, where the entrypoint seeds `invoice-email.txt`; without the list that one is "Standard". A missing file is shown in the app, not a reason to stop. See [templates.md](templates.md). |
 | `[travel_expenses]` | `rate_per_double_km`, `minimum` | GOT § 10 values: `3.50` per double kilometre, `13.00` minimum. Update when the fee schedule changes. |
+| `[maps]` | `api_key` | Optional. A Google Maps Platform key with the **Routes API** and the **Address Validation API** enabled, and restricted to those two. With it a new Wegegeld line fills in its kilometres (the last visit's, else Google's shortest route from the practice to the customer's home) and a customer's address is checked as it is typed. Empty, nothing is sent to Google and the kilometres are typed by hand; the "In Google Maps öffnen" links work either way. |
+
+**What Google receives**, with a key: the practice address and a customer's home address for a
+route, a typed customer address for the check — street, postcode, town and country, never a name.
+Nothing Google answers is stored except the kilometres the vet keeps on the line. The container
+needs outgoing HTTPS to `routes.googleapis.com` and `addressvalidation.googleapis.com` for this;
+without it the lines simply stay without kilometres and say why. At a single practice's volume
+both APIs stay inside Google's free monthly allowance.
 
 The database password lives here and nowhere else — it is the role's password from
 [section 4](#4-the-database), and this file is the only copy. `chmod 600` it; the container

@@ -28,11 +28,13 @@ import type {
   AcceptInvoice,
   AddPatient,
   AddressBookEntry,
+  AddressCheck,
   ApplyTemplate,
   Appointment,
   Attachment,
   BulkDeleteItems,
   BulkSubmitResult,
+  CheckAddress,
   CreateAppointment,
   CreateCorrection,
   CreateCustomerEmail,
@@ -100,7 +102,8 @@ import type {
   TemplateItem,
   TextBlock,
   Treatment,
-  TreatmentItem
+  TreatmentItem,
+  TreatmentItemWithKm
 } from './model';
 
 import { apiFetch } from '../fetcher';
@@ -122,6 +125,88 @@ const withQueryKey = <T extends object, K>(query: T, queryKey: K): T & { queryKe
   }
   return result;
 };
+
+export const getCheckAddressUrl = () => {
+
+
+
+
+  return `/api/address-check`
+}
+
+export const checkAddress = async (checkAddressBody: CheckAddress, options?: Parameters<typeof apiFetch>[1]): Promise<AddressCheck> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<AddressCheck>(getCheckAddressUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(checkAddressBody)
+  }
+);}
+
+
+
+
+
+export const getCheckAddressMutationKey = () => ['checkAddress'] as const;
+
+export const getCheckAddressMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAddress>>, TError,CheckAddressMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof checkAddress>>, TError,CheckAddressMutationVariables, TContext> => {
+
+const mutationKey = getCheckAddressMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof checkAddress>>, CheckAddressMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  checkAddress(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CheckAddressMutationResult = NonNullable<Awaited<ReturnType<typeof checkAddress>>>
+    export type CheckAddressMutationBody = CheckAddress
+    export type CheckAddressMutationError = void
+    export type CheckAddressMutationVariables = {data: CheckAddress}
+
+    export const useCheckAddress = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof checkAddress>>, TError,CheckAddressMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof checkAddress>>,
+        TError,
+        CheckAddressMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCheckAddressMutationOptions(options), queryClient);
+    }
 
 export const getListAppointmentsUrl = (params?: ListAppointmentsParams,) => {
   const normalizedParams = new URLSearchParams();
@@ -8427,6 +8512,74 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getMoveTreatmentItemMutationOptions(options), queryClient);
     }
 
+export const getRecomputeTreatmentItemKmUrl = (id: number,) => {
+
+
+
+
+  return `/api/treatment-items/${id}/recompute-km`
+}
+
+export const recomputeTreatmentItemKm = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<TreatmentItemWithKm> => {
+
+  return apiFetch<TreatmentItemWithKm>(getRecomputeTreatmentItemKmUrl(id),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getRecomputeTreatmentItemKmMutationKey = () => ['recomputeTreatmentItemKm'] as const;
+
+export const getRecomputeTreatmentItemKmMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recomputeTreatmentItemKm>>, TError,RecomputeTreatmentItemKmMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof recomputeTreatmentItemKm>>, TError,RecomputeTreatmentItemKmMutationVariables, TContext> => {
+
+const mutationKey = getRecomputeTreatmentItemKmMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof recomputeTreatmentItemKm>>, RecomputeTreatmentItemKmMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  recomputeTreatmentItemKm(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type RecomputeTreatmentItemKmMutationResult = NonNullable<Awaited<ReturnType<typeof recomputeTreatmentItemKm>>>
+
+    export type RecomputeTreatmentItemKmMutationError = void
+    export type RecomputeTreatmentItemKmMutationVariables = {id: number}
+
+    export const useRecomputeTreatmentItemKm = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof recomputeTreatmentItemKm>>, TError,RecomputeTreatmentItemKmMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof recomputeTreatmentItemKm>>,
+        TError,
+        RecomputeTreatmentItemKmMutationVariables,
+        TContext
+      > => {
+      return useMutation(getRecomputeTreatmentItemKmMutationOptions(options), queryClient);
+    }
+
 export const getListTemplatesUrl = (params?: ListTemplatesParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -9454,7 +9607,7 @@ export const getCreateTreatmentItemUrl = (id: number,) => {
 }
 
 export const createTreatmentItem = async (id: number,
-    createTreatmentItemBody: CreateTreatmentItem, options?: Parameters<typeof apiFetch>[1]): Promise<TreatmentItem> => {
+    createTreatmentItemBody: CreateTreatmentItem, options?: Parameters<typeof apiFetch>[1]): Promise<TreatmentItemWithKm> => {
 
     const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
     if (!h) return {};
@@ -9470,7 +9623,7 @@ export const createTreatmentItem = async (id: number,
     }
     return headers;
   };
-return apiFetch<TreatmentItem>(getCreateTreatmentItemUrl(id),
+return apiFetch<TreatmentItemWithKm>(getCreateTreatmentItemUrl(id),
   {
     ...options,
     method: 'POST',

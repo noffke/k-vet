@@ -117,6 +117,8 @@ interface InvoiceMailFormProps {
   requiresRecipient: boolean
   /** Shown above the buttons: what the action does beyond the mail. */
   notice?: ReactNode
+  /** Why the button cannot be used yet; it stays disabled while this is set. */
+  blocked?: string | null | undefined
   failedText: string
   pending: boolean
   failed: boolean
@@ -138,6 +140,7 @@ export function InvoiceMailForm({
   offered,
   requiresRecipient,
   notice,
+  blocked,
   failedText,
   pending,
   failed,
@@ -371,6 +374,15 @@ export function InvoiceMailForm({
 
       {notice}
 
+      {blocked ? (
+        <p
+          className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger"
+          role="alert"
+        >
+          {blocked}
+        </p>
+      ) : null}
+
       {/* The mail server is never asked from here (migration 0026): what can fail on this
           page is the request itself. */}
       {failed ? (
@@ -388,6 +400,7 @@ export function InvoiceMailForm({
           variant="primary"
           disabled={
             pending ||
+            Boolean(blocked) ||
             (requiresRecipient && !withMail) ||
             (withMail && (pastSchedule || noTemplate))
           }

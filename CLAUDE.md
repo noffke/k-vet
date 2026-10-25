@@ -155,6 +155,13 @@ is pure and unit-tested, including path-traversal refusal).
 - `src/api/mail_queue.rs` — **no request sends mail.** Releasing or "E-Mail senden" queues it;
   the job delivers through `invoices::deliver`, keeps failures on the row, retries for six hours
   and stops at once on a refusal (5xx). Cancel and mark-posted drop the waiting mail.
+- `src/maps/` — Google Maps (Routes, Address Validation), **the only outbound HTTP**, built only
+  with `[maps] api_key` (`AppState::maps`): `hyper-util` + `hyper-rustls` on ring/webpki-roots,
+  the TLS stack lettre and sqlx already use. Only addresses are sent. `src/api/travel_distance.rs`
+  prefills a Wegegeld line's km — the customer's previous visit, else Google's shortest route,
+  asked before any transaction opens — and `customer.travel_distance_outdated` (migration `0031`,
+  set by triggers) sends a moved customer back to Google. Tests point `KVET_MAPS_ENDPOINT` at a
+  fake: `common::FakeGoogle`, and `e2e/fixtures/fakeGoogle.ts` for the suite.
 
 ### Database and sqlx
 
@@ -262,5 +269,5 @@ thing that decides what an instance runs. Migrations are forward-only, so rollba
 not a restart — see [docs/releasing.md](docs/releasing.md). Practice name, structured
 address, e-mail, IBAN, BIC, bank name, VAT ID, logo and CC/BCC live in the database (settings page);
 mail server, invoice number pattern, currency, VAT choices, default country, payment term, `web_dir`,
-the PDF template path and the email template list are operator configuration in `config.toml` (`config.example.toml` is
+the PDF template path, the email template list and the Google Maps key are operator configuration in `config.toml` (`config.example.toml` is
 commented in both languages — keep it that way).

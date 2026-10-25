@@ -4,6 +4,7 @@ use axum::Router;
 
 use crate::AppState;
 
+pub mod address_check;
 pub mod appointments;
 pub mod attachments;
 pub mod common;
@@ -25,12 +26,14 @@ pub mod settings;
 pub mod suppliers;
 pub mod templates;
 pub mod text_blocks;
+pub mod travel_distance;
 pub mod treatment_items;
 pub mod treatments;
 
 /// Every `/api` route that requires a session.
 pub fn protected_routes() -> Router<AppState> {
     Router::new()
+        .merge(address_check::routes())
         .merge(appointments::routes())
         .merge(attachments::routes())
         .merge(config::routes())
@@ -52,5 +55,6 @@ pub fn protected_routes() -> Router<AppState> {
         .merge(templates::routes())
         .merge(text_blocks::routes())
         .merge(treatment_items::routes())
+        .merge(travel_distance::routes())
         .merge(treatments::routes())
 }

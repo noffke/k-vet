@@ -36,6 +36,7 @@ pub mod domain;
 pub mod error;
 pub mod jobs;
 pub mod mail;
+pub mod maps;
 pub mod metrics;
 pub mod pdf;
 pub mod session_store;
@@ -46,6 +47,7 @@ use crate::config::Config;
 use crate::domain::files::AttachmentStore;
 use crate::error::{AppError, AppResult};
 use crate::mail::Mailer;
+use crate::maps::MapsClient;
 
 /// Sessions survive a restart of the binary and stay valid for two weeks of use.
 const SESSION_LIFETIME_DAYS: i64 = 14;
@@ -83,10 +85,12 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::treatment_items::list,
         api::treatment_items::create,
         api::treatment_items::patch,
+        api::travel_distance::recompute_km,
         api::treatment_items::delete,
         api::treatment_items::bulk_delete,
         api::treatment_items::move_item,
         api::treatment_items::set_lots,
+        api::address_check::check_address,
         api::customers::list,
         api::customers::create,
         api::customers::detail,
@@ -204,6 +208,8 @@ pub struct AppState {
     pub config: Arc<Config>,
     pub files: Arc<AttachmentStore>,
     pub mailer: Arc<Mailer>,
+    /// Google Maps, when `[maps] api_key` is set.
+    pub maps: Option<Arc<MapsClient>>,
     pub login_throttle: Arc<LoginThrottle>,
 }
 
@@ -213,11 +219,13 @@ impl AppState {
     pub fn new(pool: PgPool, config: Arc<Config>) -> AppResult<Self> {
         let files = Arc::new(AttachmentStore::new(config.storage.attachments_dir.clone()));
         let mailer = Arc::new(Mailer::from_config(&config)?);
+        let maps = MapsClient::from_config(&config)?.map(Arc::new);
         Ok(Self {
             pool,
             config,
             files,
             mailer,
+            maps,
             login_throttle: Arc::new(LoginThrottle::default()),
         })
     }

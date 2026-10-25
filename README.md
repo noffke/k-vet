@@ -23,7 +23,11 @@ layouts are first-class — not one design squeezed onto a phone.
   dispensing, stocktakes that book the difference, and an append-only movement history.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV
   § 3, § 4 and § 10, VAT summarised per rate, invoice numbers from an operator-defined pattern
-  with a counter that never goes backwards.
+  with a counter that never goes backwards. A Wegegeld line fills in its kilometres — the
+  customer's last visit, else Google Maps' shortest route — and no invoice goes out without them.
+- **Google Maps** (optional key) — a customer's address is checked as it is typed, with a
+  misspelling offered corrected; the customer and the appointment open the drive there in
+  Google Maps.
 - **Invoices** — PDF from a Typst template, plain-text email through the practice's own mail
   server, and a lifecycle (created → accepted → sent → submitted, or cancelled) where every step
   is stamped. Mail goes out through a queue — now, or at a chosen hour — retried for six hours when

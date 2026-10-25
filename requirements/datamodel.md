@@ -118,6 +118,7 @@ Fields:
     company-only recipient and the salutation is unaffected.
   * Second Name (optional, same structure — both persons are addressed on the invoice, e.g. non-married couples)
   * Home Address (structured, see Modeling Conventions; mandatory — the place to drive to)
+  * Travel Distance Outdated (bool) — set by the database when the home address (or the practice address) changes, so the next new Wegegeld line asks Google instead of taking over the previous visit's kilometres; cleared by the application once new kilometres are in
   * Invoice Address (structured, optional) with its own recipient name (optional company, salutation, optional first name, last name); when set, invoices use it — otherwise invoices use the customer name(s) and home address. The company belongs to the recipient, so the invoice address has its own and never borrows the home one.
   * E-Mail Address (multiple, with type)
   * Phone Number (single, optional; validated, see Modeling Conventions)

@@ -21,6 +21,10 @@ pub const TEMPLATES_DIR_ENV: &str = "KVET_TEMPLATES_DIR";
 /// Where the container mounts the templates, when nothing says otherwise.
 pub const DEFAULT_TEMPLATES_DIR: &str = "/etc/k-vet/templates";
 
+/// Points both Google Maps APIs at another host. Only the tests and the E2E suite set it, at a
+/// fake that answers like Google; production always talks to Google's own hosts.
+pub const MAPS_ENDPOINT_ENV: &str = "KVET_MAPS_ENDPOINT";
+
 /// The templates folder: `KVET_TEMPLATES_DIR` when it is set, else the container's.
 pub fn templates_dir(env: Option<OsString>) -> PathBuf {
     env.filter(|value| !value.is_empty())
@@ -71,6 +75,9 @@ pub struct Config {
     /// Optional: a `config.toml` written before this section existed still loads.
     #[serde(default)]
     pub pharmacy: PharmacyConfig,
+    /// Optional as well: without it nothing is ever sent to Google.
+    #[serde(default)]
+    pub maps: MapsConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -233,6 +240,27 @@ pub struct PharmacyConfig {
     pub subset_never_below_proportional: bool,
 }
 
+/// Google Maps Platform: the driving distance a Wegegeld line is prefilled with, and the check
+/// whether a customer's address exists. The links to Google Maps need no key.
+#[derive(Debug, Clone, Default, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct MapsConfig {
+    /// Empty: no request ever goes to Google.
+    #[serde(default)]
+    pub api_key: String,
+    /// Not a key of the file: `KVET_MAPS_ENDPOINT`, read in [`Config::load`]; tests set it
+    /// directly.
+    #[serde(skip)]
+    pub endpoint_override: Option<String>,
+}
+
+impl MapsConfig {
+    /// Whether a key is configured, i.e. whether Google is ever asked.
+    pub fn enabled(&self) -> bool {
+        !self.api_key.trim().is_empty()
+    }
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TravelExpenseConfig {
@@ -258,6 +286,9 @@ impl Config {
         })?;
         let mut config = Self::parse(&raw, path)?;
         config.invoice.templates_dir = templates_dir(std::env::var_os(TEMPLATES_DIR_ENV));
+        config.maps.endpoint_override = std::env::var(MAPS_ENDPOINT_ENV)
+            .ok()
+            .filter(|value| !value.trim().is_empty());
         Ok(config)
     }
 
@@ -563,6 +594,27 @@ mod tests {
             Decimal::new(350, 2)
         );
         assert_eq!(config.invoice.vat_rates.len(), 2);
+    }
+
+    #[test]
+    fn the_maps_section_is_optional_and_off_without_a_key() {
+        let config = parse(MINIMAL).expect("a configuration without [maps] still loads");
+        assert!(!config.maps.enabled());
+
+        let raw = format!("{MINIMAL}\n[maps]\napi_key = \"AIza-test\"\n");
+        let config = parse(&raw).expect("[maps] api_key parses");
+        assert!(config.maps.enabled());
+        assert_eq!(config.maps.endpoint_override, None);
+
+        let raw = format!("{MINIMAL}\n[maps]\napi_key = \"  \"\n");
+        assert!(!parse(&raw).expect("a blank key parses").maps.enabled());
+    }
+
+    #[test]
+    fn the_maps_endpoint_is_not_a_key_of_the_file() {
+        // The override exists for tests only; the file cannot send the key elsewhere.
+        let raw = format!("{MINIMAL}\n[maps]\nendpoint_override = \"http://127.0.0.1:1\"\n");
+        assert!(parse(&raw).is_err());
     }
 
     #[test]

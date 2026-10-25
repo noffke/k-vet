@@ -17,6 +17,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::PriceMode;
+use crate::api::travel_distance::{self, KmSource};
 use crate::api::treatment_items::{self, Attribution, CatalogLine, TreatmentItem};
 use crate::config::TravelExpenseConfig;
 use crate::domain::enums::{InvoiceStatus, TreatmentItemKind};
@@ -331,6 +332,29 @@ pub async fn apply_template(
     Path(id): Path<i64>,
     Json(body): Json<ApplyTemplate>,
 ) -> AppResult<Json<Vec<TreatmentItem>>> {
+    // A group with a Wegegeld line gets its kilometres looked up once, before the transaction,
+    // as adding the line by hand does; the other lines take none.
+    let has_travel = sqlx::query_scalar!(
+        r#"SELECT EXISTS (
+               SELECT 1 FROM treatment_template_item item
+               JOIN service ON service.id = item.service_id
+               WHERE item.template_id = $1 AND service.travel_expenses
+           ) AS "exists!""#,
+        body.template_id,
+    )
+    .fetch_one(&state.pool)
+    .await?;
+    let suggestion = if has_travel {
+        let mut connection = state.pool.acquire().await?;
+        stock::ensure_editable(&mut connection, id).await?;
+        ensure_open(&mut connection, id).await?;
+        drop(connection);
+        travel_distance::suggest_km(&state, id).await?
+    } else {
+        None
+    };
+    let km = suggestion.as_ref().and_then(|suggestion| suggestion.km);
+
     let mut transaction = state.pool.begin().await?;
     stock::ensure_editable(&mut transaction, id).await?;
     ensure_open(&mut transaction, id).await?;
@@ -348,10 +372,13 @@ pub async fn apply_template(
 
     // Template items are appended in template order with current prices copied (FR-024).
     let items = sqlx::query!(
-        r#"SELECT kind AS "kind: TreatmentItemKind", drug_packaging_id, service_id, quantity
-           FROM treatment_template_item
-           WHERE template_id = $1
-           ORDER BY position"#,
+        r#"SELECT item.kind AS "kind: TreatmentItemKind", item.drug_packaging_id,
+                  item.service_id, item.quantity,
+                  COALESCE(service.travel_expenses, false) AS "travel!"
+           FROM treatment_template_item item
+           LEFT JOIN service ON service.id = item.service_id
+           WHERE item.template_id = $1
+           ORDER BY item.position"#,
         body.template_id,
     )
     .fetch_all(&mut *transaction)
@@ -372,13 +399,17 @@ pub async fn apply_template(
             item.quantity,
             body.patient_treatment_id
                 .map_or(Attribution::Default, Attribution::Record),
-            None,
+            // The kilometres go on the Wegegeld line only: a line stores what it is given.
+            if item.travel { km } else { None },
             None,
             false,
             None,
             &state.config.travel_expenses,
         )
         .await?;
+    }
+    if suggestion.is_some_and(|suggestion| suggestion.source == Some(KmSource::Route)) {
+        travel_distance::clear_travel_mark(&mut transaction, id).await?;
     }
 
     transaction.commit().await?;

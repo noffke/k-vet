@@ -9,6 +9,39 @@
     "version": "0.1.0"
   },
   "paths": {
+    "/api/address-check": {
+      "post": {
+        "tags": [
+          "customers"
+        ],
+        "operationId": "checkAddress",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CheckAddress"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/AddressCheck"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "No Google key configured"
+          }
+        }
+      }
+    },
     "/api/appointments": {
       "get": {
         "tags": [
@@ -1297,6 +1330,9 @@
           },
           "409": {
             "description": "Only a created invoice can be accepted"
+          },
+          "422": {
+            "description": "A Wegegeld line has no kilometres"
           }
         }
       }
@@ -3616,6 +3652,46 @@
         }
       }
     },
+    "/api/treatment-items/{id}/recompute-km": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "operationId": "recomputeTreatmentItemKm",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The line, with new kilometres unless `km_suggestion.problem` says why not",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/TreatmentItemWithKm"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": ""
+          },
+          "409": {
+            "description": "The treatment's invoice is accepted"
+          },
+          "422": {
+            "description": "Not a Wegegeld line, or no Google key configured"
+          }
+        }
+      }
+    },
     "/api/treatment-templates": {
       "get": {
         "tags": [
@@ -4108,7 +4184,7 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/TreatmentItem"
+                  "$ref": "#/components/schemas/TreatmentItemWithKm"
                 }
               }
             }
@@ -4369,6 +4445,56 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "AddressCheck": {
+        "type": "object",
+        "required": [
+          "verdict"
+        ],
+        "properties": {
+          "verdict": {
+            "$ref": "#/components/schemas/AddressCheckVerdict"
+          },
+          "suggestion": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/AddressSuggestion",
+                "description": "`verdict = corrected`: the address as Google writes it."
+              }
+            ]
+          }
+        }
+      },
+      "AddressCheckVerdict": {
+        "type": "string",
+        "enum": [
+          "found",
+          "corrected",
+          "not_found",
+          "unavailable"
+        ]
+      },
+      "AddressSuggestion": {
+        "type": "object",
+        "required": [
+          "street",
+          "zip",
+          "city"
+        ],
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
           }
         }
       },
@@ -4672,6 +4798,32 @@
               "type": "string"
             },
             "description": "Their numbers, so the vet can tick them off against the bookkeeper's list."
+          }
+        }
+      },
+      "CheckAddress": {
+        "type": "object",
+        "required": [
+          "street",
+          "zip",
+          "city"
+        ],
+        "properties": {
+          "street": {
+            "type": "string"
+          },
+          "zip": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; absent, `[invoice] default_country`."
           }
         }
       },
@@ -5680,6 +5832,71 @@
           }
         }
       },
+      "KmProblem": {
+        "type": "string",
+        "enum": [
+          "no_practice_address",
+          "no_customer_address",
+          "not_found",
+          "unavailable"
+        ]
+      },
+      "KmSource": {
+        "type": "string",
+        "enum": [
+          "previous",
+          "route"
+        ]
+      },
+      "KmSuggestion": {
+        "type": "object",
+        "description": "Where the kilometres put on a Wegegeld line came from — or why there are none.",
+        "required": [
+          "approximate"
+        ],
+        "properties": {
+          "km": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The kilometres put on the line (one way); absent when none could be found."
+          },
+          "source": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/KmSource"
+              }
+            ]
+          },
+          "from_visit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date-time",
+            "description": "`source = previous`: when that visit was, if it has a date."
+          },
+          "approximate": {
+            "type": "boolean",
+            "description": "`source = route`: Google could place the customer's address only roughly, so the route\nmay end at the street or the town rather than at the house."
+          },
+          "problem": {
+            "oneOf": [
+              {
+                "type": "null"
+              },
+              {
+                "$ref": "#/components/schemas/KmProblem",
+                "description": "Why there are no kilometres."
+              }
+            ]
+          }
+        }
+      },
       "List": {
         "type": "object",
         "description": "A bullet or numbered list. Its items hold paragraphs only — no list inside a list.",
@@ -6042,7 +6259,8 @@
           "currency",
           "vat_rates",
           "default_country",
-          "version"
+          "version",
+          "maps_enabled"
         ],
         "properties": {
           "currency": {
@@ -6070,6 +6288,10 @@
               "null"
             ],
             "description": "Set on every instance that is not the practice's own, and drawn as a banner. `None` on\nproduction."
+          },
+          "maps_enabled": {
+            "type": "boolean",
+            "description": "A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses\nchecked. The key itself never leaves the server."
           }
         }
       },
@@ -8289,6 +8511,30 @@
           "drug_packaging",
           "service"
         ]
+      },
+      "TreatmentItemWithKm": {
+        "allOf": [
+          {
+            "$ref": "#/components/schemas/TreatmentItem"
+          },
+          {
+            "type": "object",
+            "properties": {
+              "km_suggestion": {
+                "oneOf": [
+                  {
+                    "type": "null"
+                  },
+                  {
+                    "$ref": "#/components/schemas/KmSuggestion",
+                    "description": "Set when kilometres were looked up for this line."
+                  }
+                ]
+              }
+            }
+          }
+        ],
+        "description": "A line together with how its kilometres were found, for the requests that look them up."
       },
       "TreatmentPatient": {
         "type": "object",

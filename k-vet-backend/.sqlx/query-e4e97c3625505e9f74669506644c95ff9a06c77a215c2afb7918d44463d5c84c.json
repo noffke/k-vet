@@ -1,0 +1,62 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT practice_street, practice_zip, practice_city, practice_country\n         FROM global_settings WHERE id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "practice_street",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_street"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "practice_zip",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_zip"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "practice_city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_city"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "practice_country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_country"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      true
+    ]
+  },
+  "hash": "e4e97c3625505e9f74669506644c95ff9a06c77a215c2afb7918d44463d5c84c"
+}

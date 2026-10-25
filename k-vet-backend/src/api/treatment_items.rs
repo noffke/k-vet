@@ -16,6 +16,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{MoveDirection, MoveRequest, double_option};
+use crate::api::travel_distance::{self, KmSource, TreatmentItemWithKm};
 use crate::config::TravelExpenseConfig;
 use crate::domain::enums::TreatmentItemKind;
 use crate::domain::money;
@@ -279,13 +280,36 @@ pub async fn list(
     tag = "treatments",
     params(("id" = i64, Path,)),
     request_body = CreateTreatmentItem,
-    responses((status = 200, body = TreatmentItem), (status = 409), (status = 422))
+    responses((status = 200, body = TreatmentItemWithKm), (status = 409), (status = 422))
 )]
 pub async fn create(
     State(state): State<AppState>,
     Path(treatment_id): Path<i64>,
     Json(body): Json<CreateTreatmentItem>,
-) -> AppResult<Json<TreatmentItem>> {
+) -> AppResult<Json<TreatmentItemWithKm>> {
+    // A Wegegeld line without kilometres gets them looked up — before the transaction, since
+    // Google may take seconds. A treatment that cannot take the line is refused first, so it
+    // never costs a request.
+    let travel = match (body.kind, body.service_id) {
+        (TreatmentItemKind::Service, Some(service_id)) => {
+            let mut connection = state.pool.acquire().await?;
+            travel_distance::is_travel_service(&mut connection, service_id).await?
+        }
+        _ => false,
+    };
+    let suggestion = if travel && body.km.is_none() {
+        let mut connection = state.pool.acquire().await?;
+        stock::ensure_editable(&mut connection, treatment_id).await?;
+        crate::api::treatments::ensure_open(&mut connection, treatment_id).await?;
+        drop(connection);
+        travel_distance::suggest_km(&state, treatment_id).await?
+    } else {
+        None
+    };
+    let km = body
+        .km
+        .or_else(|| suggestion.as_ref().and_then(|suggestion| suggestion.km));
+
     let mut transaction = state.pool.begin().await?;
     stock::ensure_editable(&mut transaction, treatment_id).await?;
     crate::api::treatments::ensure_open(&mut transaction, treatment_id).await?;
@@ -306,17 +330,27 @@ pub async fn create(
         reference_id,
         body.quantity,
         body.patient_treatment_id.into(),
-        body.km,
+        km,
         body.km_multiplier,
         body.redesignation,
         None,
         &state.config.travel_expenses,
     )
     .await?;
+    // Kilometres typed or freshly from Google make the customer's previous visit count again.
+    let fresh = suggestion
+        .as_ref()
+        .is_some_and(|suggestion| suggestion.source == Some(KmSource::Route));
+    if travel && (body.km.is_some() || fresh) {
+        travel_distance::clear_travel_mark(&mut transaction, treatment_id).await?;
+    }
 
     transaction.commit().await?;
     let mut connection = state.pool.acquire().await?;
-    load_item(&mut connection, item_id).await.map(Json)
+    Ok(Json(TreatmentItemWithKm {
+        item: load_item(&mut connection, item_id).await?,
+        km_suggestion: suggestion,
+    }))
 }
 
 /// Inserts a line with catalog values pinned; shared by add, apply-template and duplicate.
@@ -373,9 +407,7 @@ pub async fn insert_pinned_item(
     // A travel-expense line is priced from the distance per GOT § 10; every other line
     // pins the catalog price (FR-023).
     let price_net = match (catalog.travel_expenses, km) {
-        (true, Some(km)) => {
-            money::travel_expense(km, km_multiplier, travel.rate_per_double_km, travel.minimum)
-        }
+        (true, Some(km)) => travel_distance::travel_price(travel, km, km_multiplier),
         _ => catalog.price_net,
     };
 
@@ -521,14 +553,7 @@ pub async fn patch(
         // `double_option`: absent keeps what is stored, an explicit null clears it.
         let km = body.km.unwrap_or(current.km);
         let multiplier = body.km_multiplier.unwrap_or(current.km_multiplier);
-        km.map(|km| {
-            money::travel_expense(
-                km,
-                multiplier,
-                state.config.travel_expenses.rate_per_double_km,
-                state.config.travel_expenses.minimum,
-            )
-        })
+        km.map(|km| travel_distance::travel_price(&state.config.travel_expenses, km, multiplier))
     } else {
         None
     };
@@ -569,6 +594,11 @@ pub async fn patch(
     )
     .execute(&mut *transaction)
     .await?;
+
+    // Kilometres the vet typed make the customer's previous visit count again.
+    if travel_service && matches!(body.km, Some(Some(_))) {
+        travel_distance::clear_travel_mark(&mut transaction, current.treatment_id).await?;
+    }
 
     // A changed quantity re-derives the draft dispense allocation.
     if let (Some(quantity), Some(packaging_id)) = (body.quantity, current.drug_packaging_id)
@@ -981,7 +1011,7 @@ async fn close_position_gap(
     Ok(())
 }
 
-async fn load_item(connection: &mut PgConnection, id: i64) -> AppResult<TreatmentItem> {
+pub(crate) async fn load_item(connection: &mut PgConnection, id: i64) -> AppResult<TreatmentItem> {
     let treatment_id: i64 =
         sqlx::query_scalar!("SELECT treatment_id FROM treatment_item WHERE id = $1", id)
             .fetch_optional(&mut *connection)
