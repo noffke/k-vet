@@ -6,12 +6,12 @@ import { createServer, type Server } from 'node:http'
  */
 
 /**
- * The street the fake knows a route to — 11.9 km, the shorter of two routes. Every other
- * destination has none, so a spec that adds a Wegegeld line without thinking of Google keeps an
- * empty kilometre field, as without a key.
+ * The street the fake knows a route to — 11.902 km, the shorter of two routes, so 12 whole km.
+ * Every other destination has none, so a spec that adds a Wegegeld line without thinking of
+ * Google keeps an empty kilometre field, as without a key.
  */
 export const ROUTED_STREET = 'Wegegeldweg'
-export const ROUTED_KM = '11,9'
+export const ROUTED_KM = '12'
 
 /** Misspelled like this, the address check offers the street spelled right. */
 export const MISSPELLED_STREET = 'Musterwg'

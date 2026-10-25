@@ -76,11 +76,12 @@ async fn the_first_wegegeld_takes_googles_shortest_route(pool: PgPool) {
 
     let line = add_wegegeld(&app, treatment_id, wegegeld).await;
 
-    // The shorter of the two routes, priced per GOT § 10: 11.9 × 3.50.
-    assert_eq!(line["km"], "11.90");
-    assert_eq!(line["price_net"], "41.65");
+    // The shorter of the two routes, 11.902 km, in whole kilometres and priced per GOT § 10:
+    // 12 × 3.50.
+    assert_eq!(line["km"], "12.00");
+    assert_eq!(line["price_net"], "42.00");
     assert_eq!(line["km_suggestion"]["source"], "route");
-    assert_eq!(line["km_suggestion"]["km"], "11.9");
+    assert_eq!(line["km_suggestion"]["km"], "12");
     assert_eq!(line["km_suggestion"]["approximate"], false);
 
     let requests = google.requests();
@@ -144,7 +145,7 @@ async fn a_later_visit_takes_over_the_kilometres_the_vet_settled_on(pool: PgPool
     let neighbour = common::seed_customer(&pool).await;
     let theirs = visit(&pool, neighbour, 0).await;
     let line = add_wegegeld(&app, theirs, wegegeld).await;
-    assert_eq!(line["km"], "11.90");
+    assert_eq!(line["km"], "12.00");
     assert_eq!(line["km_suggestion"]["source"], "route");
     assert_eq!(google.requests().len(), 2);
 }
@@ -239,7 +240,7 @@ async fn a_changed_home_address_asks_google_again(pool: PgPool) {
     let second = visit(&pool, customer_id, 10).await;
     let line = add_wegegeld(&app, second, wegegeld).await;
     assert_eq!(line["km_suggestion"]["source"], "route");
-    assert_eq!(line["km"], "11.90");
+    assert_eq!(line["km"], "12.00");
     assert_eq!(
         google.requests()[0].body["destination"]["address"],
         "Neue Straße 1, 12345 Musterstadt, Germany"
@@ -249,7 +250,7 @@ async fn a_changed_home_address_asks_google_again(pool: PgPool) {
     let third = visit(&pool, customer_id, 0).await;
     let line = add_wegegeld(&app, third, wegegeld).await;
     assert_eq!(line["km_suggestion"]["source"], "previous");
-    assert_eq!(line["km"], "11.90");
+    assert_eq!(line["km"], "12.00");
 
     // What was billed before keeps its kilometres.
     let items = app
@@ -400,10 +401,10 @@ async fn recomputing_asks_google_for_this_line(pool: PgPool) {
         .await;
     assert_eq!(recomputed.status, StatusCode::OK);
     let recomputed = recomputed.json();
-    // The factor for adverse conditions stays: 11.9 × 3.50 × 2.
-    assert_eq!(recomputed["km"], "11.90");
+    // The factor for adverse conditions stays: 12 × 3.50 × 2.
+    assert_eq!(recomputed["km"], "12.00");
     assert_eq!(recomputed["km_multiplier"], "2.000");
-    assert_eq!(recomputed["price_net"], "83.30");
+    assert_eq!(recomputed["price_net"], "84.00");
     assert_eq!(recomputed["km_suggestion"]["source"], "route");
     assert!(!outdated(&pool, customer_id).await);
 
@@ -594,7 +595,7 @@ async fn a_treatment_group_with_wegegeld_gets_the_kilometres_on_that_line_only(p
             .cloned()
             .unwrap()
     };
-    assert_eq!(by_name("Wegegeld")["km"], "11.90");
+    assert_eq!(by_name("Wegegeld")["km"], "12.00");
     assert_eq!(by_name("Hausbesuch")["km"], Value::Null);
     assert_eq!(google.requests().len(), 1);
 }

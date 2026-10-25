@@ -49,8 +49,8 @@ test.describe('Wegegeld kilometres', () => {
       page.getByText(`${serviceName}: ${ROUTED_KM} km, kürzeste Strecke laut Google Maps`),
     ).toBeVisible()
     await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
-    // 11.9 km × 3.50 € = 41.65 € net.
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,56')
+    // 12 km × 3.50 € = 42.00 € net.
+    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,98')
 
     // The vet knows a better way; the next visit takes her figure.
     await page.getByLabel('Kilometer').fill('13,2')
@@ -79,7 +79,7 @@ test.describe('Wegegeld kilometres', () => {
     await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('124,95')
     await page.getByRole('button', { name: 'Entfernung neu berechnen (Google Maps)' }).click()
     await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,56')
+    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,98')
   })
 
   test('hold the invoice back until they are entered', async ({ page, request }) => {

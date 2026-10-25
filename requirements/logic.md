@@ -33,7 +33,7 @@ Decision: for services flagged Travel Expenses, the vet enters the kilometers dr
 
 Decision: a new Wegegeld line fills in its kilometres (one way), and they stay the vet's to change:
 * first the kilometres of the customer's most recent Wegegeld line on another visit, so a correction she made carries forward;
-* else, with a Google Maps key configured, Google's shortest driving route (not the most fuel-efficient: the vet's choice) from the practice address to the customer's home address, without live traffic so the same addresses give the same distance, rounded to 0.1 km;
+* else, with a Google Maps key configured, Google's shortest driving route (not the most fuel-efficient: the vet's choice) from the practice address to the customer's home address, without live traffic so the same addresses give the same distance, in whole kilometres (a half to the even one: 12.5 km is 12, 13.5 km is 14); kilometres typed or taken over from a previous visit stay as they are;
 * once the customer's home address or the practice address changes, the customer is marked and the next new line asks Google again; lines and invoices already written keep their kilometres. The mark clears when new kilometres come in, from Google or typed;
 * a Behandlungsgruppe with a Wegegeld line fills it in the same way;
 * the toast says where the kilometres came from (the visit's date, or Google), or why there are none — a line without them keeps an empty field;

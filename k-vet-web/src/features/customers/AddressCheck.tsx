@@ -60,7 +60,10 @@ export function AddressCheck({ street, zip, city, country, active, onApply }: Ad
       const suggestion = check.data.suggestion
       if (!suggestion) return null
       return (
-        <div className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink" aria-live="polite">
+        <div
+          className="flex flex-wrap items-center gap-x-2 gap-y-1 text-xs text-ink"
+          aria-live="polite"
+        >
           <TriangleAlert className="size-3.5 shrink-0 text-rust" aria-hidden />
           <span>{t('addressCheck.corrected', { address: addressLine(suggestion) })}</span>
           <Button onClick={() => onApply(suggestion)}>{t('addressCheck.apply')}</Button>

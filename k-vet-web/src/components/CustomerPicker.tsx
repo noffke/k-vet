@@ -51,7 +51,14 @@ export function CustomerPicker({
   if (customerId !== null) {
     return (
       <div className="flex items-center gap-2">
-        <span className="flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pr-1 pl-3">
+        <span
+          className={cn(
+            'flex items-center gap-1.5 rounded-full border border-line bg-surface py-1 pl-3',
+            // The remove button brings its own room; without it the name needs the same as
+            // the icon has on the left.
+            locked ? 'pr-3' : 'pr-1',
+          )}
+        >
           <UserRound className="size-3.5 text-rust" aria-hidden />
           <span className="text-sm text-ink">{customerName ?? '—'}</span>
           {locked ? null : (

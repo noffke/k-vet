@@ -81,7 +81,7 @@ impl Address {
 /// The shortest driving route Google found.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Route {
-    /// One way, to a tenth of a kilometre — what Google Maps itself shows.
+    /// One way, in whole kilometres (the vet's choice), half to even.
     pub km: Decimal,
     /// Google could place the destination only roughly (a street, a town), so the route may
     /// end at its centre rather than at the house.
@@ -299,10 +299,10 @@ fn parse_routes(answer: &[u8]) -> Result<Route, MapsError> {
     })
 }
 
-/// Metres to kilometres, half up to a tenth.
+/// Metres to whole kilometres, a half to the even one: 12.5 km is 12, 13.5 km is 14.
 fn meters_to_km(meters: u64) -> Decimal {
     (Decimal::from(meters) / Decimal::from(1000))
-        .round_dp_with_strategy(1, RoundingStrategy::MidpointAwayFromZero)
+        .round_dp_with_strategy(0, RoundingStrategy::MidpointNearestEven)
 }
 
 #[derive(Deserialize)]
@@ -441,7 +441,7 @@ mod tests {
             {"distanceMeters":11902,"routeLabels":["SHORTER_DISTANCE"]}],
             "geocodingResults":{"destination":{"type":["street_address"]}}}"#;
         let route = parse_routes(answer).unwrap();
-        assert_eq!(route.km, Decimal::new(119, 1));
+        assert_eq!(route.km, Decimal::from(12));
         assert!(!route.approximate);
     }
 
@@ -469,10 +469,13 @@ mod tests {
     }
 
     #[test]
-    fn kilometres_are_rounded_half_up_to_a_tenth() {
-        assert_eq!(meters_to_km(12437), Decimal::new(124, 1));
-        assert_eq!(meters_to_km(12450), Decimal::new(125, 1));
-        assert_eq!(meters_to_km(12449), Decimal::new(124, 1));
+    fn kilometres_are_whole_with_a_half_to_the_even_one() {
+        assert_eq!(meters_to_km(11_902), Decimal::from(12));
+        assert_eq!(meters_to_km(12_437), Decimal::from(12));
+        assert_eq!(meters_to_km(12_500), Decimal::from(12));
+        assert_eq!(meters_to_km(12_501), Decimal::from(13));
+        assert_eq!(meters_to_km(13_500), Decimal::from(14));
+        assert_eq!(meters_to_km(500), Decimal::ZERO);
         assert_eq!(meters_to_km(0), Decimal::ZERO);
         // The same place: proto3 leaves the zero distance out.
         assert_eq!(
