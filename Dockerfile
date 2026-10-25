@@ -12,7 +12,9 @@
 # BuildKit is required for the cache mounts below (default in Docker 23+).
 
 # ── Frontend ──────────────────────────────────────────────────────────────────────────
-FROM node:26.11-bookworm-slim AS web
+# Node's LTS line, not "Current": CI reads its Node from this tag, and Dependabot moves it within
+# the major only (.github/dependabot.yml) — the next LTS is a deliberate change.
+FROM node:24.22-bookworm-slim AS web
 WORKDIR /build
 
 # Dependencies first: they only change when the lockfile does.

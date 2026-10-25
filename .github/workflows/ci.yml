@@ -68,9 +68,18 @@ jobs:
         working-directory: k-vet-web
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      # The Node the image builds the frontend with (Dockerfile `FROM node:`), so a Dependabot
+      # bump of the base image moves CI along with it.
+      - name: Node version from the Dockerfile
+        id: node
+        working-directory: .
+        run: |
+          version=$(sed -n 's/^FROM node:\([0-9.]*\)-.*/\1/p' Dockerfile)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.12"
+          node-version: ${{ steps.node.outputs.version }}
           cache: npm
           cache-dependency-path: k-vet-web/package-lock.json
       - run: npm ci
@@ -108,9 +117,18 @@ jobs:
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2.9.2
         with:
           workspaces: k-vet-backend
+      # The Node the image builds the frontend with (Dockerfile `FROM node:`), so a Dependabot
+      # bump of the base image moves CI along with it.
+      - name: Node version from the Dockerfile
+        id: node
+        working-directory: .
+        run: |
+          version=$(sed -n 's/^FROM node:\([0-9.]*\)-.*/\1/p' Dockerfile)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.12"
+          node-version: ${{ steps.node.outputs.version }}
           cache: npm
           cache-dependency-path: k-vet-web/package-lock.json
       - name: Build frontend
@@ -172,9 +190,18 @@ jobs:
         # Tolerated advisories, each with its reason, live in
         # k-vet-backend/.cargo/audit.toml. Revisit that list when typst moves.
         run: cargo audit
+      # The Node the image builds the frontend with (Dockerfile `FROM node:`), so a Dependabot
+      # bump of the base image moves CI along with it.
+      - name: Node version from the Dockerfile
+        id: node
+        working-directory: .
+        run: |
+          version=$(sed -n 's/^FROM node:\([0-9.]*\)-.*/\1/p' Dockerfile)
+          test -n "$version"
+          echo "version=$version" >> "$GITHUB_OUTPUT"
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
-          node-version: "22.12"
+          node-version: ${{ steps.node.outputs.version }}
       - name: Frontend advisories (what reaches the browser)
         working-directory: k-vet-web
         run: npm audit --omit=dev --audit-level=high

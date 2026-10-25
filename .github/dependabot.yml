@@ -121,6 +121,12 @@ updates:
     open-pull-requests-limit: 30
     commit-message:
       prefix: "docker"
+    ignore:
+      # Node stays on its LTS line (even majors, LTS each October). A major bump would follow
+      # "Current" instead — Node 26 was taken that way while CI still tested on 22 — so the next
+      # LTS is moved to by hand. CI takes its Node from the Dockerfile and follows.
+      - dependency-name: "node"
+        update-types: ["version-update:semver-major"]
 
   # ── Images referenced by the compose file (postgres) ───────────────────────────────────
   # Only `docker-compose.dev.yml` is left, and it is for *development* — deployment does not use

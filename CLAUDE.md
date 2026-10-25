@@ -255,9 +255,10 @@ overflow sheet).
 
 Dependency bumps arrive as Dependabot pull requests (`.github/dependabot.yml`: cargo, both npm
 directories, actions, Docker base images, compose images — patch/minor grouped, majors on their
-own). Pins stay exact; the two Dependabot cannot reach are the `sqlx-cli` version above and the
-Node version, which must match the `node:` tag in the `Dockerfile` and `engines` in
-`k-vet-web/package.json`.
+own). Pins stay exact; the one Dependabot cannot reach is the `sqlx-cli` version above. Node is
+the `node:` tag in the `Dockerfile` — the LTS line, which Dependabot moves within its major only —
+and CI reads its version from there; `engines` in `k-vet-web/package.json` is the lowest Node the
+toolchain runs on.
 
 ## Release
 

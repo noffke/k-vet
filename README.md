@@ -64,7 +64,7 @@ The client contract is generated, never hand-written: handlers → `openapi.json
 
 ## Development setup
 
-Requirements: Rust stable, `sqlx-cli`, Node.js `^20.19 || >=22.12`, Docker (for Postgres) and
+Requirements: Rust stable, `sqlx-cli`, Node.js 24 LTS (22.19 at least), Docker (for Postgres) and
 `poppler-utils` (the E2E suite reads an invoice PDF with `pdftotext`).
 
 ```bash
