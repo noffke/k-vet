@@ -15,6 +15,6 @@ export interface TreatmentPatient {
   customer_id: number;
   /** @nullable */
   warning_remark?: string | null;
-  treatment_reason?: null | RichText;
-  finding?: null | RichText;
+  treatment_reason?: RichText | null;
+  finding?: RichText | null;
 }

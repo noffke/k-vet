@@ -10,5 +10,5 @@ import type { EmailType } from './emailType';
 export interface PatchCustomerEmail {
   /** @nullable */
   email?: string | null;
-  email_type?: null | EmailType;
+  email_type?: EmailType | null;
 }

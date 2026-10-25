@@ -31,5 +31,5 @@ export interface PatientTreatmentSummary {
      * @nullable
      */
   invoice_number?: string | null;
-  invoice_status?: null | InvoiceStatus;
+  invoice_status?: InvoiceStatus | null;
 }

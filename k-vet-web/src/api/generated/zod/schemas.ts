@@ -16,11 +16,11 @@ export const CheckAddressBody = zod.object({
 
 export const CheckAddressResponse = zod.object({
   "verdict": zod.enum(['found', 'corrected', 'not_found', 'unavailable']),
-  "suggestion": zod.union([zod.null(),zod.object({
+  "suggestion": zod.union([zod.object({
   "street": zod.string(),
   "zip": zod.string(),
   "city": zod.string()
-}).describe('`verdict = corrected`: the address as Google writes it.')]).optional()
+}).describe('`verdict = corrected`: the address as Google writes it.'),zod.null()]).optional()
 })
 
 
@@ -226,16 +226,16 @@ export const PatchCustomerEmailParams = zod.object({
 
 export const PatchCustomerEmailBody = zod.object({
   "email": zod.string().nullish(),
-  "email_type": zod.union([zod.null(),zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.')]).optional()
+  "email_type": zod.union([zod.enum(['private', 'work', 'other']).describe('Type of a customer email address.'),zod.null()]).optional()
 })
 
 export const PatchCustomerEmailResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -244,7 +244,7 @@ export const PatchCustomerEmailResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -282,10 +282,10 @@ export const ListCustomersQueryParams = zod.object({
 export const ListCustomersResponseItem = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -294,7 +294,7 @@ export const ListCustomersResponseItem = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -326,10 +326,10 @@ export const ListCustomersResponse = zod.array(ListCustomersResponseItem)
 export const CreateCustomerResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -338,7 +338,7 @@ export const CreateCustomerResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -373,10 +373,10 @@ export const GetCustomerParams = zod.object({
 export const GetCustomerResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -385,7 +385,7 @@ export const GetCustomerResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -419,10 +419,10 @@ export const PatchCustomerParams = zod.object({
 
 export const PatchCustomerBody = zod.object({
   "company": zod.string().nullish(),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -431,7 +431,7 @@ export const PatchCustomerBody = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish(),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -446,10 +446,10 @@ export const PatchCustomerBody = zod.object({
 export const PatchCustomerResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -458,7 +458,7 @@ export const PatchCustomerResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -493,10 +493,10 @@ export const ArchiveCustomerParams = zod.object({
 export const ArchiveCustomerResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -505,7 +505,7 @@ export const ArchiveCustomerResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -545,10 +545,10 @@ export const AddCustomerEmailBody = zod.object({
 export const AddCustomerEmailResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -557,7 +557,7 @@ export const AddCustomerEmailResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -592,10 +592,10 @@ export const UnarchiveCustomerParams = zod.object({
 export const UnarchiveCustomerResponse = zod.object({
   "id": zod.int(),
   "company": zod.string().nullish().describe('Optional company; printed above the name on the invoice, never instead of it.'),
-  "salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "first_name": zod.string().nullish(),
   "last_name": zod.string().nullish(),
-  "second_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.')]).optional(),
+  "second_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Optional second person of the household, addressed on the invoice as well.'),zod.null()]).optional(),
   "second_first_name": zod.string().nullish(),
   "second_last_name": zod.string().nullish(),
   "home_addon": zod.string().nullish(),
@@ -604,7 +604,7 @@ export const UnarchiveCustomerResponse = zod.object({
   "home_city": zod.string().nullish(),
   "home_country": zod.string().nullish().describe('ISO 3166-1 alpha-2; null falls back to `[invoice] default_country`.'),
   "invoice_company": zod.string().nullish(),
-  "invoice_salutation": zod.union([zod.null(),zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.')]).optional(),
+  "invoice_salutation": zod.union([zod.enum(['frau', 'herr', 'familie']).describe('Form of address; `familie` addresses a household.'),zod.null()]).optional(),
   "invoice_first_name": zod.string().nullish(),
   "invoice_last_name": zod.string().nullish(),
   "invoice_addon": zod.string().nullish(),
@@ -974,7 +974,7 @@ export const ListInvoicesResponseItem = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -987,7 +987,7 @@ export const ListInvoicesResponseItem = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1029,7 +1029,7 @@ export const GetInvoiceResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -1042,7 +1042,7 @@ export const GetInvoiceResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1080,7 +1080,7 @@ export const AcceptInvoiceResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -1093,7 +1093,7 @@ export const AcceptInvoiceResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1125,7 +1125,7 @@ export const CancelInvoiceResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -1138,7 +1138,7 @@ export const CancelInvoiceResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1170,7 +1170,7 @@ export const MarkInvoicePostedResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -1183,7 +1183,7 @@ export const MarkInvoicePostedResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1228,7 +1228,7 @@ export const SendInvoiceResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -1241,7 +1241,7 @@ export const SendInvoiceResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1273,7 +1273,7 @@ export const SubmitInvoiceResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -1286,7 +1286,7 @@ export const SubmitInvoiceResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -1355,7 +1355,7 @@ export const GetLotResponse = zod.object({
   "customer_name": zod.string().nullish(),
   "invoice_id": zod.int().nullish(),
   "invoice_number": zod.string().nullish(),
-  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
+  "invoice_status": zod.union([zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),zod.null()]).optional()
 }).describe('One line of a lot\'s history — a dispense with its links, or a correction with a reason.'))
 }))
 
@@ -1399,7 +1399,7 @@ export const CreateCorrectionResponse = zod.object({
   "customer_name": zod.string().nullish(),
   "invoice_id": zod.int().nullish(),
   "invoice_number": zod.string().nullish(),
-  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
+  "invoice_status": zod.union([zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),zod.null()]).optional()
 }).describe('One line of a lot\'s history — a dispense with its links, or a correction with a reason.'))
 }))
 
@@ -1651,9 +1651,9 @@ export const GetPatientTreatmentParams = zod.object({
   "id": zod.int()
 })
 
-export const getPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+export const getPatientTreatmentResponseTreatmentReasonOneContentItemTwoAttrsOneStartMin = 0;
 
-export const getPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+export const getPatientTreatmentResponseFindingOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
@@ -1663,7 +1663,7 @@ export const GetPatientTreatmentResponse = zod.object({
   "patient_id": zod.int(),
   "patient_name": zod.string().nullish(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date, for the page\'s heading — the record has no date of its own.'),
-  "treatment_reason": zod.union([zod.null(),zod.object({
+  "treatment_reason": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -1678,9 +1678,9 @@ export const GetPatientTreatmentResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(getPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(getPatientTreatmentResponseTreatmentReasonOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -1697,8 +1697,8 @@ export const GetPatientTreatmentResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('"Vorbericht und Untersuchung", formatted; `null` when nothing is written.')]).optional(),
-  "finding": zod.union([zod.null(),zod.object({
+}).describe('"Vorbericht und Untersuchung", formatted; `null` when nothing is written.'),zod.null()]).optional(),
+  "finding": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -1713,9 +1713,9 @@ export const GetPatientTreatmentResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(getPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(getPatientTreatmentResponseFindingOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -1732,7 +1732,7 @@ export const GetPatientTreatmentResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('"Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.')]).optional(),
+}).describe('"Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.'),zod.null()]).optional(),
   "frozen": zod.boolean().describe('`true` once the treatment\'s invoice is accepted: the record reads read-only.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -1743,14 +1743,14 @@ export const PatchPatientTreatmentParams = zod.object({
   "id": zod.int()
 })
 
-export const patchPatientTreatmentBodyTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+export const patchPatientTreatmentBodyTreatmentReasonOneContentItemTwoAttrsOneStartMin = 0;
 
-export const patchPatientTreatmentBodyFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+export const patchPatientTreatmentBodyFindingOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const PatchPatientTreatmentBody = zod.object({
-  "treatment_reason": zod.union([zod.null(),zod.object({
+  "treatment_reason": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -1765,9 +1765,9 @@ export const PatchPatientTreatmentBody = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(patchPatientTreatmentBodyTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(patchPatientTreatmentBodyTreatmentReasonOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -1784,8 +1784,8 @@ export const PatchPatientTreatmentBody = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A document without text is stored as `null`, the same as clearing the field.')]).optional(),
-  "finding": zod.union([zod.null(),zod.object({
+}).describe('A document without text is stored as `null`, the same as clearing the field.'),zod.null()]).optional(),
+  "finding": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -1800,9 +1800,9 @@ export const PatchPatientTreatmentBody = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(patchPatientTreatmentBodyFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(patchPatientTreatmentBodyFindingOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -1819,12 +1819,12 @@ export const PatchPatientTreatmentBody = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional()
 })
 
-export const patchPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+export const patchPatientTreatmentResponseTreatmentReasonOneContentItemTwoAttrsOneStartMin = 0;
 
-export const patchPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+export const patchPatientTreatmentResponseFindingOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
@@ -1834,7 +1834,7 @@ export const PatchPatientTreatmentResponse = zod.object({
   "patient_id": zod.int(),
   "patient_name": zod.string().nullish(),
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date, for the page\'s heading — the record has no date of its own.'),
-  "treatment_reason": zod.union([zod.null(),zod.object({
+  "treatment_reason": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -1849,9 +1849,9 @@ export const PatchPatientTreatmentResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(patchPatientTreatmentResponseTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(patchPatientTreatmentResponseTreatmentReasonOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -1868,8 +1868,8 @@ export const PatchPatientTreatmentResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('"Vorbericht und Untersuchung", formatted; `null` when nothing is written.')]).optional(),
-  "finding": zod.union([zod.null(),zod.object({
+}).describe('"Vorbericht und Untersuchung", formatted; `null` when nothing is written.'),zod.null()]).optional(),
+  "finding": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -1884,9 +1884,9 @@ export const PatchPatientTreatmentResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(patchPatientTreatmentResponseFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(patchPatientTreatmentResponseFindingOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -1903,7 +1903,7 @@ export const PatchPatientTreatmentResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('"Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.')]).optional(),
+}).describe('"Therapie und weiteres Vorgehen", formatted; `null` when nothing is written.'),zod.null()]).optional(),
   "frozen": zod.boolean().describe('`true` once the treatment\'s invoice is accepted: the record reads read-only.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -2136,7 +2136,7 @@ export const ListPatientTreatmentsOfPatientResponseItem = zod.object({
   "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('The visit\'s date; the record has none of its own.'),
   "treatment_reason": zod.string().nullish().describe('The reason as plain text, formatting dropped — the list shows it on one line.'),
   "invoice_number": zod.string().nullish().describe('The visit\'s invoice, when it has one that was not cancelled.'),
-  "invoice_status": zod.union([zod.null(),zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')]).optional()
+  "invoice_status": zod.union([zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.'),zod.null()]).optional()
 }).describe('One visit this animal was part of, as the patient page lists them.')
 export const ListPatientTreatmentsOfPatientResponse = zod.array(ListPatientTreatmentsOfPatientResponseItem)
 
@@ -2626,14 +2626,14 @@ export const ListTextBlocksQueryParams = zod.object({
   "offset": zod.int().optional()
 })
 
-export const listTextBlocksResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const listTextBlocksResponseContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const ListTextBlocksResponseItem = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2648,9 +2648,9 @@ export const ListTextBlocksResponseItem = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(listTextBlocksResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(listTextBlocksResponseContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2667,7 +2667,7 @@ export const ListTextBlocksResponseItem = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.'),zod.null()]).optional(),
   "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -2678,14 +2678,14 @@ export const ListTextBlocksResponseItem = zod.object({
 export const ListTextBlocksResponse = zod.array(ListTextBlocksResponseItem)
 
 
-export const createTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const createTextBlockResponseContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const CreateTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2700,9 +2700,9 @@ export const CreateTextBlockResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(createTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(createTextBlockResponseContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2719,7 +2719,7 @@ export const CreateTextBlockResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.'),zod.null()]).optional(),
   "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -2733,14 +2733,14 @@ export const GetTextBlockParams = zod.object({
   "id": zod.int()
 })
 
-export const getTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const getTextBlockResponseContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const GetTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2755,9 +2755,9 @@ export const GetTextBlockResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(getTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(getTextBlockResponseContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2774,7 +2774,7 @@ export const GetTextBlockResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.'),zod.null()]).optional(),
   "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -2788,13 +2788,13 @@ export const PatchTextBlockParams = zod.object({
   "id": zod.int()
 })
 
-export const patchTextBlockBodyContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const patchTextBlockBodyContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const PatchTextBlockBody = zod.object({
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2809,9 +2809,9 @@ export const PatchTextBlockBody = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(patchTextBlockBodyContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(patchTextBlockBodyContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2828,17 +2828,17 @@ export const PatchTextBlockBody = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A document without text counts as no content: the block stays a draft.')]).optional()
+}).describe('A document without text counts as no content: the block stays a draft.'),zod.null()]).optional()
 })
 
-export const patchTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const patchTextBlockResponseContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const PatchTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2853,9 +2853,9 @@ export const PatchTextBlockResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(patchTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(patchTextBlockResponseContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2872,7 +2872,7 @@ export const PatchTextBlockResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.'),zod.null()]).optional(),
   "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -2886,14 +2886,14 @@ export const ArchiveTextBlockParams = zod.object({
   "id": zod.int()
 })
 
-export const archiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const archiveTextBlockResponseContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const ArchiveTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2908,9 +2908,9 @@ export const ArchiveTextBlockResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(archiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(archiveTextBlockResponseContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2927,7 +2927,7 @@ export const ArchiveTextBlockResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.'),zod.null()]).optional(),
   "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -2941,14 +2941,14 @@ export const UnarchiveTextBlockParams = zod.object({
   "id": zod.int()
 })
 
-export const unarchiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin = 0;
+export const unarchiveTextBlockResponseContentOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
 export const UnarchiveTextBlockResponse = zod.object({
   "id": zod.int(),
   "name": zod.string().nullish(),
-  "content": zod.union([zod.null(),zod.object({
+  "content": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -2963,9 +2963,9 @@ export const UnarchiveTextBlockResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(unarchiveTextBlockResponseContentTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(unarchiveTextBlockResponseContentOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -2982,7 +2982,7 @@ export const UnarchiveTextBlockResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.')]).optional(),
+}).describe('The block\'s formatted text, inserted as it is; `null` while none is written.'),zod.null()]).optional(),
   "content_text": zod.string().nullish().describe('The same text plain — a line per paragraph or list item, formatting dropped — for the\npreviews in the list and the picker. Derived by the database (migration `0030`).'),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -3175,13 +3175,13 @@ export const RecomputeTreatmentItemKmResponse = zod.object({
 })).describe('Lots the dispense was booked against (drug lines).'),
   "created_at": zod.iso.datetime({"offset":true})
 }).and(zod.object({
-  "km_suggestion": zod.union([zod.null(),zod.object({
+  "km_suggestion": zod.union([zod.object({
   "km": zod.string().nullish().describe('The kilometres put on the line (one way); absent when none could be found.'),
-  "source": zod.union([zod.null(),zod.enum(['previous', 'route'])]).optional(),
+  "source": zod.union([zod.enum(['previous', 'route']),zod.null()]).optional(),
   "from_visit": zod.iso.datetime({"offset":true}).nullish().describe('`source = previous`: when that visit was, if it has a date.'),
   "approximate": zod.boolean().describe('`source = route`: Google could place the customer\'s address only roughly, so the route\nmay end at the street or the town rather than at the house.'),
-  "problem": zod.union([zod.null(),zod.enum(['no_practice_address', 'no_customer_address', 'not_found', 'unavailable']).describe('Why there are no kilometres.')]).optional()
-}).describe('Set when kilometres were looked up for this line.')]).optional()
+  "problem": zod.union([zod.enum(['no_practice_address', 'no_customer_address', 'not_found', 'unavailable']).describe('Why there are no kilometres.'),zod.null()]).optional()
+}).describe('Set when kilometres were looked up for this line.'),zod.null()]).optional()
 })).describe('A line together with how its kilometres were found, for the requests that look them up.')
 
 
@@ -3332,9 +3332,9 @@ export const GetTreatmentParams = zod.object({
   "id": zod.int()
 })
 
-export const getTreatmentResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+export const getTreatmentResponsePatientsItemTreatmentReasonOneContentItemTwoAttrsOneStartMin = 0;
 
-export const getTreatmentResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+export const getTreatmentResponsePatientsItemFindingOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
@@ -3348,7 +3348,7 @@ export const GetTreatmentResponse = zod.object({
   "name": zod.string(),
   "customer_id": zod.int(),
   "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.union([zod.null(),zod.object({
+  "treatment_reason": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -3363,9 +3363,9 @@ export const GetTreatmentResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(getTreatmentResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(getTreatmentResponsePatientsItemTreatmentReasonOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -3382,8 +3382,8 @@ export const GetTreatmentResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional(),
-  "finding": zod.union([zod.null(),zod.object({
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional(),
+  "finding": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -3398,9 +3398,9 @@ export const GetTreatmentResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(getTreatmentResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(getTreatmentResponsePatientsItemFindingOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -3417,15 +3417,15 @@ export const GetTreatmentResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
+  "invoice": zod.union([zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
   "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.'),zod.null()]).optional(),
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
@@ -3506,7 +3506,7 @@ export const CreateInvoiceResponse = zod.object({
   "sent_email_bcc": zod.array(zod.string()),
   "sent_email_template": zod.string().nullish().describe('The email template that delivery was written with, by its configured name — recorded\nwith it. Empty for invoices emailed before templates could be chosen.'),
   "ts_sent_post": zod.iso.datetime({"offset":true}).nullish().describe('When the invoice was handed over on paper — the only trace a postal send leaves.'),
-  "email_queue": zod.union([zod.null(),zod.object({
+  "email_queue": zod.union([zod.object({
   "id": zod.int(),
   "invoice_id": zod.int(),
   "recipients": zod.array(zod.string()),
@@ -3519,7 +3519,7 @@ export const CreateInvoiceResponse = zod.object({
   "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
   "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
   "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
-}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.')]).optional(),
+}).describe('The mail waiting in the queue for this invoice, or failing there; empty once it went out\nor when none was asked for.'),zod.null()]).optional(),
   "ts_submitted": zod.iso.datetime({"offset":true}).nullish(),
   "ts_cancelled": zod.iso.datetime({"offset":true}).nullish(),
   "customer_id": zod.int().nullish(),
@@ -3618,13 +3618,13 @@ export const CreateTreatmentItemResponse = zod.object({
 })).describe('Lots the dispense was booked against (drug lines).'),
   "created_at": zod.iso.datetime({"offset":true})
 }).and(zod.object({
-  "km_suggestion": zod.union([zod.null(),zod.object({
+  "km_suggestion": zod.union([zod.object({
   "km": zod.string().nullish().describe('The kilometres put on the line (one way); absent when none could be found.'),
-  "source": zod.union([zod.null(),zod.enum(['previous', 'route'])]).optional(),
+  "source": zod.union([zod.enum(['previous', 'route']),zod.null()]).optional(),
   "from_visit": zod.iso.datetime({"offset":true}).nullish().describe('`source = previous`: when that visit was, if it has a date.'),
   "approximate": zod.boolean().describe('`source = route`: Google could place the customer\'s address only roughly, so the route\nmay end at the street or the town rather than at the house.'),
-  "problem": zod.union([zod.null(),zod.enum(['no_practice_address', 'no_customer_address', 'not_found', 'unavailable']).describe('Why there are no kilometres.')]).optional()
-}).describe('Set when kilometres were looked up for this line.')]).optional()
+  "problem": zod.union([zod.enum(['no_practice_address', 'no_customer_address', 'not_found', 'unavailable']).describe('Why there are no kilometres.'),zod.null()]).optional()
+}).describe('Set when kilometres were looked up for this line.'),zod.null()]).optional()
 })).describe('A line together with how its kilometres were found, for the requests that look them up.')
 
 
@@ -3680,9 +3680,9 @@ export const AddTreatmentPatientBody = zod.object({
   "patient_id": zod.int()
 })
 
-export const addTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+export const addTreatmentPatientResponsePatientsItemTreatmentReasonOneContentItemTwoAttrsOneStartMin = 0;
 
-export const addTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+export const addTreatmentPatientResponsePatientsItemFindingOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
@@ -3696,7 +3696,7 @@ export const AddTreatmentPatientResponse = zod.object({
   "name": zod.string(),
   "customer_id": zod.int(),
   "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.union([zod.null(),zod.object({
+  "treatment_reason": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -3711,9 +3711,9 @@ export const AddTreatmentPatientResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(addTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(addTreatmentPatientResponsePatientsItemTreatmentReasonOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -3730,8 +3730,8 @@ export const AddTreatmentPatientResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional(),
-  "finding": zod.union([zod.null(),zod.object({
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional(),
+  "finding": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -3746,9 +3746,9 @@ export const AddTreatmentPatientResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(addTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(addTreatmentPatientResponsePatientsItemFindingOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -3765,15 +3765,15 @@ export const AddTreatmentPatientResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
+  "invoice": zod.union([zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
   "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.'),zod.null()]).optional(),
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
@@ -3788,9 +3788,9 @@ export const RemoveTreatmentPatientParams = zod.object({
   "patient_id": zod.int()
 })
 
-export const removeTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin = 0;
+export const removeTreatmentPatientResponsePatientsItemTreatmentReasonOneContentItemTwoAttrsOneStartMin = 0;
 
-export const removeTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin = 0;
+export const removeTreatmentPatientResponsePatientsItemFindingOneContentItemTwoAttrsOneStartMin = 0;
 
 
 
@@ -3804,7 +3804,7 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "name": zod.string(),
   "customer_id": zod.int(),
   "warning_remark": zod.string().nullish(),
-  "treatment_reason": zod.union([zod.null(),zod.object({
+  "treatment_reason": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -3819,9 +3819,9 @@ export const RemoveTreatmentPatientResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(removeTreatmentPatientResponsePatientsItemTreatmentReasonTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(removeTreatmentPatientResponsePatientsItemTreatmentReasonOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -3838,8 +3838,8 @@ export const RemoveTreatmentPatientResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional(),
-  "finding": zod.union([zod.null(),zod.object({
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional(),
+  "finding": zod.union([zod.object({
   "type": zod.enum(['doc']),
   "content": zod.array(zod.union([zod.object({
   "type": zod.enum(['paragraph']),
@@ -3854,9 +3854,9 @@ export const RemoveTreatmentPatientResponse = zod.object({
 }).describe('A line break inside a paragraph (Shift+Enter).')]).describe('What a paragraph is made of: runs of text and line breaks.')).optional().describe('Absent on an empty paragraph — a blank line the vet left.')
 }),zod.object({
   "type": zod.enum(['bulletList', 'orderedList']),
-  "attrs": zod.union([zod.null(),zod.object({
-  "start": zod.int().min(removeTreatmentPatientResponsePatientsItemFindingTwoContentItemTwoAttrsTwoStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
-})]).optional(),
+  "attrs": zod.union([zod.object({
+  "start": zod.int().min(removeTreatmentPatientResponsePatientsItemFindingOneContentItemTwoAttrsOneStartMin).nullish().describe('The first number of a numbered list; 1 when absent.')
+}),zod.null()]).optional(),
   "content": zod.array(zod.object({
   "type": zod.enum(['listItem']),
   "content": zod.array(zod.object({
@@ -3873,15 +3873,15 @@ export const RemoveTreatmentPatientResponse = zod.object({
 }))
 }))
 }).describe('A bullet or numbered list. Its items hold paragraphs only — no list inside a list.')]).describe('What a document is made of: paragraphs and lists, in reading order.'))
-}).describe('A formatted text, as stored and as the editor reads and writes it.')]).optional()
+}).describe('A formatted text, as stored and as the editor reads and writes it.'),zod.null()]).optional()
 })).describe('One record per animal, each with its own reason, finding and positions.'),
   "customer_id": zod.int().nullish().describe('Whose visit this is, inherited from the appointment — the invoice\'s customer, and what\nlimits which animals may be attached (FR-027).'),
   "customer_emails": zod.array(zod.string()).describe('The customer\'s email addresses, offered as invoice recipients (FR-031).'),
-  "invoice": zod.union([zod.null(),zod.object({
+  "invoice": zod.union([zod.object({
   "id": zod.int(),
   "invoice_number": zod.string(),
   "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
-}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.')]).optional(),
+}).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.'),zod.null()]).optional(),
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),

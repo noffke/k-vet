@@ -18,8 +18,8 @@ export interface PatientTreatment {
      * @nullable
      */
   starts_at?: string | null;
-  treatment_reason?: null | RichText;
-  finding?: null | RichText;
+  treatment_reason?: RichText | null;
+  finding?: RichText | null;
   /** `true` once the treatment's invoice is accepted: the record reads read-only. */
   frozen: boolean;
   created_at: string;

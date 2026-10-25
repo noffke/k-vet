@@ -17,7 +17,7 @@ export interface KmSuggestion {
      * @nullable
      */
   km?: string | null;
-  source?: null | KmSource;
+  source?: KmSource | null;
   /**
      * `source = previous`: when that visit was, if it has a date.
      * @nullable
@@ -28,5 +28,5 @@ export interface KmSuggestion {
      * may end at the street or the town rather than at the house.
      */
   approximate: boolean;
-  problem?: null | KmProblem;
+  problem?: KmProblem | null;
 }

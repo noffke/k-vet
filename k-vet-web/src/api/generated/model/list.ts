@@ -14,6 +14,6 @@ import type { ListType } from './listType';
  */
 export interface List {
   type: ListType;
-  attrs?: null | ListAttrs;
+  attrs?: ListAttrs | null;
   content: ListItem[];
 }

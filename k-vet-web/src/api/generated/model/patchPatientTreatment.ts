@@ -8,6 +8,6 @@
 import type { RichText } from './richText';
 
 export interface PatchPatientTreatment {
-  treatment_reason?: null | RichText;
-  finding?: null | RichText;
+  treatment_reason?: RichText | null;
+  finding?: RichText | null;
 }

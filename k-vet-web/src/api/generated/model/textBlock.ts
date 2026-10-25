@@ -11,7 +11,7 @@ export interface TextBlock {
   id: number;
   /** @nullable */
   name?: string | null;
-  content?: null | RichText;
+  content?: RichText | null;
   /**
      * The same text plain — a line per paragraph or list item, formatting dropped — for the
      * previews in the list and the picker. Derived by the database (migration `0030`).
