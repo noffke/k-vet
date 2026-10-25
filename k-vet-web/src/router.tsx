@@ -25,6 +25,7 @@ import { LotDetailPage } from '@/features/pharmacy/LotDetailPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
 import { StockCorrectionPage } from '@/features/pharmacy/StockCorrectionPage'
 import { StockIntakePage } from '@/features/pharmacy/StockIntakePage'
+import { QuotePage } from '@/features/quote/QuotePage'
 import { ServiceDetailPage, ServicesPage } from '@/features/services/ServicesPage'
 import { SettingsPage } from '@/features/settings/SettingsPage'
 import { NotFoundPage } from '@/features/shell/NotFoundPage'
@@ -179,6 +180,13 @@ const serviceDetailRoute = createRoute({
   component: ServiceDetailPage,
 })
 
+// Preisauskunft: pricing positions for a caller; nothing is saved.
+const quoteRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/quote',
+  component: QuotePage,
+})
+
 const templatesRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/templates',
@@ -248,6 +256,7 @@ const routeTree = rootRoute.addChildren([
     supplierDetailRoute,
     servicesRoute,
     serviceDetailRoute,
+    quoteRoute,
     templatesRoute,
     templateDetailRoute,
     textBlocksRoute,

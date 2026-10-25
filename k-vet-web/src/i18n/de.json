@@ -16,7 +16,8 @@
     "services": "Leistungen",
     "settings": "Einstellungen",
     "templates": "Behandlungsgruppen",
-    "textBlocks": "Textbausteine"
+    "textBlocks": "Textbausteine",
+    "quote": "Preisauskunft"
   },
   "login": {
     "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
@@ -545,5 +546,25 @@
     "corrected": "Meinten Sie: {{address}}?",
     "apply": "Übernehmen",
     "notFound": "Adresse nicht gefunden — bitte prüfen."
+  },
+  "quote": {
+    "title": "Preisauskunft",
+    "intro": "Für Anrufer: Positionen zusammenstellen und den Bruttopreis nennen. Gespeichert wird nichts.",
+    "forWhom": "Für wen?",
+    "forWhomHint": "Ein Kunde — oder für einen neuen Anrufer die Adresse, falls Wegegeld anfällt.",
+    "addressLegend": "Adresse für das Wegegeld (neuer Anrufer)",
+    "positions": "Positionen",
+    "empty": "Noch keine Positionen. Leistungen, Medikamente oder eine Behandlungsgruppe oben suchen.",
+    "total": "Gesamt (brutto)",
+    "net": "netto {{amount}}",
+    "vatGroup": "USt. {{rate}}: {{amount}}",
+    "clear": "Neue Preisauskunft",
+    "cleared": "Preisauskunft geleert.",
+    "removeLine": "Position entfernen",
+    "groupAdded": "{{count}} Positionen aus „{{name}}“ übernommen.",
+    "kmMissing": "Ohne Kilometer gilt der Katalogpreis.",
+    "distanceFailed": "Die Entfernung ließ sich nicht ermitteln.",
+    "failed": "Die Preise ließen sich gerade nicht berechnen.",
+    "tooManyLines": "Zu viele Positionen für eine Preisauskunft"
   }
 }

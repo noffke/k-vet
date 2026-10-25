@@ -152,6 +152,10 @@ is pure and unit-tested, including path-traversal refusal).
   abandoned drafts, monthly sweep of unreferenced attachments; every five minutes the invoice
   mail queue (`send_queued_mail`). Each job is a plain async function so tests call it directly
   (`TestApp::state`; `common::MailServer` is a fake SMTP server that can refuse).
+- `src/api/price_quote.rs` — Preisauskunft: prices a list of positions with `catalog_line`,
+  `travel_price` and `money::line_amounts` (the same helper `load_items` derives a line's amounts
+  with) and **writes nothing**; `/price-quote/distance` reuses `travel_distance::suggest_for_*`,
+  read-only.
 - `src/api/mail_queue.rs` — **no request sends mail.** Releasing or "E-Mail senden" queues it;
   the job delivers through `invoices::deliver`, keeps failures on the row, retries for six hours
   and stops at once on a refusal (5xx). Cancel and mark-posted drop the waiting mail.
@@ -207,6 +211,8 @@ overflow sheet).
   one level of list), German typography input rules, `null` for an emptied editor. Stored as
   JSONB documents (migration `0030`); the PDF gets them as `*_blocks` plus a plain-text copy for
   older templates.
+- `features/quote/` — the Preisauskunft keeps its positions in `sessionStorage` (`quoteState.ts`),
+  never on the server, and only displays the amounts `POST /api/price-quote` returns.
 - `lib/autosave.ts` — `useAutoSave` debounces 600 ms and flushes on blur, `visibilitychange`,
   `pagehide` and unmount; it surfaces per-field server errors. Use it for every editable record.
 - `components/DataList.tsx` — one column definition renders a real table on desktop and cards on

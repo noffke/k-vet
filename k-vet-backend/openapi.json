@@ -2573,6 +2573,72 @@
         }
       }
     },
+    "/api/price-quote": {
+      "post": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "priceQuote",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PriceQuoteRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The lines priced and totalled; nothing is stored",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PriceQuote"
+                }
+              }
+            }
+          },
+          "422": {
+            "description": "A position is unknown or incomplete, or a number is out of range"
+          }
+        }
+      }
+    },
+    "/api/price-quote/distance": {
+      "post": {
+        "tags": [
+          "quote"
+        ],
+        "operationId": "quoteDistance",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/QuoteDistanceRequest"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "Kilometres for a Wegegeld position of the quote, or why there are none",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/QuoteDistance"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Unknown customer"
+          }
+        }
+      }
+    },
     "/api/pricing/preview": {
       "post": {
         "tags": [
@@ -7675,6 +7741,56 @@
           }
         }
       },
+      "PriceQuote": {
+        "type": "object",
+        "required": [
+          "lines",
+          "vat_groups",
+          "total_net",
+          "total_vat",
+          "total_gross"
+        ],
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteLine"
+            },
+            "description": "In the order asked."
+          },
+          "vat_groups": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteVatGroup"
+            },
+            "description": "One entry per VAT rate, highest first — as the invoice lists them."
+          },
+          "total_net": {
+            "type": "string"
+          },
+          "total_vat": {
+            "type": "string"
+          },
+          "total_gross": {
+            "type": "string",
+            "description": "What the caller is told."
+          }
+        }
+      },
+      "PriceQuoteRequest": {
+        "type": "object",
+        "required": [
+          "lines"
+        ],
+        "properties": {
+          "lines": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/QuoteLineInput"
+            }
+          }
+        }
+      },
       "ProblemDetails": {
         "type": "object",
         "description": "RFC 7807 problem details.",
@@ -7792,6 +7908,193 @@
             ],
             "format": "date-time",
             "description": "No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure."
+          }
+        }
+      },
+      "QuoteDistance": {
+        "type": "object",
+        "properties": {
+          "km_suggestion": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/KmSuggestion",
+                "description": "`null` when there is nothing to go on: no earlier Wegegeld and no Google key."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "QuoteDistanceRequest": {
+        "type": "object",
+        "properties": {
+          "customer_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "An existing customer: their last Wegegeld km, else Google to their home."
+          },
+          "street": {
+            "type": "string",
+            "description": "Otherwise an address typed for a new caller — Google only."
+          },
+          "zip": {
+            "type": "string"
+          },
+          "city": {
+            "type": "string"
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; absent, `[invoice] default_country`."
+          }
+        }
+      },
+      "QuoteLine": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "name",
+          "vat_percent",
+          "travel_expenses",
+          "quantity",
+          "price_net",
+          "price_gross",
+          "line_net",
+          "line_gross"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/TreatmentItemKind"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "got_number": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "factor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The factor the line is priced at: the one asked for, else the catalogue's."
+          },
+          "vat_percent": {
+            "type": "string"
+          },
+          "travel_expenses": {
+            "type": "boolean",
+            "description": "The service bills travel expenses: the line takes kilometres."
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "km": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "km_multiplier": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "price_net": {
+            "type": "string",
+            "description": "Net per unit before the factor — the catalogue price, or the Wegegeld for `km`."
+          },
+          "price_gross": {
+            "type": "string",
+            "description": "Gross per unit after the factor."
+          },
+          "line_net": {
+            "type": "string"
+          },
+          "line_gross": {
+            "type": "string"
+          }
+        }
+      },
+      "QuoteLineInput": {
+        "type": "object",
+        "required": [
+          "kind",
+          "id",
+          "quantity"
+        ],
+        "properties": {
+          "kind": {
+            "$ref": "#/components/schemas/TreatmentItemKind"
+          },
+          "id": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The drug packaging's or the service's id, as the picker gives it."
+          },
+          "quantity": {
+            "type": "string"
+          },
+          "factor": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Services: the factor in percent (100 = single rate); absent, the catalogue's. Drug lines\nhave none."
+          },
+          "km": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Wegegeld: kilometres one way; absent, the line costs the catalogue price."
+          },
+          "km_multiplier": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Wegegeld: the factor for adverse travel conditions (1–3)."
+          }
+        }
+      },
+      "QuoteVatGroup": {
+        "type": "object",
+        "required": [
+          "vat_percent",
+          "net",
+          "vat",
+          "gross"
+        ],
+        "properties": {
+          "vat_percent": {
+            "type": "string"
+          },
+          "net": {
+            "type": "string"
+          },
+          "vat": {
+            "type": "string"
+          },
+          "gross": {
+            "type": "string"
           }
         }
       },
@@ -8639,6 +8942,10 @@
     {
       "name": "invoices",
       "description": "Invoice lifecycle"
+    },
+    {
+      "name": "quote",
+      "description": "Preisauskunft: pricing positions without storing them"
     },
     {
       "name": "dashboard",

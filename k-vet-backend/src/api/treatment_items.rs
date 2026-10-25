@@ -1072,51 +1072,47 @@ pub async fn load_items(
 
     Ok(rows
         .into_iter()
-        .map(|row| TreatmentItem {
-            line_net: money::line_total(row.price_net, row.quantity, row.factor),
-            line_gross: money::add_vat(
-                money::line_total(row.price_net, row.quantity, row.factor),
-                row.vat_percent,
-            )
-            .gross,
-            price_gross: money::add_vat(
-                money::line_total(row.price_net, Decimal::ONE, row.factor),
-                row.vat_percent,
-            )
-            .gross,
-            unit_net: money::line_total(row.price_net, Decimal::ONE, row.factor),
-            redesignation: row.redesignation,
-            euthanasia: row.euthanasia,
-            lots: lots
-                .iter()
-                .filter(|lot| lot.treatment_item_id == Some(row.id))
-                .map(|lot| ItemLot {
-                    lot_id: lot.lot_id,
-                    // Dispenses are stored negative; the UI shows the dispensed amount.
-                    quantity: -lot.quantity,
-                    batch_number: lot.batch_number.clone(),
-                    expiration_date: lot.expiration_date,
-                })
-                .collect(),
-            id: row.id,
-            treatment_id: row.treatment_id,
-            position: row.position,
-            kind: row.kind,
-            drug_packaging_id: row.drug_packaging_id,
-            service_id: row.service_id,
-            patient_treatment_id: row.patient_treatment_id,
-            name: row.name,
-            quantity: row.quantity,
-            unit: row.unit,
-            factor: row.factor,
-            got_number: row.got_number,
-            price_net: row.price_net,
-            vat_percent: row.vat_percent,
-            km: row.km,
-            km_multiplier: row.km_multiplier,
-            travel_expenses: row.travel_expenses,
-            got_analogous: row.got_analogous,
-            created_at: row.created_at,
+        .map(|row| {
+            let amounts =
+                money::line_amounts(row.price_net, row.quantity, row.factor, row.vat_percent);
+            TreatmentItem {
+                line_net: amounts.line_net,
+                line_gross: amounts.line_gross,
+                price_gross: amounts.price_gross,
+                unit_net: amounts.unit_net,
+                redesignation: row.redesignation,
+                euthanasia: row.euthanasia,
+                lots: lots
+                    .iter()
+                    .filter(|lot| lot.treatment_item_id == Some(row.id))
+                    .map(|lot| ItemLot {
+                        lot_id: lot.lot_id,
+                        // Dispenses are stored negative; the UI shows the dispensed amount.
+                        quantity: -lot.quantity,
+                        batch_number: lot.batch_number.clone(),
+                        expiration_date: lot.expiration_date,
+                    })
+                    .collect(),
+                id: row.id,
+                treatment_id: row.treatment_id,
+                position: row.position,
+                kind: row.kind,
+                drug_packaging_id: row.drug_packaging_id,
+                service_id: row.service_id,
+                patient_treatment_id: row.patient_treatment_id,
+                name: row.name,
+                quantity: row.quantity,
+                unit: row.unit,
+                factor: row.factor,
+                got_number: row.got_number,
+                price_net: row.price_net,
+                vat_percent: row.vat_percent,
+                km: row.km,
+                km_multiplier: row.km_multiplier,
+                travel_expenses: row.travel_expenses,
+                got_analogous: row.got_analogous,
+                created_at: row.created_at,
+            }
         })
         .collect())
 }

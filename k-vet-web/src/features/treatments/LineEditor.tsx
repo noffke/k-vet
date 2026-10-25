@@ -24,13 +24,7 @@ import {
   usePatchTreatmentItem,
   useRecomputeTreatmentItemKm,
 } from '@/api/generated/endpoints'
-import type {
-  KmSuggestion,
-  MoveDirection,
-  PickerItem,
-  Treatment,
-  TreatmentItem,
-} from '@/api/generated/model'
+import type { MoveDirection, PickerItem, Treatment, TreatmentItem } from '@/api/generated/model'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
@@ -38,8 +32,8 @@ import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
-import { scheduleOf } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
+import { useKmToast } from './kmToast'
 
 /** How long the undo stays on screen. Sonner's 4 s default is too quick to read and decide. */
 const UNDO_MS = 10_000
@@ -77,7 +71,7 @@ export function PositionGroup({
   showPicker = true,
 }: PositionGroupProps) {
   const { t } = useTranslation()
-  const { money, quantity: formatQuantity, percent, date, currencySymbol } = useLocaleFormat()
+  const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
   const { maps_enabled: mapsEnabled } = useOperatorConfig()
   const client = useQueryClient()
 
@@ -93,42 +87,7 @@ export function PositionGroup({
   const deleteItem = useDeleteTreatmentItem({ mutation })
   const recomputeKm = useRecomputeTreatmentItemKm({ mutation })
 
-  /**
-   * Says where a Wegegeld line's kilometres came from, so the vet checks a number she did not
-   * type — or why there are none, so she types them. Nothing to say when nothing was looked up.
-   */
-  const kmToast = (suggestion: KmSuggestion | null | undefined, name: string) => {
-    if (!suggestion) return false
-    if (suggestion.problem) {
-      toast.warning(
-        t('treatments.kmNotComputed', {
-          name,
-          reason: t(`treatments.kmProblem.${suggestion.problem}`),
-        }),
-      )
-      return true
-    }
-    const km = formatQuantity(suggestion.km)
-    if (suggestion.source === 'previous') {
-      toast(
-        suggestion.from_visit
-          ? t('treatments.kmFromPrevious', {
-              name,
-              km,
-              // The visit's own day where the practice is, not the UTC one.
-              date: date(scheduleOf(suggestion.from_visit).date),
-            })
-          : t('treatments.kmFromPreviousUndated', { name, km }),
-      )
-    } else if (suggestion.approximate) {
-      toast.warning(t('treatments.kmFromRoute', { name, km }), {
-        description: t('treatments.kmApproximate'),
-      })
-    } else {
-      toast(t('treatments.kmFromRoute', { name, km }))
-    }
-    return true
-  }
+  const kmToast = useKmToast()
   /**
    * The line a removal is being confirmed for. Deleting sits in a row of five icon buttons,
    * next to "move down" — on a phone that is one thumb's width from a position the vet meant

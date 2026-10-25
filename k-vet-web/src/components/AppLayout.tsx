@@ -2,6 +2,7 @@ import * as Dialog from '@radix-ui/react-dialog'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   Building2,
+  Calculator,
   CalendarDays,
   FileText,
   LayoutDashboard,
@@ -37,6 +38,8 @@ const NAV: NavItem[] = [
   { to: '/appointments', labelKey: 'nav.appointments', icon: CalendarDays, onTabBar: true },
   { to: '/customers', labelKey: 'nav.customers', icon: Users, onTabBar: true },
   { to: '/pharmacy', labelKey: 'nav.pharmacy', icon: Package, onTabBar: true },
+  // First under "Öffnen" on the phone: it is asked for while a caller is on the line.
+  { to: '/quote', labelKey: 'nav.quote', icon: Calculator },
   { to: '/services', labelKey: 'nav.services', icon: Stethoscope },
   { to: '/templates', labelKey: 'nav.templates', icon: FileText },
   { to: '/text-blocks', labelKey: 'nav.textBlocks', icon: NotebookPen },

@@ -26,6 +26,7 @@ import type {
   EmailType,
   Salutation,
 } from '@/api/generated/model'
+import { AddressCheck } from '@/components/AddressCheck'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
@@ -41,7 +42,6 @@ import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
-import { AddressCheck } from './AddressCheck'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
 const EMAIL_TYPES: EmailType[] = ['private', 'work', 'other']

@@ -120,6 +120,16 @@ timestamp:
 * by post — nothing else can observe a letter going into a postbox, so the vet marks it by hand.
   Only an Accepted invoice can be marked as posted.
 
+## Preisauskunft (price quote)
+A caller asks what a treatment would cost. The Preisauskunft page puts the positions together — drugs, services, Behandlungsgruppen (expanded into their positions) — with quantity, factor and, for Wegegeld, kilometres, and shows the gross total to tell the caller, with net and VAT per rate underneath.
+
+Decisions:
+* Nothing is saved. The quote lives in the browser tab and survives a reload; "Neue Preisauskunft" empties it (with undo). It does not become an appointment.
+* It is priced on the server exactly as a treatment's lines are, so the total is what the invoice would show at those factors. The page never computes an amount.
+* One total at each position's usual factor; the vet can change quantity, factor and kilometres per line. No "von – bis" range.
+* For Wegegeld, the caller is either an existing customer — kilometres as for a new line: their last visit's, unless their address changed since, else Google's shortest route — or a new caller, for whom an address can be typed: it is checked like a customer's address and asked of Google for the route. Asking never clears a customer's "address changed" mark. Kilometres the vet typed are never overwritten; without kilometres the line costs the catalogue price.
+* On the phone it sits first under "Öffnen".
+
 ## Invoice (Rechnung)
 Invoices can only be created or updated from a treatment. On the invoices page, it should be possible to view and
 download an invoice PDF and cancel an invoice. Additionally, it should be possible to mark invoices

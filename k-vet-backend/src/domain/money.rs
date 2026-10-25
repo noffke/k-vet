@@ -104,6 +104,36 @@ pub fn net_for_gross(
         .unwrap_or(estimate)
 }
 
+/// What one billing line comes to, derived from its pinned net price.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct LineAmounts {
+    /// One unit after the factor, net — what the line editor shows under the gross price.
+    pub unit_net: Decimal,
+    /// One unit after the factor, gross — the price column of the invoice.
+    pub price_gross: Decimal,
+    pub line_net: Decimal,
+    /// `line_net` plus its VAT: what the customer pays for the line.
+    pub line_gross: Decimal,
+}
+
+/// The amounts of one line: unit and line total, net and gross. The one place they are derived,
+/// so a treatment's lines and a price quote (Preisauskunft) cannot come out differently.
+pub fn line_amounts(
+    price_net: Decimal,
+    quantity: Decimal,
+    factor_percent: Option<Decimal>,
+    vat_percent: Decimal,
+) -> LineAmounts {
+    let unit_net = line_total(price_net, Decimal::ONE, factor_percent);
+    let line_net = line_total(price_net, quantity, factor_percent);
+    LineAmounts {
+        unit_net,
+        price_gross: add_vat(unit_net, vat_percent).gross,
+        line_net,
+        line_gross: add_vat(line_net, vat_percent).gross,
+    }
+}
+
 /// One VAT rate's share of an invoice.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct VatGroup {
@@ -440,6 +470,22 @@ mod tests {
 
     fn dec(value: &str) -> Decimal {
         Decimal::from_str_exact(value).expect("test literal is a decimal")
+    }
+
+    #[test]
+    fn line_amounts_derive_unit_and_line_from_the_net_price() {
+        // GOT 40 at 2.3×: 17.86 € net per unit, 3 units, 19 % VAT.
+        let amounts = line_amounts(dec("17.86"), dec("3"), Some(dec("230")), dec("19"));
+        assert_eq!(amounts.unit_net, dec("41.08"));
+        assert_eq!(amounts.price_gross, dec("48.89"));
+        assert_eq!(amounts.line_net, dec("123.23"));
+        assert_eq!(amounts.line_gross, dec("146.64"));
+        // A drug line has no factor; 7 % VAT.
+        let drug = line_amounts(dec("9.13"), dec("2"), None, dec("7"));
+        assert_eq!(drug.unit_net, dec("9.13"));
+        assert_eq!(drug.price_gross, dec("9.77"));
+        assert_eq!(drug.line_net, dec("18.26"));
+        assert_eq!(drug.line_gross, dec("19.54"));
     }
 
     #[test]

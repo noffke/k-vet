@@ -52,7 +52,8 @@ pub enum KmSource {
 pub enum KmProblem {
     /// The settings have no complete practice address to drive from.
     NoPracticeAddress,
-    /// The customer has no complete home address to drive to.
+    /// The address to drive to — the customer's home, or one typed for a price quote — is not
+    /// complete.
     NoCustomerAddress,
     /// Google knows no route between the two.
     NotFound,
@@ -81,7 +82,7 @@ pub struct TreatmentItemWithKm {
     pub km_suggestion: Option<KmSuggestion>,
 }
 
-/// The customer a treatment drives to.
+/// The customer the vet drives to.
 struct Destination {
     outdated: bool,
     /// A draft customer may have none of these yet.
@@ -89,6 +90,19 @@ struct Destination {
     zip: Option<String>,
     city: Option<String>,
     country: Option<String>,
+}
+
+impl Destination {
+    /// The home address, when it is complete enough to drive to.
+    fn address(&self, default_country: &str) -> Option<Address> {
+        let part = |value: &Option<String>| value.clone().unwrap_or_default();
+        Address::new(
+            &part(&self.street),
+            &part(&self.zip),
+            &part(&self.city),
+            self.country.as_deref().unwrap_or(default_country),
+        )
+    }
 }
 
 /// Whether a service bills travel expenses. An unknown service is not one; adding it fails
@@ -111,9 +125,35 @@ pub async fn is_travel_service(connection: &mut PgConnection, service_id: i64) -
 /// wait on it holding a lock.
 pub async fn suggest_km(state: &AppState, treatment_id: i64) -> AppResult<Option<KmSuggestion>> {
     let mut connection = state.pool.acquire().await?;
-    let Some((customer_id, destination)) = destination(&mut connection, treatment_id).await? else {
-        return Ok(None);
-    };
+    let customer_id = sqlx::query_scalar!(
+        "SELECT customer_id FROM treatment WHERE id = $1",
+        treatment_id
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .flatten();
+    drop(connection);
+    match customer_id {
+        Some(customer_id) => suggest_for_customer(state, customer_id, Some(treatment_id)).await,
+        None => Ok(None),
+    }
+}
+
+/// Kilometres to `customer_id`'s home: their most recent Wegegeld km on another visit than
+/// `exclude_treatment`, unless their address changed since (migration 0031); else Google's
+/// shortest route. `None` when there is nothing to take over and no Google key.
+///
+/// Reads only: the mark of a moved customer is cleared by a line that gets new kilometres, not
+/// by asking — so a price quote can ask as often as it likes.
+pub async fn suggest_for_customer(
+    state: &AppState,
+    customer_id: i64,
+    exclude_treatment: Option<i64>,
+) -> AppResult<Option<KmSuggestion>> {
+    let mut connection = state.pool.acquire().await?;
+    let destination = customer_destination(&mut connection, customer_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
 
     if !destination.outdated {
         let previous = sqlx::query!(
@@ -123,11 +163,12 @@ pub async fn suggest_km(state: &AppState, treatment_id: i64) -> AppResult<Option
                JOIN treatment ON treatment.id = item.treatment_id
                JOIN appointment ON appointment.id = treatment.appointment_id
                WHERE service.travel_expenses AND item.km IS NOT NULL
-                 AND treatment.customer_id = $1 AND treatment.id <> $2
+                 AND treatment.customer_id = $1
+                 AND ($2::BIGINT IS NULL OR treatment.id <> $2)
                ORDER BY appointment.starts_at DESC NULLS LAST, item.id DESC
                LIMIT 1"#,
             customer_id,
-            treatment_id,
+            exclude_treatment,
         )
         .fetch_optional(&mut *connection)
         .await?;
@@ -148,30 +189,44 @@ pub async fn suggest_km(state: &AppState, treatment_id: i64) -> AppResult<Option
     let origin = practice_address(&mut connection, state).await?;
     // The connection goes back to the pool before Google is asked.
     drop(connection);
-    Ok(Some(route(state, maps, origin, &destination).await))
+    let target = destination.address(&state.config.invoice.default_country);
+    Ok(Some(route(maps, origin, target).await))
 }
 
-/// Asks Google for the shortest route from the practice to the customer.
-async fn route(
+/// Kilometres to an address that belongs to nobody yet — a new caller asking for a price. Only
+/// Google can say; `None` without a key.
+pub async fn suggest_for_address(
     state: &AppState,
+    street: &str,
+    zip: &str,
+    city: &str,
+    country: Option<&str>,
+) -> AppResult<Option<KmSuggestion>> {
+    let Some(maps) = state.maps.as_deref() else {
+        return Ok(None);
+    };
+    let mut connection = state.pool.acquire().await?;
+    let origin = practice_address(&mut connection, state).await?;
+    drop(connection);
+    let country = country
+        .map(str::trim)
+        .filter(|country| !country.is_empty())
+        .unwrap_or(&state.config.invoice.default_country);
+    Ok(Some(
+        route(maps, origin, Address::new(street, zip, city, country)).await,
+    ))
+}
+
+/// Asks Google for the shortest route from the practice to `target`.
+async fn route(
     maps: &MapsClient,
     origin: Option<Address>,
-    destination: &Destination,
+    target: Option<Address>,
 ) -> KmSuggestion {
     let Some(origin) = origin else {
         return KmSuggestion::problem(KmProblem::NoPracticeAddress);
     };
-    let country = destination
-        .country
-        .as_deref()
-        .unwrap_or(&state.config.invoice.default_country);
-    let part = |value: &Option<String>| value.clone().unwrap_or_default();
-    let Some(target) = Address::new(
-        &part(&destination.street),
-        &part(&destination.zip),
-        &part(&destination.city),
-        country,
-    ) else {
+    let Some(target) = target else {
         return KmSuggestion::problem(KmProblem::NoCustomerAddress);
     };
     match maps.shortest_route(&origin, &target).await {
@@ -187,31 +242,25 @@ async fn route(
     }
 }
 
-/// The treatment's customer and their home address; `None` without a customer.
-async fn destination(
+/// A customer's home address and whether it moved since their last Wegegeld; `None` for an
+/// unknown customer.
+async fn customer_destination(
     connection: &mut PgConnection,
-    treatment_id: i64,
-) -> AppResult<Option<(i64, Destination)>> {
+    customer_id: i64,
+) -> AppResult<Option<Destination>> {
     let row = sqlx::query!(
-        r#"SELECT customer.id, customer.travel_distance_outdated,
-                  customer.home_street, customer.home_zip, customer.home_city, customer.home_country
-           FROM treatment JOIN customer ON customer.id = treatment.customer_id
-           WHERE treatment.id = $1"#,
-        treatment_id,
+        "SELECT travel_distance_outdated, home_street, home_zip, home_city, home_country
+         FROM customer WHERE id = $1",
+        customer_id,
     )
     .fetch_optional(&mut *connection)
     .await?;
-    Ok(row.map(|row| {
-        (
-            row.id,
-            Destination {
-                outdated: row.travel_distance_outdated,
-                street: row.home_street,
-                zip: row.home_zip,
-                city: row.home_city,
-                country: row.home_country,
-            },
-        )
+    Ok(row.map(|row| Destination {
+        outdated: row.travel_distance_outdated,
+        street: row.home_street,
+        zip: row.home_zip,
+        city: row.home_city,
+        country: row.home_country,
     }))
 }
 
@@ -301,12 +350,22 @@ pub async fn recompute_km(
     // Refused before Google is asked, not after.
     stock::ensure_editable(&mut connection, line.treatment_id).await?;
 
-    let suggestion = match destination(&mut connection, line.treatment_id).await? {
+    let customer_id = sqlx::query_scalar!(
+        "SELECT customer_id FROM treatment WHERE id = $1",
+        line.treatment_id
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    .flatten();
+    let suggestion = match customer_id {
         None => KmSuggestion::problem(KmProblem::NoCustomerAddress),
-        Some((_, destination)) => {
+        Some(customer_id) => {
+            let target = customer_destination(&mut connection, customer_id)
+                .await?
+                .and_then(|destination| destination.address(&state.config.invoice.default_country));
             let origin = practice_address(&mut connection, &state).await?;
             drop(connection);
-            route(&state, &maps, origin, &destination).await
+            route(&maps, origin, target).await
         }
     };
 

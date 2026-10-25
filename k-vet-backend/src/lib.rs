@@ -86,6 +86,8 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::treatment_items::create,
         api::treatment_items::patch,
         api::travel_distance::recompute_km,
+        api::price_quote::price_quote,
+        api::price_quote::quote_distance,
         api::treatment_items::delete,
         api::treatment_items::bulk_delete,
         api::treatment_items::move_item,
@@ -196,6 +198,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         (name = "picker", description = "Unified drug/service search"),
         (name = "textBlocks", description = "Reusable snippets for findings and reports"),
         (name = "invoices", description = "Invoice lifecycle"),
+        (name = "quote", description = "Preisauskunft: pricing positions without storing them"),
         (name = "dashboard", description = "Landing dashboard"),
         (name = "settings", description = "Practice settings"),
     )

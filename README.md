@@ -33,6 +33,9 @@ layouts are first-class — not one design squeezed onto a phone.
   is stamped. Mail goes out through a queue — now, or at a chosen hour — retried for six hours when
   the mail server does not answer. An invoice reaches the customer — by email or on paper — before the bookkeeper sees it,
   and the dashboard lists the ones that did not and every mail that failed.
+- **Preisauskunft** — for a caller asking what a treatment would cost: positions, groups and
+  Wegegeld (for a customer or a typed address) priced exactly as an invoice would, with the gross
+  total to tell. Nothing is saved.
 - **Bookkeeping hand-off** — every pending PDF as one ZIP, then one click to mark them handed
   over.
 - **Everything auto-saves.** A record is created as a draft on the first keystroke and completes

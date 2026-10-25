@@ -1,0 +1,41 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT item.km AS \"km!\", appointment.starts_at\n               FROM treatment_item item\n               JOIN service ON service.id = item.service_id\n               JOIN treatment ON treatment.id = item.treatment_id\n               JOIN appointment ON appointment.id = treatment.appointment_id\n               WHERE service.travel_expenses AND item.km IS NOT NULL\n                 AND treatment.customer_id = $1\n                 AND ($2::BIGINT IS NULL OR treatment.id <> $2)\n               ORDER BY appointment.starts_at DESC NULLS LAST, item.id DESC\n               LIMIT 1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "km!",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "km"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "starts_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true
+    ]
+  },
+  "hash": "02bf60ab65509526b4870afaa58d15b380a413d0f7125d62fc76c637fb439cea"
+}

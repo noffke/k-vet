@@ -93,7 +93,11 @@ import type {
   PickerItemsParams,
   PricePreview,
   PricePreviewRequest,
+  PriceQuote,
+  PriceQuoteRequest,
   QueuedEmail,
+  QuoteDistance,
+  QuoteDistanceRequest,
   SendInvoice,
   Service,
   SessionInfo,
@@ -6140,6 +6144,170 @@ export function usePickerItems<TData = Awaited<ReturnType<typeof pickerItems>>, 
 
 
 
+
+export const getPriceQuoteUrl = () => {
+
+
+
+
+  return `/api/price-quote`
+}
+
+export const priceQuote = async (priceQuoteRequest: PriceQuoteRequest, options?: Parameters<typeof apiFetch>[1]): Promise<PriceQuote> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<PriceQuote>(getPriceQuoteUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(priceQuoteRequest)
+  }
+);}
+
+
+
+
+
+export const getPriceQuoteMutationKey = () => ['priceQuote'] as const;
+
+export const getPriceQuoteMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof priceQuote>>, TError,PriceQuoteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof priceQuote>>, TError,PriceQuoteMutationVariables, TContext> => {
+
+const mutationKey = getPriceQuoteMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof priceQuote>>, PriceQuoteMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  priceQuote(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PriceQuoteMutationResult = NonNullable<Awaited<ReturnType<typeof priceQuote>>>
+    export type PriceQuoteMutationBody = PriceQuoteRequest
+    export type PriceQuoteMutationError = void
+    export type PriceQuoteMutationVariables = {data: PriceQuoteRequest}
+
+    export const usePriceQuote = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof priceQuote>>, TError,PriceQuoteMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof priceQuote>>,
+        TError,
+        PriceQuoteMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPriceQuoteMutationOptions(options), queryClient);
+    }
+
+export const getQuoteDistanceUrl = () => {
+
+
+
+
+  return `/api/price-quote/distance`
+}
+
+export const quoteDistance = async (quoteDistanceRequest: QuoteDistanceRequest, options?: Parameters<typeof apiFetch>[1]): Promise<QuoteDistance> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<QuoteDistance>(getQuoteDistanceUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(quoteDistanceRequest)
+  }
+);}
+
+
+
+
+
+export const getQuoteDistanceMutationKey = () => ['quoteDistance'] as const;
+
+export const getQuoteDistanceMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof quoteDistance>>, TError,QuoteDistanceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof quoteDistance>>, TError,QuoteDistanceMutationVariables, TContext> => {
+
+const mutationKey = getQuoteDistanceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof quoteDistance>>, QuoteDistanceMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  quoteDistance(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type QuoteDistanceMutationResult = NonNullable<Awaited<ReturnType<typeof quoteDistance>>>
+    export type QuoteDistanceMutationBody = QuoteDistanceRequest
+    export type QuoteDistanceMutationError = void
+    export type QuoteDistanceMutationVariables = {data: QuoteDistanceRequest}
+
+    export const useQuoteDistance = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof quoteDistance>>, TError,QuoteDistanceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof quoteDistance>>,
+        TError,
+        QuoteDistanceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getQuoteDistanceMutationOptions(options), queryClient);
+    }
 
 export const getPreviewPriceUrl = () => {
 

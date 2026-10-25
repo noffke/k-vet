@@ -2207,6 +2207,65 @@ export const PickerItemsResponseItem = zod.union([zod.object({
 export const PickerItemsResponse = zod.array(PickerItemsResponseItem)
 
 
+export const PriceQuoteBody = zod.object({
+  "lines": zod.array(zod.object({
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "id": zod.int().describe('The drug packaging\'s or the service\'s id, as the picker gives it.'),
+  "quantity": zod.string(),
+  "factor": zod.string().nullish().describe('Services: the factor in percent (100 = single rate); absent, the catalogue\'s. Drug lines\nhave none.'),
+  "km": zod.string().nullish().describe('Wegegeld: kilometres one way; absent, the line costs the catalogue price.'),
+  "km_multiplier": zod.string().nullish().describe('Wegegeld: the factor for adverse travel conditions (1–3).')
+}))
+})
+
+export const PriceQuoteResponse = zod.object({
+  "lines": zod.array(zod.object({
+  "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
+  "id": zod.int(),
+  "name": zod.string(),
+  "got_number": zod.string().nullish(),
+  "factor": zod.string().nullish().describe('The factor the line is priced at: the one asked for, else the catalogue\'s.'),
+  "vat_percent": zod.string(),
+  "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
+  "quantity": zod.string(),
+  "km": zod.string().nullish(),
+  "km_multiplier": zod.string().nullish(),
+  "price_net": zod.string().describe('Net per unit before the factor — the catalogue price, or the Wegegeld for `km`.'),
+  "price_gross": zod.string().describe('Gross per unit after the factor.'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+})).describe('In the order asked.'),
+  "vat_groups": zod.array(zod.object({
+  "vat_percent": zod.string(),
+  "net": zod.string(),
+  "vat": zod.string(),
+  "gross": zod.string()
+})).describe('One entry per VAT rate, highest first — as the invoice lists them.'),
+  "total_net": zod.string(),
+  "total_vat": zod.string(),
+  "total_gross": zod.string().describe('What the caller is told.')
+})
+
+
+export const QuoteDistanceBody = zod.object({
+  "customer_id": zod.int().nullish().describe('An existing customer: their last Wegegeld km, else Google to their home.'),
+  "street": zod.string().optional().describe('Otherwise an address typed for a new caller — Google only.'),
+  "zip": zod.string().optional(),
+  "city": zod.string().optional(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent, `[invoice] default_country`.')
+})
+
+export const QuoteDistanceResponse = zod.object({
+  "km_suggestion": zod.union([zod.object({
+  "km": zod.string().nullish().describe('The kilometres put on the line (one way); absent when none could be found.'),
+  "source": zod.union([zod.enum(['previous', 'route']),zod.null()]).optional(),
+  "from_visit": zod.iso.datetime({"offset":true}).nullish().describe('`source = previous`: when that visit was, if it has a date.'),
+  "approximate": zod.boolean().describe('`source = route`: Google could place the customer\'s address only roughly, so the route\nmay end at the street or the town rather than at the house.'),
+  "problem": zod.union([zod.enum(['no_practice_address', 'no_customer_address', 'not_found', 'unavailable']).describe('Why there are no kilometres.'),zod.null()]).optional()
+}).describe('`null` when there is nothing to go on: no earlier Wegegeld and no Google key.'),zod.null()]).optional()
+})
+
+
 export const PreviewPriceBody = zod.object({
   "kind": zod.enum(['original', 'subset']).describe('Original packaging (bought, stocked) versus a subset dispensed from it.'),
   "list_price_net": zod.string().describe('Purchase price without VAT — of the original packaging in both cases.'),

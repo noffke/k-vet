@@ -16,7 +16,8 @@
     "services": "Services",
     "settings": "Settings",
     "templates": "Treatment templates",
-    "textBlocks": "Text blocks"
+    "textBlocks": "Text blocks",
+    "quote": "Price quote"
   },
   "login": {
     "expired": "Your session has expired. Please sign in again.",
@@ -545,5 +546,25 @@
     "corrected": "Did you mean: {{address}}?",
     "apply": "Take over",
     "notFound": "Address not found — please check."
+  },
+  "quote": {
+    "title": "Price quote",
+    "intro": "For callers: put the positions together and tell the gross price. Nothing is saved.",
+    "forWhom": "For whom?",
+    "forWhomHint": "A customer — or, for a new caller, the address in case travel expenses apply.",
+    "addressLegend": "Address for travel expenses (new caller)",
+    "positions": "Positions",
+    "empty": "No positions yet. Search above for services, drugs or a treatment group.",
+    "total": "Total (gross)",
+    "net": "net {{amount}}",
+    "vatGroup": "VAT {{rate}}: {{amount}}",
+    "clear": "New price quote",
+    "cleared": "Price quote cleared.",
+    "removeLine": "Remove position",
+    "groupAdded": "{{count}} positions taken from “{{name}}”.",
+    "kmMissing": "Without kilometres, the catalogue price applies.",
+    "distanceFailed": "The distance could not be found.",
+    "failed": "The prices could not be calculated just now.",
+    "tooManyLines": "Too many positions for a price quote"
   }
 }
