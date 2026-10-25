@@ -66,6 +66,11 @@ updates:
       web-minor-and-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # @types/node describes the Node the project runs on — the Dockerfile's LTS line — so it
+      # moves within that major only, and to the next LTS together with the image.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # ── End-to-end suite ───────────────────────────────────────────────────────────────────
   # Kept separate from the frontend: a Playwright bump also changes which browsers CI downloads.
@@ -89,6 +94,11 @@ updates:
       e2e-minor-and-patch:
         patterns: ["*"]
         update-types: ["minor", "patch"]
+    ignore:
+      # @types/node describes the Node the project runs on — the Dockerfile's LTS line — so it
+      # moves within that major only, and to the next LTS together with the image.
+      - dependency-name: "@types/node"
+        update-types: ["version-update:semver-major"]
 
   # ── Workflow actions ───────────────────────────────────────────────────────────────────
   - package-ecosystem: "github-actions"
