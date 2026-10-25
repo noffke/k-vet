@@ -46,7 +46,7 @@ typst = "0.15.1"
 typst-as-lib = { version = "0.17.0", features = ["typst-kit-fonts", "typst-kit-embed-fonts"] }
 typst-layout = "0.15.1"
 typst-pdf = "0.15.1"
-utoipa = { version = "5.5.0", features = ["axum_extras", "chrono", "decimal", "preserve_order"] }
+utoipa = { version = "6.0.0", features = ["axum_extras", "chrono", "decimal", "preserve_order"] }
 zip = { version = "9.0.0", default-features = false, features = ["deflate"] }
 
 [dev-dependencies]
