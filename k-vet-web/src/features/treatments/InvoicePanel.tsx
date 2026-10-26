@@ -53,7 +53,9 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
     mutation: {
       onSuccess: async () => {
         setCancelOpen(false)
-        await refresh()
+        // A cancellation reaches past this page — the dashboard's planned mails, the invoice
+        // lists, the stock it gives back — so everything is read afresh when next shown.
+        await client.invalidateQueries()
       },
     },
   })
@@ -212,6 +214,7 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
         }}
       >
         {t('invoices.cancelConfirm')}
+        {invoice.data?.email_queue ? ` ${t('invoices.cancelDropsMail')}` : ''}
       </ConfirmDialog>
     </section>
   )

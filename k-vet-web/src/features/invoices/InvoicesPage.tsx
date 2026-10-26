@@ -57,7 +57,8 @@ export function InvoicesPage() {
     mutation: {
       onSuccess: async () => {
         setCancelling(null)
-        await refresh()
+        // Past this list too: the dashboard's planned mails, the appointment, the stock.
+        await client.invalidateQueries()
       },
     },
   })
@@ -282,6 +283,7 @@ export function InvoicesPage() {
         }}
       >
         {t('invoices.cancelConfirm')}
+        {cancelling?.email_queue ? ` ${t('invoices.cancelDropsMail')}` : ''}
       </ConfirmDialog>
     </div>
   )

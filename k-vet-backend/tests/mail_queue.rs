@@ -300,6 +300,58 @@ async fn cancelling_or_posting_drops_the_waiting_mail(pool: PgPool) {
     assert!(mail.delivered().is_empty());
 }
 
+/// A mail planned for later is gone with its invoice, whichever way the invoice is cancelled —
+/// cancelled outright, or replaced by updating it after release — and its time coming changes
+/// nothing: the run has nothing to send.
+#[sqlx::test]
+async fn a_planned_mail_is_never_sent_for_a_cancelled_invoice(pool: PgPool) {
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
+
+    let cancelled = released_at(&app, &pool, &["kundin@example.com"], tomorrow).await;
+    assert!(!invoice(&app, cancelled).await["email_queue"].is_null());
+    let cancel = app
+        .post_empty(&format!("/api/invoices/{cancelled}/cancel"))
+        .await;
+    assert_eq!(cancel.status, StatusCode::OK);
+    assert!(cancel.json()["email_queue"].is_null());
+
+    // Updated after release: the released one is cancelled, and the new one, not yet released
+    // itself, has no mail either.
+    let replaced = released_at(&app, &pool, &["nachbar@example.com"], tomorrow).await;
+    let treatment_id = invoice(&app, replaced).await["treatment_id"]
+        .as_i64()
+        .expect("the invoice's treatment");
+    let replacement = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(replacement.status, StatusCode::OK);
+    assert!(replacement.json()["email_queue"].is_null());
+    assert_eq!(invoice(&app, replaced).await["status"], "cancelled");
+    assert!(invoice(&app, replaced).await["email_queue"].is_null());
+    assert_eq!(queued(&pool).await, 0);
+
+    // The planned time comes: nothing goes out, and the dashboard plans nothing.
+    sqlx::query("UPDATE mail_queue SET send_after = now() - interval '1 minute'")
+        .execute(&pool)
+        .await
+        .expect("the time has come");
+    assert_eq!(run(&app).await, MailRun::default());
+    assert!(mail.delivered().is_empty());
+    let dashboard = app.get("/api/dashboard").await.json();
+    let planned = dashboard["unsent"]["entries"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|entry| !entry["mail_scheduled_for"].is_null())
+        .count();
+    assert_eq!(planned, 0);
+}
+
 /// "Später versenden": the mail waits for its time — the invoice is released and done with,
 /// the owners get it tomorrow morning — and goes out with the first run after it.
 #[sqlx::test]

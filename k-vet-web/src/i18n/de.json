@@ -277,6 +277,7 @@
     "bulkSubmitConfirm": "{{count}} Rechnungen als an die Buchhaltung übergeben markieren? Der Zeitpunkt wird festgehalten.",
     "cancel": "Rechnung stornieren",
     "cancelConfirm": "Rechnung wirklich stornieren? Die Nummer wird nicht wiederverwendet.",
+    "cancelDropsMail": "Die geplante E-Mail wird nicht versendet.",
     "create": "Rechnung erstellen",
     "createAnyway": "Trotzdem erstellen",
     "date": "Rechnungsdatum",

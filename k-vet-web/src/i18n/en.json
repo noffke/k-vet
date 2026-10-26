@@ -277,6 +277,7 @@
     "bulkSubmitConfirm": "Mark {{count}} invoices as handed over to bookkeeping? The time is recorded.",
     "cancel": "Cancel invoice",
     "cancelConfirm": "Cancel this invoice? Its number will never be reused.",
+    "cancelDropsMail": "The planned email will not be sent.",
     "create": "Create invoice",
     "createAnyway": "Create anyway",
     "date": "Invoice date",
