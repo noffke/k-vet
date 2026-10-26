@@ -152,6 +152,33 @@ test.describe('pharmacy', () => {
     await expect(page.getByRole('heading', { name: /Bestand/ })).toContainText('200')
   })
 
+  test("an expiry typed as month and year is that month's last day", async ({
+    page,
+    request,
+  }) => {
+    const { drugId, packagingId } = await seedDrug(request, { packages: 0 })
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}`)
+
+    await page.getByRole('button', { name: 'Wareneingang' }).click()
+    await page.getByLabel('Anzahl Packungen').fill('1')
+    await page.getByLabel('Chargennummer').fill('CH-MONAT')
+    const expiry = page.getByLabel('Verfallsdatum')
+    await expect(page.getByText('MM.JJJJ für das Monatsende, oder TT.MM.JJJJ')).toBeVisible()
+    // As the package prints it; the field shows the date it became.
+    await expiry.fill('02.2028')
+    await expiry.blur()
+    await expect(expiry).toHaveValue('29.02.2028')
+    await page.getByRole('button', { name: 'Hinzufügen' }).click()
+    await expect(page.getByText('CH-MONAT').filter({ visible: true }).first()).toBeVisible()
+
+    const lots = (await (await request.get(`/api/lots?packaging_id=${packagingId}`)).json()) as {
+      batch_number: string
+      expiration_date: string
+    }[]
+    expect(lots.find((lot) => lot.batch_number === 'CH-MONAT')?.expiration_date).toBe('2028-02-29')
+  })
+
   test('a stocktake books the difference and keeps the history', async ({ page, request }) => {
     const { drugId, packagingId } = await seedDrug(request)
     await request.post(`/api/packagings/${packagingId}/stock-intakes`, {

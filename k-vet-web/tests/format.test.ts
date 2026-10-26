@@ -163,4 +163,38 @@ describe('parsing dates', () => {
     expect(parseDate('13/40/2026', 'en-US')).toBeNull()
     expect(parseDate('nonsense', 'de-DE')).toBeNull()
   })
+  describe('an expiry by month and year', () => {
+    const monthEnd = { monthEnd: true }
+
+    it('is that month’s last day', () => {
+      expect(parseDate('03.2027', 'de-DE', monthEnd)).toBe('2027-03-31')
+      expect(parseDate('4.27', 'de-DE', monthEnd)).toBe('2027-04-30')
+      expect(parseDate('03/2027', 'de-DE', monthEnd)).toBe('2027-03-31')
+      expect(parseDate('4/27', 'en-US', monthEnd)).toBe('2027-04-30')
+      expect(parseDate('2027-03', 'en-US', monthEnd)).toBe('2027-03-31')
+    })
+
+    it('knows February, leap years too', () => {
+      expect(parseDate('02.2028', 'de-DE', monthEnd)).toBe('2028-02-29')
+      expect(parseDate('02.2027', 'de-DE', monthEnd)).toBe('2027-02-28')
+    })
+
+    it('still takes a full date as typed', () => {
+      expect(parseDate('15.03.2027', 'de-DE', monthEnd)).toBe('2027-03-15')
+      expect(parseDate('3/15/2027', 'en-US', monthEnd)).toBe('2027-03-15')
+      expect(parseDate('2027-03-15', 'de-DE', monthEnd)).toBe('2027-03-15')
+    })
+
+    it('waits for a whole year, and refuses a month that is none', () => {
+      // Half typed, `03.2` is not 2002.
+      expect(parseDate('03.2', 'de-DE', monthEnd)).toBeNull()
+      expect(parseDate('03.202', 'de-DE', monthEnd)).toBeNull()
+      expect(parseDate('13.2027', 'de-DE', monthEnd)).toBeNull()
+    })
+
+    it('is not read without being asked for', () => {
+      expect(parseDate('03.2027', 'de-DE')).toBeNull()
+      expect(parseDate('2027-03', 'de-DE')).toBeNull()
+    })
+  })
 })

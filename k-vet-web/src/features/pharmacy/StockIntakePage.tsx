@@ -90,10 +90,12 @@ export function StockIntakePage() {
           value={batchNumber}
           onChange={(event) => setBatchNumber(event.target.value)}
         />
+        {/* Packages print the expiry as month and year; that is the month's last day. */}
         <DateInput
           label={t('field.expirationDate')}
           value={expirationDate}
           onChange={setExpirationDate}
+          monthEnd
         />
         {original?.quantity && packages ? (
           <p className="numeric text-xs text-ink-faint sm:col-span-2">

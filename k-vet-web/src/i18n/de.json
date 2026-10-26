@@ -181,7 +181,8 @@
     "notADate": "Kein gültiges Datum",
     "notANumber": "Keine gültige Zahl",
     "notATime": "Keine gültige Uhrzeit",
-    "tooPrecise": "Zu viele Nachkommastellen"
+    "tooPrecise": "Zu viele Nachkommastellen",
+    "monthEndHint": "MM.JJJJ für das Monatsende, oder TT.MM.JJJJ"
   },
   "list": {
     "empty": "Keine Einträge",

@@ -15,6 +15,11 @@ export interface DateInputProps {
   hint?: string | undefined
   disabled?: boolean | undefined
   wrapperClassName?: string | undefined
+  /**
+   * A month and a year alone mean that month's last day — an expiry printed as `03/2027`. A full
+   * date is taken as typed.
+   */
+  monthEnd?: boolean | undefined
 }
 
 /**
@@ -33,6 +38,7 @@ export function DateInput({
   hint,
   disabled,
   wrapperClassName,
+  monthEnd = false,
 }: DateInputProps) {
   const { t } = useTranslation()
   const { locale, parseDate } = useLocaleFormat()
@@ -52,7 +58,7 @@ export function DateInput({
       onChange(null)
       return
     }
-    const iso = parseDate(raw)
+    const iso = parseDate(raw, { monthEnd })
     if (iso === null) {
       setLocalError(t('value.notADate'))
       return
@@ -62,10 +68,21 @@ export function DateInput({
   }
 
   const shown = localError ?? error
-  const placeholder = locale === 'en-US' ? 'M/D/YYYY' : 'TT.MM.JJJJ'
+  const placeholder = monthEnd
+    ? locale === 'en-US'
+      ? 'MM/YYYY'
+      : 'MM.JJJJ'
+    : locale === 'en-US'
+      ? 'M/D/YYYY'
+      : 'TT.MM.JJJJ'
 
   return (
-    <Field label={label} error={shown} hint={hint} className={wrapperClassName}>
+    <Field
+      label={label}
+      error={shown}
+      hint={hint ?? (monthEnd ? t('value.monthEndHint') : undefined)}
+      className={wrapperClassName}
+    >
       {(id) => (
         <div className="relative">
           <input

@@ -181,7 +181,8 @@
     "notADate": "Not a valid date",
     "notANumber": "Not a valid number",
     "notATime": "Not a valid time",
-    "tooPrecise": "Too many decimal places"
+    "tooPrecise": "Too many decimal places",
+    "monthEndHint": "MM/YYYY for the end of the month, or M/D/YYYY"
   },
   "list": {
     "empty": "Nothing here yet",

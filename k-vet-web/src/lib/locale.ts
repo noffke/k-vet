@@ -48,6 +48,7 @@ export function useLocaleFormat() {
     parseNumber: (input: string) => parseNumber(input, locale),
     parseNumberToWire: (input: string, decimals?: number) =>
       parseNumberToWire(input, locale, decimals),
-    parseDate: (input: string) => parseDate(input, locale),
+    parseDate: (input: string, options?: { monthEnd?: boolean }) =>
+      parseDate(input, locale, options),
   }
 }

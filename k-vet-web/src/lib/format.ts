@@ -248,14 +248,33 @@ export function parseTime(input: string): string | null {
 /**
  * Parses a typed date in the active locale into an ISO date.
  * Accepts `dd.MM.yyyy` (de-DE), `M/d/yyyy` (en-US) and ISO input in both.
+ *
+ * With `monthEnd`, a month and a year alone — `03.2027`, `3/27`, `2027-03` — is that month's
+ * last day: what a drug's expiry printed as month and year means. A full date still parses as
+ * typed, since a lot can expire on another day.
  */
-export function parseDate(input: string, locale: Locale): string | null {
+export function parseDate(
+  input: string,
+  locale: Locale,
+  options: { monthEnd?: boolean } = {},
+): string | null {
   const trimmed = input.trim()
   if (trimmed === '') return null
   const iso = /^(\d{4})-(\d{2})-(\d{2})$/.exec(trimmed)
   if (iso) return isoDate(Number(iso[1]), Number(iso[2]), Number(iso[3]))
+  if (options.monthEnd) {
+    const isoMonth = /^(\d{4})-(\d{1,2})$/.exec(trimmed)
+    if (isoMonth) return lastOfMonth(Number(isoMonth[1]), Number(isoMonth[2]))
+  }
 
   const parts = trimmed.split(/[./-]/).filter((part) => part !== '')
+  // Month first in both locales; the year has two digits or four, so `03.2` — half typed — is
+  // not taken for 2002.
+  if (options.monthEnd && parts.length === 2) {
+    const [month = '', year = ''] = parts
+    if (!/^\d{1,2}$/.test(month) || !/^(\d{2}|\d{4})$/.test(year)) return null
+    return lastOfMonth(expandYear(Number(year)), Number(month))
+  }
   if (parts.length !== 3) return null
   const numbers = parts.map(Number)
   if (numbers.some((value) => !Number.isInteger(value))) return null
@@ -273,6 +292,12 @@ export function parseDate(input: string, locale: Locale): string | null {
 function expandYear(year: number): number {
   if (year >= 100) return year
   return year >= 70 ? 1900 + year : 2000 + year
+}
+
+/** The month's last day — the 28th, 29th, 30th or 31st. */
+function lastOfMonth(year: number, month: number): string | null {
+  if (month < 1 || month > 12) return null
+  return isoDate(year, month, new Date(Date.UTC(year, month, 0)).getUTCDate())
 }
 
 function isoDate(year: number, month: number, day: number): string | null {
