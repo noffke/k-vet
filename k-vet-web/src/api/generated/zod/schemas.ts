@@ -45,6 +45,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -68,6 +69,7 @@ export const CreateAppointmentResponse = zod.object({
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -88,6 +90,7 @@ export const GetAppointmentResponse = zod.object({
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -121,6 +124,7 @@ export const PatchAppointmentResponse = zod.object({
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -145,6 +149,7 @@ export const DuplicateAppointmentResponse = zod.object({
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -692,6 +697,18 @@ export const GetDashboardResponse = zod.object({
   "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
 }))
 }).describe('Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show.'),
+  "stale_pdfs": zod.object({
+  "count": zod.int(),
+  "entries": zod.array(zod.object({
+  "treatment_id": zod.int().describe('Every case is resolved on the treatment page, so that is where a row leads.'),
+  "invoice_number": zod.string().nullish().describe('Absent while no invoice exists.'),
+  "date": zod.iso.date().nullish().describe('The invoice\'s date, or the visit\'s while there is no invoice.'),
+  "customer_name": zod.string(),
+  "patients": zod.array(zod.string()),
+  "total_gross": zod.string(),
+  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
+}))
+}).describe('Invoices not yet at the customer whose PDF no longer shows the treatment — positions\nchanged since it was made. All of them, oldest first: each needs its invoice updated.'),
   "expiring_lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "drug_id": zod.int(),
@@ -3664,6 +3681,13 @@ export const GetTreatmentResponse = zod.object({
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
+  "pdf_changes": zod.union([zod.object({
+  "changed_items": zod.array(zod.int()).describe('Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to.'),
+  "removed_items": zod.int().describe('Lines on the PDF that are gone.'),
+  "changed_records": zod.array(zod.int()).describe('Animal records whose printed texts changed, or that are new on the visit.'),
+  "removed_records": zod.int().describe('Animals on the PDF that are gone.'),
+  "reordered": zod.boolean().describe('Lines that are unchanged themselves but print in another order.')
+}).describe('What changed, when `pdf_stale` — absent for an invoice from before the PDF\'s contents\nwere recorded (migration 0034), which can only say *that* it changed.'),zod.null()]).optional(),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -4058,6 +4082,13 @@ export const AddTreatmentPatientResponse = zod.object({
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
+  "pdf_changes": zod.union([zod.object({
+  "changed_items": zod.array(zod.int()).describe('Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to.'),
+  "removed_items": zod.int().describe('Lines on the PDF that are gone.'),
+  "changed_records": zod.array(zod.int()).describe('Animal records whose printed texts changed, or that are new on the visit.'),
+  "removed_records": zod.int().describe('Animals on the PDF that are gone.'),
+  "reordered": zod.boolean().describe('Lines that are unchanged themselves but print in another order.')
+}).describe('What changed, when `pdf_stale` — absent for an invoice from before the PDF\'s contents\nwere recorded (migration 0034), which can only say *that* it changed.'),zod.null()]).optional(),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -4166,6 +4197,13 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
   "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
+  "pdf_changes": zod.union([zod.object({
+  "changed_items": zod.array(zod.int()).describe('Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to.'),
+  "removed_items": zod.int().describe('Lines on the PDF that are gone.'),
+  "changed_records": zod.array(zod.int()).describe('Animal records whose printed texts changed, or that are new on the visit.'),
+  "removed_records": zod.int().describe('Animals on the PDF that are gone.'),
+  "reordered": zod.boolean().describe('Lines that are unchanged themselves but print in another order.')
+}).describe('What changed, when `pdf_stale` — absent for an invoice from before the PDF\'s contents\nwere recorded (migration 0034), which can only say *that* it changed.'),zod.null()]).optional(),
   "total_gross": zod.string(),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
@@ -4194,6 +4232,7 @@ export const MoveAnimalToOwnAppointmentResponse = zod.object({
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })

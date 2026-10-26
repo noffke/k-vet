@@ -1,0 +1,42 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT invoice_pdf_out_of_date(invoice.id) AS \"stale?\",\n                  invoice.pdf_snapshot AS \"then?: Jsonb<PrintSnapshot>\",\n                  print_snapshot(invoice.treatment_id, invoice.includes_finding)\n                      AS \"now!: Jsonb<PrintSnapshot>\"\n           FROM invoice\n           WHERE invoice.treatment_id = $1 AND invoice.status <> 'cancelled'",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "stale?",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 1,
+        "name": "then?: Jsonb<PrintSnapshot>",
+        "type_info": "Jsonb",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "pdf_snapshot"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "now!: Jsonb<PrintSnapshot>",
+        "type_info": "Jsonb",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      null,
+      true,
+      null
+    ]
+  },
+  "hash": "b31ceb477b86fb065c95f5ca62d15492102878e3094e111842dd8848a22af2a7"
+}

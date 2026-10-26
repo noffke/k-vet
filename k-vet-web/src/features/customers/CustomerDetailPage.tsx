@@ -33,7 +33,12 @@ import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { LoadMore } from '@/components/LoadMore'
 import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
-import { ArchivedBadge, IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
+import {
+  ArchivedBadge,
+  IncompleteBadge,
+  NotBilledBadge,
+  PdfStaleBadge,
+} from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { SelectField, TextAreaField, TextField } from '@/components/ui/field'
@@ -618,6 +623,7 @@ function CustomerAppointments({ customerId }: { customerId: number }) {
               <span className="inline-flex flex-wrap items-center gap-1">
                 <IncompleteBadge missing={appointment.missing_fields} />
                 <NotBilledBadge count={appointment.unbilled ? 1 : 0} />
+                <PdfStaleBadge stale={appointment.pdf_stale} />
               </span>
             </Link>
           </li>

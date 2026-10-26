@@ -11,6 +11,7 @@ import { AnimalPicker, RemoveAnimal, useEligibleAnimals } from '@/features/treat
 import { AnimalRecord } from '@/features/treatments/AnimalRecord'
 import { InvoicePanel } from '@/features/treatments/InvoicePanel'
 import { PositionGroup } from '@/features/treatments/LineEditor'
+import { PdfStaleBanner } from '@/features/treatments/PdfStaleBanner'
 import { useLocaleFormat } from '@/lib/locale'
 import type { SaveStatus } from '@/lib/saveState'
 import { cn } from '@/lib/utils'
@@ -60,6 +61,7 @@ function TreatmentBody({
 
   return (
     <section className="mt-6">
+      <PdfStaleBanner treatment={treatment} />
       {active === undefined ? (
         // No animal yet: a customer with several, none picked. The visit's own positions —
         // the services marked "pro Termin" — can be written down already; nothing else can.
@@ -212,7 +214,12 @@ function AnimalPanel({
         ) : null}
       </div>
 
-      <AnimalRecord key={patient.id} recordId={patient.id} onSaveState={onSaveState} />
+      <AnimalRecord
+        key={patient.id}
+        recordId={patient.id}
+        changedSincePdf={treatment.pdf_changes?.changed_records.includes(patient.id) ?? false}
+        onSaveState={onSaveState}
+      />
 
       <PositionGroup
         treatment={treatment}

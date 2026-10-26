@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE invoice SET pdf_snapshot = print_snapshot(treatment_id, includes_finding)\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "66ec2c2e7de466b9a7370dea19490f86166b1db231f79fa9429aede8cec649d1"
+}

@@ -194,14 +194,6 @@ export function InvoicePanel({ treatment, hasItems }: InvoicePanelProps) {
         <p className="mt-3 text-xs text-rust">{t('invoices.acceptedWillCancel')}</p>
       ) : null}
 
-      {/* The PDF is rendered once, when the invoice is created; the totals are recomputed on
-          every read. So the document on file can quietly stop matching what is billed. */}
-      {treatment.pdf_stale ? (
-        <p className="mt-3 rounded-card border border-rust/30 bg-rust-soft/40 px-3 py-2 text-sm text-rust">
-          {t('invoices.pdfStale')}
-        </p>
-      ) : null}
-
       {/* The number is burned on cancellation, so name the invoice being cancelled. */}
       <ConfirmDialog
         open={cancelOpen}

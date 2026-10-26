@@ -51,9 +51,72 @@ pub struct Treatment {
     /// The treatment changed after its invoice PDF was rendered, so the document on file no
     /// longer shows what is billed. The PDF is only ever written when an invoice is created.
     pub pdf_stale: bool,
+    /// What changed, when `pdf_stale` — absent for an invoice from before the PDF's contents
+    /// were recorded (migration 0034), which can only say *that* it changed.
+    pub pdf_changes: Option<PdfChanges>,
     pub total_gross: Decimal,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// How the treatment differs from what its invoice PDF shows.
+#[derive(Debug, Default, PartialEq, Eq, Serialize, ToSchema)]
+pub struct PdfChanges {
+    /// Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,
+    /// or the animal they belong to.
+    pub changed_items: Vec<i64>,
+    /// Lines on the PDF that are gone.
+    pub removed_items: i64,
+    /// Animal records whose printed texts changed, or that are new on the visit.
+    pub changed_records: Vec<i64>,
+    /// Animals on the PDF that are gone.
+    pub removed_records: i64,
+    /// Lines that are unchanged themselves but print in another order.
+    pub reordered: bool,
+}
+
+/// `print_snapshot()`: a fingerprint per printed line and animal record, and the line order.
+#[derive(Debug, Default, Deserialize)]
+struct PrintSnapshot {
+    #[serde(default)]
+    items: HashMap<String, String>,
+    #[serde(default)]
+    records: HashMap<String, String>,
+    #[serde(default)]
+    order: Vec<i64>,
+}
+
+impl PdfChanges {
+    fn between(then: &PrintSnapshot, now: &PrintSnapshot) -> Self {
+        fn changed(then: &HashMap<String, String>, now: &HashMap<String, String>) -> Vec<i64> {
+            let mut ids: Vec<i64> = now
+                .iter()
+                .filter(|(id, print)| then.get(*id) != Some(*print))
+                .filter_map(|(id, _)| id.parse().ok())
+                .collect();
+            ids.sort_unstable();
+            ids
+        }
+        fn removed(then: &HashMap<String, String>, now: &HashMap<String, String>) -> i64 {
+            let gone = then.keys().filter(|id| !now.contains_key(*id)).count();
+            i64::try_from(gone).unwrap_or(i64::MAX)
+        }
+        // The order among the lines both sides print alike: an added, removed or changed line
+        // is said already, and moves the others by itself.
+        let same = |id: &i64| {
+            let key = id.to_string();
+            matches!((then.items.get(&key), now.items.get(&key)), (Some(a), Some(b)) if a == b)
+        };
+        let order_then: Vec<i64> = then.order.iter().copied().filter(same).collect();
+        let order_now: Vec<i64> = now.order.iter().copied().filter(same).collect();
+        PdfChanges {
+            changed_items: changed(&then.items, &now.items),
+            removed_items: removed(&then.items, &now.items),
+            changed_records: changed(&then.records, &now.records),
+            removed_records: removed(&then.records, &now.records),
+            reordered: order_then != order_now,
+        }
+    }
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -697,20 +760,24 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
     };
     let frozen = stock::treatment_is_frozen(&mut *connection, id).await?;
 
-    // The PDF is a file with a timestamp; the treatment carries one too, kept current by the
-    // triggers on its lines and its patients. Anything newer than the file is not in it.
-    let pdf_rendered_at = sqlx::query_scalar!(
-        "SELECT attachment.created_at
+    // What the live invoice's PDF shows, against the treatment as it prints now (migration
+    // 0034) — the database decides `stale`, the same rule the lists and the dashboard use.
+    let pdf = sqlx::query!(
+        r#"SELECT invoice_pdf_out_of_date(invoice.id) AS "stale?",
+                  invoice.pdf_snapshot AS "then?: Jsonb<PrintSnapshot>",
+                  print_snapshot(invoice.treatment_id, invoice.includes_finding)
+                      AS "now!: Jsonb<PrintSnapshot>"
            FROM invoice
-           JOIN attachment ON attachment.id = invoice.pdf_attachment_id
-          WHERE invoice.treatment_id = $1 AND invoice.status <> 'cancelled'
-          ORDER BY invoice.id DESC
-          LIMIT 1",
+           WHERE invoice.treatment_id = $1 AND invoice.status <> 'cancelled'"#,
         id,
     )
     .fetch_optional(&mut *connection)
     .await?;
-    let pdf_stale = pdf_rendered_at.is_some_and(|rendered| row.updated_at > rendered);
+    let pdf_stale = pdf.as_ref().and_then(|pdf| pdf.stale).unwrap_or(false);
+    let pdf_changes = pdf.filter(|_| pdf_stale).and_then(|pdf| {
+        pdf.then
+            .map(|then| PdfChanges::between(&then.0, &pdf.now.0))
+    });
 
     Ok(Treatment {
         id: row.id,
@@ -734,6 +801,7 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
         item_count: i64::try_from(items.len()).unwrap_or(i64::MAX),
         frozen,
         pdf_stale,
+        pdf_changes,
         total_gross: money::total_gross(&groups),
         created_at: row.created_at,
         updated_at: row.updated_at,

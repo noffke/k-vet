@@ -22,7 +22,7 @@ import { CustomerPicker } from '@/components/CustomerPicker'
 import { DateInput } from '@/components/DateInput'
 import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
-import { IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
+import { IncompleteBadge, NotBilledBadge, PdfStaleBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TimeInput } from '@/components/TimeInput'
 import { Button } from '@/components/ui/button'
@@ -191,6 +191,8 @@ export function AppointmentDetailPage() {
       >
         <IncompleteBadge missing={record.missing_fields} />
         <NotBilledBadge count={record.unbilled ? 1 : 0} />
+        {/* From the treatment, which every line edit refreshes — the appointment is not. */}
+        <PdfStaleBadge stale={treatment.data?.pdf_stale} />
       </PageHeader>
 
       {deleteMessage ? (

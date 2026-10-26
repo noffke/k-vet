@@ -43,6 +43,8 @@ pub struct Appointment {
     /// The treatment carries positions and no live invoice — work that has not been billed to
     /// anyone yet (FR-036).
     pub unbilled: bool,
+    /// The live invoice's PDF no longer shows the treatment as it is (migration 0034).
+    pub pdf_stale: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -75,6 +77,7 @@ struct Row {
     draft: bool,
     treatment_id: i64,
     unbilled: bool,
+    pdf_stale: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -92,6 +95,7 @@ impl From<Row> for Appointment {
             missing_fields: missing(row.starts_at.is_some()),
             treatment_id: row.treatment_id,
             unbilled: row.unbilled,
+            pdf_stale: row.pdf_stale,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -136,7 +140,10 @@ pub async fn list(
                            WHERE treatment_item.treatment_id = treatment.id)
                    AND NOT EXISTS (SELECT 1 FROM invoice
                                    WHERE invoice.treatment_id = treatment.id
-                                     AND invoice.status <> 'cancelled')) AS "unbilled!"
+                                     AND invoice.status <> 'cancelled')) AS "unbilled!",
+                  COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice
+                            WHERE invoice.treatment_id = treatment.id
+                              AND invoice.status <> 'cancelled'), false) AS "pdf_stale!"
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id
@@ -243,7 +250,10 @@ pub(crate) async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment>
                            WHERE treatment_item.treatment_id = treatment.id)
                    AND NOT EXISTS (SELECT 1 FROM invoice
                                    WHERE invoice.treatment_id = treatment.id
-                                     AND invoice.status <> 'cancelled')) AS "unbilled!"
+                                     AND invoice.status <> 'cancelled')) AS "unbilled!",
+                  COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice
+                            WHERE invoice.treatment_id = treatment.id
+                              AND invoice.status <> 'cancelled'), false) AS "pdf_stale!"
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id

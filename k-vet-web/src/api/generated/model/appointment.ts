@@ -44,6 +44,8 @@ export interface Appointment {
      * anyone yet (FR-036).
      */
   unbilled: boolean;
+  /** The live invoice's PDF no longer shows the treatment as it is (migration 0034). */
+  pdf_stale: boolean;
   created_at: string;
   updated_at: string;
 }

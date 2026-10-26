@@ -88,6 +88,11 @@ be the possibility to update an invoice (e.g. finding changed, etc.). If the inv
 has to be automatically canceled first. Created invoices can keep their invoice number on update, Accepted invoice
 numbers are "burned".
 
+The PDF is made once, with the invoice; the treatment can change after. When what the PDF prints no longer matches —
+a line new, changed, removed or moved, an animal's report changed (the finding only when it is printed) — the treatment
+says so first on its page ("PDF veraltet", with what changed and "Rechnung aktualisieren"), the changed lines and
+reports are marked, and the appointment carries a "PDF veraltet" chip in the lists. A change taken back is no change.
+
 Accepting an invoice with a euthanasia drug on a line ends that animal's record: its date of death becomes the appointment's day and it is archived, as entering a date of death by hand does. A date already entered stays; accepting again after an update changes nothing, and cancelling does not undo it. The accept page says so before the button.
 
 The lifecycle is `Created → Accepted → Sent → Submitted`, or `Cancelled` from any of them. An
@@ -153,7 +158,8 @@ more there are:
 * **not released** — invoices in Created.
 * **not sent** — invoices in Accepted, including the ones whose email failed on the way out.
 
-Above them, every invoice mail that failed — still being retried or given up — with the mail
+Above them, every invoice not yet at the customer (Created or Accepted) whose PDF is out of date — all of them, since
+each has to be updated before it goes out. Above that, every invoice mail that failed — still being retried or given up — with the mail
 server's answer, to be tried again (from the start, with six fresh hours) or removed from the
 queue, which leaves the invoice Accepted for the vet to send again or post.
 

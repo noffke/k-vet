@@ -12,7 +12,7 @@ import type { Appointment } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
-import { IncompleteBadge, NotBilledBadge } from '@/components/RecordBadges'
+import { IncompleteBadge, NotBilledBadge, PdfStaleBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
@@ -101,6 +101,7 @@ export function AppointmentsPage() {
           <span className="inline-flex flex-wrap items-center gap-1">
             <IncompleteBadge missing={row.missing_fields} />
             <NotBilledBadge count={row.unbilled ? 1 : 0} />
+            <PdfStaleBadge stale={row.pdf_stale} />
           </span>
         )}
         onRowClick={(row) =>

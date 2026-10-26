@@ -1039,3 +1039,229 @@ async fn a_wegegeld_line_without_kilometres_holds_the_invoice_back(pool: PgPool)
     .await;
     assert_eq!(accept().await.status, StatusCode::OK);
 }
+
+async fn treatment_of(app: &TestApp, treatment_id: i64) -> Value {
+    app.get(&format!("/api/treatments/{treatment_id}"))
+        .await
+        .json()
+}
+
+async fn line_ids(app: &TestApp, treatment_id: i64) -> Vec<i64> {
+    app.get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json()
+        .as_array()
+        .expect("the lines")
+        .iter()
+        .map(|line| line["id"].as_i64().expect("an id"))
+        .collect()
+}
+
+/// The PDF is made once; the treatment can change after. What changed is said, line by line
+/// (issues.md): the appointment list and the dashboard know it too, and updating the invoice
+/// makes a PDF that matches again.
+#[sqlx::test]
+async fn what_changed_since_the_pdf_is_said_everywhere(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let invoice = create_invoice(&app, billed.treatment_id).await;
+    let treatment = treatment_of(&app, billed.treatment_id).await;
+    assert_eq!(treatment["pdf_stale"], false);
+    assert!(treatment["pdf_changes"].is_null());
+    let record = treatment["patients"][0]["id"].as_i64().expect("the record");
+    let [service_line, drug_line] = line_ids(&app, billed.treatment_id).await[..] else {
+        panic!("two lines");
+    };
+
+    // A line added, one changed, one removed, the printed finding rewritten.
+    let service_id = common::seed_got_service(&pool).await;
+    let added = app
+        .post(
+            &format!("/api/treatments/{}/items", billed.treatment_id),
+            json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+        )
+        .await
+        .json()["id"]
+        .as_i64()
+        .expect("the new line");
+    app.patch(
+        &format!("/api/treatment-items/{drug_line}"),
+        json!({ "quantity": "2" }),
+    )
+    .await;
+    app.delete(&format!("/api/treatment-items/{service_line}"))
+        .await;
+    app.patch(
+        &format!("/api/patient-treatments/{record}"),
+        json!({ "finding": common::doc("Ohr sauber") }),
+    )
+    .await;
+
+    let treatment = treatment_of(&app, billed.treatment_id).await;
+    assert_eq!(treatment["pdf_stale"], true);
+    let mut changed = vec![drug_line, added];
+    changed.sort_unstable();
+    assert_eq!(
+        treatment["pdf_changes"],
+        json!({
+            "changed_items": changed,
+            "removed_items": 1,
+            "changed_records": [record],
+            "removed_records": 0,
+            "reordered": false,
+        })
+    );
+    let customer_id = treatment["customer_id"].as_i64().expect("a customer");
+    let appointments = app
+        .get(&format!("/api/appointments?customer_id={customer_id}"))
+        .await
+        .json();
+    assert_eq!(appointments[0]["pdf_stale"], true);
+    let dashboard = app.get("/api/dashboard").await.json();
+    assert_eq!(dashboard["stale_pdfs"]["count"], 1);
+    assert_eq!(
+        dashboard["stale_pdfs"]["entries"][0]["invoice_number"],
+        invoice["invoice_number"]
+    );
+
+    // Updated, the invoice's new PDF shows the treatment as it is.
+    create_invoice(&app, billed.treatment_id).await;
+    let treatment = treatment_of(&app, billed.treatment_id).await;
+    assert_eq!(treatment["pdf_stale"], false);
+    assert!(treatment["pdf_changes"].is_null());
+    let dashboard = app.get("/api/dashboard").await.json();
+    assert_eq!(dashboard["stale_pdfs"]["count"], 0);
+}
+
+/// Only what the PDF prints counts: a change taken back, and a finding an invoice without
+/// "Befund aufführen" does not print, leave it current. A new order is a change of its own.
+#[sqlx::test]
+async fn only_what_the_pdf_prints_makes_it_out_of_date(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let created = app
+        .post(
+            &format!("/api/treatments/{}/invoice", billed.treatment_id),
+            json!({ "includes_finding": false }),
+        )
+        .await;
+    assert_eq!(created.status, StatusCode::OK);
+    let treatment = treatment_of(&app, billed.treatment_id).await;
+    let record = treatment["patients"][0]["id"].as_i64().expect("the record");
+    let [service_line, _] = line_ids(&app, billed.treatment_id).await[..] else {
+        panic!("two lines");
+    };
+
+    for quantity in ["2", "1"] {
+        app.patch(
+            &format!("/api/treatment-items/{service_line}"),
+            json!({ "quantity": quantity }),
+        )
+        .await;
+    }
+    app.patch(
+        &format!("/api/patient-treatments/{record}"),
+        json!({ "finding": common::doc("Nicht auf der Rechnung") }),
+    )
+    .await;
+    assert_eq!(
+        treatment_of(&app, billed.treatment_id).await["pdf_stale"],
+        false
+    );
+
+    app.post(
+        &format!("/api/treatment-items/{service_line}/move"),
+        json!({ "direction": "down" }),
+    )
+    .await;
+    let treatment = treatment_of(&app, billed.treatment_id).await;
+    assert_eq!(treatment["pdf_stale"], true);
+    assert_eq!(treatment["pdf_changes"]["changed_items"], json!([]));
+    assert_eq!(treatment["pdf_changes"]["reordered"], true);
+}
+
+/// An invoice whose PDF was made before its contents were recorded is still judged by the
+/// timestamps, as it was until now — it can say that something changed, not what.
+#[sqlx::test]
+async fn a_pdf_from_before_the_snapshot_keeps_the_old_rule(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    create_invoice(&app, billed.treatment_id).await;
+    sqlx::query("UPDATE invoice SET pdf_snapshot = NULL WHERE treatment_id = $1")
+        .bind(billed.treatment_id)
+        .execute(&pool)
+        .await
+        .expect("an invoice from before migration 0034");
+    assert_eq!(
+        treatment_of(&app, billed.treatment_id).await["pdf_stale"],
+        false
+    );
+
+    let [service_line, _] = line_ids(&app, billed.treatment_id).await[..] else {
+        panic!("two lines");
+    };
+    app.patch(
+        &format!("/api/treatment-items/{service_line}"),
+        json!({ "quantity": "2" }),
+    )
+    .await;
+    let treatment = treatment_of(&app, billed.treatment_id).await;
+    assert_eq!(treatment["pdf_stale"], true);
+    assert!(treatment["pdf_changes"].is_null());
+}
+
+/// Migration 0034's backfill on the invoices it finds: a PDF still current by the old rule gets
+/// the treatment as it is for its snapshot, one already out of date keeps the old rule — so the
+/// upgrade neither invents nor hides a change.
+#[sqlx::test]
+async fn the_migration_snapshots_only_pdfs_that_are_current(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let current = billable_treatment(&app, &pool).await;
+    let outdated = billable_treatment(&app, &pool).await;
+    for billed in [&current, &outdated] {
+        create_invoice(&app, billed.treatment_id).await;
+    }
+    sqlx::query("UPDATE invoice SET pdf_snapshot = NULL")
+        .execute(&pool)
+        .await
+        .expect("invoices from before 0034");
+    let [line, _] = line_ids(&app, outdated.treatment_id).await[..] else {
+        panic!("two lines");
+    };
+    app.patch(
+        &format!("/api/treatment-items/{line}"),
+        json!({ "quantity": "2" }),
+    )
+    .await;
+
+    // The migration's own statement, as it ran.
+    let migration = include_str!("../migrations/0034_pdf_snapshot.sql");
+    let backfill = &migration[migration.rfind("UPDATE invoice").expect("the backfill")..];
+    sqlx::raw_sql(sqlx::AssertSqlSafe(backfill))
+        .execute(&pool)
+        .await
+        .expect("the backfill runs");
+
+    let snapshotted = |treatment_id: i64| {
+        let pool = pool.clone();
+        async move {
+            sqlx::query_scalar::<_, bool>(
+                "SELECT pdf_snapshot IS NOT NULL FROM invoice WHERE treatment_id = $1",
+            )
+            .bind(treatment_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the invoice")
+        }
+    };
+    assert!(snapshotted(current.treatment_id).await);
+    assert!(!snapshotted(outdated.treatment_id).await);
+    assert_eq!(
+        treatment_of(&app, current.treatment_id).await["pdf_stale"],
+        false
+    );
+    assert_eq!(
+        treatment_of(&app, outdated.treatment_id).await["pdf_stale"],
+        true
+    );
+}

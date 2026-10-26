@@ -107,6 +107,7 @@ export * from './patient';
 export * from './patientFile';
 export * from './patientTreatment';
 export * from './patientTreatmentSummary';
+export * from './pdfChanges';
 export * from './pickerItem';
 export * from './pickerItemsParams';
 export * from './priceMode';

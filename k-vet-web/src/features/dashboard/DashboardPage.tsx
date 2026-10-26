@@ -1,5 +1,5 @@
 import { Link } from '@tanstack/react-router'
-import { CalendarClock, MailWarning, ReceiptText, Stamp } from 'lucide-react'
+import { CalendarClock, FileWarning, MailWarning, ReceiptText, Stamp } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useGetDashboard } from '@/api/generated/endpoints'
 import type { AtRisk } from '@/api/generated/model'
@@ -33,6 +33,15 @@ export function DashboardPage() {
       <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {/* First: an invoice mail that failed needs a decision, and nothing else would say so. */}
         <FailedMailsCard mails={dashboard.data?.failed_mails} />
+        {/* Then an invoice whose PDF no longer shows what it bills: it must be updated before
+            it goes out. */}
+        <AtRiskCard
+          icon={<FileWarning className="size-3.5" />}
+          title={t('dashboard.stalePdfs')}
+          hint={t('dashboard.stalePdfsHint')}
+          empty={t('dashboard.noStalePdfs')}
+          data={dashboard.data?.stale_pdfs}
+        />
         {/* In the order the money moves: worked, billed, sent. */}
         <AtRiskCard
           icon={<ReceiptText className="size-3.5" />}

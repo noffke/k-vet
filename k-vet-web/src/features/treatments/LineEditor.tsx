@@ -14,7 +14,9 @@ import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
 import {
+  getGetDashboardQueryKey,
   getGetTreatmentQueryKey,
+  getListAppointmentsQueryKey,
   getListTreatmentItemsQueryKey,
   getPickerItemsQueryKey,
   useApplyTemplate,
@@ -78,9 +80,15 @@ export function PositionGroup({
   const { maps_enabled: mapsEnabled } = useOperatorConfig()
   const client = useQueryClient()
 
+  // Lines that print differently from the invoice PDF on file (migration 0034).
+  const changedSincePdf = new Set(treatment.pdf_changes?.changed_items ?? [])
+
   const invalidate = async () => {
     await client.invalidateQueries({ queryKey: getListTreatmentItemsQueryKey(treatment.id) })
     await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatment.id) })
+    // The lists and the dashboard say whether a PDF still matches; read afresh when shown.
+    await client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() })
+    await client.invalidateQueries({ queryKey: getGetDashboardQueryKey() })
     // A drug line takes stock off the shelf or puts it back: the picker's figures move with it.
     await client.invalidateQueries({ queryKey: getPickerItemsQueryKey() })
   }
@@ -245,7 +253,13 @@ export function PositionGroup({
 
       <ul className="mt-2 flex flex-col gap-2">
         {items.map((item, index) => (
-          <li key={item.id} className="rounded-card border border-line bg-surface p-3">
+          <li
+            key={item.id}
+            className={cn(
+              'rounded-card border border-line bg-surface p-3',
+              changedSincePdf.has(item.id) && 'border-l-4 border-l-rust',
+            )}
+          >
             <div className="flex items-start gap-2">
               {item.kind === 'drug_packaging' ? (
                 <Pill className="mt-0.5 size-4 shrink-0 text-rust" aria-hidden />
@@ -264,6 +278,9 @@ export function PositionGroup({
                   }}
                   className="w-full border-0 bg-transparent p-0 font-medium text-ink focus:outline-none disabled:text-ink-soft"
                 />
+                {changedSincePdf.has(item.id) ? (
+                  <p className="text-xs font-semibold text-rust">{t('pdfStale.lineChanged')}</p>
+                ) : null}
                 <p className="text-xs text-ink-faint">
                   {item.got_number
                     ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · `

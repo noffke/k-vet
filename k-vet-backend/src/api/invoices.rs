@@ -188,6 +188,15 @@ pub async fn create_or_update(
     };
 
     let document = build_document(&mut transaction, &state, invoice_id).await?;
+    // What the PDF will show, taken from the same reads as the document (migration 0034): the
+    // treatment page compares it with the treatment as it is now.
+    sqlx::query!(
+        "UPDATE invoice SET pdf_snapshot = print_snapshot(treatment_id, includes_finding)
+         WHERE id = $1",
+        invoice_id,
+    )
+    .execute(&mut *transaction)
+    .await?;
     transaction.commit().await?;
 
     // Rendering and storing the PDF happens outside the transaction: it touches the

@@ -21,6 +21,11 @@ export interface Dashboard {
      * failed on the way out, which is the case nothing used to show.
      */
   unsent: AtRisk;
+  /**
+     * Invoices not yet at the customer whose PDF no longer shows the treatment — positions
+     * changed since it was made. All of them, oldest first: each needs its invoice updated.
+     */
+  stale_pdfs: AtRisk;
   /** The lots expiring soonest that still hold stock. */
   expiring_lots: ExpiringLot[];
   /**

@@ -5,8 +5,6 @@ import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiError } from '@/api/fetcher'
 import {
-  getGetInvoiceQueryKey,
-  getGetTreatmentQueryKey,
   getInvoicePdfUrl,
   useCreateInvoice,
   useGetCustomer,
@@ -65,10 +63,9 @@ export function InvoiceCreatePage() {
           pdfTab.current.location.href = getInvoicePdfUrl(created.id)
         }
         pdfTab.current = null
-        await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatmentId) })
-        if (invoiceId) {
-          await client.invalidateQueries({ queryKey: getGetInvoiceQueryKey(invoiceId) })
-        }
+        // A new or updated invoice reaches past this treatment: the lists' and the dashboard's
+        // "not billed", "not released" and "PDF out of date".
+        await client.invalidateQueries()
         await back()
       },
       onError: () => {

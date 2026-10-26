@@ -106,6 +106,21 @@ export function NotSentBadge({ status }: { status: InvoiceStatus | undefined }) 
   )
 }
 
+/**
+ * The invoice PDF no longer shows the treatment — its positions changed since it was made. In
+ * the danger colour: what the customer holds and what is billed have come apart.
+ */
+export function PdfStaleBadge({ stale }: { stale: boolean | undefined }) {
+  const { t } = useTranslation()
+  if (!stale) return null
+  return (
+    <span className={cn(badge, 'bg-blush/50 text-danger')}>
+      <FileWarning className="size-3" aria-hidden />
+      {t('pdfStale.title')}
+    </span>
+  )
+}
+
 /** List-view warning indicator: icon plus the remark as tooltip (FR-007). */
 export function WarningIcon({ remark }: { remark: string | null | undefined }) {
   const { t } = useTranslation()

@@ -304,7 +304,6 @@
     "nothingToSend": "Diese Behandlung hat keine freigegebene Rechnung zum Versenden.",
     "number": "Rechnungsnummer",
     "pdf": "PDF",
-    "pdfStale": "Die Positionen haben sich geändert, seit das PDF erstellt wurde — Rechnung neu erstellen.",
     "pending": "Noch nicht an die Buchhaltung übergeben",
     "queueFailing": "Versand fehlgeschlagen ({{error}}) — wird bis {{time}} erneut versucht.",
     "queueScheduled": "E-Mail an {{recipients}} geplant für {{time}}.",
@@ -388,6 +387,17 @@
     "subsetPriceDerived": "Wird aus der Originalpackung berechnet",
     "title": "Apotheke"
   },
+  "pdfStale": {
+    "title": "PDF veraltet",
+    "body": "Seit das Rechnungs-PDF erstellt wurde, hat sich die Behandlung geändert — das PDF zeigt nicht, was abgerechnet wird.",
+    "changedItems": "Positionen geändert: {{count}}",
+    "removedItems": "Positionen entfernt: {{count}}",
+    "changedRecords": "Bericht geändert: {{names}}",
+    "removedRecords": "Tiere entfernt: {{count}}",
+    "reordered": "Reihenfolge geändert",
+    "lineChanged": "Seit dem PDF geändert",
+    "recordChanged": "Bericht seit dem PDF geändert"
+  },
   "services": {
     "got": "GOT",
     "gotAnalogous": "§8 GOT",
@@ -438,7 +448,10 @@
     "unreleased": "Nicht freigegeben",
     "unreleasedHint": "Rechnungen, die noch niemand freigegeben hat",
     "unsent": "Nicht versendet",
-    "unsentHint": "freigegeben, aber nie beim Kunden angekommen"
+    "unsentHint": "freigegeben, aber nie beim Kunden angekommen",
+    "stalePdfs": "PDF veraltet",
+    "stalePdfsHint": "Positionen geändert, seit das PDF erstellt wurde — Rechnung aktualisieren",
+    "noStalePdfs": "Alle Rechnungs-PDFs sind aktuell."
   },
   "settings": {
     "bankName": "Bank",

@@ -97,18 +97,29 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   expect(pdf.status()).toBe(200)
   expect(pdf.headers()['content-type']).toBe('application/pdf')
 
-  // Changing a line after the PDF exists says so, and stops saying so once it is remade.
-  await expect(page.getByText(/PDF erstellt wurde/)).toHaveCount(0)
-  // Renaming a line is enough — the trigger fires on any write, and this one moves neither
-  // the stock nor the total, which the rest of this test still asserts.
+  // Changing a line after the PDF exists says so — first on the page, with the line marked,
+  // and in the appointments list — and stops saying so once it is remade.
+  const stale = page.getByRole('alert').filter({ hasText: 'PDF veraltet' })
+  const marked = page.getByText('Seit dem PDF geändert')
+  await expect(stale).toHaveCount(0)
+  // Renaming a line is enough — the name is printed — and it moves neither the stock nor the
+  // total, which the rest of this test still asserts.
   await page.getByLabel('Name').first().fill('Impfstoff, umbenannt')
   await page.getByLabel('Name').first().blur()
-  await expect(page.getByText(/PDF erstellt wurde/)).toBeVisible()
-  await page.getByRole('button', { name: 'Rechnung aktualisieren' }).click()
+  await expect(stale).toBeVisible()
+  await expect(stale).toContainText('Positionen geändert: 1')
+  await expect(marked).toHaveCount(1)
+  const visit = page.url()
+  await navigate(page, 'Termine')
+  await page.getByPlaceholder('Suchen …').fill(lastName)
+  await expect(page.getByText('PDF veraltet').filter({ visible: true }).first()).toBeVisible()
+  await page.goto(visit)
+  await stale.getByRole('button', { name: 'Rechnung aktualisieren' }).click()
   const remadeTab = page.context().waitForEvent('page')
   await page.getByRole('button', { name: 'Rechnung aktualisieren' }).last().click()
   await (await remadeTab).close()
-  await expect(page.getByText(/PDF erstellt wurde/)).toHaveCount(0)
+  await expect(stale).toHaveCount(0)
+  await expect(marked).toHaveCount(0)
 
   // ── Accept it, with the customer's address as recipient ─────────────────────
   await page.getByRole('button', { name: 'Rechnung freigeben' }).click()

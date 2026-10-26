@@ -304,7 +304,6 @@
     "nothingToSend": "This treatment has no released invoice to send.",
     "number": "Invoice number",
     "pdf": "PDF",
-    "pdfStale": "The positions changed after the PDF was made — create the invoice again.",
     "pending": "Not yet submitted to bookkeeping",
     "queueFailing": "Sending failed ({{error}}) — tried again until {{time}}.",
     "queueScheduled": "Mail to {{recipients}} scheduled for {{time}}.",
@@ -388,6 +387,17 @@
     "subsetPriceDerived": "Derived from the original packaging",
     "title": "Pharmacy"
   },
+  "pdfStale": {
+    "title": "PDF out of date",
+    "body": "The treatment changed since the invoice PDF was made — the PDF does not show what is billed.",
+    "changedItems": "Positions changed: {{count}}",
+    "removedItems": "Positions removed: {{count}}",
+    "changedRecords": "Report changed: {{names}}",
+    "removedRecords": "Animals removed: {{count}}",
+    "reordered": "Order changed",
+    "lineChanged": "Changed since the PDF",
+    "recordChanged": "Report changed since the PDF"
+  },
   "services": {
     "got": "GOT",
     "gotAnalogous": "§8 GOT",
@@ -438,7 +448,10 @@
     "unreleased": "Not released",
     "unreleasedHint": "invoices nobody has released yet",
     "unsent": "Not sent",
-    "unsentHint": "released, but never reached the customer"
+    "unsentHint": "released, but never reached the customer",
+    "stalePdfs": "PDF out of date",
+    "stalePdfsHint": "positions changed since the PDF was made — update the invoice",
+    "noStalePdfs": "Every invoice PDF is current."
   },
   "settings": {
     "bankName": "Bank",

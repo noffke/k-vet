@@ -38,6 +38,9 @@ pub struct Dashboard {
     /// Invoices released but never sent to the customer — including the ones whose email
     /// failed on the way out, which is the case nothing used to show.
     pub unsent: AtRisk,
+    /// Invoices not yet at the customer whose PDF no longer shows the treatment — positions
+    /// changed since it was made. All of them, oldest first: each needs its invoice updated.
+    pub stale_pdfs: AtRisk,
     /// The lots expiring soonest that still hold stock.
     pub expiring_lots: Vec<ExpiringLot>,
     /// Every invoice mail that failed on the way out — still being retried, or given up —
@@ -144,6 +147,7 @@ pub async fn get_dashboard(State(state): State<AppState>) -> AppResult<Json<Dash
         unbilled: unbilled_treatments(&state.pool).await?,
         unreleased: invoices_at_risk(&state.pool, InvoiceStatus::Created).await?,
         unsent: invoices_at_risk(&state.pool, InvoiceStatus::Accepted).await?,
+        stale_pdfs: stale_pdfs(&state.pool).await?,
         expiring_lots,
         failed_mails: failed_mails(&state.pool).await?,
     }))
@@ -222,6 +226,26 @@ async fn unbilled_treatments(pool: &PgPool) -> AppResult<AtRisk> {
     Ok(AtRisk { count, entries })
 }
 
+/// Written or released invoices whose PDF is out of date. Once one has reached the customer, the
+/// PDF is what they have — the treatment page still says so, but there is nothing to update.
+async fn stale_pdfs(pool: &PgPool) -> AppResult<AtRisk> {
+    let ids = sqlx::query_scalar!(
+        r#"SELECT id FROM invoice
+           WHERE status IN ('created', 'accepted') AND invoice_pdf_out_of_date(id)
+           ORDER BY invoice_date, id"#,
+    )
+    .fetch_all(pool)
+    .await?;
+    let mut entries = Vec::with_capacity(ids.len());
+    for id in ids {
+        entries.push(at_risk_entry(invoices::load(pool, id).await?));
+    }
+    Ok(AtRisk {
+        count: i64::try_from(entries.len()).unwrap_or(i64::MAX),
+        entries,
+    })
+}
+
 /// Invoices stuck in one stage, oldest first — the longer one sits there the worse it is.
 async fn invoices_at_risk(pool: &PgPool, status: InvoiceStatus) -> AppResult<AtRisk> {
     let count = sqlx::query_scalar!(
@@ -244,24 +268,27 @@ async fn invoices_at_risk(pool: &PgPool, status: InvoiceStatus) -> AppResult<AtR
 
     let mut entries = Vec::with_capacity(ids.len());
     for id in ids {
-        let invoice = invoices::load(pool, id).await?;
-        entries.push(AtRiskEntry {
-            treatment_id: invoice.treatment_id,
-            invoice_number: Some(invoice.invoice_number),
-            date: Some(invoice.invoice_date),
-            customer_name: invoice.customer_name,
-            patients: invoice.patients,
-            total_gross: invoice.total_gross,
-            // Only a mail still ahead and untroubled counts as "scheduled"; a failing one is on
-            // the failed-mail card instead.
-            mail_scheduled_for: invoice
-                .email_queue
-                .filter(|mail| mail.last_error.is_none() && mail.send_after > Utc::now())
-                .map(|mail| mail.send_after),
-        });
+        entries.push(at_risk_entry(invoices::load(pool, id).await?));
     }
 
     Ok(AtRisk { count, entries })
+}
+
+fn at_risk_entry(invoice: invoices::Invoice) -> AtRiskEntry {
+    AtRiskEntry {
+        treatment_id: invoice.treatment_id,
+        invoice_number: Some(invoice.invoice_number),
+        date: Some(invoice.invoice_date),
+        customer_name: invoice.customer_name,
+        patients: invoice.patients,
+        total_gross: invoice.total_gross,
+        // Only a mail still ahead and untroubled counts as "scheduled"; a failing one is on
+        // the failed-mail card instead.
+        mail_scheduled_for: invoice
+            .email_queue
+            .filter(|mail| mail.last_error.is_none() && mail.send_after > Utc::now())
+            .map(|mail| mail.send_after),
+    }
 }
 
 pub fn routes() -> Router<AppState> {

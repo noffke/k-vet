@@ -1,0 +1,26 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM invoice\n           WHERE status IN ('created', 'accepted') AND invoice_pdf_out_of_date(id)\n           ORDER BY invoice_date, id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "0347f4f3385750c8dc16eb9b1a21a425cd8ac8fb97e471ed6f20e9086bc70b34"
+}

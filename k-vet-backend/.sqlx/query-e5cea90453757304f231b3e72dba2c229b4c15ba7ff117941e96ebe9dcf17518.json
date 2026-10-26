@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  ARRAY(SELECT patient.name FROM patient_treatment\n                        JOIN patient ON patient.id = patient_treatment.patient_id\n                        WHERE patient_treatment.treatment_id = treatment.id\n                          AND patient.name IS NOT NULL\n                        ORDER BY patient.name) AS \"patient_names!\",\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           -- Whose visit and which animals, now that the list shows those instead of the note;\n           -- the note is still searched.\n           WHERE ($4::bigint IS NULL OR appointment.customer_id = $4)\n             AND ($1::text IS NULL\n                  OR appointment.note ILIKE '%' || $1 || '%'\n                  OR concat_ws(' ', customer.first_name, customer.last_name) ILIKE '%' || $1 || '%'\n                  OR EXISTS (SELECT 1 FROM patient_treatment\n                             JOIN patient ON patient.id = patient_treatment.patient_id\n                             WHERE patient_treatment.treatment_id = treatment.id\n                               AND patient.name ILIKE '%' || $1 || '%'))\n           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC\n           LIMIT $2 OFFSET $3",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  ARRAY(SELECT patient.name FROM patient_treatment\n                        JOIN patient ON patient.id = patient_treatment.patient_id\n                        WHERE patient_treatment.treatment_id = treatment.id\n                          AND patient.name IS NOT NULL\n                        ORDER BY patient.name) AS \"patient_names!\",\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\",\n                  COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice\n                            WHERE invoice.treatment_id = treatment.id\n                              AND invoice.status <> 'cancelled'), false) AS \"pdf_stale!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           -- Whose visit and which animals, now that the list shows those instead of the note;\n           -- the note is still searched.\n           WHERE ($4::bigint IS NULL OR appointment.customer_id = $4)\n             AND ($1::text IS NULL\n                  OR appointment.note ILIKE '%' || $1 || '%'\n                  OR concat_ws(' ', customer.first_name, customer.last_name) ILIKE '%' || $1 || '%'\n                  OR EXISTS (SELECT 1 FROM patient_treatment\n                             JOIN patient ON patient.id = patient_treatment.patient_id\n                             WHERE patient_treatment.treatment_id = treatment.id\n                               AND patient.name ILIKE '%' || $1 || '%'))\n           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC\n           LIMIT $2 OFFSET $3",
   "describe": {
     "columns": [
       {
@@ -108,6 +108,12 @@
         "name": "unbilled!",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "pdf_stale!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -129,8 +135,9 @@
       false,
       false,
       null,
+      null,
       null
     ]
   },
-  "hash": "eebf9f0369c5821d0b6ad3027c1511a393442293fb8614220e1c85e23b2d1320"
+  "hash": "e5cea90453757304f231b3e72dba2c229b4c15ba7ff117941e96ebe9dcf17518"
 }

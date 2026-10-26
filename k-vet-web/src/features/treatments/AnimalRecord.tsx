@@ -19,6 +19,7 @@ import { RichTextField, type RichTextHandle } from '@/components/ui/richtext'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import type { SaveStatus } from '@/lib/saveState'
+import { cn } from '@/lib/utils'
 
 /** Which of the two texts the picker was opened for. */
 type TextField = 'treatment_reason' | 'finding'
@@ -32,9 +33,12 @@ type TextField = 'treatment_reason' | 'finding'
  */
 export function AnimalRecord({
   recordId,
+  changedSincePdf = false,
   onSaveState,
 }: {
   recordId: number
+  /** Its texts print differently from the invoice PDF on file, or it is new on the visit. */
+  changedSincePdf?: boolean
   onSaveState: (status: SaveStatus) => void
 }) {
   const { t } = useTranslation()
@@ -103,7 +107,15 @@ export function AnimalRecord({
 
   return (
     <>
-      <section className="mt-4 flex flex-col gap-4 rounded-card border border-line bg-surface p-4">
+      <section
+        className={cn(
+          'mt-4 flex flex-col gap-4 rounded-card border border-line bg-surface p-4',
+          changedSincePdf && 'border-l-4 border-l-rust',
+        )}
+      >
+        {changedSincePdf ? (
+          <p className="-mb-2 text-xs font-semibold text-rust">{t('pdfStale.recordChanged')}</p>
+        ) : null}
         <div>
           <RichTextField
             ref={reasonEditor}

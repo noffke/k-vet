@@ -4910,6 +4910,7 @@
           "missing_fields",
           "treatment_id",
           "unbilled",
+          "pdf_stale",
           "created_at",
           "updated_at"
         ],
@@ -4973,6 +4974,10 @@
           "unbilled": {
             "type": "boolean",
             "description": "The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036)."
+          },
+          "pdf_stale": {
+            "type": "boolean",
+            "description": "The live invoice's PDF no longer shows the treatment as it is (migration 0034)."
           },
           "created_at": {
             "type": "string",
@@ -5706,6 +5711,7 @@
           "unbilled",
           "unreleased",
           "unsent",
+          "stale_pdfs",
           "expiring_lots",
           "failed_mails"
         ],
@@ -5726,6 +5732,10 @@
           "unsent": {
             "$ref": "#/components/schemas/AtRisk",
             "description": "Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show."
+          },
+          "stale_pdfs": {
+            "$ref": "#/components/schemas/AtRisk",
+            "description": "Invoices not yet at the customer whose PDF no longer shows the treatment — positions\nchanged since it was made. All of them, oldest first: each needs its invoice updated."
           },
           "expiring_lots": {
             "type": "array",
@@ -7917,6 +7927,49 @@
           }
         }
       },
+      "PdfChanges": {
+        "type": "object",
+        "description": "How the treatment differs from what its invoice PDF shows.",
+        "required": [
+          "changed_items",
+          "removed_items",
+          "changed_records",
+          "removed_records",
+          "reordered"
+        ],
+        "properties": {
+          "changed_items": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to."
+          },
+          "removed_items": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Lines on the PDF that are gone."
+          },
+          "changed_records": {
+            "type": "array",
+            "items": {
+              "type": "integer",
+              "format": "int64"
+            },
+            "description": "Animal records whose printed texts changed, or that are new on the visit."
+          },
+          "removed_records": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Animals on the PDF that are gone."
+          },
+          "reordered": {
+            "type": "boolean",
+            "description": "Lines that are unchanged themselves but print in another order."
+          }
+        }
+      },
       "PickerItem": {
         "oneOf": [
           {
@@ -9183,6 +9236,17 @@
           "pdf_stale": {
             "type": "boolean",
             "description": "The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created."
+          },
+          "pdf_changes": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/PdfChanges",
+                "description": "What changed, when `pdf_stale` — absent for an invoice from before the PDF's contents\nwere recorded (migration 0034), which can only say *that* it changed."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "total_gross": {
             "type": "string"

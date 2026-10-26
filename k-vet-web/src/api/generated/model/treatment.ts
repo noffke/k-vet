@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { PdfChanges } from './pdfChanges';
 import type { TreatmentInvoice } from './treatmentInvoice';
 import type { TreatmentPatient } from './treatmentPatient';
 
@@ -36,6 +37,7 @@ export interface Treatment {
      * longer shows what is billed. The PDF is only ever written when an invoice is created.
      */
   pdf_stale: boolean;
+  pdf_changes?: PdfChanges | null;
   total_gross: string;
   created_at: string;
   updated_at: string;

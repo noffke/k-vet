@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  ARRAY(SELECT patient.name FROM patient_treatment\n                        JOIN patient ON patient.id = patient_treatment.patient_id\n                        WHERE patient_treatment.treatment_id = treatment.id\n                          AND patient.name IS NOT NULL\n                        ORDER BY patient.name) AS \"patient_names!\",\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           WHERE appointment.id = $1",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  ARRAY(SELECT patient.name FROM patient_treatment\n                        JOIN patient ON patient.id = patient_treatment.patient_id\n                        WHERE patient_treatment.treatment_id = treatment.id\n                          AND patient.name IS NOT NULL\n                        ORDER BY patient.name) AS \"patient_names!\",\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\",\n                  COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice\n                            WHERE invoice.treatment_id = treatment.id\n                              AND invoice.status <> 'cancelled'), false) AS \"pdf_stale!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           WHERE appointment.id = $1",
   "describe": {
     "columns": [
       {
@@ -108,6 +108,12 @@
         "name": "unbilled!",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 11,
+        "name": "pdf_stale!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -126,8 +132,9 @@
       false,
       false,
       null,
+      null,
       null
     ]
   },
-  "hash": "40e2f9d9119f6dd9471bc2aac1d219b2670a913d4bf7871c27b7dd99f7910454"
+  "hash": "1c33f14361240ba1d77f9a893519d9eaa5c8706c9c6da92238793a99e22d64dd"
 }
