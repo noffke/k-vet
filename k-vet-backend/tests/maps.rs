@@ -604,13 +604,14 @@ async fn a_treatment_group_with_wegegeld_gets_the_kilometres_on_that_line_only(p
 async fn an_address_is_checked_as_typed(pool: PgPool) {
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
-    let check = |street: &str| json!({ "street": street, "zip": "12345", "city": "Musterstadt", "country": "DE" });
+    let at = |street: &str, zip: &str| json!({ "street": street, "zip": zip, "city": "Musterstadt", "country": "DE" });
+    let check = |street: &str| at(street, "12345");
 
     let found = app.post("/api/address-check", check("Musterweg 5")).await;
     assert_eq!(found.status, StatusCode::OK);
     assert_eq!(
         found.json(),
-        json!({ "verdict": "found", "suggestion": null })
+        json!({ "verdict": "found", "suggestion": null, "changed": [], "doubtful": [] })
     );
     let request = google.requests().pop().unwrap();
     assert_eq!(request.path, "/v1:validateAddress");
@@ -623,10 +624,7 @@ async fn an_address_is_checked_as_typed(pool: PgPool) {
         } })
     );
 
-    google.answer_address(
-        StatusCode::OK,
-        common::address_answer("PREMISE", "CONFIRMED", true, "Musterweg 5"),
-    );
+    // Google writes it otherwise: its version is offered, and what differs is named.
     let corrected = app
         .post("/api/address-check", check("Musterwg 5"))
         .await
@@ -636,10 +634,32 @@ async fn an_address_is_checked_as_typed(pool: PgPool) {
         corrected["suggestion"],
         json!({ "street": "Musterweg 5", "zip": "12345", "city": "Musterstadt" })
     );
+    assert_eq!(corrected["changed"], json!(["street"]));
+    let wrong_zip = app
+        .post("/api/address-check", at("Musterweg 5", "12354"))
+        .await
+        .json();
+    assert_eq!(wrong_zip["verdict"], "corrected");
+    assert_eq!(wrong_zip["suggestion"]["zip"], "12345");
+    assert_eq!(wrong_zip["changed"], json!(["zip"]));
+
+    // A postcode Google finds only plausible is not passed as found.
+    google.answer_address(
+        StatusCode::OK,
+        common::address_answer("PREMISE", "UNCONFIRMED_BUT_PLAUSIBLE", "Musterweg 5"),
+    );
+    let doubtful = app
+        .post("/api/address-check", check("Musterweg 5"))
+        .await
+        .json();
+    assert_eq!(
+        doubtful,
+        json!({ "verdict": "uncertain", "suggestion": null, "changed": [], "doubtful": ["zip"] })
+    );
 
     google.answer_address(
         StatusCode::OK,
-        common::address_answer("ROUTE", "UNCONFIRMED_BUT_PLAUSIBLE", false, "Musterweg 99"),
+        common::address_answer("ROUTE", "CONFIRMED", "Musterweg 99"),
     );
     let unknown = app
         .post("/api/address-check", check("Musterweg 99"))

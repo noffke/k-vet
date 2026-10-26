@@ -50,7 +50,7 @@ For master data, we need normal CRUD functionality. Master data is archived inst
 
 If a warning remark has been set for a customer, it must be prominently displayed when "opening" the customer data.
 
-A customer's home and invoice addresses are checked against Google (Address Validation) once the vet has typed one and moved on — with a key configured, and never merely by opening the customer. It is a hint, never a block: "Adresse gefunden", a spelling Google writes differently offered to take over, or "nicht gefunden — bitte prüfen". Nothing of the answer is stored.
+A customer's home and invoice addresses are checked against Google (Address Validation) once the vet has typed one and moved on — with a key configured, and never merely by opening the customer. It is a hint, never a block, but a strict one: "Adresse gefunden" only when Google confirms every part down to the house; an address Google writes differently in any part (a spelling, a postcode) offered as Google has it, the differing part in bold, to take over; a part Google cannot confirm named ("Nicht sicher bestätigt: PLZ — bitte prüfen"); or "nicht gefunden — bitte prüfen". Nothing of the answer is stored.
 
 The customer page and the appointment link the customer's home address to Google Maps, opening the drive there (on the phone, the Maps app with the route from where the vet is). The links need no key.
 The customer page lists the customer's animals and all of the customer's appointments, newest first, each opening the appointment.

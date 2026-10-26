@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { MISSPELLED_STREET, UNKNOWN_HOUSE } from '../fixtures/fakeGoogle'
+import { DOUBTFUL_ZIP, MISSPELLED_STREET, UNKNOWN_HOUSE, WRONG_ZIP } from '../fixtures/fakeGoogle'
 import { seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
 import { signIn } from './helpers'
 
@@ -28,9 +28,27 @@ test.describe('customer addresses', () => {
     await expect(page.getByText(/Meinten Sie/)).toHaveCount(0)
     await page.getByLabel('Telefon').click()
     await expect(page.getByText('Meinten Sie: Musterweg 5, 12345 Musterstadt?')).toBeVisible()
+    // What Google writes otherwise is in bold.
+    await expect(page.locator('strong').filter({ hasText: 'Musterweg 5' })).toBeVisible()
     await page.getByRole('button', { name: 'Übernehmen' }).click()
     await expect(street).toHaveValue('Musterweg 5')
     await expect(page.getByText('Adresse gefunden')).toBeVisible()
+
+    // A wrong postcode is not passed: Google's is offered.
+    const zip = page.getByLabel('PLZ')
+    await zip.fill(WRONG_ZIP)
+    await page.getByLabel('Telefon').click()
+    await expect(page.getByText('Meinten Sie: Musterweg 5, 12345 Musterstadt?')).toBeVisible()
+    await expect(page.locator('strong').filter({ hasText: '12345' })).toBeVisible()
+    await page.getByRole('button', { name: 'Übernehmen' }).click()
+    await expect(zip).toHaveValue('12345')
+    await expect(page.getByText('Adresse gefunden')).toBeVisible()
+
+    // One Google finds only plausible is named.
+    await zip.fill(DOUBTFUL_ZIP)
+    await page.getByLabel('Telefon').click()
+    await expect(page.getByText('Nicht sicher bestätigt: PLZ — bitte prüfen.')).toBeVisible()
+    await expect(page.getByText('Adresse gefunden')).toHaveCount(0)
 
     // A house Google does not know is said, and saved all the same.
     await street.fill(`Musterweg ${UNKNOWN_HOUSE}`)

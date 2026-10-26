@@ -4731,7 +4731,9 @@
       "AddressCheck": {
         "type": "object",
         "required": [
-          "verdict"
+          "verdict",
+          "changed",
+          "doubtful"
         ],
         "properties": {
           "verdict": {
@@ -4747,14 +4749,39 @@
                 "type": "null"
               }
             ]
+          },
+          "changed": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressCheckPart"
+            },
+            "description": "`verdict = corrected`: the parts in which Google's version differs."
+          },
+          "doubtful": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/AddressCheckPart"
+            },
+            "description": "`verdict = uncertain`: the parts Google could not confirm (may be empty)."
           }
         }
+      },
+      "AddressCheckPart": {
+        "type": "string",
+        "description": "A part of the address as it is typed.",
+        "enum": [
+          "street",
+          "house_number",
+          "zip",
+          "city"
+        ]
       },
       "AddressCheckVerdict": {
         "type": "string",
         "enum": [
           "found",
           "corrected",
+          "uncertain",
           "not_found",
           "unavailable"
         ]

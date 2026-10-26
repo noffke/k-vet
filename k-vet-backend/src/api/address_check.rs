@@ -12,7 +12,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::error::{AppError, AppResult};
-use crate::maps::{Address, AddressVerdict, MapsError};
+use crate::maps::{Address, AddressPart, AddressVerdict, MapsError};
 
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CheckAddress {
@@ -28,6 +28,21 @@ pub struct AddressCheck {
     pub verdict: AddressCheckVerdict,
     /// `verdict = corrected`: the address as Google writes it.
     pub suggestion: Option<AddressSuggestion>,
+    /// `verdict = corrected`: the parts in which Google's version differs.
+    pub changed: Vec<AddressCheckPart>,
+    /// `verdict = uncertain`: the parts Google could not confirm (may be empty).
+    pub doubtful: Vec<AddressCheckPart>,
+}
+
+impl AddressCheck {
+    fn plain(verdict: AddressCheckVerdict) -> Self {
+        Self {
+            verdict,
+            suggestion: None,
+            changed: Vec::new(),
+            doubtful: Vec::new(),
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
@@ -35,12 +50,39 @@ pub struct AddressCheck {
 pub enum AddressCheckVerdict {
     /// Known down to the house.
     Found,
-    /// Known, written differently — see `suggestion`.
+    /// Known, written differently — see `suggestion` and `changed`.
     Corrected,
+    /// Known, but not every part confirmed — see `doubtful`.
+    Uncertain,
     /// Not known down to the house.
     NotFound,
     /// Incomplete, or Google did not answer: nothing to say.
     Unavailable,
+}
+
+/// A part of the address as it is typed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Serialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AddressCheckPart {
+    Street,
+    HouseNumber,
+    Zip,
+    City,
+}
+
+impl From<AddressPart> for AddressCheckPart {
+    fn from(part: AddressPart) -> Self {
+        match part {
+            AddressPart::Street => Self::Street,
+            AddressPart::HouseNumber => Self::HouseNumber,
+            AddressPart::Zip => Self::Zip,
+            AddressPart::City => Self::City,
+        }
+    }
+}
+
+fn parts(parts: Vec<AddressPart>) -> Vec<AddressCheckPart> {
+    parts.into_iter().map(AddressCheckPart::from).collect()
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -73,29 +115,30 @@ pub async fn check_address(
         .filter(|country| !country.trim().is_empty())
         .unwrap_or_else(|| state.config.invoice.default_country.clone());
     let Some(address) = Address::new(&body.street, &body.zip, &body.city, &country) else {
-        return Ok(Json(AddressCheck {
-            verdict: AddressCheckVerdict::Unavailable,
-            suggestion: None,
-        }));
+        return Ok(Json(AddressCheck::plain(AddressCheckVerdict::Unavailable)));
     };
 
     let check = match maps.check_address(&address).await {
-        Ok(AddressVerdict::Found) => AddressCheck {
-            verdict: AddressCheckVerdict::Found,
-            suggestion: None,
-        },
-        Ok(AddressVerdict::Corrected { street, zip, city }) => AddressCheck {
+        Ok(AddressVerdict::Found) => AddressCheck::plain(AddressCheckVerdict::Found),
+        Ok(AddressVerdict::Corrected {
+            street,
+            zip,
+            city,
+            changed,
+        }) => AddressCheck {
             verdict: AddressCheckVerdict::Corrected,
             suggestion: Some(AddressSuggestion { street, zip, city }),
+            changed: parts(changed),
+            doubtful: Vec::new(),
         },
-        Ok(AddressVerdict::NotFound) | Err(MapsError::NotFound) => AddressCheck {
-            verdict: AddressCheckVerdict::NotFound,
-            suggestion: None,
+        Ok(AddressVerdict::Uncertain { doubtful }) => AddressCheck {
+            doubtful: parts(doubtful),
+            ..AddressCheck::plain(AddressCheckVerdict::Uncertain)
         },
-        Err(MapsError::Unavailable) => AddressCheck {
-            verdict: AddressCheckVerdict::Unavailable,
-            suggestion: None,
-        },
+        Ok(AddressVerdict::NotFound) | Err(MapsError::NotFound) => {
+            AddressCheck::plain(AddressCheckVerdict::NotFound)
+        }
+        Err(MapsError::Unavailable) => AddressCheck::plain(AddressCheckVerdict::Unavailable),
     };
     Ok(Json(check))
 }

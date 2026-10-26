@@ -12,6 +12,7 @@ export type AddressCheckVerdict = typeof AddressCheckVerdict[keyof typeof Addres
 export const AddressCheckVerdict = {
   found: 'found',
   corrected: 'corrected',
+  uncertain: 'uncertain',
   not_found: 'not_found',
   unavailable: 'unavailable',
 } as const;

@@ -25,6 +25,7 @@ const BACKEND_SRC = resolve(__dirname, '../../k-vet-backend/src')
  * than a silent hole in the check.
  */
 const DYNAMIC_KEY_PREFIXES = [
+  'addressCheck.part.',
   'emailType.',
   'field.',
   'invoices.status_',

@@ -10,6 +10,7 @@ export * from './acceptInvoice';
 export * from './addPatient';
 export * from './addressBookEntry';
 export * from './addressCheck';
+export * from './addressCheckPart';
 export * from './addressCheckVerdict';
 export * from './addressSuggestion';
 export * from './applyQuote';

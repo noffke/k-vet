@@ -88,17 +88,45 @@ pub struct Route {
     pub approximate: bool,
 }
 
+/// A part of an address as the vet types it, for saying which one is in doubt.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
+pub enum AddressPart {
+    Street,
+    HouseNumber,
+    Zip,
+    City,
+}
+
+impl AddressPart {
+    /// The part a Google address component stands for; `None` for the ones the vet does not
+    /// type (country, district, …).
+    fn of_component(component_type: &str) -> Option<Self> {
+        match component_type {
+            "route" => Some(Self::Street),
+            "street_number" => Some(Self::HouseNumber),
+            "postal_code" => Some(Self::Zip),
+            "locality" | "postal_town" => Some(Self::City),
+            _ => None,
+        }
+    }
+}
+
 /// What Google says about an address that was typed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum AddressVerdict {
-    /// Known down to the house.
+    /// Known down to the house, every part confirmed.
     Found,
-    /// Known, but spelled or written differently: this is how Google has it.
+    /// Known, but written differently — a postcode Google has otherwise, a spelling: this is how
+    /// Google has it, and `changed` says which parts differ.
     Corrected {
         street: String,
         zip: String,
         city: String,
+        changed: Vec<AddressPart>,
     },
+    /// Nothing to correct, but Google could not confirm every part: `doubtful` names them (it may
+    /// be empty when Google only says "check it").
+    Uncertain { doubtful: Vec<AddressPart> },
     /// Not known down to the house.
     NotFound,
 }
@@ -321,6 +349,9 @@ struct ValidationResult {
 struct Verdict {
     #[serde(default)]
     validation_granularity: String,
+    /// Google's own summary: ACCEPT, CONFIRM, CONFIRM_ADD_SUBPREMISES or FIX.
+    #[serde(default)]
+    possible_next_action: String,
 }
 
 #[derive(Deserialize)]
@@ -329,17 +360,19 @@ struct ValidatedAddress {
     #[serde(default)]
     address_components: Vec<AddressComponent>,
     postal_address: Option<PostalAddress>,
+    #[serde(default)]
+    unconfirmed_component_types: Vec<String>,
+    #[serde(default)]
+    missing_component_types: Vec<String>,
 }
 
 #[derive(Deserialize)]
 #[serde(rename_all = "camelCase")]
 struct AddressComponent {
     #[serde(default)]
+    component_type: String,
+    #[serde(default)]
     confirmation_level: String,
-    #[serde(default)]
-    spell_corrected: bool,
-    #[serde(default)]
-    replaced: bool,
 }
 
 #[derive(Deserialize)]
@@ -353,29 +386,34 @@ struct PostalAddress {
     address_lines: Vec<String>,
 }
 
-/// Granularities at which Google has confirmed the building itself.
+/// Granularities at which Google knows the building itself.
 const HOUSE_GRANULARITIES: [&str; 3] = ["SUB_PREMISE", "PREMISE", "PREMISE_PROXIMITY"];
 
+/// Strict on purpose: a postcode Google only finds plausible, or quietly writes otherwise, is
+/// said — not passed as found. Still only ever a hint to the vet; nothing is refused.
 fn parse_address_validation(answer: &[u8], typed: &Address) -> Result<AddressVerdict, MapsError> {
     let answer: ValidationAnswer = serde_json::from_slice(answer)
         .map_err(|error| unavailable("reading the address check", &error))?;
     let result = answer.result;
+    let components = &result.address.address_components;
 
-    let suspicious = result
-        .address
-        .address_components
+    let suspicious = components
         .iter()
         .any(|component| component.confirmation_level == "UNCONFIRMED_AND_SUSPICIOUS");
-    if suspicious || !HOUSE_GRANULARITIES.contains(&result.verdict.validation_granularity.as_str())
+    let missing = result
+        .address
+        .missing_component_types
+        .iter()
+        .any(|kind| AddressPart::of_component(kind).is_some());
+    if suspicious
+        || missing
+        || result.verdict.possible_next_action == "FIX"
+        || !HOUSE_GRANULARITIES.contains(&result.verdict.validation_granularity.as_str())
     {
         return Ok(AddressVerdict::NotFound);
     }
 
-    let changed = result
-        .address
-        .address_components
-        .iter()
-        .any(|component| component.spell_corrected || component.replaced);
+    // Google's version of the address, whenever it differs — flagged as replaced or not.
     let suggestion = result.address.postal_address.and_then(|postal| {
         let street = postal.address_lines.into_iter().next()?;
         Address::new(
@@ -385,27 +423,61 @@ fn parse_address_validation(answer: &[u8], typed: &Address) -> Result<AddressVer
             &typed.country,
         )
     });
-    match suggestion {
-        Some(google) if changed && !same_address(&google, typed) => Ok(AddressVerdict::Corrected {
-            street: google.street,
-            zip: google.zip,
-            city: google.city,
-        }),
-        _ => Ok(AddressVerdict::Found),
+    if let Some(google) = suggestion {
+        let changed = differing_parts(&google, typed);
+        if !changed.is_empty() {
+            return Ok(AddressVerdict::Corrected {
+                street: google.street,
+                zip: google.zip,
+                city: google.city,
+                changed,
+            });
+        }
     }
+
+    let mut doubtful: Vec<AddressPart> = components
+        .iter()
+        .filter(|component| component.confirmation_level != "CONFIRMED")
+        .filter_map(|component| AddressPart::of_component(&component.component_type))
+        .chain(
+            result
+                .address
+                .unconfirmed_component_types
+                .iter()
+                .filter_map(|kind| AddressPart::of_component(kind)),
+        )
+        .collect();
+    // An interpolated house number: the street is known, the house is Google's guess.
+    if result.verdict.validation_granularity == "PREMISE_PROXIMITY" {
+        doubtful.push(AddressPart::HouseNumber);
+    }
+    doubtful.sort();
+    doubtful.dedup();
+    if !doubtful.is_empty() || result.verdict.possible_next_action == "CONFIRM" {
+        return Ok(AddressVerdict::Uncertain { doubtful });
+    }
+    Ok(AddressVerdict::Found)
 }
 
-/// Equal but for case and spacing — a correction that changes neither is no correction.
-fn same_address(left: &Address, right: &Address) -> bool {
+/// The parts in which Google's version differs from what was typed, case and spacing aside.
+fn differing_parts(google: &Address, typed: &Address) -> Vec<AddressPart> {
     let norm = |text: &str| {
         text.split_whitespace()
             .collect::<Vec<_>>()
             .join(" ")
             .to_lowercase()
     };
-    norm(&left.street) == norm(&right.street)
-        && norm(&left.zip) == norm(&right.zip)
-        && norm(&left.city) == norm(&right.city)
+    let mut parts = Vec::new();
+    if norm(&google.street) != norm(&typed.street) {
+        parts.push(AddressPart::Street);
+    }
+    if norm(&google.zip) != norm(&typed.zip) {
+        parts.push(AddressPart::Zip);
+    }
+    if norm(&google.city) != norm(&typed.city) {
+        parts.push(AddressPart::City);
+    }
+    parts
 }
 
 #[cfg(test)]
@@ -484,23 +556,55 @@ mod tests {
         );
     }
 
-    fn validation(granularity: &str, components: &str, lines: &str) -> Vec<u8> {
+    /// Every part Google knows of an address, at one confirmation level.
+    fn parts(level: &str) -> String {
+        [
+            "route",
+            "street_number",
+            "postal_code",
+            "locality",
+            "country",
+        ]
+        .map(|kind| format!(r#"{{"componentType":"{kind}","confirmationLevel":"{level}"}}"#))
+        .join(",")
+    }
+
+    /// An answer: `verdict` and `address` are extra JSON members, `components` the list.
+    fn validation(
+        verdict: &str,
+        components: &str,
+        address: &str,
+        zip: &str,
+        line: &str,
+    ) -> Vec<u8> {
         format!(
-            r#"{{"result":{{"verdict":{{"validationGranularity":"{granularity}"}},
-                "address":{{"addressComponents":[{components}],
-                "postalAddress":{{"regionCode":"DE","postalCode":"12345",
-                "locality":"Musterstadt","addressLines":["{lines}"]}}}}}}}}"#
+            r#"{{"result":{{"verdict":{{{verdict}}},
+                "address":{{"addressComponents":[{components}]{address},
+                "postalAddress":{{"regionCode":"DE","postalCode":"{zip}",
+                "locality":"Musterstadt","addressLines":["{line}"]}}}}}}}}"#
         )
         .into_bytes()
     }
 
+    fn house(components: &str, zip: &str, line: &str) -> Vec<u8> {
+        validation(
+            r#""validationGranularity":"PREMISE","possibleNextAction":"ACCEPT""#,
+            components,
+            "",
+            zip,
+            line,
+        )
+    }
+
     #[test]
     fn a_confirmed_house_is_found() {
-        let answer = validation(
-            "PREMISE",
-            r#"{"componentType":"street_number","confirmationLevel":"CONFIRMED"}"#,
-            "Musterweg 5",
+        let answer = house(&parts("CONFIRMED"), "12345", "Musterweg 5");
+        assert_eq!(
+            parse_address_validation(&answer, &typed()),
+            Ok(AddressVerdict::Found)
         );
+        // Google writing it in other case or spacing is no correction.
+        let answer = house(&parts("CONFIRMED"), "12345", "musterweg  5");
         assert_eq!(
             parse_address_validation(&answer, &typed()),
             Ok(AddressVerdict::Found)
@@ -510,50 +614,131 @@ mod tests {
     #[test]
     fn a_spelling_google_corrected_is_offered() {
         let misspelled = Address::new("Musterwg 5", "12345", "Musterstadt", "DE").unwrap();
-        let answer = validation(
-            "PREMISE",
-            r#"{"componentType":"route","confirmationLevel":"CONFIRMED","spellCorrected":true}"#,
-            "Musterweg 5",
-        );
+        let answer = house(&parts("CONFIRMED"), "12345", "Musterweg 5");
         assert_eq!(
             parse_address_validation(&answer, &misspelled),
             Ok(AddressVerdict::Corrected {
                 street: "Musterweg 5".to_owned(),
                 zip: "12345".to_owned(),
                 city: "Musterstadt".to_owned(),
+                changed: vec![AddressPart::Street],
             })
         );
-        // A "correction" that only changes case is none.
+    }
+
+    #[test]
+    fn a_postcode_google_has_otherwise_is_offered_flagged_or_not() {
+        let wrong_zip = Address::new("Musterweg 5", "12354", "Musterstadt", "DE").unwrap();
+        let corrected = Ok(AddressVerdict::Corrected {
+            street: "Musterweg 5".to_owned(),
+            zip: "12345".to_owned(),
+            city: "Musterstadt".to_owned(),
+            changed: vec![AddressPart::Zip],
+        });
+        let flagged = parts("CONFIRMED").replace(
+            r#""postal_code","confirmationLevel":"CONFIRMED""#,
+            r#""postal_code","confirmationLevel":"CONFIRMED","replaced":true"#,
+        );
+        let answer = house(&flagged, "12345", "Musterweg 5");
+        assert_eq!(parse_address_validation(&answer, &wrong_zip), corrected);
+        // Google writes the right one without saying so: offered all the same.
+        let answer = house(&parts("CONFIRMED"), "12345", "Musterweg 5");
+        assert_eq!(parse_address_validation(&answer, &wrong_zip), corrected);
+    }
+
+    #[test]
+    fn a_part_google_only_finds_plausible_is_named() {
+        let plausible_zip = parts("CONFIRMED").replace(
+            r#""postal_code","confirmationLevel":"CONFIRMED""#,
+            r#""postal_code","confirmationLevel":"UNCONFIRMED_BUT_PLAUSIBLE""#,
+        );
+        let answer = house(&plausible_zip, "12345", "Musterweg 5");
+        assert_eq!(
+            parse_address_validation(&answer, &typed()),
+            Ok(AddressVerdict::Uncertain {
+                doubtful: vec![AddressPart::Zip]
+            })
+        );
+        // Named only in the address's own list.
         let answer = validation(
-            "PREMISE",
-            r#"{"componentType":"route","confirmationLevel":"CONFIRMED","spellCorrected":true}"#,
-            "musterweg 5",
+            r#""validationGranularity":"PREMISE""#,
+            &parts("CONFIRMED"),
+            r#","unconfirmedComponentTypes":["postal_code","locality"]"#,
+            "12345",
+            "Musterweg 5",
         );
         assert_eq!(
             parse_address_validation(&answer, &typed()),
-            Ok(AddressVerdict::Found)
+            Ok(AddressVerdict::Uncertain {
+                doubtful: vec![AddressPart::Zip, AddressPart::City]
+            })
+        );
+    }
+
+    #[test]
+    fn a_house_google_only_places_on_the_street_is_doubtful() {
+        let answer = validation(
+            r#""validationGranularity":"PREMISE_PROXIMITY","possibleNextAction":"ACCEPT""#,
+            &parts("CONFIRMED"),
+            "",
+            "12345",
+            "Musterweg 5",
+        );
+        assert_eq!(
+            parse_address_validation(&answer, &typed()),
+            Ok(AddressVerdict::Uncertain {
+                doubtful: vec![AddressPart::HouseNumber]
+            })
+        );
+        // Google asking for a check without naming a part.
+        let answer = validation(
+            r#""validationGranularity":"PREMISE","possibleNextAction":"CONFIRM""#,
+            &parts("CONFIRMED"),
+            "",
+            "12345",
+            "Musterweg 5",
+        );
+        assert_eq!(
+            parse_address_validation(&answer, &typed()),
+            Ok(AddressVerdict::Uncertain { doubtful: vec![] })
         );
     }
 
     #[test]
     fn a_house_google_cannot_confirm_is_not_found() {
+        let not_found = Ok(AddressVerdict::NotFound);
         let street_only = validation(
-            "ROUTE",
-            r#"{"componentType":"street_number","confirmationLevel":"UNCONFIRMED_BUT_PLAUSIBLE"}"#,
+            r#""validationGranularity":"ROUTE""#,
+            &parts("UNCONFIRMED_BUT_PLAUSIBLE"),
+            "",
+            "12345",
             "Musterweg 99",
         );
-        assert_eq!(
-            parse_address_validation(&street_only, &typed()),
-            Ok(AddressVerdict::NotFound)
+        assert_eq!(parse_address_validation(&street_only, &typed()), not_found);
+        let suspicious = parts("CONFIRMED").replace(
+            r#""postal_code","confirmationLevel":"CONFIRMED""#,
+            r#""postal_code","confirmationLevel":"UNCONFIRMED_AND_SUSPICIOUS""#,
         );
-        let suspicious = validation(
-            "PREMISE",
-            r#"{"componentType":"postal_code","confirmationLevel":"UNCONFIRMED_AND_SUSPICIOUS"}"#,
+        let answer = house(&suspicious, "12345", "Musterweg 5");
+        assert_eq!(parse_address_validation(&answer, &typed()), not_found);
+        let fix = validation(
+            r#""validationGranularity":"PREMISE","possibleNextAction":"FIX""#,
+            &parts("CONFIRMED"),
+            "",
+            "12345",
             "Musterweg 5",
         );
+        assert_eq!(parse_address_validation(&fix, &typed()), not_found);
+        let no_house_number = validation(
+            r#""validationGranularity":"PREMISE""#,
+            &parts("CONFIRMED"),
+            r#","missingComponentTypes":["street_number"]"#,
+            "12345",
+            "Musterweg",
+        );
         assert_eq!(
-            parse_address_validation(&suspicious, &typed()),
-            Ok(AddressVerdict::NotFound)
+            parse_address_validation(&no_house_number, &typed()),
+            not_found
         );
         assert_eq!(
             parse_address_validation(b"{}", &typed()),

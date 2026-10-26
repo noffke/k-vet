@@ -543,9 +543,17 @@
   "addressCheck": {
     "checking": "Adresse wird geprüft …",
     "found": "Adresse gefunden",
-    "corrected": "Meinten Sie: {{address}}?",
+    "corrected": "Meinten Sie: <suggestion/>?",
     "apply": "Übernehmen",
-    "notFound": "Adresse nicht gefunden — bitte prüfen."
+    "notFound": "Adresse nicht gefunden — bitte prüfen.",
+    "uncertain": "Nicht sicher bestätigt: {{parts}} — bitte prüfen.",
+    "uncertainWhole": "Adresse nicht sicher bestätigt — bitte prüfen.",
+    "part": {
+      "street": "Straße",
+      "house_number": "Hausnummer",
+      "zip": "PLZ",
+      "city": "Ort"
+    }
   },
   "quote": {
     "title": "Preisauskunft",

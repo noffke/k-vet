@@ -17,6 +17,10 @@ export const ROUTED_KM = '12'
 export const MISSPELLED_STREET = 'Musterwg'
 /** A house number the address check cannot confirm. */
 export const UNKNOWN_HOUSE = '99'
+/** A postcode the address check knows otherwise: Google writes 12345. */
+export const WRONG_ZIP = '12354'
+/** A postcode the address check finds only plausible. */
+export const DOUBTFUL_ZIP = '12346'
 
 const routes = {
   routes: [
@@ -26,26 +30,44 @@ const routes = {
   geocodingResults: { destination: { type: ['street_address'] } },
 }
 
-function validation(street: string) {
+interface TypedAddress {
+  addressLines?: string[]
+  postalCode?: string
+  locality?: string
+}
+
+/** Google's answer: what was typed, confirmed — but for the cases named above. */
+function validation(typed: TypedAddress) {
+  const street = typed.addressLines?.[0] ?? ''
   const unknown = street.endsWith(` ${UNKNOWN_HOUSE}`)
-  const corrected = street.includes(MISSPELLED_STREET)
-  const line = corrected ? street.replace(MISSPELLED_STREET, 'Musterweg') : street
+  const line = street.replace(MISSPELLED_STREET, 'Musterweg')
+  const zip = typed.postalCode === WRONG_ZIP ? '12345' : (typed.postalCode ?? '')
+  const part = (componentType: string, confirmationLevel = 'CONFIRMED') => ({
+    componentType,
+    confirmationLevel,
+  })
   return {
     result: {
-      verdict: { validationGranularity: unknown ? 'ROUTE' : 'PREMISE', addressComplete: true },
+      verdict: {
+        validationGranularity: unknown ? 'ROUTE' : 'PREMISE',
+        addressComplete: true,
+        possibleNextAction: 'ACCEPT',
+      },
       address: {
         postalAddress: {
           regionCode: 'DE',
-          postalCode: '12345',
-          locality: 'Musterstadt',
+          postalCode: zip,
+          locality: typed.locality ?? '',
           addressLines: [line],
         },
         addressComponents: [
-          {
-            componentType: 'route',
-            confirmationLevel: unknown ? 'UNCONFIRMED_BUT_PLAUSIBLE' : 'CONFIRMED',
-            spellCorrected: corrected,
-          },
+          part('route', unknown ? 'UNCONFIRMED_BUT_PLAUSIBLE' : 'CONFIRMED'),
+          part('street_number', unknown ? 'UNCONFIRMED_BUT_PLAUSIBLE' : 'CONFIRMED'),
+          part(
+            'postal_code',
+            typed.postalCode === DOUBTFUL_ZIP ? 'UNCONFIRMED_BUT_PLAUSIBLE' : 'CONFIRMED',
+          ),
+          part('locality'),
         ],
       },
     },
@@ -61,7 +83,7 @@ export function startFakeGoogle(): Promise<{ server: Server; url: string }> {
     request.on('end', () => {
       let body: {
         destination?: { address?: string }
-        address?: { addressLines?: string[] }
+        address?: TypedAddress
       } = {}
       try {
         body = JSON.parse(raw)
@@ -74,7 +96,7 @@ export function startFakeGoogle(): Promise<{ server: Server; url: string }> {
         response.end(JSON.stringify(destination.includes(ROUTED_STREET) ? routes : {}))
         return
       }
-      response.end(JSON.stringify(validation(body.address?.addressLines?.[0] ?? '')))
+      response.end(JSON.stringify(validation(body.address ?? {})))
     })
   })
   return new Promise((done, fail) => {

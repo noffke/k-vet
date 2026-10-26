@@ -543,9 +543,17 @@
   "addressCheck": {
     "checking": "Checking the address …",
     "found": "Address found",
-    "corrected": "Did you mean: {{address}}?",
+    "corrected": "Did you mean: <suggestion/>?",
     "apply": "Take over",
-    "notFound": "Address not found — please check."
+    "notFound": "Address not found — please check.",
+    "uncertain": "Not confirmed for sure: {{parts}} — please check.",
+    "uncertainWhole": "Address not confirmed for sure — please check.",
+    "part": {
+      "street": "Street",
+      "house_number": "House number",
+      "zip": "Postcode",
+      "city": "Town"
+    }
   },
   "quote": {
     "title": "Price quote",

@@ -1,11 +1,10 @@
 import { useQuery } from '@tanstack/react-query'
 import { CircleCheck, TriangleAlert } from 'lucide-react'
-import { useTranslation } from 'react-i18next'
+import { Trans, useTranslation } from 'react-i18next'
 import { checkAddress } from '@/api/generated/endpoints'
-import type { AddressSuggestion } from '@/api/generated/model'
+import type { AddressCheckPart, AddressSuggestion } from '@/api/generated/model'
 import { Button } from '@/components/ui/button'
 import { useOperatorConfig } from '@/lib/config'
-import { addressLine } from '@/lib/maps'
 
 interface AddressCheckProps {
   street: string | null | undefined
@@ -22,7 +21,9 @@ interface AddressCheckProps {
 
 /**
  * Whether Google knows the address just typed — a hint, never a block: new buildings and farms
- * exist that Google does not. A spelling Google writes differently can be taken over.
+ * exist that Google does not. Strict all the same: an address Google writes differently is
+ * offered as Google has it, with what differs in bold, and a part Google could not confirm is
+ * named.
  */
 export function AddressCheck({ street, zip, city, country, active, onApply }: AddressCheckProps) {
   const { t } = useTranslation()
@@ -65,9 +66,27 @@ export function AddressCheck({ street, zip, city, country, active, onApply }: Ad
           aria-live="polite"
         >
           <TriangleAlert className="size-3.5 shrink-0 text-rust" aria-hidden />
-          <span>{t('addressCheck.corrected', { address: addressLine(suggestion) })}</span>
+          <span>
+            <Trans
+              i18nKey="addressCheck.corrected"
+              components={{
+                suggestion: <Suggestion suggestion={suggestion} changed={check.data.changed} />,
+              }}
+            />
+          </span>
           <Button onClick={() => onApply(suggestion)}>{t('addressCheck.apply')}</Button>
         </div>
+      )
+    }
+    case 'uncertain': {
+      const parts = check.data.doubtful.map((part) => t(`addressCheck.part.${part}`))
+      return (
+        <p className="flex items-center gap-1.5 text-xs text-ink" aria-live="polite">
+          <TriangleAlert className="size-3.5 shrink-0 text-rust" aria-hidden />
+          {parts.length > 0
+            ? t('addressCheck.uncertain', { parts: parts.join(', ') })
+            : t('addressCheck.uncertainWhole')}
+        </p>
       )
     }
     case 'not_found':
@@ -81,4 +100,22 @@ export function AddressCheck({ street, zip, city, country, active, onApply }: Ad
       // Unavailable or failed: nothing worth saying while she types.
       return null
   }
+}
+
+/** Google's version of the address, "Musterweg 5, 12345 Musterstadt", what differs in bold. */
+function Suggestion({
+  suggestion,
+  changed,
+}: {
+  suggestion: AddressSuggestion
+  changed: AddressCheckPart[]
+}) {
+  const part = (name: AddressCheckPart, text: string) =>
+    changed.includes(name) ? <strong className="font-semibold">{text}</strong> : text
+  return (
+    <>
+      {part('street', suggestion.street)}, {part('zip', suggestion.zip)}{' '}
+      {part('city', suggestion.city)}
+    </>
+  )
 }

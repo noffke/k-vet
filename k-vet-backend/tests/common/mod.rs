@@ -839,7 +839,7 @@ impl FakeGoogle {
             routes: (StatusCode::OK, two_routes(12_437, 11_902)),
             address: (
                 StatusCode::OK,
-                address_answer("PREMISE", "CONFIRMED", false, "Musterweg 5"),
+                address_answer("PREMISE", "CONFIRMED", "Musterweg 5"),
             ),
         }));
         let shared = Arc::clone(&state);
@@ -889,11 +889,23 @@ pub fn two_routes(default_meters: u64, shorter_meters: u64) -> Value {
     })
 }
 
-/// An Address Validation answer for `line` in 12345 Musterstadt.
-pub fn address_answer(granularity: &str, confirmation: &str, corrected: bool, line: &str) -> Value {
+/// An Address Validation answer for `line` in 12345 Musterstadt, every part confirmed but the
+/// postcode, which is at `postcode`'s confirmation level.
+pub fn address_answer(granularity: &str, postcode: &str, line: &str) -> Value {
+    let part = |kind: &str, text: &str, level: &str| {
+        serde_json::json!({
+            "componentName": { "text": text },
+            "componentType": kind,
+            "confirmationLevel": level,
+        })
+    };
     serde_json::json!({
         "result": {
-            "verdict": { "validationGranularity": granularity, "addressComplete": true },
+            "verdict": {
+                "validationGranularity": granularity,
+                "addressComplete": true,
+                "possibleNextAction": "ACCEPT",
+            },
             "address": {
                 "formattedAddress": format!("{line}, 12345 Musterstadt, Deutschland"),
                 "postalAddress": {
@@ -903,12 +915,10 @@ pub fn address_answer(granularity: &str, confirmation: &str, corrected: bool, li
                     "addressLines": [line],
                 },
                 "addressComponents": [
-                    {
-                        "componentName": { "text": line },
-                        "componentType": "route",
-                        "confirmationLevel": confirmation,
-                        "spellCorrected": corrected,
-                    },
+                    part("route", line, "CONFIRMED"),
+                    part("street_number", "5", "CONFIRMED"),
+                    part("postal_code", "12345", postcode),
+                    part("locality", "Musterstadt", "CONFIRMED"),
                 ],
             },
         },

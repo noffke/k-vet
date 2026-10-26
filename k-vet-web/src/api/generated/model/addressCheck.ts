@@ -5,10 +5,15 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { AddressCheckPart } from './addressCheckPart';
 import type { AddressCheckVerdict } from './addressCheckVerdict';
 import type { AddressSuggestion } from './addressSuggestion';
 
 export interface AddressCheck {
   verdict: AddressCheckVerdict;
   suggestion?: AddressSuggestion | null;
+  /** `verdict = corrected`: the parts in which Google's version differs. */
+  changed: AddressCheckPart[];
+  /** `verdict = uncertain`: the parts Google could not confirm (may be empty). */
+  doubtful: AddressCheckPart[];
 }

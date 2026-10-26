@@ -15,12 +15,14 @@ export const CheckAddressBody = zod.object({
 })
 
 export const CheckAddressResponse = zod.object({
-  "verdict": zod.enum(['found', 'corrected', 'not_found', 'unavailable']),
+  "verdict": zod.enum(['found', 'corrected', 'uncertain', 'not_found', 'unavailable']),
   "suggestion": zod.union([zod.object({
   "street": zod.string(),
   "zip": zod.string(),
   "city": zod.string()
-}).describe('`verdict = corrected`: the address as Google writes it.'),zod.null()]).optional()
+}).describe('`verdict = corrected`: the address as Google writes it.'),zod.null()]).optional(),
+  "changed": zod.array(zod.enum(['street', 'house_number', 'zip', 'city']).describe('A part of the address as it is typed.')).describe('`verdict = corrected`: the parts in which Google\'s version differs.'),
+  "doubtful": zod.array(zod.enum(['street', 'house_number', 'zip', 'city']).describe('A part of the address as it is typed.')).describe('`verdict = uncertain`: the parts Google could not confirm (may be empty).')
 })
 
 
