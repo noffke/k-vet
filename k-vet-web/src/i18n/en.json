@@ -435,11 +435,6 @@
     "expiringLotsHint": "the next five with remaining stock",
     "failedMails": "Failed invoice mail",
     "failedMailsHint": "Invoices whose mail the mail server did not take — try again, or remove it and send the invoice by post.",
-    "noExpiring": "No lots with an expiry date and remaining stock.",
-    "noFailedMails": "Every mail reached the mail server.",
-    "noUnbilled": "Everything is billed.",
-    "noUnreleased": "No invoice is waiting to be released.",
-    "noUnsent": "Every invoice reached its customer.",
     "pendingInvoices": "Invoices for bookkeeping",
     "pendingInvoicesHint": "accepted, not yet submitted",
     "title": "Dashboard",
@@ -451,7 +446,7 @@
     "unsentHint": "released, but never reached the customer",
     "stalePdfs": "PDF out of date",
     "stalePdfsHint": "positions changed since the PDF was made — update the invoice",
-    "noStalePdfs": "Every invoice PDF is current."
+    "allDone": "All done — nothing is waiting."
   },
   "settings": {
     "bankName": "Bank",

@@ -435,11 +435,6 @@
     "expiringLotsHint": "die fünf nächsten mit Restbestand",
     "failedMails": "E-Mail-Versand fehlgeschlagen",
     "failedMailsHint": "Rechnungen, deren E-Mail der Mailserver nicht angenommen hat — erneut versuchen, oder entfernen und per Post schicken.",
-    "noExpiring": "Keine Chargen mit Verfallsdatum und Restbestand.",
-    "noFailedMails": "Alle E-Mails sind beim Mailserver angekommen.",
-    "noUnbilled": "Alles abgerechnet.",
-    "noUnreleased": "Keine Rechnung wartet auf die Freigabe.",
-    "noUnsent": "Alle Rechnungen sind beim Kunden.",
     "pendingInvoices": "Rechnungen für die Buchhaltung",
     "pendingInvoicesHint": "freigegeben, noch nicht übergeben",
     "title": "Übersicht",
@@ -451,7 +446,7 @@
     "unsentHint": "freigegeben, aber nie beim Kunden angekommen",
     "stalePdfs": "PDF veraltet",
     "stalePdfsHint": "Positionen geändert, seit das PDF erstellt wurde — Rechnung aktualisieren",
-    "noStalePdfs": "Alle Rechnungs-PDFs sind aktuell."
+    "allDone": "Alles erledigt — nichts wartet."
   },
   "settings": {
     "bankName": "Bank",

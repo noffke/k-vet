@@ -19,33 +19,26 @@ import { useLocaleFormat } from '@/lib/locale'
  * up. Each needs the vet's decision — try again, or take it out of the queue and get the
  * invoice to the customer another way — so all of them are listed, not the oldest few.
  */
-export function FailedMailsCard({ mails }: { mails: FailedMail[] | undefined }) {
+export function FailedMailsCard({ mails }: { mails: FailedMail[] }) {
   const { t } = useTranslation()
-  const failed = mails ?? []
+  // Nothing failed, nothing to show: the dashboard leaves empty sections out.
+  if (mails.length === 0) return null
 
   return (
     <section className="rounded-card border border-line bg-surface p-4 sm:col-span-2 lg:col-span-3">
       <h2 className="eyebrow flex items-center gap-1.5">
         <MailX className="size-3.5" />
         {t('dashboard.failedMails')}
-        {failed.length > 0 ? (
-          <span className="numeric ml-auto rounded-full bg-blush/60 px-2 py-0.5 text-xs font-bold text-danger">
-            {failed.length}
-          </span>
-        ) : null}
+        <span className="numeric ml-auto rounded-full bg-blush/60 px-2 py-0.5 text-xs font-bold text-danger">
+          {mails.length}
+        </span>
       </h2>
-      {failed.length === 0 ? (
-        <p className="mt-2 text-sm text-ink-soft">{t('dashboard.noFailedMails')}</p>
-      ) : (
-        <>
-          <p className="mt-1 text-xs text-ink-faint">{t('dashboard.failedMailsHint')}</p>
-          <ul className="mt-1 flex flex-col divide-y divide-line">
-            {failed.map((entry) => (
-              <FailedMailRow key={entry.mail.id} entry={entry} />
-            ))}
-          </ul>
-        </>
-      )}
+      <p className="mt-1 text-xs text-ink-faint">{t('dashboard.failedMailsHint')}</p>
+      <ul className="mt-1 flex flex-col divide-y divide-line">
+        {mails.map((entry) => (
+          <FailedMailRow key={entry.mail.id} entry={entry} />
+        ))}
+      </ul>
     </section>
   )
 }
