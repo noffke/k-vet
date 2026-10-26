@@ -2211,6 +2211,7 @@ export const PickerItemsResponseItem = zod.union([zod.object({
   "price_gross": zod.string(),
   "vat_percent": zod.string(),
   "in_stock": zod.string().describe('Derived stock over all lots — a shortfall is visible before picking.'),
+  "stock_short": zod.boolean().describe('One of this packaging is more than the lots hold together: picking it is refused\n(`item.stockShort`). False for a drug with no original packaging, whose dispenses\nbook nothing.'),
   "uses": zod.int(),
   "kind": zod.enum(['drug_packaging'])
 }),zod.object({

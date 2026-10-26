@@ -263,7 +263,8 @@
       "unavailable": "Google Maps ist gerade nicht erreichbar."
     },
     "recomputeKm": "Entfernung neu berechnen (Google Maps)",
-    "kmRequiredForInvoice": "Ohne Kilometer kann keine Rechnung erstellt werden."
+    "kmRequiredForInvoice": "Ohne Kilometer kann keine Rechnung erstellt werden.",
+    "stockShort": "Bestand reicht nicht für eine Packung"
   },
   "invoices": {
     "accept": "Rechnung freigeben",
@@ -468,7 +469,7 @@
     "patientNotInTreatment": "Dieses Tier gehört nicht zu dieser Behandlung",
     "patientRequired": "Diese Position braucht ein Tier",
     "perVisit": "Diese Leistung gilt pro Termin, nicht für ein Tier",
-    "stockShort": "Der Bestand dieser Charge reicht für diese Menge nicht aus. Bitte zuerst eine Inventur für die Charge erfassen.",
+    "stockShort": "Der Bestand des Medikaments reicht für diese Menge nicht aus (alle Chargen zusammen). Bitte zuerst den Wareneingang oder eine Inventur erfassen.",
     "notTravel": "Nur eine Wegegeld-Position hat eine Entfernung"
   },
   "packaging": {

@@ -45,6 +45,10 @@ pub enum PickerItem {
         vat_percent: Decimal,
         /// Derived stock over all lots — a shortfall is visible before picking.
         in_stock: Decimal,
+        /// One of this packaging is more than the lots hold together: picking it is refused
+        /// (`item.stockShort`). False for a drug with no original packaging, whose dispenses
+        /// book nothing.
+        stock_short: bool,
         uses: i64,
     },
     Service {
@@ -97,6 +101,9 @@ pub async fn items(
                   packaging.sales_price_net AS price_net,
                   drug.vat_percent        AS vat_percent,
                   COALESCE(stock.remaining, 0) AS in_stock,
+                  (original.id IS NOT NULL
+                   AND COALESCE(stock.remaining, 0) < COALESCE(packaging.quantity, 1))
+                                          AS stock_short,
                   NULL::text              AS got_number,
                   NULL::numeric           AS factor,
                   false                   AS travel_expenses,
@@ -109,6 +116,8 @@ pub async fn items(
            LEFT JOIN picker_usage usage
                   ON usage.kind = 'drug_packaging' AND usage.item_id = packaging.id
            LEFT JOIN stock ON stock.drug_id = packaging.drug_id
+           LEFT JOIN drug_packaging original
+                  ON original.drug_id = packaging.drug_id AND original.kind = 'original'
            WHERE NOT packaging.draft AND NOT packaging.archived
              AND NOT drug.draft AND NOT drug.archived
              -- No search term: only what the practice has used before.
@@ -127,6 +136,7 @@ pub async fn items(
                   service.net_price AS price_net,
                   service.vat_percent AS vat_percent,
                   0::numeric        AS in_stock,
+                  false             AS stock_short,
                   service.got_number AS got_number,
                   service.factor    AS factor,
                   service.travel_expenses AS travel_expenses,
@@ -176,6 +186,7 @@ pub async fn items(
                     price_gross,
                     vat_percent,
                     in_stock: row.in_stock.unwrap_or_default(),
+                    stock_short: row.stock_short.unwrap_or(false),
                     uses,
                 }),
                 Some("service") => Some(PickerItem::Service {

@@ -208,9 +208,9 @@ pub async fn rewrite_draft_dispenses(
     };
     let needed = billed_quantity * target.base_units;
     let lots = lot_availability(&mut *connection, target.packaging_id).await?;
-    // Refused rather than booked against a lot that cannot supply it. The message points at
-    // the stocktake, because that is the thing the vet has to do next — the numbers themselves
-    // are on the lot page she is being sent to, and field errors carry no interpolation.
+    // Refused rather than booked against lots that cannot supply it. The message points at the
+    // intake and the stocktake, because one of them is what the vet has to do next — the numbers
+    // themselves are on the drug's page, and field errors carry no interpolation.
     let allocations = allocate_fefo(&lots, needed).map_err(|short| {
         tracing::info!(
             needed = %short.needed,

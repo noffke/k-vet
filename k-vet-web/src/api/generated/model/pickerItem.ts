@@ -24,6 +24,12 @@ export type PickerItem = {
   vat_percent: string;
   /** Derived stock over all lots — a shortfall is visible before picking. */
   in_stock: string;
+  /**
+     * One of this packaging is more than the lots hold together: picking it is refused
+     * (`item.stockShort`). False for a drug with no original packaging, whose dispenses
+     * book nothing.
+     */
+  stock_short: boolean;
   uses: number;
   kind: 'drug_packaging';
 } | {

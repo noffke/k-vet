@@ -16,6 +16,7 @@ import { toast } from 'sonner'
 import {
   getGetTreatmentQueryKey,
   getListTreatmentItemsQueryKey,
+  getPickerItemsQueryKey,
   useApplyTemplate,
   useBulkDeleteTreatmentItems,
   useCreateTreatmentItem,
@@ -33,6 +34,7 @@ import { CheckboxField } from '@/components/ui/field'
 import { ApplyQuote } from '@/features/quote/ApplyQuoteDialog'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
+import { refusalKey } from '@/lib/refusal'
 import { cn } from '@/lib/utils'
 import { useKmToast } from './kmToast'
 
@@ -79,8 +81,18 @@ export function PositionGroup({
   const invalidate = async () => {
     await client.invalidateQueries({ queryKey: getListTreatmentItemsQueryKey(treatment.id) })
     await client.invalidateQueries({ queryKey: getGetTreatmentQueryKey(treatment.id) })
+    // A drug line takes stock off the shelf or puts it back: the picker's figures move with it.
+    await client.invalidateQueries({ queryKey: getPickerItemsQueryKey() })
   }
-  const mutation = { onSuccess: invalidate }
+  /**
+   * A refused write is said, not swallowed: a drug the lots cannot cover would otherwise just not
+   * appear (issues.md). Reloaded as well, so a quantity field shows what was kept.
+   */
+  const refused = (error: unknown) => {
+    toast.error(t(refusalKey(error)))
+    void invalidate()
+  }
+  const mutation = { onSuccess: invalidate, onError: refused }
 
   const addItem = useCreateTreatmentItem({ mutation })
   const patchItem = usePatchTreatmentItem({ mutation })

@@ -1,11 +1,13 @@
 import { Calculator } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import { applyQuote, useGetQuote, useListCustomerQuotes } from '@/api/generated/endpoints'
 import type { QuotePrices, TreatmentItem } from '@/api/generated/model'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { useLocaleFormat } from '@/lib/locale'
+import { refusalKey } from '@/lib/refusal'
 import { scheduleOf } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
 
@@ -60,6 +62,9 @@ export function ApplyQuote({
       })
       onApplied(applied, quote.data.name ?? t('quote.untitled'))
       close()
+    } catch (error) {
+      // A drug the lots no longer cover, say: the quote goes in whole or not at all.
+      toast.error(t(refusalKey(error)))
     } finally {
       setBusy(false)
     }

@@ -1,5 +1,5 @@
 import { Command } from 'cmdk'
-import { FileText, Pill, Stethoscope } from 'lucide-react'
+import { FileText, PackageX, Pill, Stethoscope } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useListTemplates, usePickerItems } from '@/api/generated/endpoints'
@@ -175,9 +175,20 @@ export function ItemPicker({
               )}
               <span className="min-w-0 flex-1 truncate text-ink">{label(item)}</span>
               {item.kind === 'drug_packaging' ? (
-                <span className="numeric shrink-0 text-xs text-ink-faint">
-                  {quantity(item.in_stock)} {item.unit ?? ''}
-                </span>
+                item.stock_short ? (
+                  // Still pickable: the refusal then says what to do about it.
+                  <span
+                    className="numeric flex shrink-0 items-center gap-1 text-xs font-semibold text-danger"
+                    title={t('treatments.stockShort')}
+                  >
+                    <PackageX className="size-3.5" aria-label={t('treatments.stockShort')} />
+                    {quantity(item.in_stock)} {item.unit ?? ''}
+                  </span>
+                ) : (
+                  <span className="numeric shrink-0 text-xs text-ink-faint">
+                    {quantity(item.in_stock)} {item.unit ?? ''}
+                  </span>
+                )
               ) : null}
               <span className="numeric shrink-0 text-xs text-ink-soft">
                 {money(item.price_gross)}

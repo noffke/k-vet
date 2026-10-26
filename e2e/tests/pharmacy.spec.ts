@@ -253,6 +253,48 @@ test.describe('pharmacy', () => {
     await expect(page.getByRole('heading', { name: /Bestand/ })).toContainText('120')
   })
 
+  test('a drug the shelf cannot cover is marked in the picker and refused with a reason', async ({
+    page,
+    request,
+  }) => {
+    // One 100 ml bottle on the shelf.
+    const { drugName } = await seedDrug(request, { packages: 1 })
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+    const refusal =
+      'Der Bestand des Medikaments reicht für diese Menge nicht aus (alle Chargen zusammen). ' +
+      'Bitte zuerst den Wareneingang oder eine Inventur erfassen.'
+
+    await signIn(page)
+    await page.goto(`/treatments/${treatmentId}`)
+    const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
+    const short = 'Bestand reicht nicht für eine Packung'
+
+    await picker.fill(drugName)
+    const bottle = page.getByRole('option', { name: /· 100 ml/ }).first()
+    await expect(bottle).toBeVisible()
+    await expect(bottle.getByLabel(short)).toHaveCount(0)
+    await bottle.click()
+    await expect(page.getByText(`„${drugName}“ hinzugefügt`)).toBeVisible()
+
+    // The shelf is empty now: said before picking, and the pick is refused with the reason.
+    await picker.fill(drugName)
+    const subset = page.getByRole('option', { name: /· 10 ml/ }).first()
+    await expect(subset.getByLabel(short)).toBeVisible()
+    await subset.click()
+    await expect(page.getByText(refusal)).toBeVisible()
+    await expect(page.getByLabel('Name')).toHaveCount(1)
+
+    // Raising the bottle's quantity is refused alike, and the field shows what was kept.
+    await expect(page.getByText(refusal)).toHaveCount(0, { timeout: 10_000 })
+    const quantity = page.getByLabel('Menge').first()
+    await quantity.fill('2')
+    await quantity.blur()
+    await expect(page.getByText(refusal)).toBeVisible()
+    await expect(quantity).toHaveValue('1')
+  })
+
   test('a lot history links each dispense to patient, customer and invoice', async ({
     page,
     request,

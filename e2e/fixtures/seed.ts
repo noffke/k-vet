@@ -131,7 +131,10 @@ export interface SeededDrug {
 }
 
 /** A complete drug with an original and a subset packaging, priced per AMPreisV. */
-export async function seedDrug(request: APIRequestContext): Promise<SeededDrug> {
+export async function seedDrug(
+  request: APIRequestContext,
+  options: { packages?: number } = {},
+): Promise<SeededDrug> {
   await login(request)
 
   const supplier = await post<{ id: number }>(request, '/api/suppliers')
@@ -165,11 +168,15 @@ export async function seedDrug(request: APIRequestContext): Promise<SeededDrug> 
   // Stock to dispense from. A dispense the lots cannot cover is refused now (FR-018,
   // issues.md 8) rather than booked against a lot that has nothing, so a drug the specs
   // dispense has to have arrived first — which is what happens in the practice too. Ten
-  // bottles is well clear of the largest line any spec writes (a template's five).
-  await post(request, `/api/packagings/${original.id}/stock-intakes`, {
-    packages_received: 10,
-    batch_number: `CH-SEED-${Date.now().toString().slice(-8)}`,
-  })
+  // bottles is well clear of the largest line any spec writes (a template's five); a spec
+  // about the shortfall itself asks for fewer, or none.
+  const packages = options.packages ?? 10
+  if (packages > 0) {
+    await post(request, `/api/packagings/${original.id}/stock-intakes`, {
+      packages_received: packages,
+      batch_number: `CH-SEED-${Date.now().toString().slice(-8)}`,
+    })
+  }
 
   return { drugId: drug.id, drugName, packagingId: original.id, subsetPackagingId: subset.id }
 }

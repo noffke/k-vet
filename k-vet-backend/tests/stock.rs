@@ -508,3 +508,69 @@ async fn the_database_refuses_a_movement_that_would_go_below_zero(pool: PgPool) 
     );
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
+
+/// A drug the lots cannot cover is marked in the picker before it is picked, and the refusal
+/// says why — on adding the line and on raising its quantity (issues.md: "a clear error").
+#[sqlx::test]
+async fn a_dispense_beyond_the_stock_is_marked_and_refused_with_its_reason(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+    let short = |items: &Value, packaging_id: i64| {
+        items
+            .as_array()
+            .unwrap()
+            .iter()
+            .find(|item| item["kind"] == "drug_packaging" && item["id"] == packaging_id)
+            .unwrap()["stock_short"]
+            .clone()
+    };
+
+    let picker = app.get("/api/picker/items?q=Amoxicillin").await.json();
+    assert_eq!(short(&picker, drug.packaging_id), json!(false));
+    assert_eq!(short(&picker, drug.subset_packaging_id), json!(false));
+
+    // The whole bottle goes: 100 ml of 100.
+    let line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "1" }),
+        )
+        .await;
+    assert_eq!(line.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
+
+    let picker = app.get("/api/picker/items?q=Amoxicillin").await.json();
+    assert_eq!(short(&picker, drug.packaging_id), json!(true));
+    assert_eq!(short(&picker, drug.subset_packaging_id), json!(true));
+
+    let refused = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id, "quantity": "1" }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        refused.json()["errors"],
+        json!([{ "field": "quantity", "message": "item.stockShort" }])
+    );
+
+    let raised = app
+        .patch(
+            &format!("/api/treatment-items/{}", line.json()["id"]),
+            json!({ "quantity": "2" }),
+        )
+        .await;
+    assert_eq!(raised.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        raised.json()["errors"],
+        json!([{ "field": "quantity", "message": "item.stockShort" }])
+    );
+    // Nothing moved: the line keeps its bottle, the lot stays empty.
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
+}

@@ -263,7 +263,8 @@
       "unavailable": "Google Maps cannot be reached right now."
     },
     "recomputeKm": "Recompute the distance (Google Maps)",
-    "kmRequiredForInvoice": "No invoice can be created without the kilometres."
+    "kmRequiredForInvoice": "No invoice can be created without the kilometres.",
+    "stockShort": "Not enough stock for one packaging"
   },
   "invoices": {
     "accept": "Accept invoice",
@@ -468,7 +469,7 @@
     "patientNotInTreatment": "This animal is not part of this treatment",
     "patientRequired": "This line needs an animal",
     "perVisit": "This service is per visit, not for one animal",
-    "stockShort": "This lot does not hold enough for that quantity. Record a stocktake for the lot first.",
+    "stockShort": "The drug's stock does not cover that quantity (all lots together). Record the intake or a stocktake first.",
     "notTravel": "Only a Wegegeld line has a distance"
   },
   "packaging": {
