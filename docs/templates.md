@@ -207,6 +207,20 @@ Empty strings are the "absent" signal throughout — there are no nulls. Guard o
 ]
 ```
 
+#### Page breaks
+
+A heading must not end a page apart from what it heads. The default template keeps them together
+in two ways — worth copying into a custom template:
+
+- `block(sticky: true)[…]` around the treatment heading, each animal's name line in the report,
+  and a label that stands above a list (inside `formatted`). A sticky block moves to the next
+  page together with whatever follows it.
+- In the positions table, each animal's rows (Tier, description, Leistungsdatum) are a
+  subheader, `table.header(level: 2, repeat: false, …)`, so they move with the animal's first
+  position.
+
+(Mind Typst's scoping: a loop variable called `block` hides the `block` function.)
+
 ### Example: a minimal template
 
 ```typst

@@ -149,6 +149,19 @@ pub fn render_invoice(
     logo: Option<Vec<u8>>,
     qr: Option<String>,
 ) -> AppResult<Vec<u8>> {
+    let paged = layout_invoice(config, document, logo, qr)?;
+    typst_pdf::pdf(&paged, &typst_pdf::PdfOptions::default())
+        .map_err(|errors| AppError::internal("writing the invoice PDF", format!("{errors:?}")))
+}
+
+/// Lays the invoice out in pages — what the PDF is written from, and what a test can read the
+/// page breaks off.
+fn layout_invoice(
+    config: &Config,
+    document: &InvoiceDocument,
+    logo: Option<Vec<u8>>,
+    qr: Option<String>,
+) -> AppResult<PagedDocument> {
     let template = load_template(config)?;
     let data = serde_json::to_string(document)
         .map_err(|error| AppError::internal("serializing invoice data", error))?;
@@ -185,12 +198,9 @@ pub fn render_invoice(
     for warning in &compiled.warnings {
         tracing::warn!(message = %warning.message, "typst warning while rendering the invoice");
     }
-    let paged = compiled
+    compiled
         .output
-        .map_err(|error| AppError::internal("compiling the invoice template", error))?;
-
-    typst_pdf::pdf(&paged, &typst_pdf::PdfOptions::default())
-        .map_err(|errors| AppError::internal("writing the invoice PDF", format!("{errors:?}")))
+        .map_err(|error| AppError::internal("compiling the invoice template", error))
 }
 
 fn load_template(config: &Config) -> AppResult<String> {
@@ -888,4 +898,124 @@ mod tests {
         <rect y="67" width="600" height="66" fill="rgb(60,160,80)"/>
         <rect y="133" width="600" height="67" fill="rgb(40,80,200)"/>
     </svg>"#;
+
+    /// The text on each page, in reading order — the runs typst shaped, one after the other.
+    fn page_texts(paged: &PagedDocument) -> Vec<String> {
+        fn collect(frame: &typst::layout::Frame, into: &mut String) {
+            for (_, item) in frame.items() {
+                match item {
+                    typst::layout::FrameItem::Group(group) => collect(&group.frame, into),
+                    typst::layout::FrameItem::Text(text) => {
+                        into.push_str(&text.text);
+                        into.push(' ');
+                    }
+                    _ => {}
+                }
+            }
+        }
+        paged
+            .pages()
+            .iter()
+            .map(|page| {
+                let mut text = String::new();
+                collect(&page.frame, &mut text);
+                text
+            })
+            .collect()
+    }
+
+    /// Three animals, `positions` lines dealt out among them, and a report per animal whose
+    /// texts are long enough to cross a page — every name unique, so a page can be searched.
+    fn long_invoice(positions: usize) -> InvoiceDocument {
+        let mut document = minimal_document();
+        let line = |index: usize| InvoiceLine {
+            position: i32::try_from(index).unwrap_or(0) + 1,
+            name: format!("Leistung{index:02}"),
+            patient: String::new(),
+            quantity: "1".to_owned(),
+            unit: String::new(),
+            factor: "100 %".to_owned(),
+            got_number: String::new(),
+            km: String::new(),
+            vat: "19 %".to_owned(),
+            detail: "GOT-Nr. 1".to_owned(),
+            price: "13,40 €".to_owned(),
+            total: "13,40 €".to_owned(),
+        };
+        document.invoice.patient_groups = (0..3)
+            .map(|animal| PatientGroup {
+                patient: format!("Katze{animal}"),
+                description: format!("Rasse{animal}"),
+                service_date: format!("2{animal}.10.2026"),
+                items: (0..positions)
+                    .filter(|index| index % 3 == animal)
+                    .map(line)
+                    .collect(),
+            })
+            .filter(|group| !group.items.is_empty())
+            .collect();
+        document.invoice.treatment_heading = "Behandlungsüberschrift Katze0, Katze1, Katze2 \
+                                              am 26.10.2026"
+            .to_owned();
+        let filler = "Allgemeinbefinden ungestört, Schleimhäute rosa, Lymphknoten unauffällig. ";
+        document.invoice.reports = (0..3)
+            .map(|animal| {
+                // The second animal's reason opens with a list, so its label stands alone.
+                let reason = if animal == 1 {
+                    serde_json::from_value(serde_json::json!({"type": "doc", "content": [
+                        {"type": "bulletList", "content": [
+                            {"type": "listItem", "content": [{"type": "paragraph",
+                                "content": [{"type": "text", "text": "Listenpunkt1 Impfung"}]}]},
+                            {"type": "listItem", "content": [{"type": "paragraph",
+                                "content": [{"type": "text", "text": "Entwurmung"}]}]}]}]}))
+                    .expect("a valid document")
+                } else {
+                    plain(&format!("Grund{animal} {}", filler.repeat(4)))
+                };
+                report(
+                    &format!("Katze{animal}"),
+                    &format!("Bericht{animal}"),
+                    reason,
+                    Some(plain(&format!("Befund{animal} {}", filler.repeat(3)))),
+                )
+            })
+            .collect();
+        document
+    }
+
+    /// A heading never ends a page apart from what it heads (issues.md: the treatment heading
+    /// stood alone at the foot of page 1). Every count of positions from 1 to 40 moves the
+    /// report and the animal groups a little further down, through the page break.
+    #[test]
+    fn headings_stay_on_the_page_of_what_follows_them() {
+        let config = empty_config();
+        for positions in 1..=40 {
+            let document = long_invoice(positions);
+            let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
+            let pages = page_texts(&paged);
+            let page_of = |needle: &str| {
+                pages
+                    .iter()
+                    .position(|page| page.contains(needle))
+                    .unwrap_or_else(|| panic!("{needle} is printed ({positions} positions)"))
+            };
+            let together = |heading: &str, content: &str| {
+                assert_eq!(
+                    page_of(heading),
+                    page_of(content),
+                    "{heading} stands apart from {content} with {positions} positions"
+                );
+            };
+
+            together("Behandlungsüberschrift", "Bericht0");
+            together("Bericht0", "Grund0");
+            together("Bericht1", "Listenpunkt1");
+            together("Bericht2", "Grund2");
+            for group in &document.invoice.patient_groups {
+                let first = &group.items[0].name;
+                together(&format!("Tier: {}", group.patient), first);
+                together(&format!("Leistungsdatum: {}", group.service_date), first);
+            }
+        }
+    }
 }

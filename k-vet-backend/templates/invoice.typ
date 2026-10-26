@@ -37,21 +37,22 @@
 #let spans-content(spans) = spans.map(span-content).join()
 
 // `label` leads the first paragraph, the way the plain text always followed it; a text that
-// opens with a list puts the label on a line of its own above it. An empty paragraph is a blank
-// line the vet left, so it keeps a little space rather than vanishing.
-#let formatted(label, blocks) = for (index, block) in blocks.enumerate() {
-  if block.kind == "paragraph" {
-    if block.spans.len() == 0 {
+// opens with a list puts the label on a line of its own above it — `sticky`, so a page break
+// never comes between the label and its list. An empty paragraph is a blank line the vet left,
+// so it keeps a little space rather than vanishing.
+#let formatted(label, blocks) = for (index, part) in blocks.enumerate() {
+  if part.kind == "paragraph" {
+    if part.spans.len() == 0 {
       v(0.6em)
     } else if index == 0 {
-      par[#label #spans-content(block.spans)]
+      par[#label #spans-content(part.spans)]
     } else {
-      par(spans-content(block.spans))
+      par(spans-content(part.spans))
     }
-  } else if block.kind == "list" {
-    if index == 0 { par(label) }
-    let items = block.items.map(spans-content)
-    if block.numbered { enum(start: block.start, ..items) } else { list(..items) }
+  } else if part.kind == "list" {
+    if index == 0 { block(sticky: true, par(label)) }
+    let items = part.items.map(spans-content)
+    if part.numbered { enum(start: part.start, ..items) } else { list(..items) }
   }
 }
 
@@ -157,23 +158,29 @@ Vielen Dank für Ihr Vertrauen!
 #v(6mm)
 
 // ── Positionen, nach Tier gruppiert ───────────────────────────────────────────
+// An animal's rows above its positions are a subheader: a page never ends on them, they move
+// to the next page together with the first position.
 #{
   let rows = ()
   for group in invoice.patient_groups {
+    let heading = ()
     if group.patient != "" {
-      rows.push(table.cell(colspan: 5, inset: (top: 8pt, bottom: 2pt))[
+      heading.push(table.cell(colspan: 5, inset: (top: 8pt, bottom: 2pt))[
         #text(weight: "bold")[Tier: #group.patient]
       ])
       if group.description != "" {
-        rows.push(table.cell(colspan: 5, inset: (top: 0pt, bottom: 2pt))[
+        heading.push(table.cell(colspan: 5, inset: (top: 0pt, bottom: 2pt))[
           #text(9pt, fill: muted)[#group.description]
         ])
       }
     }
     if group.service_date != "" {
-      rows.push(table.cell(colspan: 5, inset: (top: 2pt, bottom: 3pt))[
+      heading.push(table.cell(colspan: 5, inset: (top: 2pt, bottom: 3pt))[
         #text(9pt, style: "italic")[Leistungsdatum: #group.service_date]
       ])
+    }
+    if heading.len() > 0 {
+      rows.push(table.header(level: 2, repeat: false, ..heading))
     }
     for item in group.items {
       rows.push([
@@ -239,15 +246,18 @@ Vielen Dank für Ihr Vertrauen!
 // One block per animal. Animals with neither a reason nor a finding are not in `reports`.
 #if invoice.reports.len() > 0 [
   #v(8mm)
+  // `sticky`: a heading goes to the next page together with what it heads, never ends one.
   #if invoice.treatment_heading != "" [
-    #text(10pt, weight: "bold")[#invoice.treatment_heading]
+    #block(sticky: true)[#text(10pt, weight: "bold")[#invoice.treatment_heading]]
     #v(2mm)
   ]
   #set text(9.5pt)
   #set par(leading: 0.65em)
   #for report in invoice.reports [
-    #text(weight: "bold")[#report.patient]
-    #if report.description != "" [ #text(fill: muted)[(#report.description)]]
+    #block(sticky: true)[
+      #text(weight: "bold")[#report.patient]
+      #if report.description != "" [ #text(fill: muted)[(#report.description)]]
+    ]
     #v(1mm)
     #if report.treatment_reason_blocks.len() > 0 [
       #formatted([*Vorbericht und Untersuchung:*], report.treatment_reason_blocks)
