@@ -4170,3 +4170,30 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+/**
+ * @summary Moves an animal to an appointment of its own — same customer, same time — with its record:
+its texts, its lines with their draft dispenses, its files. The visit's own lines (house
+call, Wegegeld) stay where they are. For the second pet the customer wants on another
+invoice (issues.md).
+ */
+export const MoveAnimalToOwnAppointmentParams = zod.object({
+  "id": zod.int(),
+  "patient_id": zod.int()
+})
+
+export const MoveAnimalToOwnAppointmentResponse = zod.object({
+  "id": zod.int(),
+  "starts_at": zod.iso.datetime({"offset":true}).nullish().describe('Minute-resolution start; the date defaults to today in the UI, the time is typed.'),
+  "note": zod.string().nullish(),
+  "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
+  "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
+  "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
+  "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
+  "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
+  "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})

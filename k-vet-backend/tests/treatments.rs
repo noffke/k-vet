@@ -1594,3 +1594,255 @@ async fn a_drug_line_can_be_redesignated_but_a_service_line_cannot(pool: PgPool)
         "only a dispensed drug can be redesignated"
     );
 }
+
+/// Two animals on one visit, the second (Minka) with a drug line, a text and a file; the visit
+/// with a house call. Returns the treatment, the two animals and their records, the lot and
+/// the file's hash.
+struct TwoAnimals {
+    treatment_id: i64,
+    bello: i64,
+    minka: i64,
+    minka_record: i64,
+    minka_line: i64,
+    lot_id: i64,
+    sha256: String,
+}
+
+async fn two_animals(app: &TestApp, pool: &PgPool) -> TwoAnimals {
+    let customer_id = common::seed_customer(pool).await;
+    let bello = common::seed_patient(pool, customer_id).await;
+    let minka = common::seed_patient(pool, customer_id).await;
+    let appointment_id = common::seed_appointment(pool, Utc::now()).await;
+    let (treatment_id, bello_record) =
+        common::seed_patient_treatment(pool, appointment_id, bello).await;
+    let (_, minka_record) = common::seed_patient_treatment(pool, appointment_id, minka).await;
+    let drug = common::seed_drug(pool).await;
+    let lot_id = common::seed_lot(pool, drug.packaging_id, 1, dec("100"), None).await;
+    let service_id = common::seed_got_service(pool).await;
+    let visit_service = common::seed_visit_service(pool).await;
+
+    add_line(
+        app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1",
+                "patient_treatment_id": bello_record }),
+    )
+    .await;
+    add_line(
+        app,
+        treatment_id,
+        json!({ "kind": "service", "service_id": visit_service, "quantity": "1" }),
+    )
+    .await;
+    let minka_line = add_line(
+        app,
+        treatment_id,
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
+                "quantity": "3", "patient_treatment_id": minka_record }),
+    )
+    .await
+    .json()["id"]
+        .as_i64()
+        .expect("Minka's line");
+    app.patch(
+        &format!("/api/patient-treatments/{minka_record}"),
+        json!({ "finding": common::doc("Krallen gekürzt") }),
+    )
+    .await;
+    let file = app
+        .post_multipart(
+            "/api/attachments",
+            "befund.pdf",
+            "application/pdf",
+            b"%PDF-1.4 Minkas Befund",
+            &[
+                ("kind", "treatment_file"),
+                ("patient_treatment_id", &minka_record.to_string()),
+            ],
+        )
+        .await;
+    assert_eq!(file.status, StatusCode::OK);
+    let sha256 = file.json()["sha256"]
+        .as_str()
+        .expect("the stored file's hash")
+        .to_owned();
+    assert_eq!(common::lot_remaining(pool, lot_id).await, dec("70"));
+    TwoAnimals {
+        treatment_id,
+        bello,
+        minka,
+        minka_record,
+        minka_line,
+        lot_id,
+        sha256,
+    }
+}
+
+async fn names(app: &TestApp, treatment_id: i64) -> Vec<i64> {
+    app.get(&format!("/api/treatments/{treatment_id}"))
+        .await
+        .json()["patients"]
+        .as_array()
+        .expect("the animals")
+        .iter()
+        .map(|patient| patient["patient_id"].as_i64().unwrap_or_default())
+        .collect()
+}
+
+/// An animal put on the visit by mistake comes off with everything written for it (issues.md):
+/// its lines — the draft dispense returned to the shelf — its texts and its files, from the
+/// disk too. The other animal's and the visit's lines stay, in their places.
+#[sqlx::test]
+async fn an_animal_comes_off_with_its_lines_texts_and_files(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let visit = two_animals(&app, &pool).await;
+    let stored = app.state.files.content_path(&visit.sha256);
+    assert!(stored.exists());
+
+    let removed = app
+        .delete(&format!(
+            "/api/treatments/{}/patients/{}",
+            visit.treatment_id, visit.minka
+        ))
+        .await;
+    assert_eq!(removed.status, StatusCode::OK);
+    assert_eq!(names(&app, visit.treatment_id).await, [visit.bello]);
+    assert_eq!(common::lot_remaining(&pool, visit.lot_id).await, dec("100"));
+    let lines = app
+        .get(&format!("/api/treatments/{}/items", visit.treatment_id))
+        .await
+        .json();
+    let lines = lines.as_array().expect("the lines");
+    assert_eq!(lines.len(), 2, "Bello's line and the house call: {lines:?}");
+    assert!(lines.iter().all(|line| line["position"] == 1));
+    let files: i64 = sqlx::query_scalar("SELECT count(*) FROM attachment WHERE sha256 = $1")
+        .bind(&visit.sha256)
+        .fetch_one(&pool)
+        .await
+        .expect("count");
+    assert_eq!(files, 0);
+    assert!(!stored.exists(), "the file left the disk with its row");
+}
+
+/// The customer calls later and wants the second pet on its own invoice (issues.md): it moves
+/// to an appointment of its own, same customer and time, with its record — texts, lines and
+/// their dispenses, files. The visit's own lines stay; both invoices' PDFs are out of date.
+#[sqlx::test]
+async fn an_animal_moves_to_its_own_appointment_with_what_was_written_for_it(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let visit = two_animals(&app, &pool).await;
+    let invoice = app
+        .post(
+            &format!("/api/treatments/{}/invoice", visit.treatment_id),
+            json!({}),
+        )
+        .await;
+    assert_eq!(invoice.status, StatusCode::OK);
+    let before = app
+        .get(&format!("/api/treatments/{}", visit.treatment_id))
+        .await
+        .json();
+    assert_eq!(before["pdf_stale"], false);
+
+    let moved = app
+        .post_empty(&format!(
+            "/api/treatments/{}/patients/{}/own-appointment",
+            visit.treatment_id, visit.minka
+        ))
+        .await;
+    assert_eq!(
+        moved.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&moved.body)
+    );
+    let appointment = moved.json();
+    let own = appointment["treatment_id"].as_i64().expect("its treatment");
+    assert_ne!(own, visit.treatment_id);
+    assert_eq!(appointment["starts_at"], before["starts_at"]);
+    assert_eq!(appointment["customer_id"], before["customer_id"]);
+    assert_eq!(appointment["draft"], false);
+
+    // Minka, her record, her line with its dispense, her file: all on the new treatment.
+    assert_eq!(names(&app, own).await, [visit.minka]);
+    let record = app
+        .get(&format!("/api/patient-treatments/{}", visit.minka_record))
+        .await
+        .json();
+    assert_eq!(record["treatment_id"], own);
+    assert_eq!(record["finding"], common::doc("Krallen gekürzt"));
+    let lines = app
+        .get(&format!("/api/treatments/{own}/items"))
+        .await
+        .json();
+    assert_eq!(lines.as_array().map(Vec::len), Some(1));
+    assert_eq!(lines[0]["id"], visit.minka_line);
+    assert_eq!(lines[0]["patient_treatment_id"], visit.minka_record);
+    assert_eq!(common::lot_remaining(&pool, visit.lot_id).await, dec("70"));
+    let files = app
+        .get(&format!(
+            "/api/patient-treatments/{}/files",
+            visit.minka_record
+        ))
+        .await
+        .json();
+    assert_eq!(files.as_array().map(Vec::len), Some(1));
+
+    // Bello and the house call stay; the invoice there no longer matches its PDF.
+    assert_eq!(names(&app, visit.treatment_id).await, [visit.bello]);
+    let left = app
+        .get(&format!("/api/treatments/{}/items", visit.treatment_id))
+        .await
+        .json();
+    assert_eq!(left.as_array().map(Vec::len), Some(2));
+    let after = app
+        .get(&format!("/api/treatments/{}", visit.treatment_id))
+        .await
+        .json();
+    assert_eq!(after["pdf_stale"], true);
+
+    // Alone on its visit, Bello has nowhere to move from.
+    let alone = app
+        .post_empty(&format!(
+            "/api/treatments/{}/patients/{}/own-appointment",
+            visit.treatment_id, visit.bello
+        ))
+        .await;
+    assert_eq!(alone.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(alone.error_fields(), vec!["patient_id"]);
+}
+
+/// Released, the invoice holds the animals where they are: neither comes off, neither moves.
+#[sqlx::test]
+async fn a_released_invoice_keeps_its_animals(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let visit = two_animals(&app, &pool).await;
+    let invoice = app
+        .post(
+            &format!("/api/treatments/{}/invoice", visit.treatment_id),
+            json!({}),
+        )
+        .await
+        .json();
+    app.post(
+        &format!("/api/invoices/{}/accept", invoice["id"]),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+    )
+    .await;
+
+    let uri = format!(
+        "/api/treatments/{}/patients/{}",
+        visit.treatment_id, visit.minka
+    );
+    assert_eq!(app.delete(&uri).await.status, StatusCode::CONFLICT);
+    assert_eq!(
+        app.post_empty(&format!("{uri}/own-appointment"))
+            .await
+            .status,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        names(&app, visit.treatment_id).await,
+        [visit.bello, visit.minka]
+    );
+}

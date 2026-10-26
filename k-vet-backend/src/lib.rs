@@ -81,6 +81,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::treatments::detail,
         api::treatments::add_patient,
         api::treatments::remove_patient,
+        api::treatments::move_to_own_appointment,
         api::treatments::apply_template,
         api::treatment_items::list,
         api::treatment_items::create,

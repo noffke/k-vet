@@ -226,7 +226,7 @@ pub async fn detail(
     Ok(Json(load(&state.pool, id).await?))
 }
 
-async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
+pub(crate) async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment> {
     let row = sqlx::query_as!(
         Row,
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,

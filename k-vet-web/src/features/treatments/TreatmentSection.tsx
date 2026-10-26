@@ -203,7 +203,12 @@ function AnimalPanel({
           {patient.name}
         </Link>
         {removable ? (
-          <RemoveAnimal treatment={treatment} patient={patient} onRemoved={onRemoved} />
+          <RemoveAnimal
+            treatment={treatment}
+            patient={patient}
+            lineCount={items.filter((item) => item.patient_treatment_id === patient.id).length}
+            onRemoved={onRemoved}
+          />
         ) : null}
       </div>
 

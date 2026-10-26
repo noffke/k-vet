@@ -247,7 +247,14 @@
     "removeItemConfirm": "Really remove “{{name}}” from this treatment?",
     "removeItemReturnsStock": "The dispensed quantity goes back into stock.",
     "removePatient": "Remove animal",
-    "removePatientConfirm": "Really take “{{name}}” off this treatment? This animal’s positions go with it.",
+    "removePatientConfirm": "Really take “{{name}}” off this appointment?",
+    "removeTakes": "This deletes what was recorded for the animal:",
+    "carriesLines": "Positions: {{count}}",
+    "carriesTexts": "History and therapy",
+    "carriesFiles": "Files: {{count}}",
+    "moveToOwn": "Move to its own appointment",
+    "moveToOwnHint": "Or move “{{name}}” with everything to an appointment of its own — same time, its own invoice. House call and Wegegeld stay here.",
+    "movedToOwn": "“{{name}}” now has an appointment of its own.",
     "title": "Treatment",
     "total": "Total",
     "withoutPatientHint": "Until an animal is chosen, only per-visit services – e.g. house call, Wegegeld.",
@@ -523,7 +530,8 @@
   "treatment": {
     "customerRequired": "Choose the appointment’s customer first.",
     "onlyPatient": "The customer's only animal stays on the treatment.",
-    "patientOtherCustomer": "This animal belongs to a different customer"
+    "patientOtherCustomer": "This animal belongs to a different customer",
+    "aloneAlready": "The animal is alone on this appointment already."
   },
   "mailQueue": {
     "gaveUp": "Given up after 6 hours",

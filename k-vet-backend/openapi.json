@@ -4610,7 +4610,60 @@
             }
           },
           "409": {
-            "description": "Conflict"
+            "description": "The treatment's invoice is accepted"
+          },
+          "422": {
+            "description": "The customer's only animal"
+          }
+        }
+      }
+    },
+    "/api/treatments/{id}/patients/{patient_id}/own-appointment": {
+      "post": {
+        "tags": [
+          "treatments"
+        ],
+        "summary": "Moves an animal to an appointment of its own — same customer, same time — with its record:\nits texts, its lines with their draft dispenses, its files. The visit's own lines (house\ncall, Wegegeld) stay where they are. For the second pet the customer wants on another\ninvoice (issues.md).",
+        "operationId": "moveAnimalToOwnAppointment",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          },
+          {
+            "name": "patient_id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "The animal's new appointment",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Appointment"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "The animal is not on this treatment"
+          },
+          "409": {
+            "description": "The treatment's invoice is accepted"
+          },
+          "422": {
+            "description": "The animal is the visit's only one"
           }
         }
       }

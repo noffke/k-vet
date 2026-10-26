@@ -1,19 +1,23 @@
 import { useQueryClient } from '@tanstack/react-query'
+import { useNavigate } from '@tanstack/react-router'
 import { Command } from 'cmdk'
-import { PawPrint, Trash2 } from 'lucide-react'
+import { CalendarPlus, PawPrint, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ApiError } from '@/api/fetcher'
+import { toast } from 'sonner'
 import {
   getGetTreatmentQueryKey,
   getListAppointmentsQueryKey,
   useAddTreatmentPatient,
   useListPatients,
+  useListPatientTreatmentFiles,
+  useMoveAnimalToOwnAppointment,
   useRemoveTreatmentPatient,
 } from '@/api/generated/endpoints'
 import type { Treatment, TreatmentPatient } from '@/api/generated/model'
-import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { Button } from '@/components/ui/button'
+import { Dialog } from '@/components/ui/dialog'
+import { refusalKey } from '@/lib/refusal'
 import { cn } from '@/lib/utils'
 
 const SEARCH_DEBOUNCE_MS = 200
@@ -128,21 +132,30 @@ export function AnimalPicker({
 }
 
 /**
- * Takes an animal off the visit, asked first: its record and lines go with it. Not offered for
- * the customer's only animal (the server refuses it too), nor once the invoice is accepted.
+ * Takes an animal off the visit, asked first, with what was written for it named: its
+ * positions, its texts, its files. What carries anything can instead move to an appointment of
+ * its own — the second pet the customer wants on another invoice (issues.md) — where it is
+ * opened next. Not offered for the customer's only animal (the server refuses it too), nor
+ * once the invoice is accepted.
  */
 export function RemoveAnimal({
   treatment,
   patient,
+  lineCount,
   onRemoved,
 }: {
   treatment: Treatment
   patient: TreatmentPatient
+  /** The animal's positions on this visit. */
+  lineCount: number
   onRemoved?: () => void
 }) {
   const { t } = useTranslation()
+  const navigate = useNavigate()
   const changed = useAnimalsChanged(treatment.id)
   const [confirming, setConfirming] = useState(false)
+  const files = useListPatientTreatmentFiles(patient.id, { query: { enabled: confirming } })
+  const refused = (error: unknown) => toast.error(t(refusalKey(error)))
   const removePatient = useRemoveTreatmentPatient({
     mutation: {
       onSuccess: async () => {
@@ -150,12 +163,35 @@ export function RemoveAnimal({
         await changed()
         onRemoved?.()
       },
+      onError: refused,
+    },
+  })
+  const moveAnimal = useMoveAnimalToOwnAppointment({
+    mutation: {
+      onSuccess: async (appointment) => {
+        setConfirming(false)
+        await changed()
+        toast(t('treatments.movedToOwn', { name: patient.name }))
+        void navigate({
+          to: '/appointments/$id',
+          params: { id: String(appointment.id) },
+          search: { tier: patient.id },
+        })
+      },
+      onError: refused,
     },
   })
 
-  // A line still attributed to the animal holds it on the visit (409).
-  const error: unknown = removePatient.error
-  const blocked = error instanceof ApiError && error.status === 409
+  const fileCount = files.data?.length ?? 0
+  const hasTexts = patient.treatment_reason != null || patient.finding != null
+  const carried = [
+    lineCount > 0 ? t('treatments.carriesLines', { count: lineCount }) : null,
+    hasTexts ? t('treatments.carriesTexts') : null,
+    fileCount > 0 ? t('treatments.carriesFiles', { count: fileCount }) : null,
+  ].filter((entry): entry is string => entry !== null)
+  // Moving needs another animal to leave behind, and something worth taking along.
+  const movable = treatment.patients.length > 1 && carried.length > 0
+  const busy = removePatient.isPending || moveAnimal.isPending
 
   return (
     <>
@@ -163,21 +199,59 @@ export function RemoveAnimal({
         <Trash2 className="size-4" />
         {t('action.remove')}
       </Button>
-      <ConfirmDialog
+      <Dialog
         open={confirming}
-        onOpenChange={setConfirming}
+        onOpenChange={(open) => {
+          if (!busy) setConfirming(open)
+        }}
         title={t('treatments.removePatient')}
-        confirmLabel={t('action.remove')}
-        busy={removePatient.isPending}
-        onConfirm={() => removePatient.mutate({ id: treatment.id, patientId: patient.patient_id })}
+        footer={
+          <>
+            <Button disabled={busy} onClick={() => setConfirming(false)}>
+              {t('action.cancel')}
+            </Button>
+            {movable ? (
+              <Button
+                disabled={busy}
+                onClick={() =>
+                  moveAnimal.mutate({ id: treatment.id, patientId: patient.patient_id })
+                }
+              >
+                <CalendarPlus className="size-4" />
+                {t('treatments.moveToOwn')}
+              </Button>
+            ) : null}
+            <Button
+              variant="danger"
+              disabled={busy}
+              onClick={() =>
+                removePatient.mutate({ id: treatment.id, patientId: patient.patient_id })
+              }
+            >
+              {t('action.remove')}
+            </Button>
+          </>
+        }
       >
-        {t('treatments.removePatientConfirm', { name: patient.name })}
-      </ConfirmDialog>
-      {blocked ? (
-        <p className="basis-full text-xs text-danger" role="alert">
-          {t('item.patientRequired')}
+        <p className="text-sm text-ink">
+          {t('treatments.removePatientConfirm', { name: patient.name })}
         </p>
-      ) : null}
+        {carried.length > 0 ? (
+          <>
+            <p className="mt-2 text-sm text-ink-soft">{t('treatments.removeTakes')}</p>
+            <ul className="mt-1 list-disc pl-5 text-sm text-ink">
+              {carried.map((entry) => (
+                <li key={entry}>{entry}</li>
+              ))}
+            </ul>
+          </>
+        ) : null}
+        {movable ? (
+          <p className="mt-3 text-sm text-ink-soft">
+            {t('treatments.moveToOwnHint', { name: patient.name })}
+          </p>
+        ) : null}
+      </Dialog>
     </>
   )
 }

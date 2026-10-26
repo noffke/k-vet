@@ -14,7 +14,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::domain::enums::AttachmentKind;
-use crate::domain::files::ChunkSource;
+use crate::domain::files::{AttachmentStore, ChunkSource};
 use crate::error::{AppError, AppResult};
 
 /// Stored file metadata as returned by the API.
@@ -324,6 +324,27 @@ fn insert_header(headers: &mut HeaderMap, name: header::HeaderName, value: &str)
         }
         Err(error) => tracing::warn!(%error, %name, "skipping unencodable header value"),
     }
+}
+
+/// Deletes the stored files behind `hashes` whose rows are gone. A file is only deleted once no
+/// row shares its hash — uploads are deduplicated, so the same bytes may hang elsewhere too.
+pub async fn remove_unused_files(
+    pool: &sqlx::PgPool,
+    files: &AttachmentStore,
+    hashes: &[String],
+) -> AppResult<()> {
+    for sha256 in hashes {
+        let still_used = sqlx::query_scalar!(
+            "SELECT true FROM attachment WHERE sha256 = $1 LIMIT 1",
+            sha256
+        )
+        .fetch_optional(pool)
+        .await?;
+        if still_used.is_none() {
+            files.remove(sha256).await?;
+        }
+    }
+    Ok(())
 }
 
 pub fn routes() -> Router<AppState> {

@@ -247,7 +247,14 @@
     "removeItemConfirm": "„{{name}}“ wirklich von dieser Behandlung entfernen?",
     "removeItemReturnsStock": "Die abgegebene Menge geht zurück in den Bestand.",
     "removePatient": "Tier entfernen",
-    "removePatientConfirm": "„{{name}}“ wirklich von dieser Behandlung nehmen? Die Positionen dieses Tieres gehen mit.",
+    "removePatientConfirm": "„{{name}}“ wirklich von diesem Termin nehmen?",
+    "removeTakes": "Gelöscht wird dabei, was für das Tier erfasst ist:",
+    "carriesLines": "Positionen: {{count}}",
+    "carriesTexts": "Vorbericht und Therapie",
+    "carriesFiles": "Dateien: {{count}}",
+    "moveToOwn": "In eigenen Termin verschieben",
+    "moveToOwnHint": "Oder „{{name}}“ mit allem in einen eigenen Termin verschieben — gleiche Zeit, eigene Rechnung. Hausbesuch und Wegegeld bleiben hier.",
+    "movedToOwn": "„{{name}}“ hat jetzt einen eigenen Termin.",
     "title": "Behandlung",
     "total": "Summe",
     "withoutPatientHint": "Solange kein Tier gewählt ist, nur Leistungen pro Termin – z. B. Hausbesuch, Wegegeld.",
@@ -523,7 +530,8 @@
   "treatment": {
     "customerRequired": "Bitte zuerst den Kunden des Termins wählen.",
     "onlyPatient": "Das einzige Tier des Kunden bleibt an der Behandlung.",
-    "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden"
+    "patientOtherCustomer": "Dieses Tier gehört einem anderen Kunden",
+    "aloneAlready": "Das Tier ist schon allein in diesem Termin."
   },
   "mailQueue": {
     "gaveUp": "Aufgegeben nach 6 Stunden",

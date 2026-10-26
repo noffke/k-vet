@@ -17,7 +17,7 @@ use sqlx::PgPool;
 use tokio::task::JoinHandle;
 
 use crate::AppState;
-use crate::api::{invoices, mail_queue, price_quotes};
+use crate::api::{attachments, invoices, mail_queue, price_quotes};
 use crate::domain::enums::InvoiceStatus;
 use crate::domain::files::AttachmentStore;
 use crate::error::AppResult;
@@ -259,18 +259,8 @@ pub async fn sweep_orphan_attachments(pool: &PgPool, files: &AttachmentStore) ->
     .fetch_all(pool)
     .await?;
 
-    // The file is only deleted once no row shares its hash — uploads are deduplicated.
-    for orphan in &orphans {
-        let still_used = sqlx::query_scalar!(
-            "SELECT true FROM attachment WHERE sha256 = $1 LIMIT 1",
-            orphan.sha256
-        )
-        .fetch_optional(pool)
-        .await?;
-        if still_used.is_none() {
-            files.remove(&orphan.sha256).await?;
-        }
-    }
+    let hashes: Vec<String> = orphans.iter().map(|orphan| orphan.sha256.clone()).collect();
+    attachments::remove_unused_files(pool, files, &hashes).await?;
 
     Ok(orphans.len() as u64)
 }

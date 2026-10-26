@@ -10606,3 +10606,85 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getRemoveTreatmentPatientMutationOptions(options), queryClient);
     }
+
+export const getMoveAnimalToOwnAppointmentUrl = (id: number,
+    patientId: number,) => {
+
+
+
+
+  return `/api/treatments/${id}/patients/${patientId}/own-appointment`
+}
+
+/**
+ * @summary Moves an animal to an appointment of its own — same customer, same time — with its record:
+its texts, its lines with their draft dispenses, its files. The visit's own lines (house
+call, Wegegeld) stay where they are. For the second pet the customer wants on another
+invoice (issues.md).
+ */
+export const moveAnimalToOwnAppointment = async (id: number,
+    patientId: number, options?: Parameters<typeof apiFetch>[1]): Promise<Appointment> => {
+
+  return apiFetch<Appointment>(getMoveAnimalToOwnAppointmentUrl(id,patientId),
+  {
+    ...options,
+    method: 'POST'
+
+
+  }
+);}
+
+
+
+
+
+export const getMoveAnimalToOwnAppointmentMutationKey = () => ['moveAnimalToOwnAppointment'] as const;
+
+export const getMoveAnimalToOwnAppointmentMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moveAnimalToOwnAppointment>>, TError,MoveAnimalToOwnAppointmentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof moveAnimalToOwnAppointment>>, TError,MoveAnimalToOwnAppointmentMutationVariables, TContext> => {
+
+const mutationKey = getMoveAnimalToOwnAppointmentMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof moveAnimalToOwnAppointment>>, MoveAnimalToOwnAppointmentMutationVariables> = (props) => {
+          const {id,patientId} = props ?? {};
+
+          return  moveAnimalToOwnAppointment(id,patientId,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type MoveAnimalToOwnAppointmentMutationResult = NonNullable<Awaited<ReturnType<typeof moveAnimalToOwnAppointment>>>
+
+    export type MoveAnimalToOwnAppointmentMutationError = void
+    export type MoveAnimalToOwnAppointmentMutationVariables = {id: number;patientId: number}
+
+    /**
+ * @summary Moves an animal to an appointment of its own — same customer, same time — with its record:
+its texts, its lines with their draft dispenses, its files. The visit's own lines (house
+call, Wegegeld) stay where they are. For the second pet the customer wants on another
+invoice (issues.md).
+ */
+export const useMoveAnimalToOwnAppointment = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof moveAnimalToOwnAppointment>>, TError,MoveAnimalToOwnAppointmentMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof moveAnimalToOwnAppointment>>,
+        TError,
+        MoveAnimalToOwnAppointmentMutationVariables,
+        TContext
+      > => {
+      return useMutation(getMoveAnimalToOwnAppointmentMutationOptions(options), queryClient);
+    }

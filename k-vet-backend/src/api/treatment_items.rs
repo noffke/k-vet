@@ -681,23 +681,34 @@ pub async fn bulk_delete(
         return Err(AppError::field("item_ids", "record.notFound"));
     }
 
-    // The draft dispenses are what put the drugs back on the shelf; a group's lines are
-    // dispensed FEFO when it is applied, so removing them without this loses stock.
-    for item_id in &body.item_ids {
-        stock::remove_draft_dispenses(&mut transaction, *item_id).await?;
-    }
-    sqlx::query!(
-        "DELETE FROM treatment_item WHERE treatment_id = $1 AND id = ANY($2)",
-        treatment_id,
-        &body.item_ids,
-    )
-    .execute(&mut *transaction)
-    .await?;
-    close_position_gaps(&mut transaction, treatment_id).await?;
+    delete_lines(&mut transaction, treatment_id, &body.item_ids).await?;
 
     transaction.commit().await?;
     let mut connection = state.pool.acquire().await?;
     Ok(Json(load_items(&mut connection, treatment_id).await?))
+}
+
+/// Deletes lines of one treatment as removing them by hand would: their draft dispenses first,
+/// then the lines, then the positions closed up. Also how an animal leaves a visit with its
+/// lines.
+pub(crate) async fn delete_lines(
+    transaction: &mut Transaction<'_, Postgres>,
+    treatment_id: i64,
+    item_ids: &[i64],
+) -> AppResult<()> {
+    // The draft dispenses are what put the drugs back on the shelf; a group's lines are
+    // dispensed FEFO when it is applied, so removing them without this loses stock.
+    for item_id in item_ids {
+        stock::remove_draft_dispenses(transaction, *item_id).await?;
+    }
+    sqlx::query!(
+        "DELETE FROM treatment_item WHERE treatment_id = $1 AND id = ANY($2)",
+        treatment_id,
+        item_ids,
+    )
+    .execute(&mut **transaction)
+    .await?;
+    close_position_gaps(transaction, treatment_id).await
 }
 
 /// Renumbers a treatment's lines back to 1..n, **per animal**.

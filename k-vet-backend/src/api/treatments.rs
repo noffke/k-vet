@@ -16,6 +16,8 @@ use sqlx::{PgConnection, Postgres, Transaction};
 use utoipa::ToSchema;
 
 use crate::AppState;
+use crate::api::appointments::{self, Appointment};
+use crate::api::attachments;
 use crate::api::common::PriceMode;
 use crate::api::travel_distance::{self, KmSource};
 use crate::api::treatment_items::{self, Attribution, CatalogLine, TreatmentItem};
@@ -132,7 +134,11 @@ pub async fn add_patient(
     path = "/api/treatments/{id}/patients/{patient_id}",
     tag = "treatments",
     params(("id" = i64, Path,), ("patient_id" = i64, Path,)),
-    responses((status = 200, body = Treatment), (status = 409))
+    responses(
+        (status = 200, body = Treatment),
+        (status = 409, description = "The treatment's invoice is accepted"),
+        (status = 422, description = "The customer's only animal")
+    )
 )]
 pub async fn remove_patient(
     State(state): State<AppState>,
@@ -147,34 +153,125 @@ pub async fn remove_patient(
         return Err(AppError::field("patient_id", "treatment.onlyPatient"));
     }
 
-    let attributed: Option<bool> = sqlx::query_scalar!(
-        "SELECT EXISTS (
-             SELECT 1 FROM treatment_item item
-             JOIN patient_treatment record ON record.id = item.patient_treatment_id
-             WHERE record.treatment_id = $1 AND record.patient_id = $2
-         )",
+    // Everything written for the animal on this visit goes with it, asked first in the app:
+    // its lines — as removing them by hand would, so draft dispenses put the drugs back on the
+    // shelf — its texts, and its files.
+    let mut hashes = Vec::new();
+    if let Some(record_id) = record_of(&mut transaction, id, patient_id).await? {
+        let lines = sqlx::query_scalar!(
+            "SELECT id FROM treatment_item WHERE patient_treatment_id = $1",
+            record_id,
+        )
+        .fetch_all(&mut *transaction)
+        .await?;
+        treatment_items::delete_lines(&mut transaction, id, &lines).await?;
+        hashes = sqlx::query_scalar!(
+            "SELECT sha256 FROM attachment WHERE patient_treatment_id = $1",
+            record_id,
+        )
+        .fetch_all(&mut *transaction)
+        .await?;
+        // The file rows go with the record (ON DELETE CASCADE).
+        sqlx::query!("DELETE FROM patient_treatment WHERE id = $1", record_id)
+            .execute(&mut *transaction)
+            .await?;
+    }
+    transaction.commit().await?;
+    // Only once the rows are gone for good; bytes another row still shares stay.
+    attachments::remove_unused_files(&state.pool, &state.files, &hashes).await?;
+
+    let mut connection = state.pool.acquire().await?;
+    Ok(Json(load(&mut connection, id).await?))
+}
+
+/// Moves an animal to an appointment of its own — same customer, same time — with its record:
+/// its texts, its lines with their draft dispenses, its files. The visit's own lines (house
+/// call, Wegegeld) stay where they are. For the second pet the customer wants on another
+/// invoice (issues.md).
+#[utoipa::path(
+    post,
+    operation_id = "moveAnimalToOwnAppointment",
+    path = "/api/treatments/{id}/patients/{patient_id}/own-appointment",
+    tag = "treatments",
+    params(("id" = i64, Path,), ("patient_id" = i64, Path,)),
+    responses(
+        (status = 200, description = "The animal's new appointment", body = Appointment),
+        (status = 404, description = "The animal is not on this treatment"),
+        (status = 409, description = "The treatment's invoice is accepted"),
+        (status = 422, description = "The animal is the visit's only one")
+    )
+)]
+pub async fn move_to_own_appointment(
+    State(state): State<AppState>,
+    Path((id, patient_id)): Path<(i64, i64)>,
+) -> AppResult<Json<Appointment>> {
+    let mut transaction = state.pool.begin().await?;
+    stock::ensure_editable(&mut transaction, id).await?;
+    ensure_open(&mut transaction, id).await?;
+    let record_id = record_of(&mut transaction, id, patient_id)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    let animals = sqlx::query_scalar!(
+        "SELECT count(*) FROM patient_treatment WHERE treatment_id = $1",
         id,
-        patient_id,
+    )
+    .fetch_one(&mut *transaction)
+    .await?
+    .unwrap_or(0);
+    if animals < 2 {
+        return Err(AppError::field("patient_id", "treatment.aloneAlready"));
+    }
+
+    let visit = sqlx::query!(
+        "SELECT appointment.starts_at, appointment.customer_id
+           FROM treatment JOIN appointment ON appointment.id = treatment.appointment_id
+          WHERE treatment.id = $1",
+        id,
     )
     .fetch_one(&mut *transaction)
     .await?;
-    if attributed.unwrap_or(false) {
-        return Err(AppError::Conflict(
-            "the patient is attributed to a line of this treatment".to_owned(),
-        ));
-    }
-
+    let appointment_id: i64 = sqlx::query_scalar!(
+        "INSERT INTO appointment (starts_at, customer_id, draft)
+         VALUES ($1, $2, false) RETURNING id",
+        visit.starts_at,
+        visit.customer_id,
+    )
+    .fetch_one(&mut *transaction)
+    .await?;
+    let treatment_id: i64 = sqlx::query_scalar!(
+        "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
+        appointment_id,
+        visit.customer_id,
+    )
+    .fetch_one(&mut *transaction)
+    .await?;
+    // The lines follow the record by the foreign key's ON UPDATE CASCADE (migration 0033); the
+    // dispenses and files hang on the lines and the record, so they come along unasked.
     sqlx::query!(
-        "DELETE FROM patient_treatment WHERE treatment_id = $1 AND patient_id = $2",
-        id,
-        patient_id,
+        "UPDATE patient_treatment SET treatment_id = $1 WHERE id = $2",
+        treatment_id,
+        record_id,
     )
     .execute(&mut *transaction)
     .await?;
     transaction.commit().await?;
 
-    let mut connection = state.pool.acquire().await?;
-    Ok(Json(load(&mut connection, id).await?))
+    Ok(Json(appointments::load(&state.pool, appointment_id).await?))
+}
+
+/// The record of `patient_id` on the treatment, if the animal is on it.
+async fn record_of(
+    connection: &mut PgConnection,
+    treatment_id: i64,
+    patient_id: i64,
+) -> AppResult<Option<i64>> {
+    Ok(sqlx::query_scalar!(
+        "SELECT id FROM patient_treatment WHERE treatment_id = $1 AND patient_id = $2",
+        treatment_id,
+        patient_id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?)
 }
 
 /// Refuses content on a treatment whose appointment is not ready for it.
@@ -693,6 +790,10 @@ pub fn routes() -> Router<AppState> {
         .route(
             "/treatments/{id}/patients/{patient_id}",
             axum::routing::delete(remove_patient),
+        )
+        .route(
+            "/treatments/{id}/patients/{patient_id}/own-appointment",
+            post(move_to_own_appointment),
         )
         .route(
             "/treatments/{id}/items",

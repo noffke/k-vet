@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { expect, test } from '@playwright/test'
+import { type APIRequestContext, expect, test } from '@playwright/test'
 import {
   doc,
   seedCustomer,
@@ -201,6 +201,82 @@ test.describe('patient treatments', () => {
       expect(text).toContain(`Grund ${name}`)
       expect(text).toContain(`Befund ${name}`)
     }
+  })
+
+  /** Eddie and Helene on one visit, each with a line of their own, and a house call. */
+  async function twoAnimalsWithLines(request: APIRequestContext) {
+    const { customerId } = await seedCustomer(request)
+    const eddie = await seedPatient(request, customerId, 'Eddie')
+    const helene = await seedPatient(request, customerId, 'Helene')
+    const { appointmentId, treatmentId } = await seedTreatment(request, eddie)
+    await request.post(`/api/treatments/${treatmentId}/patients`, { data: { patient_id: helene } })
+    const { serviceId, serviceName } = await seedService(request)
+    const visit = await seedService(request, { perVisit: true, name: 'Hausbesuch' })
+    const treatment = (await (await request.get(`/api/treatments/${treatmentId}`)).json()) as {
+      patients: { id: number; name: string }[]
+    }
+    for (const record of treatment.patients) {
+      await request.post(`/api/treatments/${treatmentId}/items`, {
+        data: {
+          kind: 'service',
+          service_id: serviceId,
+          quantity: '1',
+          patient_treatment_id: record.id,
+        },
+      })
+    }
+    await request.post(`/api/treatments/${treatmentId}/items`, {
+      data: { kind: 'service', service_id: visit.serviceId, quantity: '1' },
+    })
+    const lines = async (id: number) =>
+      (await (await request.get(`/api/treatments/${id}/items`)).json()) as {
+        patient_treatment_id: number | null
+      }[]
+    return { appointmentId, treatmentId, serviceName, lines }
+  }
+
+  test('an animal comes off with its positions', async ({ page, request }) => {
+    const { appointmentId, treatmentId, lines } = await twoAnimalsWithLines(request)
+    await signIn(page)
+    await page.goto(`/appointments/${appointmentId}`)
+
+    await page.getByRole('tab', { name: 'Helene' }).click()
+    await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
+    const dialog = page.getByRole('dialog')
+    // What goes with her is said before it goes.
+    await expect(dialog.getByText('Positionen: 1')).toBeVisible()
+    await dialog.getByRole('button', { name: 'Entfernen' }).click()
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(page.getByRole('tab', { name: 'Eddie' })).toBeVisible()
+
+    // Eddie's line and the house call stay.
+    const left = await lines(treatmentId)
+    expect(left).toHaveLength(2)
+    expect(left.filter((line) => line.patient_treatment_id === null)).toHaveLength(1)
+  })
+
+  test('an animal moves to its own appointment, with its positions', async ({ page, request }) => {
+    const { appointmentId, treatmentId, serviceName, lines } = await twoAnimalsWithLines(request)
+    await signIn(page)
+    await page.goto(`/appointments/${appointmentId}`)
+
+    await page.getByRole('tab', { name: 'Helene' }).click()
+    await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
+    await page.getByRole('dialog').getByRole('button', { name: 'In eigenen Termin verschieben' }).click()
+    await expect(page.getByText('„Helene“ hat jetzt einen eigenen Termin.')).toBeVisible()
+
+    // Her own appointment opens, on her tab, with her line — and only her.
+    await expect(page).not.toHaveURL(new RegExp(`/appointments/${appointmentId}(\\?|$)`))
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(page.getByRole('tab', { name: 'Helene' })).toHaveAttribute('aria-selected', 'true')
+    await expect(page.getByRole('tabpanel').getByLabel('Name')).toHaveValue(new RegExp(serviceName))
+
+    // Eddie keeps the visit and the house call.
+    const left = await lines(treatmentId)
+    expect(left).toHaveLength(2)
+    await page.goto(`/appointments/${appointmentId}`)
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(page.getByRole('tab', { name: 'Eddie' })).toBeVisible()
   })
 
   test('a drug line cannot be left without an animal', async ({ page, request }) => {
