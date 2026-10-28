@@ -94,6 +94,20 @@
               "type": "integer",
               "format": "int64"
             }
+          },
+          {
+            "name": "when",
+            "in": "query",
+            "description": "Today and later (with the undated drafts first), or before today; absent, all of them.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "description": "Which side of today an appointment list shows.",
+              "enum": [
+                "upcoming",
+                "past"
+              ]
+            }
           }
         ],
         "responses": {

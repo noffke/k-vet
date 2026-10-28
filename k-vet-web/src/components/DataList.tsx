@@ -60,6 +60,12 @@ export interface DataListProps<T extends RowData> {
    * squeezed into a column otherwise. Return `null` to leave a row without one.
    */
   rowSubline?: ((row: T) => ReactNode) | undefined
+  /**
+   * Puts consecutive rows under a heading — the day of an appointment. Rows arrive already in
+   * order; a heading is written wherever the key changes. A full-width row on desktop, a heading
+   * between the cards on a phone.
+   */
+  groupBy?: ((row: T) => { key: string; label: ReactNode }) | undefined
   isLoading?: boolean | undefined
   error?: string | null | undefined
   emptyMessage?: string | undefined
@@ -79,6 +85,7 @@ export function DataList<T extends RowData>({
   rowBadge,
   rowActions,
   rowSubline,
+  groupBy,
   isLoading,
   error,
   emptyMessage,
@@ -124,6 +131,17 @@ export function DataList<T extends RowData>({
     onRowClick?.(row)
   }
 
+  /** The heading a row starts, if it is the first of its group. */
+  const headingBefore = (index: number): ReactNode => {
+    if (!groupBy) return null
+    const row = data[index]
+    if (row === undefined) return null
+    const group = groupBy(row)
+    const previous = index > 0 ? data[index - 1] : undefined
+    if (previous !== undefined && groupBy(previous).key === group.key) return null
+    return group.label
+  }
+
   const primary = columns.find((column) => column.primary) ?? columns[0]
   const mobileColumns = columns.filter((column) => !column.desktopOnly && column.id !== primary?.id)
 
@@ -164,11 +182,23 @@ export function DataList<T extends RowData>({
           hover state and carry the bottom rule under the entry as a whole. Several `<tbody>`
           elements in one table are valid HTML.
         */}
-        {table.getRowModel().rows.map((row) => {
+        {table.getRowModel().rows.map((row, index) => {
           const subline = rowSubline?.(row.original) ?? null
           const cellBorder = subline ? '' : 'border-b border-line'
+          const heading = headingBefore(index)
           return (
             <tbody key={row.id} className="group">
+              {heading ? (
+                <tr>
+                  <th
+                    scope="colgroup"
+                    colSpan={columns.length + (rowActions ? 1 : 0)}
+                    className="border-b border-line bg-cream-soft px-3 pt-4 pb-1.5 text-left text-sm font-semibold text-ink"
+                  >
+                    {heading}
+                  </th>
+                </tr>
+              ) : null}
               <tr
                 onClick={onRowClick ? handleRowClick(row.original) : undefined}
                 className={cn(
@@ -233,10 +263,14 @@ export function DataList<T extends RowData>({
 
       {/* Phone: cards */}
       <ul className="flex flex-col gap-2 sm:hidden">
-        {data.map((row) => {
+        {data.map((row, index) => {
           const subline = rowSubline?.(row) ?? null
+          const heading = headingBefore(index)
           return (
             <li key={getRowId(row)}>
+              {heading ? (
+                <h3 className="mt-3 mb-1.5 px-1 text-sm font-semibold text-ink">{heading}</h3>
+              ) : null}
               <button
                 type="button"
                 onClick={onRowClick ? () => onRowClick(row) : undefined}

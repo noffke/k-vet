@@ -44,3 +44,12 @@ export function americanDate(offsetDays = 0): string {
 export function practiceYear(): string {
   return practiceDay(0).year
 }
+
+/**
+ * An instant on the practice's day `offsetDays` from today: 10:00 UTC, which is 11:00 or 12:00
+ * in Berlin — the same calendar day either side of a DST change.
+ */
+export function practiceMidday(offsetDays = 0): string {
+  const { day, month, year } = practiceDay(offsetDays)
+  return `${year}-${month}-${day}T10:00:00Z`
+}

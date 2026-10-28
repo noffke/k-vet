@@ -57,6 +57,7 @@ export * from './kmSource';
 export * from './kmSuggestion';
 export * from './list';
 export * from './listAppointmentsParams';
+export * from './listAppointmentsWhen';
 export * from './listAttrs';
 export * from './listCustomersParams';
 export * from './listDrugsParams';

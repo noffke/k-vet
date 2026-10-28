@@ -219,11 +219,18 @@
     "deleteConfirm": "Really delete this appointment? Its treatment and its positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
+    "noPast": "No past appointments.",
+    "noUpcoming": "No upcoming appointments.",
+    "past": "Past",
     "pickCustomer": "Search customers …",
     "priceMode": "Prices",
     "priceModeRefresh": "Refresh prices",
     "priceModeVerbatim": "Copy prices",
-    "title": "Appointments"
+    "title": "Appointments",
+    "today": "Today",
+    "tomorrow": "Tomorrow",
+    "undated": "Without a date",
+    "upcoming": "Upcoming"
   },
   "treatments": {
     "addItem": "Add line",

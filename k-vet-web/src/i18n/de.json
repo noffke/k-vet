@@ -219,11 +219,18 @@
     "deleteConfirm": "Diesen Termin wirklich löschen? Seine Behandlung und deren Positionen werden mitgelöscht.",
     "duplicate": "Termin duplizieren",
     "new": "Neuer Termin",
+    "noPast": "Keine vergangenen Termine.",
+    "noUpcoming": "Keine anstehenden Termine.",
+    "past": "Vergangen",
     "pickCustomer": "Kunde suchen …",
     "priceMode": "Preise",
     "priceModeRefresh": "Preise aktualisieren",
     "priceModeVerbatim": "Preise übernehmen",
-    "title": "Termine"
+    "title": "Termine",
+    "today": "Heute",
+    "tomorrow": "Morgen",
+    "undated": "Ohne Datum",
+    "upcoming": "Anstehend"
   },
   "treatments": {
     "addItem": "Position hinzufügen",

@@ -308,6 +308,22 @@ function isoDate(year: number, month: number, day: number): string | null {
   return `${year}-${pad(month)}-${pad(day)}`
 }
 
+/**
+ * A day as a list heading: "Fr., 30.10." (de-DE) or "Fri, 10/30" (en-US), with the year only
+ * when it is not `today`'s. Both are ISO dates (`yyyy-MM-dd`).
+ */
+export function formatDayHeading(iso: string, locale: Locale, today: string): string {
+  const [year, month, day] = iso.slice(0, 10).split('-').map(Number)
+  if (!year || !month || !day) return ''
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    day: '2-digit',
+    month: '2-digit',
+    ...(iso.slice(0, 4) === today.slice(0, 4) ? {} : { year: 'numeric' }),
+    timeZone: 'UTC',
+  }).format(new Date(Date.UTC(year, month - 1, day)))
+}
+
 /** Today as an ISO date in the browser's timezone. */
 export function todayIso(): string {
   const now = new Date()

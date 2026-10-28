@@ -1,4 +1,5 @@
 import { type APIRequestContext, expect, test } from '@playwright/test'
+import { practiceMidday } from '../fixtures/clock'
 import {
   seedAcceptedInvoice,
   seedCustomer,
@@ -95,6 +96,8 @@ test.describe('appointments', () => {
 
     await signIn(page)
     await navigate(page, 'Termine')
+    // January 2025 is history: the "Vergangen" tab.
+    await page.getByRole('tab', { name: 'Vergangen' }).click()
     await page.getByPlaceholder('Suchen …').fill(lastName)
     const rows = page.getByText(lastName).filter({ visible: true })
     await expect(rows).toHaveCount(50)
@@ -103,6 +106,37 @@ test.describe('appointments', () => {
     await loadMore.click()
     await expect(rows).toHaveCount(55)
     await expect(loadMore).toHaveCount(0)
+  })
+
+  test('what is coming and what was are two tabs, the coming days under headings', async ({
+    page,
+    request,
+  }) => {
+    const { customerId, lastName } = await seedCustomer(request)
+    for (const offset of [-1, 0, 1, 3]) {
+      await request.post('/api/appointments', {
+        data: { starts_at: practiceMidday(offset), customer_id: customerId },
+      })
+    }
+
+    await signIn(page)
+    await navigate(page, 'Termine')
+    await expect(page.getByRole('tab', { name: 'Anstehend' })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await page.getByPlaceholder('Suchen …').fill(lastName)
+    const rows = page.getByText(lastName).filter({ visible: true })
+    await expect(rows).toHaveCount(3)
+    // Each coming day under its heading, today and tomorrow by name.
+    await expect(page.getByText(/^Heute · /).filter({ visible: true })).toHaveCount(1)
+    await expect(page.getByText(/^Morgen · /).filter({ visible: true })).toHaveCount(1)
+
+    // Yesterday is history, and the tab is part of the address.
+    await page.getByRole('tab', { name: 'Vergangen' }).click()
+    await expect(page).toHaveURL(/when=past/)
+    await expect(rows).toHaveCount(1)
+    await expect(page.getByText(/^Heute · /)).toHaveCount(0)
   })
 
   test("a customer's page lists their appointments and opens one", async ({ page, request }) => {

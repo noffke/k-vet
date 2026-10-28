@@ -150,6 +150,10 @@ pub async fn list(
            -- Whose visit and which animals, now that the list shows those instead of the note;
            -- the note is still searched.
            WHERE ($4::bigint IS NULL OR appointment.customer_id = $4)
+             AND ($5::text IS NULL
+                  OR ($5 = 'upcoming'
+                      AND (appointment.starts_at IS NULL OR appointment.starts_at >= $6))
+                  OR ($5 = 'past' AND appointment.starts_at < $6))
              AND ($1::text IS NULL
                   OR appointment.note ILIKE '%' || $1 || '%'
                   OR concat_ws(' ', customer.first_name, customer.last_name) ILIKE '%' || $1 || '%'
@@ -157,12 +161,23 @@ pub async fn list(
                              JOIN patient ON patient.id = patient_treatment.patient_id
                              WHERE patient_treatment.treatment_id = treatment.id
                                AND patient.name ILIKE '%' || $1 || '%'))
-           ORDER BY appointment.starts_at DESC NULLS FIRST, appointment.id DESC
+           -- What is coming reads forwards, the undated drafts first; everything else
+           -- backwards from the newest.
+           ORDER BY
+             CASE WHEN $5 = 'upcoming' THEN appointment.starts_at END ASC NULLS FIRST,
+             CASE WHEN $5 IS DISTINCT FROM 'upcoming' THEN appointment.starts_at END
+               DESC NULLS FIRST,
+             appointment.id DESC
            LIMIT $2 OFFSET $3"#,
         query.search(),
         query.limit(),
         query.offset(),
         filter.customer_id,
+        filter.when.map(|when| match when {
+            AppointmentWhen::Upcoming => "upcoming",
+            AppointmentWhen::Past => "past",
+        }),
+        start_of_today(),
     )
     .fetch_all(&state.pool)
     .await?;
@@ -175,6 +190,28 @@ pub async fn list(
 pub struct AppointmentFilter {
     /// Only this customer's appointments — the customer page lists them.
     pub customer_id: Option<i64>,
+    /// Today and later (with the undated drafts first), or before today; absent, all of them.
+    #[param(inline)]
+    pub when: Option<AppointmentWhen>,
+}
+
+/// Which side of today an appointment list shows.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Deserialize, ToSchema)]
+#[serde(rename_all = "snake_case")]
+pub enum AppointmentWhen {
+    /// From the start of today on, earliest first — what is coming.
+    Upcoming,
+    /// Before today, latest first — what was.
+    Past,
+}
+
+/// Midnight of the server's today: where "Anstehend" begins and "Vergangen" ends.
+fn start_of_today() -> DateTime<Utc> {
+    let midnight = Local::now().date_naive().and_time(NaiveTime::MIN);
+    Local
+        .from_local_datetime(&midnight)
+        .earliest()
+        .map_or_else(Utc::now, |start| start.with_timezone(&Utc))
 }
 
 #[utoipa::path(

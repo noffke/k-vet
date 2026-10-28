@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { ListAppointmentsWhen } from './listAppointmentsWhen';
 
 export type ListAppointmentsParams = {
 /**
@@ -21,4 +22,8 @@ offset?: number;
  * Only this customer's appointments — the customer page lists them.
  */
 customer_id?: number;
+/**
+ * Which side of today an appointment list shows.
+ */
+when?: ListAppointmentsWhen;
 };

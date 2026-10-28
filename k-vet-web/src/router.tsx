@@ -88,6 +88,9 @@ const dashboardRoute = createRoute({
 const appointmentsRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/appointments',
+  // `when=past` is the "Vergangen" tab; absent means "Anstehend".
+  validateSearch: (search: Record<string, unknown>): { when?: 'past' } =>
+    search.when === 'past' ? { when: 'past' } : {},
   component: AppointmentsPage,
 })
 

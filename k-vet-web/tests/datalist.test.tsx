@@ -33,6 +33,27 @@ describe('DataList', () => {
     expect(screen.getAllByText('Bello')).toHaveLength(2)
   })
 
+  it('puts a heading wherever the group changes, in both layouts', () => {
+    const days = [
+      { id: 1, name: 'Bello', amount: '1.00', day: 'Heute' },
+      { id: 2, name: 'Minka', amount: '2.00', day: 'Heute' },
+      { id: 3, name: 'Rex', amount: '3.00', day: 'Morgen' },
+    ]
+    render(
+      <DataList
+        data={days}
+        columns={columns}
+        getRowId={(row) => String(row.id)}
+        groupBy={(row) => ({ key: row.day, label: row.day })}
+      />,
+    )
+    // One heading per group and layout — not one per row.
+    expect(screen.getAllByText('Heute')).toHaveLength(2)
+    expect(screen.getAllByText('Morgen')).toHaveLength(2)
+    expect(screen.getAllByRole('columnheader', { name: 'Heute' })).toHaveLength(1)
+    expect(screen.getAllByRole('heading', { name: 'Morgen' })).toHaveLength(1)
+  })
+
   it('calls back with the clicked row', async () => {
     const onRowClick = vi.fn()
     render(

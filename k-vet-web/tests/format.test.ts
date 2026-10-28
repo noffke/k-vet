@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest'
 import {
   currencySymbol,
   formatDate,
+  formatDayHeading,
   formatMoney,
   formatPercent,
   formatQuantity,
@@ -196,5 +197,13 @@ describe('parsing dates', () => {
       expect(parseDate('03.2027', 'de-DE')).toBeNull()
       expect(parseDate('2027-03', 'de-DE')).toBeNull()
     })
+  })
+})
+
+describe('day headings', () => {
+  it('name the weekday and the day, the year only when it is another one', () => {
+    expect(formatDayHeading('2026-10-30', 'de-DE', '2026-10-27')).toBe('Fr., 30.10.')
+    expect(formatDayHeading('2026-10-30', 'en-US', '2026-10-27')).toBe('Fri, 10/30')
+    expect(formatDayHeading('2027-01-04', 'de-DE', '2026-10-27')).toBe('Mo., 04.01.2027')
   })
 })

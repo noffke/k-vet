@@ -642,3 +642,69 @@ async fn the_list_names_customer_and_animals_and_finds_them(pool: PgPool) {
         assert_eq!(found[0]["id"], appointment);
     }
 }
+
+/// "Anstehend" and "Vergangen": from the start of today on, earliest first with the undated
+/// drafts at the top; before today, latest first. The search works within each.
+#[sqlx::test]
+async fn the_list_splits_upcoming_from_past(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let create = |starts_at: Option<DateTime<Utc>>, note: &str| {
+        let body = json!({ "starts_at": starts_at, "note": note });
+        let app = &app;
+        async move {
+            app.post("/api/appointments", body).await.json()["id"]
+                .as_i64()
+                .expect("an appointment")
+        }
+    };
+    let day = chrono::TimeDelta::days(1);
+    // Noon today, in the server's own day: today whether it is ahead or already gone.
+    let today_noon = Local::now()
+        .date_naive()
+        .and_hms_opt(12, 0, 0)
+        .and_then(|noon| noon.and_local_timezone(Local).earliest())
+        .expect("noon today")
+        .with_timezone(&Utc);
+
+    let long_ago = create(Some(today_noon - day * 10), "Kontrolle").await;
+    let yesterday = create(Some(today_noon - day), "Impfung").await;
+    let today = create(Some(today_noon), "Impfung").await;
+    let tomorrow = create(Some(today_noon + day), "Impfung").await;
+    let next_week = create(Some(today_noon + day * 7), "Kontrolle").await;
+    let undated = create(None, "Rückruf").await;
+
+    let ids = |uri: &'static str| {
+        let app = &app;
+        async move {
+            app.get(uri)
+                .await
+                .json()
+                .as_array()
+                .expect("a list")
+                .iter()
+                .map(|row| row["id"].as_i64().expect("an id"))
+                .collect::<Vec<_>>()
+        }
+    };
+    assert_eq!(
+        ids("/api/appointments?when=upcoming").await,
+        [undated, today, tomorrow, next_week]
+    );
+    assert_eq!(
+        ids("/api/appointments?when=past").await,
+        [yesterday, long_ago]
+    );
+    assert_eq!(
+        ids("/api/appointments?when=upcoming&q=Kontrolle").await,
+        [next_week]
+    );
+    assert_eq!(
+        ids("/api/appointments?when=past&q=Kontrolle").await,
+        [long_ago]
+    );
+    // Without a side, everything, newest first — what the customer page reads.
+    assert_eq!(
+        ids("/api/appointments").await,
+        [undated, next_week, tomorrow, today, yesterday, long_ago]
+    );
+}

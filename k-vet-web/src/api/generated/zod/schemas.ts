@@ -31,7 +31,8 @@ export const ListAppointmentsQueryParams = zod.object({
   "archived": zod.boolean().optional().describe('Include archived records (default: false).'),
   "limit": zod.int().optional(),
   "offset": zod.int().optional(),
-  "customer_id": zod.int().optional().describe('Only this customer\'s appointments — the customer page lists them.')
+  "customer_id": zod.int().optional().describe('Only this customer\'s appointments — the customer page lists them.'),
+  "when": zod.enum(['upcoming', 'past']).optional().describe('Today and later (with the undated drafts first), or before today; absent, all of them.')
 })
 
 export const ListAppointmentsResponseItem = zod.object({
