@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useListCustomers } from '@/api/generated/endpoints'
 import { Button } from '@/components/ui/button'
+import { unmarkCmdkInput } from '@/lib/cmdk'
 import { cn } from '@/lib/utils'
 
 const SEARCH_DEBOUNCE_MS = 200
@@ -83,6 +84,7 @@ export function CustomerPicker({
   return (
     <Command shouldFilter={false} className="rounded-card border border-line-strong bg-surface">
       <Command.Input
+        ref={unmarkCmdkInput}
         value={term}
         onValueChange={setTerm}
         placeholder={t('appointments.pickCustomer')}

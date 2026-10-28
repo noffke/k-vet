@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useListTemplates, usePickerItems } from '@/api/generated/endpoints'
 import type { PickerItem, Template } from '@/api/generated/model'
+import { unmarkCmdkInput } from '@/lib/cmdk'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
 
@@ -94,6 +95,7 @@ export function ItemPicker({
       className="rounded-card border border-line-strong bg-surface"
     >
       <Command.Input
+        ref={unmarkCmdkInput}
         value={term}
         onValueChange={setTerm}
         disabled={disabled}

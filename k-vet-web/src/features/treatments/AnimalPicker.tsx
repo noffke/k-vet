@@ -17,6 +17,7 @@ import {
 import type { Treatment, TreatmentPatient } from '@/api/generated/model'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { unmarkCmdkInput } from '@/lib/cmdk'
 import { refusalKey } from '@/lib/refusal'
 import { cn } from '@/lib/utils'
 
@@ -90,6 +91,7 @@ export function AnimalPicker({
       className="mt-3 rounded-card border border-line-strong bg-surface"
     >
       <Command.Input
+        ref={unmarkCmdkInput}
         value={term}
         onValueChange={setTerm}
         placeholder={t('patients.title')}
