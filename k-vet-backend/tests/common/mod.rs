@@ -245,6 +245,61 @@ impl TestApp {
             .await
     }
 
+    /// A WebDAV request as the phone's sync app sends it: any method, its own headers, HTTP
+    /// Basic with the test login unless `headers` brings an `Authorization` of its own, and no
+    /// session cookie.
+    pub async fn dav(
+        &self,
+        method: &str,
+        uri: &str,
+        headers: &[(&str, &str)],
+        body: &str,
+    ) -> TestResponse {
+        use base64::Engine;
+        let mut builder = Request::builder()
+            .method(Method::from_bytes(method.as_bytes()).expect("a method"))
+            .uri(uri);
+        if !headers
+            .iter()
+            .any(|(name, _)| name.eq_ignore_ascii_case("authorization"))
+        {
+            let login = base64::engine::general_purpose::STANDARD
+                .encode(format!("{TEST_USER}:{TEST_PASSWORD}"));
+            builder = builder.header(header::AUTHORIZATION, format!("Basic {login}"));
+        }
+        for (name, value) in headers {
+            builder = builder.header(*name, *value);
+        }
+        let request = builder
+            .body(Body::from(body.to_owned()))
+            .expect("request builds");
+        let response = self
+            .router
+            .clone()
+            .oneshot(request)
+            .await
+            .expect("router answers");
+        let status = response.status();
+        let headers = response.headers().clone();
+        let content_type = headers
+            .get(header::CONTENT_TYPE)
+            .and_then(|value| value.to_str().ok())
+            .map(str::to_owned);
+        let body = response
+            .into_body()
+            .collect()
+            .await
+            .expect("body collects")
+            .to_bytes()
+            .to_vec();
+        TestResponse {
+            status,
+            body,
+            content_type,
+            headers,
+        }
+    }
+
     async fn dispatch(
         &self,
         method: Method,

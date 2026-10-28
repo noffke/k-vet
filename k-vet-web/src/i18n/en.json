@@ -480,7 +480,14 @@
     "removeLogo": "Remove logo",
     "removeLogoConfirm": "Really remove the logo? New invoices will then print without it.",
     "title": "Settings",
-    "ustid": "VAT ID"
+    "ustid": "VAT ID",
+    "phoneSync": "Calendar on the phone",
+    "phoneSyncHint": "The appointments appear as a calendar on the phone, through a CalDAV sync app. In the app, add an account “with URL and user name” and choose the calendar. The phone has to reach k-vet (through the practice’s VPN).",
+    "phoneSyncUrl": "Server address",
+    "phoneSyncUser": "User name",
+    "phoneSyncPassword": "Password",
+    "phoneSyncPasswordValue": "the k-vet password — enter it in the app again after changing it",
+    "phoneSyncCalendar": "Calendar"
   },
   "error": {
     "generic": "Something went wrong.",
@@ -664,5 +671,16 @@
   "reminder": {
     "drugUnavailable": "This drug is not available (any more).",
     "alreadyTaken": "Already taken into a position."
+  },
+  "calendar": {
+    "fromPhone": "Entered in the phone’s calendar",
+    "title": "“{{title}}”",
+    "noTitle": "Entered without a title.",
+    "suggestions": "Perhaps meant:",
+    "pickBelow": "Choose the customer below.",
+    "hidden": "Deleted in the phone’s calendar — kept here because something is already recorded.",
+    "showAgain": "Show in the calendar again",
+    "badgeFromPhone": "From calendar",
+    "badgeHidden": "Deleted in calendar"
   }
 }

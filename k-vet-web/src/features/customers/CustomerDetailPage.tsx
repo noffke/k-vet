@@ -35,6 +35,7 @@ import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
 import {
   ArchivedBadge,
+  CalendarBadges,
   IncompleteBadge,
   NotBilledBadge,
   PdfStaleBadge,
@@ -624,6 +625,7 @@ function CustomerAppointments({ customerId }: { customerId: number }) {
                 <IncompleteBadge missing={appointment.missing_fields} />
                 <NotBilledBadge count={appointment.unbilled ? 1 : 0} />
                 <PdfStaleBadge stale={appointment.pdf_stale} />
+                <CalendarBadges appointment={appointment} />
               </span>
             </Link>
           </li>

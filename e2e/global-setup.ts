@@ -85,6 +85,10 @@ minimum = "13.00"
 # Google is the suite's own fake (KVET_MAPS_ENDPOINT); the key only has to be there.
 [maps]
 api_key = "e2e"
+
+# The phone's calendar, which the suite reaches with plain requests.
+[dav]
+enabled = true
 `,
     'utf8',
   )

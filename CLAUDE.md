@@ -158,6 +158,13 @@ is pure and unit-tested, including path-traversal refusal).
   beside them. `apply-quote` inserts through `insert_pinned_item` with a pinned `CatalogLine`
   carrying the quoted price. Open quotes are cleaned up 28 days after their last change
   (`jobs::cleanup_abandoned_drafts`); `/price-quote/distance` is read-only.
+- `src/dav/` — the appointments as a CalDAV calendar for the vet's phone (`[dav] enabled`,
+  migration `0036`), routed at `/dav` outside `/api` with HTTP Basic against the `[auth]` login
+  (`auth::check_login`, the login form's throttle). Events are generated on every request from
+  the appointment, its customer, animals and open reminders; ETags hash that text, so there is no
+  sync state. What the phone writes is taken narrowly (`dav::calendar::put`/`delete`); all-day
+  and recurring entries go verbatim to `calendar_extra_event`. Only the subset a sync app uses:
+  PROPFIND depth 0/1, `calendar-query`/`calendar-multiget`, GET/PUT/DELETE — no `sync-collection`.
 - `src/api/mail_queue.rs` — **no request sends mail.** Releasing or "E-Mail senden" queues it;
   the job delivers through `invoices::deliver`, keeps failures on the row, retries for six hours
   and stops at once on a refusal (5xx). Cancel and mark-posted drop the waiting mail.

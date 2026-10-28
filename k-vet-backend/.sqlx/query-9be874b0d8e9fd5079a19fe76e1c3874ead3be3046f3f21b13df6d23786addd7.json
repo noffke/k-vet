@@ -1,0 +1,163 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT appointment.id, appointment.starts_at AS \"starts_at!\", appointment.updated_at,\n                  appointment.note, appointment.calendar_uid, appointment.calendar_href,\n                  appointment.calendar_title,\n                  NULLIF(concat_ws(' ', customer.first_name, customer.last_name), '')\n                      AS customer_name,\n                  customer.phone, customer.home_street, customer.home_zip, customer.home_city,\n                  ARRAY(SELECT patient.name || COALESCE(' (' || patient.species || ')', '')\n                          FROM patient_treatment\n                          JOIN patient ON patient.id = patient_treatment.patient_id\n                         WHERE patient_treatment.treatment_id = treatment.id\n                           AND patient.name IS NOT NULL\n                         ORDER BY patient.name) AS \"animals!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           WHERE NOT appointment.draft AND appointment.starts_at IS NOT NULL\n             AND NOT appointment.calendar_hidden\n             AND ($1::timestamptz IS NULL OR appointment.starts_at >= $1)\n             AND ($2::text IS NULL\n                  OR COALESCE(appointment.calendar_href, 'kvet-' || appointment.id || '.ics') = $2)\n           ORDER BY appointment.starts_at, appointment.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "starts_at!",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "starts_at"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "updated_at",
+        "type_info": "Timestamptz",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "updated_at"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "calendar_uid",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "calendar_uid"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "calendar_href",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "calendar_href"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "calendar_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "calendar_title"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "customer_name",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 8,
+        "name": "phone",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "phone"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "home_street",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_street"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "home_zip",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_zip"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "home_city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_city"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "animals!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      true,
+      false,
+      true,
+      true,
+      true,
+      true,
+      null,
+      true,
+      true,
+      true,
+      true,
+      null
+    ]
+  },
+  "hash": "9be874b0d8e9fd5079a19fe76e1c3874ead3be3046f3f21b13df6d23786addd7"
+}

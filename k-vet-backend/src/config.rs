@@ -78,6 +78,9 @@ pub struct Config {
     /// Optional as well: without it nothing is ever sent to Google.
     #[serde(default)]
     pub maps: MapsConfig,
+    /// Optional: the appointments as a calendar on a phone (CalDAV at `/dav`); off without it.
+    #[serde(default)]
+    pub dav: DavConfig,
 }
 
 #[derive(Debug, Clone, Deserialize)]
@@ -261,6 +264,55 @@ impl MapsConfig {
     }
 }
 
+/// The appointments as a calendar on the vet's phone, served by k-vet itself over CalDAV at
+/// `/dav` and signed into with the k-vet login. Off unless `enabled`.
+#[derive(Debug, Clone, Deserialize)]
+#[serde(deny_unknown_fields)]
+pub struct DavConfig {
+    #[serde(default)]
+    pub enabled: bool,
+    /// The calendar's name on the phone.
+    #[serde(default = "default_calendar_name")]
+    pub calendar_name: String,
+    /// How long an appointment is in the calendar; k-vet keeps only its start.
+    #[serde(default = "default_duration_minutes")]
+    pub duration_minutes: u32,
+    /// How far back the calendar reaches; everything ahead is in it.
+    #[serde(default = "default_past_days")]
+    pub past_days: u32,
+    /// The practice's time zone: what a time without one, sent by the phone, means.
+    #[serde(default = "default_time_zone")]
+    pub time_zone: String,
+}
+
+impl Default for DavConfig {
+    fn default() -> Self {
+        Self {
+            enabled: false,
+            calendar_name: default_calendar_name(),
+            duration_minutes: default_duration_minutes(),
+            past_days: default_past_days(),
+            time_zone: default_time_zone(),
+        }
+    }
+}
+
+fn default_calendar_name() -> String {
+    "Praxis-Termine".to_owned()
+}
+
+fn default_duration_minutes() -> u32 {
+    60
+}
+
+fn default_past_days() -> u32 {
+    90
+}
+
+fn default_time_zone() -> String {
+    "Europe/Berlin".to_owned()
+}
+
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct TravelExpenseConfig {
@@ -386,6 +438,17 @@ impl Config {
         if self.storage.max_upload_mb == 0 {
             return Err(ConfigError::Invalid(
                 "storage.max_upload_mb must be greater than zero".into(),
+            ));
+        }
+        if self.dav.time_zone.parse::<chrono_tz::Tz>().is_err() {
+            return Err(ConfigError::Invalid(format!(
+                "dav.time_zone must be an IANA time zone such as `Europe/Berlin`, got `{}`",
+                self.dav.time_zone,
+            )));
+        }
+        if self.dav.duration_minutes == 0 {
+            return Err(ConfigError::Invalid(
+                "dav.duration_minutes must be greater than zero".into(),
             ));
         }
         self.validate_email_templates()

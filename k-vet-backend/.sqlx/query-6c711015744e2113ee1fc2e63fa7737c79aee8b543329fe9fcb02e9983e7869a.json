@@ -1,0 +1,22 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE appointment SET\n             starts_at   = CASE WHEN $2 THEN $3 ELSE starts_at END,\n             note        = CASE WHEN $4 THEN $5 ELSE note END,\n             customer_id = CASE WHEN $7 THEN $8 ELSE customer_id END,\n             calendar_hidden = COALESCE($9, calendar_hidden),\n             draft       = $6\n         WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Bool",
+        "Timestamptz",
+        "Bool",
+        "Text",
+        "Bool",
+        "Bool",
+        "Int8",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "6c711015744e2113ee1fc2e63fa7737c79aee8b543329fe9fcb02e9983e7869a"
+}

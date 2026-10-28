@@ -14,6 +14,7 @@ import { DataList, type DataListColumn } from '@/components/DataList'
 import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import {
+  CalendarBadges,
   IncompleteBadge,
   NotBilledBadge,
   PdfStaleBadge,
@@ -192,6 +193,7 @@ export function AppointmentsPage() {
                 <NotBilledBadge count={row.unbilled ? 1 : 0} />
                 <PdfStaleBadge stale={row.pdf_stale} />
                 <RemindersBadge count={row.reminder_count} />
+                <CalendarBadges appointment={row} />
               </span>
             )}
             onRowClick={(row) =>

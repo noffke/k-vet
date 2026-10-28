@@ -237,6 +237,35 @@ export function SettingsPage() {
           />
         </div>
       </section>
+
+      <PhoneSyncCard />
     </div>
+  )
+}
+
+/**
+ * Where the phone's calendar app is pointed: the address, the k-vet user name — and the k-vet
+ * password, which is why changing it here means changing it on the phone too. Only shown when
+ * the operator switched it on (`[dav] enabled`).
+ */
+function PhoneSyncCard() {
+  const { t } = useTranslation()
+  const { dav } = useOperatorConfig()
+  if (!dav) return null
+  return (
+    <section className="mt-4 rounded-card border border-line bg-surface p-4">
+      <h2 className="eyebrow">{t('settings.phoneSync')}</h2>
+      <p className="mt-1 text-sm text-ink-soft">{t('settings.phoneSyncHint')}</p>
+      <dl className="mt-3 grid gap-x-4 gap-y-1 text-sm sm:grid-cols-[auto_1fr]">
+        <dt className="text-ink-soft">{t('settings.phoneSyncUrl')}</dt>
+        <dd className="numeric break-all font-medium text-ink">{dav.url}</dd>
+        <dt className="text-ink-soft">{t('settings.phoneSyncUser')}</dt>
+        <dd className="font-medium text-ink">{dav.username}</dd>
+        <dt className="text-ink-soft">{t('settings.phoneSyncPassword')}</dt>
+        <dd className="text-ink">{t('settings.phoneSyncPasswordValue')}</dd>
+        <dt className="text-ink-soft">{t('settings.phoneSyncCalendar')}</dt>
+        <dd className="text-ink">{dav.calendar_name}</dd>
+      </dl>
+    </section>
   )
 }

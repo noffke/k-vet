@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO calendar_extra_event (href, uid, ics) VALUES ($1, $2, $3)\n                   ON CONFLICT (href) DO UPDATE SET ics = EXCLUDED.ics, uid = EXCLUDED.uid,\n                                                    updated_at = now()\n                   RETURNING (xmax = 0) AS \"created!\"",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "created!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      null
+    ]
+  },
+  "hash": "e0be396408baa75b008bc8d1fae1fe1cda06b3df20cf0e367b10346e46ddbf22"
+}

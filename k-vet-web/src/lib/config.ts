@@ -18,6 +18,8 @@ const FALLBACK: OperatorConfig = {
   environment_label: null,
   // Nothing that would ask Google is offered until the server says a key is there.
   maps_enabled: false,
+  // Nor is the phone calendar until the server says it is served.
+  dav: null,
 }
 
 export function useOperatorConfig(): OperatorConfig {

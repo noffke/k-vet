@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { DavAccess } from './davAccess';
 
 export interface OperatorConfig {
   /** ISO 4217, used for every amount the app formats. */
@@ -30,4 +31,5 @@ export interface OperatorConfig {
      * checked. The key itself never leaves the server.
      */
   maps_enabled: boolean;
+  dav?: DavAccess | null;
 }

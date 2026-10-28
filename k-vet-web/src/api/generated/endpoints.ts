@@ -49,6 +49,7 @@ import type {
   CreateTemplateItem,
   CreateTreatmentItem,
   Customer,
+  CustomerSuggestion,
   Dashboard,
   Drug,
   DuplicateRequest,
@@ -650,6 +651,109 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       > => {
       return useMutation(getPatchAppointmentMutationOptions(options), queryClient);
     }
+
+export const getSuggestAppointmentCustomersUrl = (id: number,) => {
+
+
+
+
+  return `/api/appointments/${id}/customer-suggestions`
+}
+
+/**
+ * @summary For an appointment made on the phone: the customers whose name — or one of whose animals'
+names — appears in its title, best first. Only ever suggested; the vet picks.
+ */
+export const suggestAppointmentCustomers = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<CustomerSuggestion[]> => {
+
+  return apiFetch<CustomerSuggestion[]>(getSuggestAppointmentCustomersUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getSuggestAppointmentCustomersQueryKey = (id: number,) => {
+    return [
+    `/api/appointments/${id}/customer-suggestions`
+    ] as const;
+    }
+
+
+export const getSuggestAppointmentCustomersQueryOptions = <TData = Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError = void>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getSuggestAppointmentCustomersQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof suggestAppointmentCustomers>>> = ({ signal }) => suggestAppointmentCustomers(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type SuggestAppointmentCustomersQueryResult = NonNullable<Awaited<ReturnType<typeof suggestAppointmentCustomers>>>
+export type SuggestAppointmentCustomersQueryError = void
+
+
+export function useSuggestAppointmentCustomers<TData = Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError = void>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestAppointmentCustomers>>,
+          TError,
+          Awaited<ReturnType<typeof suggestAppointmentCustomers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestAppointmentCustomers<TData = Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof suggestAppointmentCustomers>>,
+          TError,
+          Awaited<ReturnType<typeof suggestAppointmentCustomers>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useSuggestAppointmentCustomers<TData = Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary For an appointment made on the phone: the customers whose name — or one of whose animals'
+names — appears in its title, best first. Only ever suggested; the vet picks.
+ */
+
+export function useSuggestAppointmentCustomers<TData = Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError = void>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof suggestAppointmentCustomers>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getSuggestAppointmentCustomersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
 
 export const getDuplicateAppointmentUrl = (id: number,) => {
 

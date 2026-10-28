@@ -22,12 +22,18 @@ import { CustomerPicker } from '@/components/CustomerPicker'
 import { DateInput } from '@/components/DateInput'
 import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
-import { IncompleteBadge, NotBilledBadge, PdfStaleBadge } from '@/components/RecordBadges'
+import {
+  CalendarBadges,
+  IncompleteBadge,
+  NotBilledBadge,
+  PdfStaleBadge,
+} from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TimeInput } from '@/components/TimeInput'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { TextAreaField } from '@/components/ui/field'
+import { PhoneCalendarNotice } from '@/features/appointments/PhoneCalendarNotice'
 import { RemindersCard } from '@/features/appointments/RemindersCard'
 import { TreatmentSection } from '@/features/treatments/TreatmentSection'
 import { useAutoSave } from '@/lib/autosave'
@@ -194,7 +200,20 @@ export function AppointmentDetailPage() {
         <NotBilledBadge count={record.unbilled ? 1 : 0} />
         {/* From the treatment, which every line edit refreshes — the appointment is not. */}
         <PdfStaleBadge stale={treatment.data?.pdf_stale} />
+        <CalendarBadges appointment={record} />
       </PageHeader>
+
+      <PhoneCalendarNotice
+        appointment={record}
+        onPickCustomer={(customerId) => {
+          autoSave.set({ customer_id: customerId })
+          void autoSave.flush()
+        }}
+        onShowAgain={() => {
+          autoSave.set({ calendar_hidden: false })
+          void autoSave.flush()
+        }}
+      />
 
       {deleteMessage ? (
         <p className="mt-3 rounded-card border border-danger/30 bg-danger/5 px-3 py-2 text-sm text-danger">

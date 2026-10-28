@@ -48,6 +48,18 @@ export interface Appointment {
   pdf_stale: boolean;
   /** Drugs to bring that are not yet a position ("Mitbringen", migration 0035). */
   reminder_count: number;
+  /** Made on the phone's calendar (migration 0036); its customer is chosen in k-vet. */
+  from_phone: boolean;
+  /**
+     * The title it was given on the phone — what the customer suggestions read.
+     * @nullable
+     */
+  calendar_title?: string | null;
+  /**
+     * Deleted on the phone but kept, because something was recorded on it; not in the
+     * calendar until shown again.
+     */
+  calendar_hidden: boolean;
   created_at: string;
   updated_at: string;
 }

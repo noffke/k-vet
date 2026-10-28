@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT href, ics FROM calendar_extra_event WHERE href = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "href",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "calendar_extra_event",
+            "name": "href"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "ics",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "calendar_extra_event",
+            "name": "ics"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "d23d6eae4e4596531286d9071e1eb1bee660a51f354114b3b4c5de626169a58b"
+}

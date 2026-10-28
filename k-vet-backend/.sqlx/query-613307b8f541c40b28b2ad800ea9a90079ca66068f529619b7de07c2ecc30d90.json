@@ -1,0 +1,54 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH scored AS (\n               SELECT customer.id,\n                      GREATEST(\n                          word_similarity(lower(customer.last_name), lower($1)),\n                          COALESCE((SELECT MAX(word_similarity(lower(patient.name), lower($1)))\n                                      FROM patient\n                                     WHERE patient.customer_id = customer.id\n                                       AND NOT patient.archived AND patient.name IS NOT NULL),\n                                   0)\n                      ) AS score,\n                      word_similarity(lower(COALESCE(customer.first_name, '')), lower($1))\n                          AS first_score\n               FROM customer\n               WHERE NOT customer.archived AND customer.last_name IS NOT NULL\n           )\n           SELECT customer.id, concat_ws(' ', customer.first_name, customer.last_name)\n                      AS \"name!\",\n                  customer.home_city,\n                  ARRAY(SELECT patient.name FROM patient\n                         WHERE patient.customer_id = customer.id AND NOT patient.archived\n                           AND patient.name IS NOT NULL\n                         ORDER BY patient.name) AS \"patients!\"\n           FROM scored JOIN customer ON customer.id = scored.id\n           WHERE scored.score >= 0.75\n           ORDER BY scored.score DESC, scored.first_score DESC, customer.last_name, customer.id\n           LIMIT 5",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "home_city",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "home_city"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "patients!",
+        "type_info": "TextArray",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false,
+      null,
+      true,
+      null
+    ]
+  },
+  "hash": "613307b8f541c40b28b2ad800ea9a90079ca66068f529619b7de07c2ecc30d90"
+}

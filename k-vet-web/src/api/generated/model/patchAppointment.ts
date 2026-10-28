@@ -13,4 +13,9 @@ export interface PatchAppointment {
   note?: string | null;
   /** @nullable */
   customer_id?: number | null;
+  /**
+     * `false` puts an appointment deleted on the phone back into the calendar.
+     * @nullable
+     */
+  calendar_hidden?: boolean | null;
 }

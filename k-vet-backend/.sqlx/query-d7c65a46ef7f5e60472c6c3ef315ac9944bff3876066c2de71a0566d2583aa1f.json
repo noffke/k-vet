@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT calendar_title FROM appointment WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "calendar_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "calendar_title"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true
+    ]
+  },
+  "hash": "d7c65a46ef7f5e60472c6c3ef315ac9944bff3876066c2de71a0566d2583aa1f"
+}

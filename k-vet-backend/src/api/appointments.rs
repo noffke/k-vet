@@ -47,6 +47,13 @@ pub struct Appointment {
     pub pdf_stale: bool,
     /// Drugs to bring that are not yet a position ("Mitbringen", migration 0035).
     pub reminder_count: i64,
+    /// Made on the phone's calendar (migration 0036); its customer is chosen in k-vet.
+    pub from_phone: bool,
+    /// The title it was given on the phone — what the customer suggestions read.
+    pub calendar_title: Option<String>,
+    /// Deleted on the phone but kept, because something was recorded on it; not in the
+    /// calendar until shown again.
+    pub calendar_hidden: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -66,6 +73,8 @@ pub struct PatchAppointment {
     pub note: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
     pub customer_id: Option<Option<i64>>,
+    /// `false` puts an appointment deleted on the phone back into the calendar.
+    pub calendar_hidden: Option<bool>,
 }
 
 /// Row shape shared by the queries below.
@@ -81,6 +90,9 @@ struct Row {
     unbilled: bool,
     pdf_stale: bool,
     reminder_count: i64,
+    from_phone: bool,
+    calendar_title: Option<String>,
+    calendar_hidden: bool,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -100,6 +112,9 @@ impl From<Row> for Appointment {
             unbilled: row.unbilled,
             pdf_stale: row.pdf_stale,
             reminder_count: row.reminder_count,
+            from_phone: row.from_phone,
+            calendar_title: row.calendar_title,
+            calendar_hidden: row.calendar_hidden,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -150,7 +165,9 @@ pub async fn list(
                               AND invoice.status <> 'cancelled'), false) AS "pdf_stale!",
                   (SELECT count(*) FROM appointment_reminder
                     WHERE appointment_reminder.appointment_id = appointment.id
-                      AND appointment_reminder.taken_item_id IS NULL) AS "reminder_count!"
+                      AND appointment_reminder.taken_item_id IS NULL) AS "reminder_count!",
+                  appointment.calendar_origin = 'phone' AS "from_phone!",
+                  appointment.calendar_title, appointment.calendar_hidden
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id
@@ -300,7 +317,9 @@ pub(crate) async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment>
                               AND invoice.status <> 'cancelled'), false) AS "pdf_stale!",
                   (SELECT count(*) FROM appointment_reminder
                     WHERE appointment_reminder.appointment_id = appointment.id
-                      AND appointment_reminder.taken_item_id IS NULL) AS "reminder_count!"
+                      AND appointment_reminder.taken_item_id IS NULL) AS "reminder_count!",
+                  appointment.calendar_origin = 'phone' AS "from_phone!",
+                  appointment.calendar_title, appointment.calendar_hidden
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id
@@ -370,6 +389,7 @@ pub async fn patch(
              starts_at   = CASE WHEN $2 THEN $3 ELSE starts_at END,
              note        = CASE WHEN $4 THEN $5 ELSE note END,
              customer_id = CASE WHEN $7 THEN $8 ELSE customer_id END,
+             calendar_hidden = COALESCE($9, calendar_hidden),
              draft       = $6
          WHERE id = $1",
         id,
@@ -380,6 +400,7 @@ pub async fn patch(
         draft,
         body.customer_id.is_some(),
         body.customer_id.flatten(),
+        body.calendar_hidden,
     )
     .execute(&mut *transaction)
     .await?;
@@ -525,6 +546,80 @@ fn today_with_time_of(source: DateTime<Utc>) -> DateTime<Utc> {
     }
 }
 
+/// A customer the title of an appointment made on the phone may mean.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct CustomerSuggestion {
+    pub id: i64,
+    pub name: String,
+    pub city: Option<String>,
+    /// The customer's animals, which the title may name instead.
+    pub patients: Vec<String>,
+}
+
+#[utoipa::path(
+    get,
+    operation_id = "suggestAppointmentCustomers",
+    path = "/api/appointments/{id}/customer-suggestions",
+    tag = "appointments",
+    params(("id" = i64, Path,)),
+    responses((status = 200, body = Vec<CustomerSuggestion>), (status = 404))
+)]
+/// For an appointment made on the phone: the customers whose name — or one of whose animals'
+/// names — appears in its title, best first. Only ever suggested; the vet picks.
+pub async fn customer_suggestions(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<Json<Vec<CustomerSuggestion>>> {
+    let title = sqlx::query_scalar!("SELECT calendar_title FROM appointment WHERE id = $1", id)
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    let Some(title) = title.filter(|title| !title.trim().is_empty()) else {
+        return Ok(Json(Vec::new()));
+    };
+    let rows = sqlx::query!(
+        r#"WITH scored AS (
+               SELECT customer.id,
+                      GREATEST(
+                          word_similarity(lower(customer.last_name), lower($1)),
+                          COALESCE((SELECT MAX(word_similarity(lower(patient.name), lower($1)))
+                                      FROM patient
+                                     WHERE patient.customer_id = customer.id
+                                       AND NOT patient.archived AND patient.name IS NOT NULL),
+                                   0)
+                      ) AS score,
+                      word_similarity(lower(COALESCE(customer.first_name, '')), lower($1))
+                          AS first_score
+               FROM customer
+               WHERE NOT customer.archived AND customer.last_name IS NOT NULL
+           )
+           SELECT customer.id, concat_ws(' ', customer.first_name, customer.last_name)
+                      AS "name!",
+                  customer.home_city,
+                  ARRAY(SELECT patient.name FROM patient
+                         WHERE patient.customer_id = customer.id AND NOT patient.archived
+                           AND patient.name IS NOT NULL
+                         ORDER BY patient.name) AS "patients!"
+           FROM scored JOIN customer ON customer.id = scored.id
+           WHERE scored.score >= 0.75
+           ORDER BY scored.score DESC, scored.first_score DESC, customer.last_name, customer.id
+           LIMIT 5"#,
+        title,
+    )
+    .fetch_all(&state.pool)
+    .await?;
+    Ok(Json(
+        rows.into_iter()
+            .map(|row| CustomerSuggestion {
+                id: row.id,
+                name: row.name,
+                city: row.home_city,
+                patients: row.patients,
+            })
+            .collect(),
+    ))
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/appointments", get(list).post(create))
@@ -533,4 +628,8 @@ pub fn routes() -> Router<AppState> {
             get(detail).patch(patch).delete(delete),
         )
         .route("/appointments/{id}/duplicate", post(duplicate))
+        .route(
+            "/appointments/{id}/customer-suggestions",
+            get(customer_suggestions),
+        )
 }

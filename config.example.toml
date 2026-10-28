@@ -277,3 +277,38 @@ subset_never_below_proportional = false
 #        request ever goes to Google; the kilometres are then typed by hand.
 #        The "Open in Google Maps" links need no key.
 api_key = ""
+
+# ── Kalender auf dem Handy / Calendar on the phone ────────────────────────────
+[dav]
+
+# de-DE: Stellt die Termine als Kalender für das Handy bereit (CalDAV unter
+#        <base_url>/dav/). Auf dem Handy eine CalDAV-Sync-App mit dieser
+#        Adresse und dem k-vet-Benutzernamen und -Passwort einrichten; das Handy
+#        muss k-vet erreichen, also über das VPN der Praxis. Termine, die auf
+#        dem Handy eingetragen werden, erscheinen in k-vet. Nichts verlässt die
+#        Praxis. false = kein Kalender.
+# en-US: Serves the appointments as a calendar for the phone (CalDAV at
+#        <base_url>/dav/). On the phone, set up a CalDAV sync app with this
+#        address and the k-vet user name and password; the phone has to reach
+#        k-vet, i.e. through the practice's VPN. Appointments entered on the
+#        phone appear in k-vet. Nothing leaves the practice. false = no
+#        calendar.
+enabled = false
+
+# de-DE: Name des Kalenders auf dem Handy.
+# en-US: The calendar's name on the phone.
+calendar_name = "Praxis-Termine"
+
+# de-DE: Wie lang ein Termin im Kalender ist, in Minuten; k-vet kennt nur den
+#        Beginn.
+# en-US: How long an appointment is in the calendar, in minutes; k-vet only
+#        knows its start.
+duration_minutes = 60
+
+# de-DE: Wie weit der Kalender zurückreicht, in Tagen; alles Kommende ist drin.
+# en-US: How far back the calendar reaches, in days; everything ahead is in it.
+past_days = 90
+
+# de-DE: Zeitzone der Praxis — was eine Uhrzeit ohne Zeitzone vom Handy meint.
+# en-US: The practice's time zone — what a time from the phone without one means.
+time_zone = "Europe/Berlin"

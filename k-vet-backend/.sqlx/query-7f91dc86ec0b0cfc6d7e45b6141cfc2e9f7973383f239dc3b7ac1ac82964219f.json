@@ -1,0 +1,83 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT reminder.appointment_id, reminder.quantity, reminder.note,\n                  COALESCE(drug.name, '') AS \"name!\", packaging.quantity AS size, packaging.unit\n           FROM appointment_reminder reminder\n           JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           WHERE reminder.appointment_id = ANY($1) AND reminder.taken_item_id IS NULL\n           ORDER BY reminder.appointment_id, reminder.position",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "appointment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "appointment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8Array"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      null,
+      true,
+      true
+    ]
+  },
+  "hash": "7f91dc86ec0b0cfc6d7e45b6141cfc2e9f7973383f239dc3b7ac1ac82964219f"
+}

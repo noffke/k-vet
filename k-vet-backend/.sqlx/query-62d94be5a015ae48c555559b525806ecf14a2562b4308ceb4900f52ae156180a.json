@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE appointment SET starts_at = $2\n                     WHERE id = $1 AND starts_at IS DISTINCT FROM $2",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Timestamptz"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "62d94be5a015ae48c555559b525806ecf14a2562b4308ceb4900f52ae156180a"
+}

@@ -39,6 +39,18 @@ pub struct OperatorConfig {
     /// A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses
     /// checked. The key itself never leaves the server.
     pub maps_enabled: bool,
+    /// The phone calendar is served (`[dav] enabled`): where to point the sync app, and as
+    /// whom.
+    pub dav: Option<DavAccess>,
+}
+
+/// What the sync app on the phone is set up with. The password is the k-vet login's.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct DavAccess {
+    /// `{base_url}/dav/`.
+    pub url: String,
+    pub username: String,
+    pub calendar_name: String,
 }
 
 #[utoipa::path(
@@ -73,6 +85,14 @@ pub async fn get_config(State(state): State<AppState>) -> AppResult<Json<Operato
             .filter(|label| !label.trim().is_empty())
             .map(str::to_owned),
         maps_enabled: state.maps.is_some(),
+        dav: state.config.dav.enabled.then(|| DavAccess {
+            url: format!(
+                "{}/dav/",
+                state.config.server.base_url.trim_end_matches('/')
+            ),
+            username: state.config.auth.username.clone(),
+            calendar_name: state.config.dav.calendar_name.clone(),
+        }),
     }))
 }
 

@@ -259,6 +259,44 @@
         }
       }
     },
+    "/api/appointments/{id}/customer-suggestions": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "For an appointment made on the phone: the customers whose name — or one of whose animals'\nnames — appears in its title, best first. Only ever suggested; the vet picks.",
+        "operationId": "suggestAppointmentCustomers",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/CustomerSuggestion"
+                  }
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/appointments/{id}/duplicate": {
       "post": {
         "tags": [
@@ -5161,6 +5199,8 @@
           "unbilled",
           "pdf_stale",
           "reminder_count",
+          "from_phone",
+          "calendar_hidden",
           "created_at",
           "updated_at"
         ],
@@ -5233,6 +5273,21 @@
             "type": "integer",
             "format": "int64",
             "description": "Drugs to bring that are not yet a position (\"Mitbringen\", migration 0035)."
+          },
+          "from_phone": {
+            "type": "boolean",
+            "description": "Made on the phone's calendar (migration 0036); its customer is chosen in k-vet."
+          },
+          "calendar_title": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The title it was given on the phone — what the customer suggestions read."
+          },
+          "calendar_hidden": {
+            "type": "boolean",
+            "description": "Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again."
           },
           "created_at": {
             "type": "string",
@@ -5978,6 +6033,37 @@
           }
         }
       },
+      "CustomerSuggestion": {
+        "type": "object",
+        "description": "A customer the title of an appointment made on the phone may mean.",
+        "required": [
+          "id",
+          "name",
+          "patients"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "The customer's animals, which the title may name instead."
+          }
+        }
+      },
       "Dashboard": {
         "type": "object",
         "required": [
@@ -6024,6 +6110,27 @@
               "$ref": "#/components/schemas/FailedMail"
             },
             "description": "Every invoice mail that failed on the way out — still being retried, or given up —\noldest failure first, all of them: each needs a decision (retry, or remove and post)."
+          }
+        }
+      },
+      "DavAccess": {
+        "type": "object",
+        "description": "What the sync app on the phone is set up with. The password is the k-vet login's.",
+        "required": [
+          "url",
+          "username",
+          "calendar_name"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "`{base_url}/dav/`."
+          },
+          "username": {
+            "type": "string"
+          },
+          "calendar_name": {
+            "type": "string"
           }
         }
       },
@@ -6972,6 +7079,17 @@
           "maps_enabled": {
             "type": "boolean",
             "description": "A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses\nchecked. The key itself never leaves the server."
+          },
+          "dav": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DavAccess",
+                "description": "The phone calendar is served (`[dav] enabled`): where to point the sync app, and as\nwhom."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -7271,6 +7389,13 @@
               "null"
             ],
             "format": "int64"
+          },
+          "calendar_hidden": {
+            "type": [
+              "boolean",
+              "null"
+            ],
+            "description": "`false` puts an appointment deleted on the phone back into the calendar."
           }
         }
       },

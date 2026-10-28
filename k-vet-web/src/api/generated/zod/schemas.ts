@@ -48,6 +48,9 @@ export const ListAppointmentsResponseItem = zod.object({
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
+  "from_phone": zod.boolean().describe('Made on the phone\'s calendar (migration 0036); its customer is chosen in k-vet.'),
+  "calendar_title": zod.string().nullish().describe('The title it was given on the phone — what the customer suggestions read.'),
+  "calendar_hidden": zod.boolean().describe('Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -73,6 +76,9 @@ export const CreateAppointmentResponse = zod.object({
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
+  "from_phone": zod.boolean().describe('Made on the phone\'s calendar (migration 0036); its customer is chosen in k-vet.'),
+  "calendar_title": zod.string().nullish().describe('The title it was given on the phone — what the customer suggestions read.'),
+  "calendar_hidden": zod.boolean().describe('Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -95,6 +101,9 @@ export const GetAppointmentResponse = zod.object({
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
+  "from_phone": zod.boolean().describe('Made on the phone\'s calendar (migration 0036); its customer is chosen in k-vet.'),
+  "calendar_title": zod.string().nullish().describe('The title it was given on the phone — what the customer suggestions read.'),
+  "calendar_hidden": zod.boolean().describe('Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -114,7 +123,8 @@ export const PatchAppointmentParams = zod.object({
 export const PatchAppointmentBody = zod.object({
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish()
+  "customer_id": zod.int().nullish(),
+  "calendar_hidden": zod.boolean().nullish().describe('`false` puts an appointment deleted on the phone back into the calendar.')
 })
 
 export const PatchAppointmentResponse = zod.object({
@@ -130,9 +140,29 @@ export const PatchAppointmentResponse = zod.object({
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
+  "from_phone": zod.boolean().describe('Made on the phone\'s calendar (migration 0036); its customer is chosen in k-vet.'),
+  "calendar_title": zod.string().nullish().describe('The title it was given on the phone — what the customer suggestions read.'),
+  "calendar_hidden": zod.boolean().describe('Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+/**
+ * @summary For an appointment made on the phone: the customers whose name — or one of whose animals'
+names — appears in its title, best first. Only ever suggested; the vet picks.
+ */
+export const SuggestAppointmentCustomersParams = zod.object({
+  "id": zod.int()
+})
+
+export const SuggestAppointmentCustomersResponseItem = zod.object({
+  "id": zod.int(),
+  "name": zod.string(),
+  "city": zod.string().nullish(),
+  "patients": zod.array(zod.string()).describe('The customer\'s animals, which the title may name instead.')
+}).describe('A customer the title of an appointment made on the phone may mean.')
+export const SuggestAppointmentCustomersResponse = zod.array(SuggestAppointmentCustomersResponseItem)
 
 
 export const DuplicateAppointmentParams = zod.object({
@@ -156,6 +186,9 @@ export const DuplicateAppointmentResponse = zod.object({
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
+  "from_phone": zod.boolean().describe('Made on the phone\'s calendar (migration 0036); its customer is chosen in k-vet.'),
+  "calendar_title": zod.string().nullish().describe('The title it was given on the phone — what the customer suggestions read.'),
+  "calendar_hidden": zod.boolean().describe('Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -270,7 +303,12 @@ export const GetConfigResponse = zod.object({
   "default_country": zod.string().describe('ISO 3166-1 alpha-2, filled into a country field that has none.'),
   "version": zod.string().describe('The release this instance runs, from `KVET_VERSION` in the image; `dev` outside one.'),
   "environment_label": zod.string().nullish().describe('Set on every instance that is not the practice\'s own, and drawn as a banner. `None` on\nproduction.'),
-  "maps_enabled": zod.boolean().describe('A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses\nchecked. The key itself never leaves the server.')
+  "maps_enabled": zod.boolean().describe('A Google Maps key is configured: Wegegeld kilometres can be recomputed and addresses\nchecked. The key itself never leaves the server.'),
+  "dav": zod.union([zod.object({
+  "url": zod.string().describe('`{base_url}/dav/`.'),
+  "username": zod.string(),
+  "calendar_name": zod.string()
+}).describe('The phone calendar is served (`[dav] enabled`): where to point the sync app, and as\nwhom.'),zod.null()]).optional()
 })
 
 
@@ -4396,6 +4434,9 @@ export const MoveAnimalToOwnAppointmentResponse = zod.object({
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
   "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
+  "from_phone": zod.boolean().describe('Made on the phone\'s calendar (migration 0036); its customer is chosen in k-vet.'),
+  "calendar_title": zod.string().nullish().describe('The title it was given on the phone — what the customer suggestions read.'),
+  "calendar_hidden": zod.boolean().describe('Deleted on the phone but kept, because something was recorded on it; not in the\ncalendar until shown again.'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })

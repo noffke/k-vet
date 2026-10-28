@@ -2,13 +2,15 @@ import {
   AlertTriangle,
   Archive,
   BriefcaseMedical,
+  CalendarClock,
   CircleDashed,
+  EyeOff,
   FileWarning,
   MailWarning,
   ReceiptText,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { InvoiceStatus } from '@/api/generated/model'
+import type { Appointment, InvoiceStatus } from '@/api/generated/model'
 import { cn, toCamelCase } from '@/lib/utils'
 
 const badge =
@@ -131,6 +133,30 @@ export function RemindersBadge({ count }: { count: number | undefined }) {
       <BriefcaseMedical className="size-3" aria-hidden />
       {t('reminders.badge', { count })}
     </span>
+  )
+}
+
+/**
+ * What the phone's calendar did to an appointment: made there and still without a customer,
+ * or deleted there although kept here.
+ */
+export function CalendarBadges({ appointment }: { appointment: Appointment }) {
+  const { t } = useTranslation()
+  return (
+    <>
+      {appointment.from_phone && appointment.customer_id == null ? (
+        <span className={cn(badge, 'bg-rust-soft text-rust')}>
+          <CalendarClock className="size-3" aria-hidden />
+          {t('calendar.badgeFromPhone')}
+        </span>
+      ) : null}
+      {appointment.calendar_hidden ? (
+        <span className={cn(badge, 'bg-sunken text-ink-soft')}>
+          <EyeOff className="size-3" aria-hidden />
+          {t('calendar.badgeHidden')}
+        </span>
+      ) : null}
+    </>
   )
 }
 

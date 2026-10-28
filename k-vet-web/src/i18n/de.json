@@ -480,7 +480,14 @@
     "removeLogo": "Logo entfernen",
     "removeLogoConfirm": "Logo wirklich entfernen? Neue Rechnungen werden dann ohne Logo gedruckt.",
     "title": "Einstellungen",
-    "ustid": "USt-IdNr."
+    "ustid": "USt-IdNr.",
+    "phoneSync": "Kalender auf dem Handy",
+    "phoneSyncHint": "Die Termine erscheinen als Kalender auf dem Handy, über eine CalDAV-Sync-App. In der App ein Konto „mit URL und Benutzername“ anlegen und den Kalender auswählen. Das Handy muss k-vet erreichen (über das VPN der Praxis).",
+    "phoneSyncUrl": "Server-Adresse",
+    "phoneSyncUser": "Benutzername",
+    "phoneSyncPassword": "Passwort",
+    "phoneSyncPasswordValue": "das k-vet-Passwort — nach einer Änderung auch in der App eintragen",
+    "phoneSyncCalendar": "Kalender"
   },
   "error": {
     "generic": "Etwas ist schiefgelaufen.",
@@ -664,5 +671,16 @@
   "reminder": {
     "drugUnavailable": "Dieses Medikament ist nicht (mehr) verfügbar.",
     "alreadyTaken": "Schon als Position übernommen."
+  },
+  "calendar": {
+    "fromPhone": "Im Kalender auf dem Handy eingetragen",
+    "title": "„{{title}}“",
+    "noTitle": "Ohne Titel eingetragen.",
+    "suggestions": "Gemeint ist vielleicht:",
+    "pickBelow": "Den Kunden unten wählen.",
+    "hidden": "Im Kalender auf dem Handy gelöscht — hier behalten, weil schon etwas erfasst ist.",
+    "showAgain": "Wieder im Kalender zeigen",
+    "badgeFromPhone": "Aus Kalender",
+    "badgeHidden": "Im Kalender gelöscht"
   }
 }

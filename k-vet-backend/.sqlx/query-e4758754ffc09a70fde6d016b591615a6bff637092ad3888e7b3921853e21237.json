@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  ARRAY(SELECT patient.name FROM patient_treatment\n                        JOIN patient ON patient.id = patient_treatment.patient_id\n                        WHERE patient_treatment.treatment_id = treatment.id\n                          AND patient.name IS NOT NULL\n                        ORDER BY patient.name) AS \"patient_names!\",\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\",\n                  COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice\n                            WHERE invoice.treatment_id = treatment.id\n                              AND invoice.status <> 'cancelled'), false) AS \"pdf_stale!\",\n                  (SELECT count(*) FROM appointment_reminder\n                    WHERE appointment_reminder.appointment_id = appointment.id\n                      AND appointment_reminder.taken_item_id IS NULL) AS \"reminder_count!\"\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           WHERE appointment.id = $1",
+  "query": "SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,\n                  appointment.customer_id,\n                  concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,\n                  appointment.created_at, appointment.updated_at,\n                  treatment.id AS treatment_id,\n                  ARRAY(SELECT patient.name FROM patient_treatment\n                        JOIN patient ON patient.id = patient_treatment.patient_id\n                        WHERE patient_treatment.treatment_id = treatment.id\n                          AND patient.name IS NOT NULL\n                        ORDER BY patient.name) AS \"patient_names!\",\n                  (EXISTS (SELECT 1 FROM treatment_item\n                           WHERE treatment_item.treatment_id = treatment.id)\n                   AND NOT EXISTS (SELECT 1 FROM invoice\n                                   WHERE invoice.treatment_id = treatment.id\n                                     AND invoice.status <> 'cancelled')) AS \"unbilled!\",\n                  COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice\n                            WHERE invoice.treatment_id = treatment.id\n                              AND invoice.status <> 'cancelled'), false) AS \"pdf_stale!\",\n                  (SELECT count(*) FROM appointment_reminder\n                    WHERE appointment_reminder.appointment_id = appointment.id\n                      AND appointment_reminder.taken_item_id IS NULL) AS \"reminder_count!\",\n                  appointment.calendar_origin = 'phone' AS \"from_phone!\",\n                  appointment.calendar_title, appointment.calendar_hidden\n           FROM appointment\n           JOIN treatment ON treatment.appointment_id = appointment.id\n           LEFT JOIN customer ON customer.id = appointment.customer_id\n           WHERE appointment.id = $1",
   "describe": {
     "columns": [
       {
@@ -120,6 +120,34 @@
         "name": "reminder_count!",
         "type_info": "Int8",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 13,
+        "name": "from_phone!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 14,
+        "name": "calendar_title",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "calendar_title"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "calendar_hidden",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "appointment",
+            "name": "calendar_hidden"
+          }
+        }
       }
     ],
     "parameters": {
@@ -140,8 +168,11 @@
       null,
       null,
       null,
-      null
+      null,
+      null,
+      true,
+      false
     ]
   },
-  "hash": "9ec1a4a969c09b3963aa0a7b17de9a3be16f98f4b23509eba202119dda894a1f"
+  "hash": "e4758754ffc09a70fde6d016b591615a6bff637092ad3888e7b3921853e21237"
 }

@@ -32,6 +32,7 @@ pub fn version() -> &'static str {
 pub mod api;
 pub mod auth;
 pub mod config;
+pub mod dav;
 pub mod domain;
 pub mod error;
 pub mod jobs;
@@ -82,6 +83,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::treatments::add_patient,
         api::treatments::remove_patient,
         api::treatments::move_to_own_appointment,
+        api::appointments::customer_suggestions,
         api::reminders::list,
         api::reminders::create,
         api::reminders::patch_reminder,
@@ -267,6 +269,8 @@ pub struct AppState {
     /// Google Maps, when `[maps] api_key` is set.
     pub maps: Option<Arc<MapsClient>>,
     pub login_throttle: Arc<LoginThrottle>,
+    /// The phone calendar's last good login (`dav::require_basic`).
+    pub dav_logins: Arc<dav::Logins>,
 }
 
 impl AppState {
@@ -283,6 +287,7 @@ impl AppState {
             mailer,
             maps,
             login_throttle: Arc::new(LoginThrottle::default()),
+            dav_logins: Arc::new(dav::Logins::default()),
         })
     }
 }
@@ -322,9 +327,16 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
         .layer(middleware::from_fn(auth::require_auth));
 
     let api = Router::new().nest("/auth", auth::routes()).merge(protected);
+    // The phone's calendar signs in on every request, outside the session (`dav`).
+    let dav = if state.config.dav.enabled {
+        dav::routes(state.clone())
+    } else {
+        Router::new()
+    };
 
     Ok(Router::new()
         .nest("/api", api)
+        .merge(dav)
         .route("/healthz", get(healthz))
         // Scraped locally by Prometheus; no session, like the health probe.
         .route("/metrics", get(metrics::scrape))

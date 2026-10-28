@@ -107,6 +107,7 @@ The remaining decisions:
 | | `typst_template` | Empty uses the compiled-in PDF template. To edit it, point at `/etc/k-vet/templates/invoice.typ` — the entrypoint seeds it on first start. See [templates.md](templates.md). |
 | | `[[invoice.email_templates]]` | The email templates to choose from, `name` and `file` each, the first preselected. `file` is a name in `/etc/k-vet/templates`, where the entrypoint seeds `invoice-email.txt`; without the list that one is "Standard". A missing file is shown in the app, not a reason to stop. See [templates.md](templates.md). |
 | `[travel_expenses]` | `rate_per_double_km`, `minimum` | GOT § 10 values: `3.50` per double kilometre, `13.00` minimum. Update when the fee schedule changes. |
+| `[dav]` | `enabled`, `calendar_name`, `duration_minutes`, `past_days`, `time_zone` | Optional. The appointments as a calendar on the vet's phone — see [The calendar on the phone](#the-calendar-on-the-phone). Off unless `enabled = true`. |
 | `[maps]` | `api_key` | Optional. A Google Maps Platform key with the **Routes API** and the **Address Validation API** enabled, and restricted to those two. With it a new Wegegeld line fills in its kilometres (the last visit's, else Google's shortest route from the practice to the customer's home) and a customer's address is checked as it is typed. Empty, nothing is sent to Google and the kilometres are typed by hand; the "In Google Maps öffnen" links work either way. |
 
 **What Google receives**, with a key: the practice address and a customer's home address for a
@@ -363,6 +364,30 @@ Invoice PDFs are not affected — they open in the browser instead of downloadin
 No setting in k-vet changes this; serving it over HTTPS does. k-vet has no TLS of its own, so
 that means a reverse proxy in front with a certificate the devices trust, and
 `base_url = "https://…"`, which also marks the login cookie `Secure`.
+
+### The calendar on the phone
+
+With `[dav] enabled = true`, k-vet serves the appointments as a calendar over CalDAV at
+`<base_url>/dav/`. The phone syncs it with any CalDAV sync app, so the appointments appear in its
+calendar app; nothing goes to Google or anyone else.
+
+- **Reaching it.** The phone has to reach the Pi: in the practice's network, and on the road
+  through the practice's VPN (a router's own WireGuard is enough). If the phone cannot resolve
+  the Pi's name over the VPN, use its address.
+- **Signing in.** In the sync app, add an account "with URL and user name": the address from
+  *Einstellungen → Kalender auf dem Handy*, the k-vet user name and the k-vet password. After the
+  password is changed in `[auth]`, enter the new one in the app too. Plain HTTP works; the
+  password then crosses the practice network unencrypted, as the browser login does (inside the
+  VPN it is encrypted anyway). HTTPS via a reverse proxy closes that for both.
+- **What the phone shows.** Each appointment from `past_days` back on, with the customer, the
+  animals (name and species), the address to navigate to, the phone number, the note, the drugs
+  to bring, and a link back to k-vet; `duration_minutes` long.
+- **What the phone may change.** An entry made on the phone becomes an appointment; its customer
+  is chosen in k-vet, where customers named in its title are suggested. Moving an entry moves its
+  appointment, unless its invoice is already written. Deleting one deletes an empty appointment,
+  and only hides one with something recorded on it ("Wieder im Kalender zeigen" brings it back).
+  The texts of k-vet's entries are generated and not read back. All-day and recurring entries
+  cannot be appointments; they are kept as they are.
 
 ## Monitoring
 

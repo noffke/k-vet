@@ -106,6 +106,35 @@ fn verify_password(password: &str, encoded_hash: &str) -> bool {
     }
 }
 
+/// Why a sign-in was refused.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Refusal {
+    /// Too many failed attempts; wait.
+    Throttled,
+    /// Wrong user name or password.
+    Wrong,
+}
+
+/// Checks a user name and password as the login form does, with the same throttle. Also for the
+/// callers that sign in on every request instead of keeping a session: the phone's calendar
+/// (`/dav`).
+pub(crate) fn check_login(state: &AppState, username: &str, password: &str) -> Result<(), Refusal> {
+    let throttle_key = username.to_lowercase();
+    if !state.login_throttle.allow(&throttle_key) {
+        return Err(Refusal::Throttled);
+    }
+    let user_matches = username == state.config.auth.username;
+    // Verify regardless of the user name so timing does not reveal whether it exists.
+    let password_matches = verify_password(password, &state.config.auth.password_hash);
+    if !(user_matches && password_matches) {
+        state.login_throttle.record_failure(&throttle_key);
+        tracing::warn!(%username, "failed login attempt");
+        return Err(Refusal::Wrong);
+    }
+    state.login_throttle.reset(&throttle_key);
+    Ok(())
+}
+
 #[utoipa::path(
     post,
     path = "/api/auth/login",
@@ -122,25 +151,17 @@ pub async fn login(
     session: Session,
     Json(body): Json<LoginRequest>,
 ) -> AppResult<Json<SessionInfo>> {
-    let throttle_key = body.username.to_lowercase();
-    if !state.login_throttle.allow(&throttle_key) {
-        return Err(AppError::BadRequest(
-            "too many failed login attempts".to_owned(),
-        ));
+    match check_login(&state, &body.username, &body.password) {
+        Ok(()) => {}
+        Err(Refusal::Throttled) => {
+            return Err(AppError::BadRequest(
+                "too many failed login attempts".to_owned(),
+            ));
+        }
+        Err(Refusal::Wrong) => return Err(AppError::Unauthorized),
     }
 
     let expected_user = state.config.auth.username.as_str();
-    let user_matches = body.username == expected_user;
-    // Verify regardless of the user name so timing does not reveal whether it exists.
-    let password_matches = verify_password(&body.password, &state.config.auth.password_hash);
-
-    if !(user_matches && password_matches) {
-        state.login_throttle.record_failure(&throttle_key);
-        tracing::warn!(username = %body.username, "failed login attempt");
-        return Err(AppError::Unauthorized);
-    }
-
-    state.login_throttle.reset(&throttle_key);
     session
         .insert(SESSION_USER_KEY, expected_user.to_owned())
         .await
