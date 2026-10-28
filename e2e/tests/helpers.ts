@@ -115,7 +115,8 @@ export async function navigate(page: Page, label: string): Promise<void> {
   const link = page.getByRole('link', { name: label }).filter({ visible: true })
   if ((await link.count()) === 0) {
     // Sections that live in the phone overflow sheet.
-    await page.getByRole('button', { name: 'Öffnen' }).click()
+    // Exactly: a date field on the page has "Kalender öffnen".
+    await page.getByRole('button', { name: 'Öffnen', exact: true }).click()
   }
   await page.getByRole('link', { name: label }).filter({ visible: true }).first().click()
   await expectNoSidewaysScroll(page)

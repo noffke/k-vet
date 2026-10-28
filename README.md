@@ -18,7 +18,11 @@ layouts are first-class — not one design squeezed onto a phone.
   them. Both texts take bold, italic, underline and lists, with typography as you type
   (`->` becomes `→`), and the invoice prints them that way. **Textbausteine** are a library of
   named snippets, formatted too, that drop into either text at the cursor, so the sentences that
-  repeat every visit are not retyped on a phone.
+  repeat every visit are not retyped on a phone. The list splits into **Anstehend** (by day) and
+  **Vergangen**.
+- **Mitbringen and Packliste** — drugs a customer phoned in for go on the future appointment as
+  reminders (nothing dispensed yet); each day's Packliste adds them up, checks the shelf, and is
+  ticked off while packing. At the visit one click makes a reminder a dispensed position.
 - **Pharmacy** — drugs with original and subset packagings, lot-based stock with FEFO
   dispensing, stocktakes that book the difference, and an append-only movement history.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV

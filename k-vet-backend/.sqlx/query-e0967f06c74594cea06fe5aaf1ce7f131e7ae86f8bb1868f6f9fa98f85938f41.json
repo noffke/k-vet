@@ -1,0 +1,30 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO appointment_reminder (appointment_id, drug_packaging_id, quantity, position)\n         VALUES ($1, $2, $3,\n                 (SELECT COALESCE(MAX(position), 0) + 1 FROM appointment_reminder\n                   WHERE appointment_id = $1))\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "e0967f06c74594cea06fe5aaf1ce7f131e7ae86f8bb1868f6f9fa98f85938f41"
+}

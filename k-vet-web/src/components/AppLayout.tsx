@@ -1,6 +1,7 @@
 import * as Dialog from '@radix-ui/react-dialog'
 import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
+  BriefcaseMedical,
   Building2,
   Calculator,
   CalendarDays,
@@ -40,6 +41,7 @@ const NAV: NavItem[] = [
   { to: '/pharmacy', labelKey: 'nav.pharmacy', icon: Package, onTabBar: true },
   // First under "Öffnen" on the phone: it is asked for while a caller is on the line.
   { to: '/quote', labelKey: 'nav.quote', icon: Calculator },
+  { to: '/packing-list', labelKey: 'nav.packingList', icon: BriefcaseMedical },
   { to: '/services', labelKey: 'nav.services', icon: Stethoscope },
   { to: '/templates', labelKey: 'nav.templates', icon: FileText },
   { to: '/text-blocks', labelKey: 'nav.textBlocks', icon: NotebookPen },
@@ -70,7 +72,7 @@ export function AppLayout() {
       <EnvironmentBanner />
       <div className="flex flex-1 flex-col sm:flex-row">
         {/* Desktop rail */}
-        <nav className="hidden w-56 shrink-0 flex-col border-r border-line bg-cream px-3 py-4 sm:flex">
+        <nav className="hidden w-56 shrink-0 flex-col border-r border-line bg-cream px-3 py-4 sm:flex print:hidden">
           <Link to="/" className="px-2">
             <span className="block text-[0.6875rem] font-bold uppercase tracking-[0.18em] text-ink-soft">
               {t('app.practice')}
@@ -113,7 +115,7 @@ export function AppLayout() {
         </nav>
 
         {/* Phone header */}
-        <header className="flex items-center justify-between border-b border-line bg-cream px-4 py-2.5 sm:hidden">
+        <header className="flex items-center justify-between border-b border-line bg-cream px-4 py-2.5 sm:hidden print:hidden">
           <Link to="/" className="text-lg font-bold uppercase tracking-tight text-rust">
             k-vet
           </Link>
@@ -125,7 +127,7 @@ export function AppLayout() {
         </main>
 
         {/* Phone tab bar */}
-        <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-cream pb-[env(safe-area-inset-bottom)] sm:hidden">
+        <nav className="fixed inset-x-0 bottom-0 z-20 flex border-t border-line bg-cream pb-[env(safe-area-inset-bottom)] sm:hidden print:hidden">
           {tabItems.map((item) => (
             <Link
               key={item.to}

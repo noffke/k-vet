@@ -1,0 +1,165 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH stock AS (\n               SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id\n           )\n           SELECT reminder.id, reminder.appointment_id, reminder.drug_packaging_id,\n                  drug.id AS drug_id, COALESCE(drug.name, '') AS \"name!\",\n                  packaging.unit, packaging.quantity AS size,\n                  reminder.quantity, reminder.note, reminder.packed, reminder.position,\n                  reminder.taken_item_id,\n                  (original.id IS NOT NULL\n                   AND COALESCE(stock.remaining, 0)\n                       < reminder.quantity * COALESCE(packaging.quantity, 1)) AS \"stock_short!\"\n           FROM appointment_reminder reminder\n           JOIN appointment ON appointment.id = reminder.appointment_id\n           JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN drug_packaging original\n                  ON original.drug_id = drug.id AND original.kind = 'original'\n           LEFT JOIN stock ON stock.drug_id = drug.id\n           WHERE ($1::bigint IS NULL OR reminder.id = $1)\n             AND ($2::bigint IS NULL OR reminder.appointment_id = $2)\n             AND ($3::timestamptz IS NULL\n                  OR (appointment.starts_at >= $3 AND appointment.starts_at < $4\n                      AND reminder.taken_item_id IS NULL))\n           ORDER BY appointment.starts_at, reminder.appointment_id, reminder.position",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "appointment_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "appointment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "drug_packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "drug_packaging_id"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "drug_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "quantity",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "note",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "note"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "packed",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "packed"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "position",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "position"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "taken_item_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "taken_item_id"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "stock_short!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int8",
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      false,
+      false,
+      null,
+      true,
+      true,
+      false,
+      true,
+      false,
+      false,
+      true,
+      null
+    ]
+  },
+  "hash": "ac2107bf94be9ef3cd852c2fbe4aa2732eb6111e1468fe762b4bf7c7a69a0854"
+}

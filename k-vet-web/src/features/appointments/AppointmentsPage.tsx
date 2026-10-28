@@ -1,6 +1,6 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate, useSearch } from '@tanstack/react-router'
+import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -13,7 +13,12 @@ import type { Appointment, ListAppointmentsWhen } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
-import { IncompleteBadge, NotBilledBadge, PdfStaleBadge } from '@/components/RecordBadges'
+import {
+  IncompleteBadge,
+  NotBilledBadge,
+  PdfStaleBadge,
+  RemindersBadge,
+} from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { formatDayHeading, todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
@@ -58,6 +63,12 @@ export function AppointmentsPage() {
 
   const today = todayIso()
   const tomorrow = nextDay(today)
+  // The days with something to bring get a link to their Packliste.
+  const packingDays = new Set(
+    appointments.rows
+      .filter((row) => row.starts_at && row.reminder_count > 0)
+      .map((row) => scheduleOf(row.starts_at as string).date),
+  )
   /** "Heute · Di., 27.10.", "Morgen · …", "Fr., 30.10." — or the drafts' "Ohne Datum". */
   const dayOf = (row: Appointment): { key: string; label: ReactNode } => {
     if (!row.starts_at) return { key: 'undated', label: t('appointments.undated') }
@@ -69,7 +80,23 @@ export function AppointmentsPage() {
         : day === tomorrow
           ? `${t('appointments.tomorrow')} · ${heading}`
           : heading
-    return { key: day, label }
+    return {
+      key: day,
+      label: packingDays.has(day) ? (
+        <span className="flex flex-wrap items-baseline justify-between gap-2">
+          <span>{label}</span>
+          <Link
+            to="/packing-list"
+            search={{ date: day }}
+            className="text-xs font-medium text-rust underline-offset-2 hover:underline"
+          >
+            {t('reminders.packingListLink')}
+          </Link>
+        </span>
+      ) : (
+        label
+      ),
+    }
   }
 
   const columns: DataListColumn<Appointment>[] = [
@@ -164,6 +191,7 @@ export function AppointmentsPage() {
                 <IncompleteBadge missing={row.missing_fields} />
                 <NotBilledBadge count={row.unbilled ? 1 : 0} />
                 <PdfStaleBadge stale={row.pdf_stale} />
+                <RemindersBadge count={row.reminder_count} />
               </span>
             )}
             onRowClick={(row) =>

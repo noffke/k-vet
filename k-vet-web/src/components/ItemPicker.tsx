@@ -38,6 +38,8 @@ interface ItemPickerProps {
    * animal yet: every other line belongs to an animal, and the server would refuse it there.
    */
   perVisitOnly?: boolean
+  /** Offers drugs only — what a "Mitbringen" reminder can be. */
+  drugsOnly?: boolean
   disabled?: boolean
   placeholder?: string
 }
@@ -55,6 +57,7 @@ export function ItemPicker({
   onPick,
   onPickTemplate,
   perVisitOnly = false,
+  drugsOnly = false,
   disabled,
   placeholder,
 }: ItemPickerProps) {
@@ -85,7 +88,9 @@ export function ItemPicker({
   // An unfinished group would apply nothing, so it is not offered.
   const groups = onPickTemplate ? (templates.data ?? []).filter((template) => !template.draft) : []
   const items = (results.data ?? []).filter(
-    (item) => !perVisitOnly || (item.kind === 'service' && item.per_visit),
+    (item) =>
+      (!perVisitOnly || (item.kind === 'service' && item.per_visit)) &&
+      (!drugsOnly || item.kind === 'drug_packaging'),
   )
 
   return (

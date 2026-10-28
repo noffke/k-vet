@@ -1,0 +1,32 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE appointment_reminder SET\n             quantity = COALESCE($2, quantity),\n             note     = CASE WHEN $3 THEN $4 ELSE note END,\n             packed   = COALESCE($5, packed)\n         WHERE id = $1\n         RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Bool",
+        "Text",
+        "Bool"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "d10f3171614184613f2b5fc82e5c968ad26498f3879993410e34f003f7a7fb1f"
+}

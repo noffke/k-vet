@@ -22,6 +22,7 @@ pub mod patients;
 pub mod picker;
 pub mod price_quotes;
 pub mod pricing;
+pub mod reminders;
 pub mod services;
 pub mod settings;
 pub mod suppliers;
@@ -51,6 +52,7 @@ pub fn protected_routes() -> Router<AppState> {
         .merge(picker::routes())
         .merge(price_quotes::routes())
         .merge(pricing::routes())
+        .merge(reminders::routes())
         .merge(services::routes())
         .merge(settings::routes())
         .merge(suppliers::routes())

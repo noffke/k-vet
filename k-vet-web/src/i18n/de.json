@@ -17,7 +17,8 @@
     "settings": "Einstellungen",
     "templates": "Behandlungsgruppen",
     "textBlocks": "Textbausteine",
-    "quote": "Preisauskunft"
+    "quote": "Preisauskunft",
+    "packingList": "Packliste"
   },
   "login": {
     "expired": "Ihre Sitzung ist abgelaufen. Bitte melden Sie sich erneut an.",
@@ -631,5 +632,37 @@
     "pricesQuoted": "wie angeboten ({{amount}})",
     "pricesToday": "heutige Preise ({{amount}})",
     "otherCustomer": "Die Preisauskunft gehört zu einem anderen Kunden"
+  },
+  "reminders": {
+    "title": "Mitbringen",
+    "hint": "Medikamente, um die der Kunde gebeten hat — noch nicht abgegeben, keinem Tier zugeordnet. Am Termin als Position übernehmen.",
+    "pickerPlaceholder": "Medikament suchen …",
+    "packingListLink": "Packliste",
+    "note": "Notiz",
+    "notePlaceholder": "z. B. für Bello",
+    "packed": "Gepackt",
+    "take": "Als Position übernehmen",
+    "takeBlocked": "Erst ein Tier am Termin erfassen; nach der Freigabe der Rechnung nicht mehr möglich.",
+    "takeFor": "„{{name}}“ für welches Tier?",
+    "taken": "„{{name}}“ als Position übernommen",
+    "takenMark": "Übernommen",
+    "stockShort": "Bestand reicht nicht",
+    "delete": "Mitbringen entfernen",
+    "deleteConfirm": "„{{name}}“ von der Liste nehmen?",
+    "badge": "{{count}} Mitbr."
+  },
+  "packing": {
+    "title": "Packliste",
+    "forDay": "Was für {{date}} mitzunehmen ist",
+    "print": "Drucken",
+    "day": "Tag",
+    "nothing": "Für diesen Tag ist nichts mitzunehmen.",
+    "together": "Zusammen",
+    "byVisit": "Nach Termin",
+    "short": "Bestand reicht nicht ({{stock}} da)"
+  },
+  "reminder": {
+    "drugUnavailable": "Dieses Medikament ist nicht (mehr) verfügbar.",
+    "alreadyTaken": "Schon als Position übernommen."
   }
 }

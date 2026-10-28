@@ -1,0 +1,93 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH day AS (\n               SELECT reminder.drug_packaging_id, reminder.quantity,\n                      packaging.drug_id, packaging.quantity AS size\n               FROM appointment_reminder reminder\n               JOIN appointment ON appointment.id = reminder.appointment_id\n               JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n               WHERE appointment.starts_at >= $1 AND appointment.starts_at < $2\n                 AND reminder.taken_item_id IS NULL\n           ),\n           need AS (\n               SELECT drug_id, SUM(quantity * COALESCE(size, 1)) AS base FROM day GROUP BY drug_id\n           ),\n           stock AS (\n               SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id\n           )\n           SELECT day.drug_packaging_id, day.drug_id, COALESCE(drug.name, '') AS \"name!\",\n                  packaging.unit, packaging.quantity AS size,\n                  SUM(day.quantity) AS \"quantity!\",\n                  COALESCE(MAX(stock.remaining), 0) AS \"in_stock!\",\n                  (bool_or(original.id IS NOT NULL)\n                   AND COALESCE(MAX(stock.remaining), 0) < MAX(need.base)) AS \"short!\"\n           FROM day\n           JOIN drug ON drug.id = day.drug_id\n           JOIN drug_packaging packaging ON packaging.id = day.drug_packaging_id\n           JOIN need ON need.drug_id = day.drug_id\n           LEFT JOIN drug_packaging original\n                  ON original.drug_id = day.drug_id AND original.kind = 'original'\n           LEFT JOIN stock ON stock.drug_id = day.drug_id\n           GROUP BY day.drug_packaging_id, day.drug_id, drug.name, packaging.unit,\n                    packaging.quantity\n           ORDER BY drug.name, packaging.quantity",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drug_packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "drug_packaging_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "drug_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "drug_id"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 3,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "quantity"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "quantity!",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 6,
+        "name": "in_stock!",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 7,
+        "name": "short!",
+        "type_info": "Bool",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Timestamptz",
+        "Timestamptz"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      null,
+      true,
+      true,
+      null,
+      null,
+      null
+    ]
+  },
+  "hash": "f00ac317189eb751942e5682a57a59d014193ac7d5970718243e1bb385c5fc78"
+}

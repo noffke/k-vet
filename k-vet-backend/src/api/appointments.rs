@@ -45,6 +45,8 @@ pub struct Appointment {
     pub unbilled: bool,
     /// The live invoice's PDF no longer shows the treatment as it is (migration 0034).
     pub pdf_stale: bool,
+    /// Drugs to bring that are not yet a position ("Mitbringen", migration 0035).
+    pub reminder_count: i64,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -78,6 +80,7 @@ struct Row {
     treatment_id: i64,
     unbilled: bool,
     pdf_stale: bool,
+    reminder_count: i64,
     created_at: DateTime<Utc>,
     updated_at: DateTime<Utc>,
 }
@@ -96,6 +99,7 @@ impl From<Row> for Appointment {
             treatment_id: row.treatment_id,
             unbilled: row.unbilled,
             pdf_stale: row.pdf_stale,
+            reminder_count: row.reminder_count,
             created_at: row.created_at,
             updated_at: row.updated_at,
         }
@@ -143,7 +147,10 @@ pub async fn list(
                                      AND invoice.status <> 'cancelled')) AS "unbilled!",
                   COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice
                             WHERE invoice.treatment_id = treatment.id
-                              AND invoice.status <> 'cancelled'), false) AS "pdf_stale!"
+                              AND invoice.status <> 'cancelled'), false) AS "pdf_stale!",
+                  (SELECT count(*) FROM appointment_reminder
+                    WHERE appointment_reminder.appointment_id = appointment.id
+                      AND appointment_reminder.taken_item_id IS NULL) AS "reminder_count!"
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id
@@ -290,7 +297,10 @@ pub(crate) async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment>
                                      AND invoice.status <> 'cancelled')) AS "unbilled!",
                   COALESCE((SELECT invoice_pdf_out_of_date(invoice.id) FROM invoice
                             WHERE invoice.treatment_id = treatment.id
-                              AND invoice.status <> 'cancelled'), false) AS "pdf_stale!"
+                              AND invoice.status <> 'cancelled'), false) AS "pdf_stale!",
+                  (SELECT count(*) FROM appointment_reminder
+                    WHERE appointment_reminder.appointment_id = appointment.id
+                      AND appointment_reminder.taken_item_id IS NULL) AS "reminder_count!"
            FROM appointment
            JOIN treatment ON treatment.appointment_id = appointment.id
            LEFT JOIN customer ON customer.id = appointment.customer_id

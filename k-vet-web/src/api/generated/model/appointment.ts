@@ -46,6 +46,8 @@ export interface Appointment {
   unbilled: boolean;
   /** The live invoice's PDF no longer shows the treatment as it is (migration 0034). */
   pdf_stale: boolean;
+  /** Drugs to bring that are not yet a position ("Mitbringen", migration 0035). */
+  reminder_count: number;
   created_at: string;
   updated_at: string;
 }

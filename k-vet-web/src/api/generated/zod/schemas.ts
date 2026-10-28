@@ -47,6 +47,7 @@ export const ListAppointmentsResponseItem = zod.object({
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
+  "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -71,6 +72,7 @@ export const CreateAppointmentResponse = zod.object({
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
+  "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -92,6 +94,7 @@ export const GetAppointmentResponse = zod.object({
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
+  "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -126,6 +129,7 @@ export const PatchAppointmentResponse = zod.object({
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
+  "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -151,8 +155,57 @@ export const DuplicateAppointmentResponse = zod.object({
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
+  "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const ListRemindersParams = zod.object({
+  "id": zod.int()
+})
+
+export const ListRemindersResponseItem = zod.object({
+  "id": zod.int(),
+  "appointment_id": zod.int(),
+  "drug_packaging_id": zod.int(),
+  "drug_id": zod.int(),
+  "name": zod.string().describe('The drug\'s name.'),
+  "unit": zod.string().nullish(),
+  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
+  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "note": zod.string().nullish(),
+  "packed": zod.boolean().describe('Ticked off on the Packliste.'),
+  "position": zod.int(),
+  "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+})
+export const ListRemindersResponse = zod.array(ListRemindersResponseItem)
+
+
+export const CreateReminderParams = zod.object({
+  "id": zod.int()
+})
+
+export const CreateReminderBody = zod.object({
+  "drug_packaging_id": zod.int(),
+  "quantity": zod.string().nullish().describe('Packagings; one when left out.')
+})
+
+export const CreateReminderResponse = zod.object({
+  "id": zod.int(),
+  "appointment_id": zod.int(),
+  "drug_packaging_id": zod.int(),
+  "drug_id": zod.int(),
+  "name": zod.string().describe('The drug\'s name.'),
+  "unit": zod.string().nullish(),
+  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
+  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "note": zod.string().nullish(),
+  "packed": zod.boolean().describe('Ticked off on the Packliste.'),
+  "position": zod.int(),
+  "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
 })
 
 
@@ -1666,6 +1719,51 @@ export const CreateStockIntakeResponse = zod.object({
 })
 
 
+/**
+ * @summary What to pack for a day: every drug the day's appointments are to get, added up per
+packaging and checked against the shelf, and the same items appointment by appointment.
+Reminders already taken into a position are not on it.
+ */
+export const GetPackingListQueryParams = zod.object({
+  "date": zod.iso.date().optional().describe('The day (`yyyy-MM-dd`, the practice\'s own); today when left out.')
+})
+
+export const GetPackingListResponse = zod.object({
+  "date": zod.iso.date(),
+  "totals": zod.array(zod.object({
+  "drug_packaging_id": zod.int(),
+  "drug_id": zod.int(),
+  "name": zod.string(),
+  "unit": zod.string().nullish(),
+  "size": zod.string().nullish(),
+  "quantity": zod.string().describe('Packagings, summed over the day\'s appointments.'),
+  "in_stock": zod.string().describe('What the drug\'s lots hold together, in base units.'),
+  "short": zod.boolean().describe('The day needs more of the drug than its lots hold — counted over all of the drug\'s\npackagings, since they draw from the same lots.')
+}).describe('One packaging\'s total for the day, and whether the shelf covers the drug.')),
+  "appointments": zod.array(zod.object({
+  "appointment_id": zod.int(),
+  "starts_at": zod.iso.datetime({"offset":true}),
+  "customer_name": zod.string().nullish(),
+  "patients": zod.array(zod.string()),
+  "reminders": zod.array(zod.object({
+  "id": zod.int(),
+  "appointment_id": zod.int(),
+  "drug_packaging_id": zod.int(),
+  "drug_id": zod.int(),
+  "name": zod.string().describe('The drug\'s name.'),
+  "unit": zod.string().nullish(),
+  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
+  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "note": zod.string().nullish(),
+  "packed": zod.boolean().describe('Ticked off on the Packliste.'),
+  "position": zod.int(),
+  "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+}))
+}).describe('An appointment of the day with what to bring to it.'))
+})
+
+
 export const PatchPatientFileParams = zod.object({
   "id": zod.int()
 })
@@ -2475,6 +2573,69 @@ export const PatchQuoteResponse = zod.object({
   "total_gross": zod.string().describe('As quoted: what the caller was told.'),
   "today_total_gross": zod.string().describe('What the same positions cost at today\'s catalogue.'),
   "prices_changed": zod.boolean().describe('A line\'s price or VAT is no longer what was quoted.')
+})
+
+
+export const DeleteReminderParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteReminderResponse = zod.void()
+
+
+export const PatchReminderParams = zod.object({
+  "id": zod.int()
+})
+
+export const PatchReminderBody = zod.object({
+  "quantity": zod.string().nullish(),
+  "note": zod.string().nullish(),
+  "packed": zod.boolean().nullish()
+})
+
+export const PatchReminderResponse = zod.object({
+  "id": zod.int(),
+  "appointment_id": zod.int(),
+  "drug_packaging_id": zod.int(),
+  "drug_id": zod.int(),
+  "name": zod.string().describe('The drug\'s name.'),
+  "unit": zod.string().nullish(),
+  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
+  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "note": zod.string().nullish(),
+  "packed": zod.boolean().describe('Ticked off on the Packliste.'),
+  "position": zod.int(),
+  "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+})
+
+
+/**
+ * @summary Turns a reminder into a position: the drug, the quantity, on the animal named (or the visit's
+only one), dispensed from the lots as if picked — and the reminder points at it from then on.
+ */
+export const TakeReminderParams = zod.object({
+  "id": zod.int()
+})
+
+export const TakeReminderBody = zod.object({
+  "patient_treatment_id": zod.int().nullish().describe('The animal it is for. Left out, the visit\'s only animal (FR-028).')
+})
+
+export const TakeReminderResponse = zod.object({
+  "id": zod.int(),
+  "appointment_id": zod.int(),
+  "drug_packaging_id": zod.int(),
+  "drug_id": zod.int(),
+  "name": zod.string().describe('The drug\'s name.'),
+  "unit": zod.string().nullish(),
+  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
+  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "note": zod.string().nullish(),
+  "packed": zod.boolean().describe('Ticked off on the Packliste.'),
+  "position": zod.int(),
+  "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
 })
 
 
@@ -4234,6 +4395,7 @@ export const MoveAnimalToOwnAppointmentResponse = zod.object({
   "treatment_id": zod.int().describe('The appointment\'s one treatment, made with it.'),
   "unbilled": zod.boolean().describe('The treatment carries positions and no live invoice — work that has not been billed to\nanyone yet (FR-036).'),
   "pdf_stale": zod.boolean().describe('The live invoice\'s PDF no longer shows the treatment as it is (migration 0034).'),
+  "reminder_count": zod.int().describe('Drugs to bring that are not yet a position ("Mitbringen", migration 0035).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })

@@ -44,6 +44,7 @@ import type {
   CreatePackaging,
   CreatePatient,
   CreateQuote,
+  CreateReminder,
   CreateService,
   CreateTemplateItem,
   CreateTreatmentItem,
@@ -52,6 +53,7 @@ import type {
   Drug,
   DuplicateRequest,
   EmailTemplate,
+  GetPackingListParams,
   Invoice,
   ListAppointmentsParams,
   ListCustomersParams,
@@ -72,6 +74,7 @@ import type {
   MoveRequest,
   OperatorConfig,
   Packaging,
+  PackingList,
   PatchAddressBookEntry,
   PatchAppointment,
   PatchCustomer,
@@ -82,6 +85,7 @@ import type {
   PatchPatientFile,
   PatchPatientTreatment,
   PatchQuote,
+  PatchReminder,
   PatchService,
   PatchSettings,
   PatchTemplate,
@@ -101,10 +105,12 @@ import type {
   QuoteDistance,
   QuoteDistanceRequest,
   QuoteSummary,
+  Reminder,
   SendInvoice,
   Service,
   SessionInfo,
   Settings,
+  TakeReminder,
   Template,
   TemplateItem,
   TextBlock,
@@ -726,6 +732,184 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getDuplicateAppointmentMutationOptions(options), queryClient);
+    }
+
+export const getListRemindersUrl = (id: number,) => {
+
+
+
+
+  return `/api/appointments/${id}/reminders`
+}
+
+export const listReminders = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<Reminder[]> => {
+
+  return apiFetch<Reminder[]>(getListRemindersUrl(id),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getListRemindersQueryKey = (id: number,) => {
+    return [
+    `/api/appointments/${id}/reminders`
+    ] as const;
+    }
+
+
+export const getListRemindersQueryOptions = <TData = Awaited<ReturnType<typeof listReminders>>, TError = unknown>(id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listReminders>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getListRemindersQueryKey(id);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof listReminders>>> = ({ signal }) => listReminders(id, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, enabled: id !== null && id !== undefined, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof listReminders>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type ListRemindersQueryResult = NonNullable<Awaited<ReturnType<typeof listReminders>>>
+export type ListRemindersQueryError = unknown
+
+
+export function useListReminders<TData = Awaited<ReturnType<typeof listReminders>>, TError = unknown>(
+ id: number, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof listReminders>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listReminders>>,
+          TError,
+          Awaited<ReturnType<typeof listReminders>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListReminders<TData = Awaited<ReturnType<typeof listReminders>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listReminders>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof listReminders>>,
+          TError,
+          Awaited<ReturnType<typeof listReminders>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useListReminders<TData = Awaited<ReturnType<typeof listReminders>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listReminders>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+
+export function useListReminders<TData = Awaited<ReturnType<typeof listReminders>>, TError = unknown>(
+ id: number, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof listReminders>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getListRemindersQueryOptions(id,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
+export const getCreateReminderUrl = (id: number,) => {
+
+
+
+
+  return `/api/appointments/${id}/reminders`
+}
+
+export const createReminder = async (id: number,
+    createReminderBody: CreateReminder, options?: Parameters<typeof apiFetch>[1]): Promise<Reminder> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<Reminder>(getCreateReminderUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(createReminderBody)
+  }
+);}
+
+
+
+
+
+export const getCreateReminderMutationKey = () => ['createReminder'] as const;
+
+export const getCreateReminderMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReminder>>, TError,CreateReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof createReminder>>, TError,CreateReminderMutationVariables, TContext> => {
+
+const mutationKey = getCreateReminderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof createReminder>>, CreateReminderMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  createReminder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type CreateReminderMutationResult = NonNullable<Awaited<ReturnType<typeof createReminder>>>
+    export type CreateReminderMutationBody = CreateReminder
+    export type CreateReminderMutationError = void
+    export type CreateReminderMutationVariables = {id: number;data: CreateReminder}
+
+    export const useCreateReminder = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof createReminder>>, TError,CreateReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof createReminder>>,
+        TError,
+        CreateReminderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getCreateReminderMutationOptions(options), queryClient);
     }
 
 export const getUploadAttachmentUrl = () => {
@@ -4900,6 +5084,118 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
       return useMutation(getCreateStockIntakeMutationOptions(options), queryClient);
     }
 
+export const getGetPackingListUrl = (params?: GetPackingListParams,) => {
+  const normalizedParams = new URLSearchParams();
+
+  Object.entries(params || {}).forEach(([key, value]) => {
+
+    if (value !== undefined) {
+      normalizedParams.append(key, value === null ? 'null' : String(value))
+    }
+  });
+
+  const stringifiedParams = normalizedParams.toString();
+
+  return stringifiedParams.length > 0 ? `/api/packing-list?${stringifiedParams}` : `/api/packing-list`
+}
+
+/**
+ * @summary What to pack for a day: every drug the day's appointments are to get, added up per
+packaging and checked against the shelf, and the same items appointment by appointment.
+Reminders already taken into a position are not on it.
+ */
+export const getPackingList = async (params?: GetPackingListParams, options?: Parameters<typeof apiFetch>[1]): Promise<PackingList> => {
+
+  return apiFetch<PackingList>(getGetPackingListUrl(params),
+  {
+    ...options,
+    method: 'GET'
+
+
+  }
+);}
+
+
+
+
+
+export const getGetPackingListQueryKey = (params?: GetPackingListParams,) => {
+    return [
+    `/api/packing-list`, ...(params ? [params] : [])
+    ] as const;
+    }
+
+
+export const getGetPackingListQueryOptions = <TData = Awaited<ReturnType<typeof getPackingList>>, TError = unknown>(params?: GetPackingListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPackingList>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+) => {
+
+const {query: queryOptions, request: requestOptions} = options ?? {};
+
+  const queryKey =  queryOptions?.queryKey ?? getGetPackingListQueryKey(params);
+
+
+
+    const queryFn: QueryFunction<Awaited<ReturnType<typeof getPackingList>>> = ({ signal }) => getPackingList(params, { signal, ...requestOptions });
+
+
+
+
+
+   return  { queryKey, queryFn, ...queryOptions} as UseQueryOptions<Awaited<ReturnType<typeof getPackingList>>, TError, TData> & { queryKey: DataTag<QueryKey, TData, TError> }
+}
+
+export type GetPackingListQueryResult = NonNullable<Awaited<ReturnType<typeof getPackingList>>>
+export type GetPackingListQueryError = unknown
+
+
+export function useGetPackingList<TData = Awaited<ReturnType<typeof getPackingList>>, TError = unknown>(
+ params: undefined |  GetPackingListParams, options: { query:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPackingList>>, TError, TData>> & Pick<
+        DefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPackingList>>,
+          TError,
+          Awaited<ReturnType<typeof getPackingList>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  DefinedUseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPackingList<TData = Awaited<ReturnType<typeof getPackingList>>, TError = unknown>(
+ params?: GetPackingListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPackingList>>, TError, TData>> & Pick<
+        UndefinedInitialDataOptions<
+          Awaited<ReturnType<typeof getPackingList>>,
+          TError,
+          Awaited<ReturnType<typeof getPackingList>>
+        > , 'initialData'
+      >, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+export function useGetPackingList<TData = Awaited<ReturnType<typeof getPackingList>>, TError = unknown>(
+ params?: GetPackingListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPackingList>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+  ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
+/**
+ * @summary What to pack for a day: every drug the day's appointments are to get, added up per
+packaging and checked against the shelf, and the same items appointment by appointment.
+Reminders already taken into a position are not on it.
+ */
+
+export function useGetPackingList<TData = Awaited<ReturnType<typeof getPackingList>>, TError = unknown>(
+ params?: GetPackingListParams, options?: { query?:Partial<UseQueryOptions<Awaited<ReturnType<typeof getPackingList>>, TError, TData>>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient
+ ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> } {
+
+  const queryOptions = getGetPackingListQueryOptions(params,options)
+
+  const query = useQuery(queryOptions, queryClient) as  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> };
+
+  return withQueryKey(query, queryOptions.queryKey);
+}
+
+
+
+
+
+
+
 export const getPatchPatientFileUrl = (id: number,) => {
 
 
@@ -6828,6 +7124,248 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getPatchQuoteMutationOptions(options), queryClient);
+    }
+
+export const getDeleteReminderUrl = (id: number,) => {
+
+
+
+
+  return `/api/reminders/${id}`
+}
+
+export const deleteReminder = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteReminderUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteReminderMutationKey = () => ['deleteReminder'] as const;
+
+export const getDeleteReminderMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReminder>>, TError,DeleteReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteReminder>>, TError,DeleteReminderMutationVariables, TContext> => {
+
+const mutationKey = getDeleteReminderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteReminder>>, DeleteReminderMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteReminder(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteReminderMutationResult = NonNullable<Awaited<ReturnType<typeof deleteReminder>>>
+
+    export type DeleteReminderMutationError = void
+    export type DeleteReminderMutationVariables = {id: number}
+
+    export const useDeleteReminder = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteReminder>>, TError,DeleteReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteReminder>>,
+        TError,
+        DeleteReminderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteReminderMutationOptions(options), queryClient);
+    }
+
+export const getPatchReminderUrl = (id: number,) => {
+
+
+
+
+  return `/api/reminders/${id}`
+}
+
+export const patchReminder = async (id: number,
+    patchReminderBody: PatchReminder, options?: Parameters<typeof apiFetch>[1]): Promise<Reminder> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<Reminder>(getPatchReminderUrl(id),
+  {
+    ...options,
+    method: 'PATCH',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(patchReminderBody)
+  }
+);}
+
+
+
+
+
+export const getPatchReminderMutationKey = () => ['patchReminder'] as const;
+
+export const getPatchReminderMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchReminder>>, TError,PatchReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof patchReminder>>, TError,PatchReminderMutationVariables, TContext> => {
+
+const mutationKey = getPatchReminderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof patchReminder>>, PatchReminderMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  patchReminder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type PatchReminderMutationResult = NonNullable<Awaited<ReturnType<typeof patchReminder>>>
+    export type PatchReminderMutationBody = PatchReminder
+    export type PatchReminderMutationError = void
+    export type PatchReminderMutationVariables = {id: number;data: PatchReminder}
+
+    export const usePatchReminder = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof patchReminder>>, TError,PatchReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof patchReminder>>,
+        TError,
+        PatchReminderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getPatchReminderMutationOptions(options), queryClient);
+    }
+
+export const getTakeReminderUrl = (id: number,) => {
+
+
+
+
+  return `/api/reminders/${id}/take`
+}
+
+/**
+ * @summary Turns a reminder into a position: the drug, the quantity, on the animal named (or the visit's
+only one), dispensed from the lots as if picked — and the reminder points at it from then on.
+ */
+export const takeReminder = async (id: number,
+    takeReminderBody: TakeReminder, options?: Parameters<typeof apiFetch>[1]): Promise<Reminder> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<Reminder>(getTakeReminderUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(takeReminderBody)
+  }
+);}
+
+
+
+
+
+export const getTakeReminderMutationKey = () => ['takeReminder'] as const;
+
+export const getTakeReminderMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof takeReminder>>, TError,TakeReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof takeReminder>>, TError,TakeReminderMutationVariables, TContext> => {
+
+const mutationKey = getTakeReminderMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof takeReminder>>, TakeReminderMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  takeReminder(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type TakeReminderMutationResult = NonNullable<Awaited<ReturnType<typeof takeReminder>>>
+    export type TakeReminderMutationBody = TakeReminder
+    export type TakeReminderMutationError = void
+    export type TakeReminderMutationVariables = {id: number;data: TakeReminder}
+
+    /**
+ * @summary Turns a reminder into a position: the drug, the quantity, on the animal named (or the visit's
+only one), dispensed from the lots as if picked — and the reminder points at it from then on.
+ */
+export const useTakeReminder = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof takeReminder>>, TError,TakeReminderMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof takeReminder>>,
+        TError,
+        TakeReminderMutationVariables,
+        TContext
+      > => {
+      return useMutation(getTakeReminderMutationOptions(options), queryClient);
     }
 
 export const getListServicesUrl = (params?: ListServicesParams,) => {

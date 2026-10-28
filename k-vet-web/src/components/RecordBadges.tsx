@@ -1,6 +1,7 @@
 import {
   AlertTriangle,
   Archive,
+  BriefcaseMedical,
   CircleDashed,
   FileWarning,
   MailWarning,
@@ -117,6 +118,18 @@ export function PdfStaleBadge({ stale }: { stale: boolean | undefined }) {
     <span className={cn(badge, 'bg-blush/50 text-danger')}>
       <FileWarning className="size-3" aria-hidden />
       {t('pdfStale.title')}
+    </span>
+  )
+}
+
+/** Drugs to bring to the visit that are not yet a position ("Mitbringen"). */
+export function RemindersBadge({ count }: { count: number | undefined }) {
+  const { t } = useTranslation()
+  if (!count) return null
+  return (
+    <span className={cn(badge, 'bg-sage/30 text-sage-deep')}>
+      <BriefcaseMedical className="size-3" aria-hidden />
+      {t('reminders.badge', { count })}
     </span>
   )
 }

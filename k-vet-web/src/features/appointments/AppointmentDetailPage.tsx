@@ -28,6 +28,7 @@ import { TimeInput } from '@/components/TimeInput'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { TextAreaField } from '@/components/ui/field'
+import { RemindersCard } from '@/features/appointments/RemindersCard'
 import { TreatmentSection } from '@/features/treatments/TreatmentSection'
 import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
@@ -268,6 +269,13 @@ export function AppointmentDetailPage() {
           ) : null}
         </div>
       </section>
+
+      {/* Before the treatment: what to bring, written down when the customer phones. */}
+      <RemindersCard
+        appointmentId={appointmentId}
+        treatmentId={record.treatment_id}
+        startsAt={record.starts_at}
+      />
 
       {/* What the treatment needs before anything goes onto it — a date to bill under and
           a customer whose animals are on offer (issues.md 7). The server holds the same rule. */}

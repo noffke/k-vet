@@ -303,6 +303,85 @@
         }
       }
     },
+    "/api/appointments/{id}/reminders": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "listReminders",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Reminder"
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "createReminder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/CreateReminder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reminder"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
     "/api/attachments": {
       "post": {
         "tags": [
@@ -2065,6 +2144,39 @@
         }
       }
     },
+    "/api/packing-list": {
+      "get": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "What to pack for a day: every drug the day's appointments are to get, added up per\npackaging and checked against the shelf, and the same items appointment by appointment.\nReminders already taken into a position are not on it.",
+        "operationId": "getPackingList",
+        "parameters": [
+          {
+            "name": "date",
+            "in": "query",
+            "description": "The day (`yyyy-MM-dd`, the practice's own); today when left out.",
+            "required": false,
+            "schema": {
+              "type": "string",
+              "format": "date"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/PackingList"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/patient-files/{id}": {
       "patch": {
         "tags": [
@@ -2840,6 +2952,129 @@
           },
           "422": {
             "description": "A position is unknown or incomplete, a number is out of range, or the customer is unknown"
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}": {
+      "delete": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "deleteReminder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      },
+      "patch": {
+        "tags": [
+          "appointments"
+        ],
+        "operationId": "patchReminder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/PatchReminder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reminder"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "422": {
+            "description": "Unprocessable Entity"
+          }
+        }
+      }
+    },
+    "/api/reminders/{id}/take": {
+      "post": {
+        "tags": [
+          "appointments"
+        ],
+        "summary": "Turns a reminder into a position: the drug, the quantity, on the animal named (or the visit's\nonly one), dispensed from the lots as if picked — and the reminder points at it from then on.",
+        "operationId": "takeReminder",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/TakeReminder"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "The reminder, now pointing at its position",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Reminder"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "The treatment's invoice is accepted"
+          },
+          "422": {
+            "description": "Taken already, no animal to give it to, or short of stock"
           }
         }
       }
@@ -4925,6 +5160,7 @@
           "treatment_id",
           "unbilled",
           "pdf_stale",
+          "reminder_count",
           "created_at",
           "updated_at"
         ],
@@ -4992,6 +5228,11 @@
           "pdf_stale": {
             "type": "boolean",
             "description": "The live invoice's PDF no longer shows the treatment as it is (migration 0034)."
+          },
+          "reminder_count": {
+            "type": "integer",
+            "format": "int64",
+            "description": "Drugs to bring that are not yet a position (\"Mitbringen\", migration 0035)."
           },
           "created_at": {
             "type": "string",
@@ -5370,6 +5611,25 @@
             ],
             "format": "int64",
             "description": "For an existing customer the quote is complete at once; without one it is a draft."
+          }
+        }
+      },
+      "CreateReminder": {
+        "type": "object",
+        "required": [
+          "drug_packaging_id"
+        ],
+        "properties": {
+          "drug_packaging_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "Packagings; one when left out."
           }
         }
       },
@@ -6817,6 +7077,119 @@
           "subset"
         ]
       },
+      "PackingAppointment": {
+        "type": "object",
+        "description": "An appointment of the day with what to bring to it.",
+        "required": [
+          "appointment_id",
+          "starts_at",
+          "patients",
+          "reminders"
+        ],
+        "properties": {
+          "appointment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "starts_at": {
+            "type": "string",
+            "format": "date-time"
+          },
+          "customer_name": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "patients": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
+          },
+          "reminders": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/Reminder"
+            }
+          }
+        }
+      },
+      "PackingList": {
+        "type": "object",
+        "required": [
+          "date",
+          "totals",
+          "appointments"
+        ],
+        "properties": {
+          "date": {
+            "type": "string",
+            "format": "date"
+          },
+          "totals": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackingTotal"
+            }
+          },
+          "appointments": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/PackingAppointment"
+            }
+          }
+        }
+      },
+      "PackingTotal": {
+        "type": "object",
+        "description": "One packaging's total for the day, and whether the shelf covers the drug.",
+        "required": [
+          "drug_packaging_id",
+          "drug_id",
+          "name",
+          "quantity",
+          "in_stock",
+          "short"
+        ],
+        "properties": {
+          "drug_packaging_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "size": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "quantity": {
+            "type": "string",
+            "description": "Packagings, summed over the day's appointments."
+          },
+          "in_stock": {
+            "type": "string",
+            "description": "What the drug's lots hold together, in base units."
+          },
+          "short": {
+            "type": "boolean",
+            "description": "The day needs more of the drug than its lots hold — counted over all of the drug's\npackagings, since they draw from the same lots."
+          }
+        }
+      },
       "Paragraph": {
         "type": "object",
         "required": [
@@ -7380,6 +7753,29 @@
               "$ref": "#/components/schemas/QuoteLineInput"
             },
             "description": "The whole list, in order, re-priced at today's catalogue — a quote being worked on is\ncurrent; one left alone keeps what it was quoted at."
+          }
+        }
+      },
+      "PatchReminder": {
+        "type": "object",
+        "properties": {
+          "quantity": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "packed": {
+            "type": [
+              "boolean",
+              "null"
+            ]
           }
         }
       },
@@ -8726,6 +9122,85 @@
           }
         }
       },
+      "Reminder": {
+        "type": "object",
+        "required": [
+          "id",
+          "appointment_id",
+          "drug_packaging_id",
+          "drug_id",
+          "name",
+          "quantity",
+          "packed",
+          "position",
+          "stock_short"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "appointment_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_packaging_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "drug_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string",
+            "description": "The drug's name."
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "size": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "One packaging's size in its unit — `10` (ml)."
+          },
+          "quantity": {
+            "type": "string",
+            "description": "Packagings, as a line counts them."
+          },
+          "note": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "packed": {
+            "type": "boolean",
+            "description": "Ticked off on the Packliste."
+          },
+          "position": {
+            "type": "integer",
+            "format": "int32"
+          },
+          "taken_item_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The position it became; absent while it is a reminder."
+          },
+          "stock_short": {
+            "type": "boolean",
+            "description": "The drug's lots together hold less than this reminder needs."
+          }
+        }
+      },
       "RichText": {
         "type": "object",
         "description": "A formatted text, as stored and as the editor reads and writes it.",
@@ -8973,6 +9448,19 @@
             "items": {
               "type": "string"
             }
+          }
+        }
+      },
+      "TakeReminder": {
+        "type": "object",
+        "properties": {
+          "patient_treatment_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The animal it is for. Left out, the visit's only animal (FR-028)."
           }
         }
       },

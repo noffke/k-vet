@@ -17,7 +17,8 @@
     "settings": "Settings",
     "templates": "Treatment templates",
     "textBlocks": "Text blocks",
-    "quote": "Price quote"
+    "quote": "Price quote",
+    "packingList": "Packing list"
   },
   "login": {
     "expired": "Your session has expired. Please sign in again.",
@@ -631,5 +632,37 @@
     "pricesQuoted": "as quoted ({{amount}})",
     "pricesToday": "today’s prices ({{amount}})",
     "otherCustomer": "The price quote belongs to another customer"
+  },
+  "reminders": {
+    "title": "To bring",
+    "hint": "Drugs the customer asked for — not dispensed yet, for no animal yet. Take them into a position at the visit.",
+    "pickerPlaceholder": "Search a drug …",
+    "packingListLink": "Packing list",
+    "note": "Note",
+    "notePlaceholder": "e.g. for Bello",
+    "packed": "Packed",
+    "take": "Take into a position",
+    "takeBlocked": "Add an animal to the appointment first; not possible once the invoice is released.",
+    "takeFor": "“{{name}}” for which animal?",
+    "taken": "“{{name}}” taken into a position",
+    "takenMark": "Taken",
+    "stockShort": "Not enough stock",
+    "delete": "Remove from the list",
+    "deleteConfirm": "Take “{{name}}” off the list?",
+    "badge": "{{count}} to bring"
+  },
+  "packing": {
+    "title": "Packing list",
+    "forDay": "What to take along on {{date}}",
+    "print": "Print",
+    "day": "Day",
+    "nothing": "Nothing to take along on this day.",
+    "together": "Together",
+    "byVisit": "By appointment",
+    "short": "Not enough stock ({{stock}} left)"
+  },
+  "reminder": {
+    "drugUnavailable": "This drug is not available (any more).",
+    "alreadyTaken": "Already taken into a position."
   }
 }

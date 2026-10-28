@@ -8,6 +8,7 @@ import {
 import { AppLayout } from '@/components/AppLayout'
 import { AppointmentDetailPage } from '@/features/appointments/AppointmentDetailPage'
 import { AppointmentsPage } from '@/features/appointments/AppointmentsPage'
+import { PackingListPage } from '@/features/appointments/PackingListPage'
 import { LoginPage } from '@/features/auth/LoginPage'
 import { sessionQueryOptions } from '@/features/auth/session'
 import { CustomerDetailPage } from '@/features/customers/CustomerDetailPage'
@@ -92,6 +93,17 @@ const appointmentsRoute = createRoute({
   validateSearch: (search: Record<string, unknown>): { when?: 'past' } =>
     search.when === 'past' ? { when: 'past' } : {},
   component: AppointmentsPage,
+})
+
+const packingListRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/packing-list',
+  // The day (`yyyy-MM-dd`); absent means today.
+  validateSearch: (search: Record<string, unknown>): { date?: string } =>
+    typeof search.date === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(search.date)
+      ? { date: search.date }
+      : {},
+  component: PackingListPage,
 })
 
 const appointmentDetailRoute = createRoute({
@@ -251,6 +263,7 @@ const routeTree = rootRoute.addChildren([
     settingsRoute,
     appointmentsRoute,
     appointmentDetailRoute,
+    packingListRoute,
     customersRoute,
     customerDetailRoute,
     patientDetailRoute,
