@@ -103,17 +103,24 @@ export function QuotePage() {
   /** Set before a navigation that must not ask — after the quote was just deleted. */
   const skipBlock = useRef(false)
 
-  // A quote opened by its id becomes the page's draft, once; the page without an id is a new one.
+  // A quote opened by its id becomes the page's draft, once; leaving one for "Neue
+  // Preisauskunft" starts afresh. Only the step from an id to none is such a leaving: right
+  // after the first save created the quote, the address does not carry its id yet, and taking
+  // that for a new quote wiped what was just typed and forgot the record it had gone into.
+  const previousId = useRef(id)
   useEffect(() => {
-    quoteId.current = id
+    const before = previousId.current
+    previousId.current = id
     if (id === undefined) {
-      if (loadedFor !== undefined) {
+      if (before !== undefined) {
+        quoteId.current = undefined
         setDraft(EMPTY_DRAFT)
         setLoadedFor(undefined)
         setSaveState('idle')
       }
       return
     }
+    quoteId.current = id
     if (loadedFor !== id && quote.data?.id === id) {
       setDraft(fromQuote(quote.data))
       setLoadedFor(id)
