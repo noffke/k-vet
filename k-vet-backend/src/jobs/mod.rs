@@ -113,6 +113,8 @@ pub async fn cleanup_abandoned_drafts(pool: &PgPool) -> AppResult<DraftCleanup> 
     removed.customers = sqlx::query!(
         "DELETE FROM customer
          WHERE draft AND created_at < $1
+           -- Made on the phone: a contact, however little it holds, is not an accident.
+           AND dav_origin = 'kvet'
            AND salutation IS NULL AND first_name IS NULL AND last_name IS NULL
            AND home_street IS NULL AND home_zip IS NULL AND home_city IS NULL
            AND NOT EXISTS (SELECT 1 FROM patient WHERE customer_id = customer.id)

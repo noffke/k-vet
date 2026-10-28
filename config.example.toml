@@ -278,26 +278,32 @@ subset_never_below_proportional = false
 #        The "Open in Google Maps" links need no key.
 api_key = ""
 
-# ── Kalender auf dem Handy / Calendar on the phone ────────────────────────────
+# ── Kalender und Kontakte auf dem Handy / Calendar and contacts on the phone ──
 [dav]
 
-# de-DE: Stellt die Termine als Kalender für das Handy bereit (CalDAV unter
-#        <base_url>/dav/). Auf dem Handy eine CalDAV-Sync-App mit dieser
-#        Adresse und dem k-vet-Benutzernamen und -Passwort einrichten; das Handy
-#        muss k-vet erreichen, also über das VPN der Praxis. Termine, die auf
-#        dem Handy eingetragen werden, erscheinen in k-vet. Nichts verlässt die
-#        Praxis. false = kein Kalender.
-# en-US: Serves the appointments as a calendar for the phone (CalDAV at
-#        <base_url>/dav/). On the phone, set up a CalDAV sync app with this
-#        address and the k-vet user name and password; the phone has to reach
-#        k-vet, i.e. through the practice's VPN. Appointments entered on the
-#        phone appear in k-vet. Nothing leaves the practice. false = no
-#        calendar.
+# de-DE: Stellt die Termine als Kalender und die Kunden als Adressbuch für
+#        das Handy bereit (CalDAV und CardDAV unter <base_url>/dav/). Auf dem
+#        Handy eine CalDAV/CardDAV-Sync-App mit dieser Adresse und dem
+#        k-vet-Benutzernamen und -Passwort einrichten; das Handy muss k-vet
+#        erreichen, also über das VPN der Praxis. Termine und Kontakte, die auf
+#        dem Handy angelegt werden, erscheinen in k-vet. Nichts verlässt die
+#        Praxis. false = weder Kalender noch Adressbuch.
+# en-US: Serves the appointments as a calendar and the customers as an
+#        address book for the phone (CalDAV and CardDAV at <base_url>/dav/).
+#        On the phone, set up a CalDAV/CardDAV sync app with this address and
+#        the k-vet user name and password; the phone has to reach k-vet, i.e.
+#        through the practice's VPN. Appointments and contacts made on the
+#        phone appear in k-vet. Nothing leaves the practice. false = neither
+#        calendar nor address book.
 enabled = false
 
 # de-DE: Name des Kalenders auf dem Handy.
 # en-US: The calendar's name on the phone.
 calendar_name = "Praxis-Termine"
+
+# de-DE: Name des Adressbuchs auf dem Handy.
+# en-US: The address book's name on the phone.
+addressbook_name = "Kunden"
 
 # de-DE: Wie lang ein Termin im Kalender ist, in Minuten; k-vet kennt nur den
 #        Beginn.

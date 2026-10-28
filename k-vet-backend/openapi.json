@@ -5787,6 +5787,7 @@
         "type": "object",
         "required": [
           "id",
+          "from_phone",
           "archived",
           "draft",
           "missing_fields",
@@ -5958,6 +5959,23 @@
             ],
             "description": "The same number in the familiar national format, e.g. `030 12345678`."
           },
+          "mobile": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A second number, stored E.164 like `phone`."
+          },
+          "mobile_display": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "from_phone": {
+            "type": "boolean",
+            "description": "Made in the phone's address book (migration 0037); completed in k-vet."
+          },
           "warning_remark": {
             "type": [
               "string",
@@ -6119,7 +6137,8 @@
         "required": [
           "url",
           "username",
-          "calendar_name"
+          "calendar_name",
+          "addressbook_name"
         ],
         "properties": {
           "url": {
@@ -6130,6 +6149,9 @@
             "type": "string"
           },
           "calendar_name": {
+            "type": "string"
+          },
+          "addressbook_name": {
             "type": "string"
           }
         }
@@ -7541,6 +7563,12 @@
             ]
           },
           "phone": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "mobile": {
             "type": [
               "string",
               "null"

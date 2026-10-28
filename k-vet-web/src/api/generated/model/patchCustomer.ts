@@ -50,5 +50,7 @@ export interface PatchCustomer {
   /** @nullable */
   phone?: string | null;
   /** @nullable */
+  mobile?: string | null;
+  /** @nullable */
   warning_remark?: string | null;
 }

@@ -283,7 +283,12 @@ export function DataList<T extends RowData>({
               >
                 <span className="flex items-center justify-between gap-2">
                   <span className="font-medium text-ink">{primary?.cell(row)}</span>
-                  {rowBadge ? rowBadge(row) : null}
+                  {/* Badges wrap as whole pills, never inside one, beside a long name. */}
+                  {rowBadge ? (
+                    <span className="flex shrink-0 flex-wrap justify-end gap-1">
+                      {rowBadge(row)}
+                    </span>
+                  ) : null}
                 </span>
                 <dl className="mt-1.5 grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5">
                   {mobileColumns.map((column) => (

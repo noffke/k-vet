@@ -51,6 +51,7 @@ pub struct DavAccess {
     pub url: String,
     pub username: String,
     pub calendar_name: String,
+    pub addressbook_name: String,
 }
 
 #[utoipa::path(
@@ -92,6 +93,7 @@ pub async fn get_config(State(state): State<AppState>) -> AppResult<Json<Operato
             ),
             username: state.config.auth.username.clone(),
             calendar_name: state.config.dav.calendar_name.clone(),
+            addressbook_name: state.config.dav.addressbook_name.clone(),
         }),
     }))
 }

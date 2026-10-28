@@ -1,0 +1,25 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE customer SET\n                     first_name  = $2,\n                     last_name   = CASE WHEN draft THEN $3 ELSE COALESCE($3, last_name) END,\n                     company     = $4,\n                     phone       = CASE WHEN $11 THEN $5 ELSE phone END,\n                     mobile      = CASE WHEN $12 THEN $6 ELSE mobile END,\n                     home_street = CASE WHEN draft THEN $7 ELSE COALESCE($7, home_street) END,\n                     home_zip    = CASE WHEN draft THEN $8 ELSE COALESCE($8, home_zip) END,\n                     home_city   = CASE WHEN draft THEN $9 ELSE COALESCE($9, home_city) END,\n                     home_country = COALESCE($10, home_country)\n                 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Bool",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "9ddafc0efaa0ae10cc3a628846673c1f1204e40da139394158fff29dbbc4185b"
+}

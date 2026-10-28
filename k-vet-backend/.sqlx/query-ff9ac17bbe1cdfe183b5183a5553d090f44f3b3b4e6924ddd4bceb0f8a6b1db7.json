@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO customer_email (customer_id, email) VALUES ($1, $2)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Text"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "ff9ac17bbe1cdfe183b5183a5553d090f44f3b3b4e6924ddd4bceb0f8a6b1db7"
+}

@@ -36,6 +36,7 @@ import { PageHeader } from '@/components/PageHeader'
 import {
   ArchivedBadge,
   CalendarBadges,
+  FromPhoneBadge,
   IncompleteBadge,
   NotBilledBadge,
   PdfStaleBadge,
@@ -255,6 +256,7 @@ export function CustomerDetailPage() {
         }
       >
         <span className="flex gap-1">
+          <FromPhoneBadge customer={record} />
           <IncompleteBadge missing={record.missing_fields} />
           <ArchivedBadge archived={record.archived} />
         </span>
@@ -344,6 +346,14 @@ export function CustomerDetailPage() {
           error={autoSave.fieldErrors.phone ? t(autoSave.fieldErrors.phone ?? '') : undefined}
           inputMode="tel"
           onChange={(event) => autoSave.set({ phone: event.target.value || null })}
+          onBlur={() => void autoSave.flush()}
+        />
+        <TextField
+          label={t('field.mobile')}
+          defaultValue={record.mobile_display ?? ''}
+          error={autoSave.fieldErrors.mobile ? t(autoSave.fieldErrors.mobile ?? '') : undefined}
+          inputMode="tel"
+          onChange={(event) => autoSave.set({ mobile: event.target.value || null })}
           onBlur={() => void autoSave.flush()}
         />
         <TextAreaField

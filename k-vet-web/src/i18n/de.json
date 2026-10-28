@@ -49,7 +49,9 @@
     "notSent": "Nicht versendet",
     "showArchived": "Archivierte anzeigen",
     "unarchive": "Wiederherstellen",
-    "warning": "Warnhinweis"
+    "warning": "Warnhinweis",
+    "fromPhone": "Vom Handy",
+    "fromPhoneHint": "Auf dem Handy als Kontakt angelegt"
   },
   "field": {
     "addon": "Adresszusatz",
@@ -121,7 +123,8 @@
     "vat": "USt.",
     "warningRemark": "Warnhinweis",
     "weight": "Gewicht",
-    "zip": "PLZ"
+    "zip": "PLZ",
+    "mobile": "Mobil"
   },
   "salutation": {
     "familie": "Familie",
@@ -481,13 +484,14 @@
     "removeLogoConfirm": "Logo wirklich entfernen? Neue Rechnungen werden dann ohne Logo gedruckt.",
     "title": "Einstellungen",
     "ustid": "USt-IdNr.",
-    "phoneSync": "Kalender auf dem Handy",
-    "phoneSyncHint": "Die Termine erscheinen als Kalender auf dem Handy, über eine CalDAV-Sync-App. In der App ein Konto „mit URL und Benutzername“ anlegen und den Kalender auswählen. Das Handy muss k-vet erreichen (über das VPN der Praxis).",
+    "phoneSync": "Kalender und Kontakte auf dem Handy",
+    "phoneSyncHint": "Die Termine erscheinen als Kalender, die Kunden als Kontakte auf dem Handy, über eine CalDAV/CardDAV-Sync-App. In der App ein Konto „mit URL und Benutzername“ anlegen, dann den Kalender und das Adressbuch auswählen. Das Handy muss k-vet erreichen (über das VPN der Praxis).",
     "phoneSyncUrl": "Server-Adresse",
     "phoneSyncUser": "Benutzername",
     "phoneSyncPassword": "Passwort",
     "phoneSyncPasswordValue": "das k-vet-Passwort — nach einer Änderung auch in der App eintragen",
-    "phoneSyncCalendar": "Kalender"
+    "phoneSyncCalendar": "Kalender",
+    "phoneSyncAddressbook": "Adressbuch"
   },
   "error": {
     "generic": "Etwas ist schiefgelaufen.",

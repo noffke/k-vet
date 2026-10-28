@@ -122,6 +122,8 @@ Fields:
   * Invoice Address (structured, optional) with its own recipient name (optional company, salutation, optional first name, last name); when set, invoices use it — otherwise invoices use the customer name(s) and home address. The company belongs to the recipient, so the invoice address has its own and never borrows the home one.
   * E-Mail Address (multiple, with type)
   * Phone Number (single, optional; validated, see Modeling Conventions)
+  * Mobile Number (single, optional; validated the same way) — the second number, so one a contact on the phone carries is not lost
+  * Contact origin (`kvet` | `phone`) with the phone's own UID and file name for a customer created as a contact on the phone (see logic.md, "Contacts on the phone")
   * Warning Remark (Warnhinweis) (e.g. dangerous animal etc., prominently displayed) (optional)
   * Relation: n Patients
 * Patient (Tier)

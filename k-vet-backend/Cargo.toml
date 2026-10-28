@@ -8,8 +8,10 @@ publish = false
 argon2 = { version = "0.5.3", features = ["std", "password-hash", "rand"] }
 async-trait = "0.1.91"
 axum = { version = "0.8.9", features = ["multipart", "macros"] }
-# The phone's calendar (src/dav): the Basic login, its time zones, its events, its requests.
+# The phone's calendar and address book (src/dav): the Basic login, the contacts it sends,
+# its time zones, its events, its requests.
 base64 = "0.22.1"
+calcard = { version = "0.3.14", default-features = false }
 chrono = { version = "0.4.45", features = ["serde"] }
 chrono-tz = "0.10.4"
 email_address = "0.2.9"

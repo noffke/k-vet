@@ -14,6 +14,7 @@ import { LoadMore } from '@/components/LoadMore'
 import { PageHeader } from '@/components/PageHeader'
 import {
   ArchivedBadge,
+  FromPhoneBadge,
   IncompleteBadge,
   NotInvoiceableBadge,
   WarningIcon,
@@ -108,6 +109,7 @@ export function CustomersPage() {
         rowBadge={(row) => (
           <>
             <WarningIcon remark={row.warning_remark} />
+            <FromPhoneBadge customer={row} />
             <IncompleteBadge missing={row.missing_fields} />
             {/* Only once the record itself is complete, so one gap is not reported twice. */}
             {row.missing_fields.length === 0 ? (

@@ -264,8 +264,9 @@ impl MapsConfig {
     }
 }
 
-/// The appointments as a calendar on the vet's phone, served by k-vet itself over CalDAV at
-/// `/dav` and signed into with the k-vet login. Off unless `enabled`.
+/// The appointments as a calendar and the customers as an address book on the vet's phone,
+/// served by k-vet itself over CalDAV and CardDAV at `/dav` and signed into with the k-vet
+/// login. Off unless `enabled`.
 #[derive(Debug, Clone, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct DavConfig {
@@ -274,6 +275,9 @@ pub struct DavConfig {
     /// The calendar's name on the phone.
     #[serde(default = "default_calendar_name")]
     pub calendar_name: String,
+    /// The address book's name on the phone.
+    #[serde(default = "default_addressbook_name")]
+    pub addressbook_name: String,
     /// How long an appointment is in the calendar; k-vet keeps only its start.
     #[serde(default = "default_duration_minutes")]
     pub duration_minutes: u32,
@@ -290,6 +294,7 @@ impl Default for DavConfig {
         Self {
             enabled: false,
             calendar_name: default_calendar_name(),
+            addressbook_name: default_addressbook_name(),
             duration_minutes: default_duration_minutes(),
             past_days: default_past_days(),
             time_zone: default_time_zone(),
@@ -299,6 +304,10 @@ impl Default for DavConfig {
 
 fn default_calendar_name() -> String {
     "Praxis-Termine".to_owned()
+}
+
+fn default_addressbook_name() -> String {
+    "Kunden".to_owned()
 }
 
 fn default_duration_minutes() -> u32 {

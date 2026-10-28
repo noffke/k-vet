@@ -19,30 +19,12 @@ use icalendar::{
     Calendar, CalendarDateTime, Component, DatePerhapsTime, Event, EventLike, Property,
 };
 use rust_decimal::Decimal;
-use sha2::{Digest, Sha256};
 use sqlx::PgConnection;
 
 use crate::AppState;
-use crate::error::{AppError, AppResult};
+use crate::dav::object::{Conditions, Object, WriteError, Written, etag_of};
+use crate::error::AppResult;
 use crate::pdf::number_de;
-
-/// One file of the calendar collection.
-#[derive(Debug, Clone, PartialEq, Eq)]
-pub struct CalendarObject {
-    /// The last segment of its href: `kvet-12.ics`, or the phone's own name.
-    pub name: String,
-    /// Quoted, as the `ETag` header carries it.
-    pub etag: String,
-    pub ics: String,
-    /// The event's start, for a `calendar-query` time range; absent for kept entries.
-    pub starts_at: Option<DateTime<Utc>>,
-}
-
-/// Quoted SHA-256 of the text — the same text always gives the same ETag.
-pub fn etag_of(text: &str) -> String {
-    let digest = Sha256::digest(text.as_bytes());
-    format!("\"{}\"", hex::encode(&digest[..16]))
-}
 
 /// An appointment with everything its event shows.
 #[derive(Debug, Clone)]
@@ -258,31 +240,28 @@ fn link(state: &AppState, id: i64) -> String {
     )
 }
 
-fn object_of(state: &AppState, source: &EventSource) -> CalendarObject {
+fn object_of(state: &AppState, source: &EventSource) -> Object {
     let ics = event_ics(
         source,
         state.config.dav.duration_minutes,
         &link(state, source.id),
     );
-    CalendarObject {
+    Object {
         name: source.name(),
         etag: etag_of(&ics),
-        ics,
+        body: ics,
         starts_at: Some(source.starts_at),
     }
 }
 
 /// Every object of the calendar: the window's appointments and the kept entries.
-pub async fn objects(
-    state: &AppState,
-    connection: &mut PgConnection,
-) -> AppResult<Vec<CalendarObject>> {
+pub async fn objects(state: &AppState, connection: &mut PgConnection) -> AppResult<Vec<Object>> {
     let from = Utc::now() - TimeDelta::days(i64::from(state.config.dav.past_days));
     let selection = Selection {
         from: Some(from),
         name: None,
     };
-    let mut objects: Vec<CalendarObject> = sources(connection, selection)
+    let mut objects: Vec<Object> = sources(connection, selection)
         .await?
         .iter()
         .map(|source| object_of(state, source))
@@ -291,10 +270,10 @@ pub async fn objects(
         .fetch_all(&mut *connection)
         .await?
     {
-        objects.push(CalendarObject {
+        objects.push(Object {
             name: extra.href,
             etag: etag_of(&extra.ics),
-            ics: extra.ics,
+            body: extra.ics,
             starts_at: None,
         });
     }
@@ -306,7 +285,7 @@ pub async fn object(
     state: &AppState,
     connection: &mut PgConnection,
     name: &str,
-) -> AppResult<Option<CalendarObject>> {
+) -> AppResult<Option<Object>> {
     let selection = Selection {
         from: None,
         name: Some(name),
@@ -320,21 +299,12 @@ pub async fn object(
     )
     .fetch_optional(&mut *connection)
     .await?;
-    Ok(extra.map(|extra| CalendarObject {
+    Ok(extra.map(|extra| Object {
         name: extra.href,
         etag: etag_of(&extra.ics),
-        ics: extra.ics,
+        body: extra.ics,
         starts_at: None,
     }))
-}
-
-/// A hash over every object's name and ETag: changes whenever anything in the calendar does.
-pub fn ctag(objects: &[CalendarObject]) -> String {
-    let joined: String = objects
-        .iter()
-        .map(|object| format!("{}={};", object.name, object.etag))
-        .collect();
-    etag_of(&joined)
 }
 
 /// What the phone sent, read the way k-vet takes it.
@@ -385,69 +355,6 @@ pub fn read_incoming(body: &str, practice: Tz) -> Result<Incoming, &'static str>
         }),
         _ => Ok(Incoming::Kept { uid }),
     }
-}
-
-/// Why a write from the phone is not taken.
-#[derive(Debug)]
-pub enum WriteError {
-    /// `If-Match` / `If-None-Match` do not hold: the phone has an older or newer copy.
-    Precondition,
-    NotFound,
-    /// The body cannot be read; the reason is for the log.
-    Unreadable(&'static str),
-    App(AppError),
-}
-
-impl From<AppError> for WriteError {
-    fn from(error: AppError) -> Self {
-        Self::App(error)
-    }
-}
-
-impl From<sqlx::Error> for WriteError {
-    fn from(error: sqlx::Error) -> Self {
-        Self::App(error.into())
-    }
-}
-
-/// The `If-Match` / `If-None-Match` a write came with.
-#[derive(Debug, Default, Clone)]
-pub struct Conditions {
-    pub if_match: Option<String>,
-    pub if_none_match: Option<String>,
-}
-
-impl Conditions {
-    fn hold(&self, current: Option<&CalendarObject>) -> bool {
-        if let Some(expected) = &self.if_match {
-            let matches = current.is_some_and(|object| {
-                expected.trim() == "*"
-                    || expected
-                        .split(',')
-                        .any(|candidate| candidate.trim() == object.etag)
-            });
-            if !matches {
-                return false;
-            }
-        }
-        if let Some(none) = &self.if_none_match
-            && current.is_some()
-            && (none.trim() == "*"
-                || none
-                    .split(',')
-                    .any(|candidate| current.is_some_and(|object| candidate.trim() == object.etag)))
-        {
-            return false;
-        }
-        true
-    }
-}
-
-/// Whether the PUT made something new (201) or changed what was there (204).
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub enum Written {
-    Created,
-    Updated,
 }
 
 /// Takes what the phone wrote under `name`.
@@ -770,34 +677,5 @@ mod tests {
             kept
         );
         assert!(read_incoming("nonsense", berlin).is_err());
-    }
-
-    #[test]
-    fn conditions_compare_etags() {
-        let current = CalendarObject {
-            name: "kvet-1.ics".to_owned(),
-            etag: "\"abc\"".to_owned(),
-            ics: String::new(),
-            starts_at: None,
-        };
-        let none = Conditions::default();
-        assert!(none.hold(Some(&current)) && none.hold(None));
-        let create = Conditions {
-            if_none_match: Some("*".to_owned()),
-            ..Conditions::default()
-        };
-        assert!(create.hold(None));
-        assert!(!create.hold(Some(&current)));
-        let update = Conditions {
-            if_match: Some("\"abc\"".to_owned()),
-            ..Conditions::default()
-        };
-        assert!(update.hold(Some(&current)));
-        let stale = Conditions {
-            if_match: Some("\"old\"".to_owned()),
-            ..Conditions::default()
-        };
-        assert!(!stale.hold(Some(&current)));
-        assert!(!update.hold(None));
     }
 }

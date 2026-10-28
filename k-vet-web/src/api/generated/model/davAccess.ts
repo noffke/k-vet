@@ -14,4 +14,5 @@ export interface DavAccess {
   url: string;
   username: string;
   calendar_name: string;
+  addressbook_name: string;
 }

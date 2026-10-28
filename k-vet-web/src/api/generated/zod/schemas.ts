@@ -307,7 +307,8 @@ export const GetConfigResponse = zod.object({
   "dav": zod.union([zod.object({
   "url": zod.string().describe('`{base_url}/dav/`.'),
   "username": zod.string(),
-  "calendar_name": zod.string()
+  "calendar_name": zod.string(),
+  "addressbook_name": zod.string()
 }).describe('The phone calendar is served (`[dav] enabled`): where to point the sync app, and as\nwhom.'),zod.null()]).optional()
 })
 
@@ -353,6 +354,9 @@ export const PatchCustomerEmailResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -403,6 +407,9 @@ export const ListCustomersResponseItem = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -447,6 +454,9 @@ export const CreateCustomerResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -494,6 +504,9 @@ export const GetCustomerResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -539,6 +552,7 @@ export const PatchCustomerBody = zod.object({
   "invoice_city": zod.string().nullish(),
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish(),
+  "mobile": zod.string().nullish(),
   "warning_remark": zod.string().nullish()
 })
 
@@ -567,6 +581,9 @@ export const PatchCustomerResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -614,6 +631,9 @@ export const ArchiveCustomerResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -666,6 +686,9 @@ export const AddCustomerEmailResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),
@@ -733,6 +756,9 @@ export const UnarchiveCustomerResponse = zod.object({
   "invoice_country": zod.string().nullish(),
   "phone": zod.string().nullish().describe('Stored E.164 form, e.g. `+493012345678`.'),
   "phone_display": zod.string().nullish().describe('The same number in the familiar national format, e.g. `030 12345678`.'),
+  "mobile": zod.string().nullish().describe('A second number, stored E.164 like `phone`.'),
+  "mobile_display": zod.string().nullish(),
+  "from_phone": zod.boolean().describe('Made in the phone\'s address book (migration 0037); completed in k-vet.'),
   "warning_remark": zod.string().nullish(),
   "archived": zod.boolean(),
   "draft": zod.boolean(),

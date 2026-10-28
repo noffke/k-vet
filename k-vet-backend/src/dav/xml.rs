@@ -1,6 +1,6 @@
-//! The WebDAV XML a calendar client sends (PROPFIND, REPORT) and the multistatus it gets back.
+//! The WebDAV XML a sync client sends (PROPFIND, REPORT) and the multistatus it gets back.
 //!
-//! Only what a CalDAV client actually asks of one calendar is understood; anything else in a
+//! Only what a CalDAV or CardDAV client actually asks of one collection is understood; anything else in a
 //! request body is ignored rather than refused, and a property k-vet does not know is answered
 //! "404 Not Found" inside the multistatus, which is how WebDAV says "no such property".
 
@@ -8,6 +8,7 @@ use chrono::{DateTime, NaiveDateTime, Utc};
 
 pub const DAV: &str = "DAV:";
 pub const CALDAV: &str = "urn:ietf:params:xml:ns:caldav";
+pub const CARDDAV: &str = "urn:ietf:params:xml:ns:carddav";
 pub const CALENDARSERVER: &str = "http://calendarserver.org/ns/";
 pub const APPLE_ICAL: &str = "http://apple.com/ns/ical/";
 
@@ -42,7 +43,7 @@ pub enum Propfind {
 /// A `time-range`'s start and end; either may be open.
 pub type TimeRange = (Option<DateTime<Utc>>, Option<DateTime<Utc>>);
 
-/// The REPORTs a calendar client uses to sync.
+/// The REPORTs a sync client uses, from either CalDAV or CardDAV.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Report {
     /// The named objects.
@@ -50,7 +51,7 @@ pub enum Report {
         props: Vec<Prop>,
         hrefs: Vec<String>,
     },
-    /// Every event, or those overlapping a time range.
+    /// Every object, or the events overlapping a time range.
     Query {
         props: Vec<Prop>,
         range: Option<TimeRange>,
@@ -106,7 +107,7 @@ pub fn parse_report(body: &str) -> Option<Report> {
     let root = document.root_element();
     let props = props_of(root);
     Some(match root.tag_name().name() {
-        "calendar-multiget" => Report::Multiget {
+        "calendar-multiget" | "addressbook-multiget" => Report::Multiget {
             props,
             hrefs: root
                 .children()
@@ -115,7 +116,7 @@ pub fn parse_report(body: &str) -> Option<Report> {
                 .map(|href| href.trim().to_owned())
                 .collect(),
         },
-        "calendar-query" => Report::Query {
+        "calendar-query" | "addressbook-query" => Report::Query {
             props,
             range: root
                 .descendants()
@@ -151,6 +152,7 @@ fn prefix(ns: &str) -> Option<&'static str> {
     match ns {
         DAV => Some("d"),
         CALDAV => Some("c"),
+        CARDDAV => Some("card"),
         CALENDARSERVER => Some("cs"),
         APPLE_ICAL => Some("a"),
         _ => None,
@@ -190,7 +192,7 @@ pub struct Response {
 /// The `207 Multi-Status` body.
 pub fn multistatus(responses: &[Response]) -> String {
     let mut out = String::from(
-        r#"<?xml version="1.0" encoding="utf-8"?><d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:cs="http://calendarserver.org/ns/" xmlns:a="http://apple.com/ns/ical/">"#,
+        r#"<?xml version="1.0" encoding="utf-8"?><d:multistatus xmlns:d="DAV:" xmlns:c="urn:ietf:params:xml:ns:caldav" xmlns:card="urn:ietf:params:xml:ns:carddav" xmlns:cs="http://calendarserver.org/ns/" xmlns:a="http://apple.com/ns/ical/">"#,
     );
     for response in responses {
         out.push_str("<d:response><d:href>");
@@ -276,6 +278,19 @@ mod tests {
         assert_eq!(
             range,
             Some((Some("2026-10-01T00:00:00Z".parse().unwrap()), None))
+        );
+        let contacts = r#"<CARD:addressbook-multiget xmlns:D="DAV:" xmlns:CARD="urn:ietf:params:xml:ns:carddav">
+            <D:prop><D:getetag/><CARD:address-data/></D:prop>
+            <D:href>/dav/addressbooks/kunden/kvet-customer-1.vcf</D:href></CARD:addressbook-multiget>"#;
+        assert_eq!(
+            parse_report(contacts),
+            Some(Report::Multiget {
+                props: vec![
+                    Prop::new(DAV, "getetag"),
+                    Prop::new(CARDDAV, "address-data")
+                ],
+                hrefs: vec!["/dav/addressbooks/kunden/kvet-customer-1.vcf".to_owned()],
+            })
         );
         assert_eq!(
             parse_report(r#"<sync-collection xmlns="DAV:"/>"#),

@@ -62,8 +62,10 @@ test.describe('the calendar on the phone', () => {
   test('Einstellungen says where to point the phone', async ({ page }) => {
     await signIn(page)
     await navigate(page, 'Einstellungen')
-    const card = page.locator('section').filter({ hasText: 'Kalender auf dem Handy' })
+    const card = page.locator('section').filter({ hasText: 'Kalender und Kontakte auf dem Handy' })
     await expect(card).toContainText('/dav/')
     await expect(card).toContainText(E2E_USERNAME)
+    await expect(card).toContainText('Praxis-Termine')
+    await expect(card).toContainText('Kunden')
   })
 })

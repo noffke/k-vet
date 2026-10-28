@@ -85,3 +85,23 @@ async fn it_needs_a_session(pool: PgPool) {
 
     assert_eq!(response.status, StatusCode::UNAUTHORIZED);
 }
+
+/// What the sync app on the phone is set up with: off by default, and with `[dav] enabled` the
+/// address, the login's name and the two collections — never a password.
+#[sqlx::test]
+async fn the_phone_sync_is_described_only_when_enabled(pool: PgPool) {
+    let off = TestApp::new(pool.clone()).await;
+    assert!(off.get("/api/config").await.json()["dav"].is_null());
+
+    let on = TestApp::with_config(pool, |config| {
+        config.dav.enabled = true;
+        config.server.base_url = "http://pi:8080/".to_owned();
+    })
+    .await;
+    let dav = &on.get("/api/config").await.json()["dav"];
+    assert_eq!(dav["url"], "http://pi:8080/dav/");
+    assert_eq!(dav["username"], "tierarzt");
+    assert_eq!(dav["calendar_name"], "Praxis-Termine");
+    assert_eq!(dav["addressbook_name"], "Kunden");
+    assert!(dav.get("password").is_none());
+}

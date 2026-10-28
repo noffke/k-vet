@@ -168,6 +168,38 @@ async fn an_invalid_phone_number_is_never_persisted(pool: PgPool) {
     );
 }
 
+/// The second number (migration 0037): validated, stored and shown like the first, and found
+/// by the list's search as typed on a phone.
+#[sqlx::test]
+async fn a_mobile_number_is_a_second_number(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let id = common::seed_customer(&pool).await;
+    let uri = format!("/api/customers/{id}");
+
+    let saved = app
+        .patch(&uri, json!({ "mobile": "0171 / 765 43 21" }))
+        .await
+        .json();
+    assert_eq!(saved["mobile"], "+491717654321");
+    assert!(
+        saved["mobile_display"]
+            .as_str()
+            .unwrap_or_default()
+            .starts_with("0171")
+    );
+    assert_eq!(saved["phone"], serde_json::Value::Null);
+
+    let rejected = app.patch(&uri, json!({ "mobile": "keine Nummer" })).await;
+    assert_eq!(rejected.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(rejected.error_fields().contains(&"mobile".to_owned()));
+
+    let found = app.get("/api/customers?q=0171%207654321").await.json();
+    assert_eq!(found[0]["id"], id);
+
+    let cleared = app.patch(&uri, json!({ "mobile": null })).await.json();
+    assert_eq!(cleared["mobile"], serde_json::Value::Null);
+}
+
 #[sqlx::test]
 async fn email_addresses_are_validated_and_typed(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

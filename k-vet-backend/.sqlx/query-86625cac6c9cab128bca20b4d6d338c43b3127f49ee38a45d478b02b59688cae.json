@@ -1,0 +1,38 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO customer\n                     (first_name, last_name, company, phone, mobile, home_street, home_zip,\n                      home_city, home_country, draft, dav_uid, dav_href, dav_origin)\n                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, true, $10, $11, 'phone')\n                 RETURNING id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text",
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "86625cac6c9cab128bca20b4d6d338c43b3127f49ee38a45d478b02b59688cae"
+}

@@ -65,6 +65,15 @@ export interface Customer {
      * @nullable
      */
   phone_display?: string | null;
+  /**
+     * A second number, stored E.164 like `phone`.
+     * @nullable
+     */
+  mobile?: string | null;
+  /** @nullable */
+  mobile_display?: string | null;
+  /** Made in the phone's address book (migration 0037); completed in k-vet. */
+  from_phone: boolean;
   /** @nullable */
   warning_remark?: string | null;
   archived: boolean;

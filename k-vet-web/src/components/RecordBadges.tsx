@@ -8,13 +8,14 @@ import {
   FileWarning,
   MailWarning,
   ReceiptText,
+  Smartphone,
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
-import type { Appointment, InvoiceStatus } from '@/api/generated/model'
+import type { Appointment, Customer, InvoiceStatus } from '@/api/generated/model'
 import { cn, toCamelCase } from '@/lib/utils'
 
 const badge =
-  'inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold'
+  'inline-flex items-center gap-1 whitespace-nowrap rounded-full px-2 py-0.5 text-[0.6875rem] font-semibold'
 
 /**
  * "Incomplete — missing: …" for draft records (FR-002). The server reports which
@@ -157,6 +158,21 @@ export function CalendarBadges({ appointment }: { appointment: Appointment }) {
         </span>
       ) : null}
     </>
+  )
+}
+
+/**
+ * A customer made as a contact on the phone and not yet completed here: the vet still owes it
+ * a salutation, often an address. Gone once the record is complete, like "Aus Kalender".
+ */
+export function FromPhoneBadge({ customer }: { customer: Customer }) {
+  const { t } = useTranslation()
+  if (!customer.from_phone || !customer.draft) return null
+  return (
+    <span className={cn(badge, 'bg-rust-soft text-rust')} title={t('record.fromPhoneHint')}>
+      <Smartphone className="size-3" aria-hidden />
+      {t('record.fromPhone')}
+    </span>
   )
 }
 

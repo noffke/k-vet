@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT id, salutation AS \"salutation?: Salutation\", first_name, last_name,\n                  second_salutation AS \"second_salutation?: Salutation\", second_first_name,\n                  second_last_name, company, invoice_company,\n                  home_addon, home_street, home_zip, home_city, home_country,\n                  invoice_salutation AS \"invoice_salutation?: Salutation\", invoice_first_name,\n                  invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,\n                  invoice_country,\n                  phone, warning_remark, archived, draft, has_invoice_address, has_second_name,\n                  created_at, updated_at\n           FROM customer WHERE id = $1",
+  "query": "SELECT id, salutation AS \"salutation?: Salutation\", first_name, last_name,\n                  second_salutation AS \"second_salutation?: Salutation\", second_first_name,\n                  second_last_name, company, invoice_company,\n                  home_addon, home_street, home_zip, home_city, home_country,\n                  invoice_salutation AS \"invoice_salutation?: Salutation\", invoice_first_name,\n                  invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,\n                  invoice_country,\n                  phone, mobile, dav_origin, warning_remark, archived, draft,\n                  has_invoice_address, has_second_name, created_at, updated_at\n           FROM customer WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -291,6 +291,28 @@
       },
       {
         "ordinal": 23,
+        "name": "mobile",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "mobile"
+          }
+        }
+      },
+      {
+        "ordinal": 24,
+        "name": "dav_origin",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "dav_origin"
+          }
+        }
+      },
+      {
+        "ordinal": 25,
         "name": "warning_remark",
         "type_info": "Text",
         "origin": {
@@ -301,7 +323,7 @@
         }
       },
       {
-        "ordinal": 24,
+        "ordinal": 26,
         "name": "archived",
         "type_info": "Bool",
         "origin": {
@@ -312,7 +334,7 @@
         }
       },
       {
-        "ordinal": 25,
+        "ordinal": 27,
         "name": "draft",
         "type_info": "Bool",
         "origin": {
@@ -323,7 +345,7 @@
         }
       },
       {
-        "ordinal": 26,
+        "ordinal": 28,
         "name": "has_invoice_address",
         "type_info": "Bool",
         "origin": {
@@ -334,7 +356,7 @@
         }
       },
       {
-        "ordinal": 27,
+        "ordinal": 29,
         "name": "has_second_name",
         "type_info": "Bool",
         "origin": {
@@ -345,7 +367,7 @@
         }
       },
       {
-        "ordinal": 28,
+        "ordinal": 30,
         "name": "created_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -356,7 +378,7 @@
         }
       },
       {
-        "ordinal": 29,
+        "ordinal": 31,
         "name": "updated_at",
         "type_info": "Timestamptz",
         "origin": {
@@ -398,6 +420,8 @@
       true,
       true,
       false,
+      true,
+      false,
       false,
       false,
       false,
@@ -405,5 +429,5 @@
       false
     ]
   },
-  "hash": "2e2b72dac6c271f1295a7e62ac841688acacaab27f712b5d4dfa60db771b0337"
+  "hash": "589ddf9832cabdfbe68ce5857f152b043ff05815e2b3ee4279b8b0322b48e9d5"
 }

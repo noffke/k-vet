@@ -107,7 +107,7 @@ The remaining decisions:
 | | `typst_template` | Empty uses the compiled-in PDF template. To edit it, point at `/etc/k-vet/templates/invoice.typ` — the entrypoint seeds it on first start. See [templates.md](templates.md). |
 | | `[[invoice.email_templates]]` | The email templates to choose from, `name` and `file` each, the first preselected. `file` is a name in `/etc/k-vet/templates`, where the entrypoint seeds `invoice-email.txt`; without the list that one is "Standard". A missing file is shown in the app, not a reason to stop. See [templates.md](templates.md). |
 | `[travel_expenses]` | `rate_per_double_km`, `minimum` | GOT § 10 values: `3.50` per double kilometre, `13.00` minimum. Update when the fee schedule changes. |
-| `[dav]` | `enabled`, `calendar_name`, `duration_minutes`, `past_days`, `time_zone` | Optional. The appointments as a calendar on the vet's phone — see [The calendar on the phone](#the-calendar-on-the-phone). Off unless `enabled = true`. |
+| `[dav]` | `enabled`, `calendar_name`, `addressbook_name`, `duration_minutes`, `past_days`, `time_zone` | Optional. The appointments as a calendar and the customers as contacts on the vet's phone — see [The calendar and the contacts on the phone](#the-calendar-and-the-contacts-on-the-phone). Off unless `enabled = true`. |
 | `[maps]` | `api_key` | Optional. A Google Maps Platform key with the **Routes API** and the **Address Validation API** enabled, and restricted to those two. With it a new Wegegeld line fills in its kilometres (the last visit's, else Google's shortest route from the practice to the customer's home) and a customer's address is checked as it is typed. Empty, nothing is sent to Google and the kilometres are typed by hand; the "In Google Maps öffnen" links work either way. |
 
 **What Google receives**, with a key: the practice address and a customer's home address for a
@@ -365,17 +365,19 @@ No setting in k-vet changes this; serving it over HTTPS does. k-vet has no TLS o
 that means a reverse proxy in front with a certificate the devices trust, and
 `base_url = "https://…"`, which also marks the login cookie `Secure`.
 
-### The calendar on the phone
+### The calendar and the contacts on the phone
 
-With `[dav] enabled = true`, k-vet serves the appointments as a calendar over CalDAV at
-`<base_url>/dav/`. The phone syncs it with any CalDAV sync app, so the appointments appear in its
-calendar app; nothing goes to Google or anyone else.
+With `[dav] enabled = true`, k-vet serves the appointments as a calendar over CalDAV and the
+customers as an address book over CardDAV, both at `<base_url>/dav/`. The phone syncs them with
+any CalDAV/CardDAV sync app, so the appointments appear in its calendar app and the customers in
+its contacts; nothing goes to Google or anyone else.
 
 - **Reaching it.** The phone has to reach the Pi: in the practice's network, and on the road
   through the practice's VPN (a router's own WireGuard is enough). If the phone cannot resolve
   the Pi's name over the VPN, use its address.
 - **Signing in.** In the sync app, add an account "with URL and user name": the address from
-  *Einstellungen → Kalender auf dem Handy*, the k-vet user name and the k-vet password. After the
+  *Einstellungen → Kalender und Kontakte auf dem Handy*, the k-vet user name and the k-vet
+  password. Choose the calendar (`calendar_name`) and the address book (`addressbook_name`). After the
   password is changed in `[auth]`, enter the new one in the app too. Plain HTTP works; the
   password then crosses the practice network unencrypted, as the browser login does (inside the
   VPN it is encrypted anyway). HTTPS via a reverse proxy closes that for both.
@@ -388,6 +390,16 @@ calendar app; nothing goes to Google or anyone else.
   and only hides one with something recorded on it ("Wieder im Kalender zeigen" brings it back).
   The texts of k-vet's entries are generated and not read back. All-day and recurring entries
   cannot be appointments; they are kept as they are.
+- **The contacts.** Every customer with a name, as "Erika Mustermann (Bello, Minka)" — what an
+  incoming call shows — with the numbers, e-mail addresses, the address, and a note with the
+  animals' species and a link back to k-vet. A contact made on the phone becomes a customer
+  marked "Vom Handy" until it is completed in k-vet; an edit changes name, numbers, e-mail
+  addresses and address. A contact deleted on the phone comes back at the next sync: archive the
+  customer in k-vet instead.
+- **Moving the customers off Google.** Once the address book has synced, delete the customers
+  from the phone's Google contacts — otherwise each shows twice, and the Google copies stay with
+  Google. Take the contacts permission away from messengers and other apps that upload the
+  address book (Android: *Settings → Apps → … → Permissions → Contacts*).
 
 ## Monitoring
 

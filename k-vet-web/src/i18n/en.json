@@ -49,7 +49,9 @@
     "notSent": "Not sent",
     "showArchived": "Show archived",
     "unarchive": "Restore",
-    "warning": "Warning"
+    "warning": "Warning",
+    "fromPhone": "From the phone",
+    "fromPhoneHint": "Created as a contact on the phone"
   },
   "field": {
     "addon": "Address addon",
@@ -121,7 +123,8 @@
     "vat": "VAT",
     "warningRemark": "Warning",
     "weight": "Weight",
-    "zip": "ZIP"
+    "zip": "ZIP",
+    "mobile": "Mobile"
   },
   "salutation": {
     "familie": "Family",
@@ -481,13 +484,14 @@
     "removeLogoConfirm": "Really remove the logo? New invoices will then print without it.",
     "title": "Settings",
     "ustid": "VAT ID",
-    "phoneSync": "Calendar on the phone",
-    "phoneSyncHint": "The appointments appear as a calendar on the phone, through a CalDAV sync app. In the app, add an account “with URL and user name” and choose the calendar. The phone has to reach k-vet (through the practice’s VPN).",
+    "phoneSync": "Calendar and contacts on the phone",
+    "phoneSyncHint": "The appointments appear as a calendar and the customers as contacts on the phone, through a CalDAV/CardDAV sync app. In the app, add an account “with URL and user name”, then choose the calendar and the address book. The phone has to reach k-vet (through the practice’s VPN).",
     "phoneSyncUrl": "Server address",
     "phoneSyncUser": "User name",
     "phoneSyncPassword": "Password",
     "phoneSyncPasswordValue": "the k-vet password — enter it in the app again after changing it",
-    "phoneSyncCalendar": "Calendar"
+    "phoneSyncCalendar": "Calendar",
+    "phoneSyncAddressbook": "Address book"
   },
   "error": {
     "generic": "Something went wrong.",

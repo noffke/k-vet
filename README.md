@@ -23,10 +23,11 @@ layouts are first-class — not one design squeezed onto a phone.
 - **Mitbringen and Packliste** — drugs a customer phoned in for go on the future appointment as
   reminders (nothing dispensed yet); each day's Packliste adds them up, checks the shelf, and is
   ticked off while packing. At the visit one click makes a reminder a dispensed position.
-- **Calendar on the phone** (optional) — k-vet serves the appointments over CalDAV to a sync app
-  on the vet's phone, through the practice's VPN: customer, animals, address, phone, note and the
-  drugs to bring in each entry. Entries made on the phone become appointments; nothing goes to a
-  third party.
+- **Calendar and contacts on the phone** (optional) — k-vet serves the appointments over CalDAV
+  and the customers over CardDAV to a sync app on the vet's phone, through the practice's VPN:
+  customer, animals, address, phone, note and the drugs to bring in each entry; each customer a
+  contact named with the animals ("Erika Mustermann (Bello, Minka)"), so a call shows who it is.
+  Entries and contacts made on the phone come into k-vet; nothing goes to a third party.
 - **Pharmacy** — drugs with original and subset packagings, lot-based stock with FEFO
   dispensing, stocktakes that book the difference, and an append-only movement history.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV

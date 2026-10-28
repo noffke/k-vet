@@ -244,9 +244,9 @@ export function SettingsPage() {
 }
 
 /**
- * Where the phone's calendar app is pointed: the address, the k-vet user name — and the k-vet
- * password, which is why changing it here means changing it on the phone too. Only shown when
- * the operator switched it on (`[dav] enabled`).
+ * Where the phone's sync app is pointed for the calendar and the contacts: the address, the
+ * k-vet user name — and the k-vet password, which is why changing it here means changing it on
+ * the phone too. Only shown when the operator switched it on (`[dav] enabled`).
  */
 function PhoneSyncCard() {
   const { t } = useTranslation()
@@ -265,6 +265,8 @@ function PhoneSyncCard() {
         <dd className="text-ink">{t('settings.phoneSyncPasswordValue')}</dd>
         <dt className="text-ink-soft">{t('settings.phoneSyncCalendar')}</dt>
         <dd className="text-ink">{dav.calendar_name}</dd>
+        <dt className="text-ink-soft">{t('settings.phoneSyncAddressbook')}</dt>
+        <dd className="text-ink">{dav.addressbook_name}</dd>
       </dl>
     </section>
   )

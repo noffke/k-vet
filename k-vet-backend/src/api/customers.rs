@@ -47,6 +47,11 @@ pub struct Customer {
     pub phone: Option<String>,
     /// The same number in the familiar national format, e.g. `030 12345678`.
     pub phone_display: Option<String>,
+    /// A second number, stored E.164 like `phone`.
+    pub mobile: Option<String>,
+    pub mobile_display: Option<String>,
+    /// Made in the phone's address book (migration 0037); completed in k-vet.
+    pub from_phone: bool,
     pub warning_remark: Option<String>,
     pub archived: bool,
     pub draft: bool,
@@ -129,6 +134,8 @@ pub struct PatchCustomer {
     #[serde(default, deserialize_with = "double_option")]
     pub phone: Option<Option<String>>,
     #[serde(default, deserialize_with = "double_option")]
+    pub mobile: Option<Option<String>>,
+    #[serde(default, deserialize_with = "double_option")]
     pub warning_remark: Option<Option<String>>,
 }
 
@@ -184,8 +191,10 @@ pub async fn list(
                   OR home_street ILIKE '%' || $1 || '%'
                   OR invoice_street ILIKE '%' || $1 || '%'
                   OR (regexp_replace($1, '\D', '', 'g') <> ''
-                      AND regexp_replace(COALESCE(phone, ''), '\D', '', 'g')
-                          LIKE '%' || ltrim(regexp_replace($1, '\D', '', 'g'), '0') || '%')
+                      AND (regexp_replace(COALESCE(phone, ''), '\D', '', 'g')
+                               LIKE '%' || ltrim(regexp_replace($1, '\D', '', 'g'), '0') || '%'
+                           OR regexp_replace(COALESCE(mobile, ''), '\D', '', 'g')
+                               LIKE '%' || ltrim(regexp_replace($1, '\D', '', 'g'), '0') || '%'))
                   OR EXISTS (SELECT 1 FROM patient
                               WHERE patient.customer_id = customer.id
                                 AND NOT patient.archived
@@ -297,6 +306,12 @@ pub async fn patch(
         }
         other => other.clone(),
     };
+    let mobile = match &body.mobile {
+        Some(Some(raw)) if !raw.trim().is_empty() => {
+            Some(Some(validate_phone("mobile", raw, &region)?.e164))
+        }
+        other => other.clone(),
+    };
 
     // Merge the patch over the stored row, then recompute the draft flag.
     let merged = |patched: &Option<Option<String>>, stored: &Option<String>| -> bool {
@@ -348,7 +363,8 @@ pub async fn patch(
                invoice_company    = CASE WHEN $42 THEN $43 ELSE invoice_company END,
                phone              = CASE WHEN $44 THEN $45 ELSE phone END,
                warning_remark     = CASE WHEN $46 THEN $47 ELSE warning_remark END,
-               draft              = $48
+               draft              = $48,
+               mobile             = CASE WHEN $49 THEN $50 ELSE mobile END
            WHERE id = $1"#,
         id,
         body.salutation.is_some(),
@@ -398,6 +414,8 @@ pub async fn patch(
         body.warning_remark.is_some(),
         blank_to_null(&body.warning_remark),
         draft,
+        mobile.is_some(),
+        blank_to_null(&mobile),
     )
     .execute(&mut *transaction)
     .await?;
@@ -552,8 +570,8 @@ pub async fn load(state: &AppState, id: i64) -> AppResult<Customer> {
                   invoice_salutation AS "invoice_salutation?: Salutation", invoice_first_name,
                   invoice_last_name, invoice_addon, invoice_street, invoice_zip, invoice_city,
                   invoice_country,
-                  phone, warning_remark, archived, draft, has_invoice_address, has_second_name,
-                  created_at, updated_at
+                  phone, mobile, dav_origin, warning_remark, archived, draft,
+                  has_invoice_address, has_second_name, created_at, updated_at
            FROM customer WHERE id = $1"#,
         id,
     )
@@ -636,6 +654,10 @@ pub async fn load(state: &AppState, id: i64) -> AppResult<Customer> {
         .phone
         .as_deref()
         .map(|phone| display_phone(phone, national_in));
+    let mobile_display = row
+        .mobile
+        .as_deref()
+        .map(|mobile| display_phone(mobile, national_in));
 
     Ok(Customer {
         id: row.id,
@@ -662,6 +684,9 @@ pub async fn load(state: &AppState, id: i64) -> AppResult<Customer> {
         invoice_country: row.invoice_country,
         phone_display,
         phone: row.phone,
+        mobile_display,
+        mobile: row.mobile,
+        from_phone: row.dav_origin == "phone",
         warning_remark: row.warning_remark,
         archived: row.archived,
         draft: row.draft,

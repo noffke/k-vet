@@ -1,15 +1,19 @@
-//! The appointments as a calendar on the vet's phone: a CalDAV server at `/dav`, reached over
-//! the practice's VPN by a CalDAV sync app (built and tested against DAVx⁵).
+//! The appointments as a calendar and the customers as an address book on the vet's phone: a
+//! CalDAV and CardDAV server at `/dav`, reached over the practice's VPN by a sync app (built and
+//! tested against DAVx⁵).
 //!
-//! Only the subset a sync client uses is served: discovery (`/.well-known/caldav` → principal →
-//! calendar home → one calendar), `PROPFIND` with depth 0 or 1, the `calendar-query` and
-//! `calendar-multiget` reports, and `GET` / `PUT` / `DELETE` on events. No `sync-collection`:
-//! the collection's `getctag` and each event's ETag are what the client syncs by.
+//! Only the subset a sync client uses is served: discovery (`/.well-known/caldav` and
+//! `/.well-known/carddav` → principal → calendar or address book home → one collection),
+//! `PROPFIND` with depth 0 or 1, the multiget and query reports, and `GET` / `PUT` / `DELETE` on
+//! events and contacts. No `sync-collection`: the collection's `getctag` and each object's ETag
+//! are what the client syncs by.
 //!
 //! The phone signs in with the k-vet login over HTTP Basic, on every request. A login that
 //! checked out is remembered for a few minutes, so a sync does not run argon2 per request.
 
 pub mod calendar;
+pub mod contacts;
+pub mod object;
 pub mod xml;
 
 use std::sync::Mutex;
@@ -24,16 +28,16 @@ use axum::response::{IntoResponse, Redirect, Response};
 use axum::routing::any;
 use base64::Engine;
 use sha2::{Digest, Sha256};
+use sqlx::PgConnection;
 
 use crate::AppState;
 use crate::auth::{Refusal, check_login};
-use calendar::{CalendarObject, Conditions, WriteError, Written};
-use xml::{APPLE_ICAL, CALDAV, CALENDARSERVER, DAV, Prop, Propfind, Report};
+use crate::error::AppResult;
+use object::{Conditions, Object, WriteError, Written};
+use xml::{APPLE_ICAL, CALDAV, CALENDARSERVER, CARDDAV, DAV, Prop, Propfind, Report};
 
 /// How long a login that checked out is taken on trust.
 const LOGIN_TRUST: Duration = Duration::from_secs(10 * 60);
-/// The one calendar's path segment.
-const CALENDAR: &str = "praxis";
 
 /// The last good `Authorization` header, hashed, and when it was checked.
 #[derive(Debug, Default)]
@@ -65,6 +69,10 @@ pub fn routes(state: AppState) -> Router<AppState> {
     Router::new()
         .route(
             "/.well-known/caldav",
+            any(|| async { Redirect::permanent("/dav/") }),
+        )
+        .route(
+            "/.well-known/carddav",
             any(|| async { Redirect::permanent("/dav/") }),
         )
         .merge(dav)
@@ -119,14 +127,59 @@ async fn require_basic(State(state): State<AppState>, request: Request, next: Ne
     }
 }
 
+/// The two collections: the appointments and the customers.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Collection {
+    Calendar,
+    Contacts,
+}
+
+impl Collection {
+    /// The home's path segment, `/dav/<home>/`.
+    fn home(self) -> &'static str {
+        match self {
+            Collection::Calendar => "calendars",
+            Collection::Contacts => "addressbooks",
+        }
+    }
+
+    /// The one collection's path segment, `/dav/<home>/<segment>/`.
+    fn segment(self) -> &'static str {
+        match self {
+            Collection::Calendar => "praxis",
+            Collection::Contacts => "kunden",
+        }
+    }
+
+    fn home_href(self) -> String {
+        format!("/dav/{}/", self.home())
+    }
+
+    fn href(self) -> String {
+        format!("/dav/{}/{}/", self.home(), self.segment())
+    }
+
+    fn object_href(self, name: &str) -> String {
+        format!("{}{}", self.href(), encode(name))
+    }
+
+    fn content_type(self) -> &'static str {
+        match self {
+            Collection::Calendar => "text/calendar; charset=utf-8",
+            Collection::Contacts => "text/vcard; charset=utf-8",
+        }
+    }
+}
+
 /// What a path under `/dav` names.
 #[derive(Debug, Clone, PartialEq, Eq)]
 enum Resource {
     Root,
     Principal,
-    CalendarHome,
-    Calendar,
-    Event(String),
+    Home(Collection),
+    Collection(Collection),
+    /// An event or a contact, by its name in the collection.
+    Object(Collection, String),
 }
 
 /// Percent-decodes a path segment; `None` for one that does not decode to UTF-8.
@@ -166,14 +219,23 @@ fn encode(name: &str) -> String {
 fn resource(path: &str, username: &str) -> Option<Resource> {
     let rest = path.strip_prefix("/dav")?;
     let segments: Vec<&str> = rest.split('/').filter(|part| !part.is_empty()).collect();
+    let collection = |home: &str| {
+        [Collection::Calendar, Collection::Contacts]
+            .into_iter()
+            .find(|collection| collection.home() == home)
+    };
     match segments.as_slice() {
         [] => Some(Resource::Root),
         ["principals", user] if decode(user).as_deref() == Some(username) => {
             Some(Resource::Principal)
         }
-        ["calendars"] => Some(Resource::CalendarHome),
-        ["calendars", CALENDAR] => Some(Resource::Calendar),
-        ["calendars", CALENDAR, name] => decode(name).map(Resource::Event),
+        [home] => collection(home).map(Resource::Home),
+        [home, segment] => collection(home)
+            .filter(|collection| collection.segment() == *segment)
+            .map(Resource::Collection),
+        [home, segment, name] => collection(home)
+            .filter(|collection| collection.segment() == *segment)
+            .and_then(|collection| decode(name).map(|name| Resource::Object(collection, name))),
         _ => None,
     }
 }
@@ -182,17 +244,13 @@ fn principal_href(state: &AppState) -> String {
     format!("/dav/principals/{}/", encode(&state.config.auth.username))
 }
 
-fn event_href(name: &str) -> String {
-    format!("/dav/calendars/{CALENDAR}/{}", encode(name))
-}
-
 fn href_of(state: &AppState, resource: &Resource) -> String {
     match resource {
         Resource::Root => "/dav/".to_owned(),
         Resource::Principal => principal_href(state),
-        Resource::CalendarHome => "/dav/calendars/".to_owned(),
-        Resource::Calendar => format!("/dav/calendars/{CALENDAR}/"),
-        Resource::Event(name) => event_href(name),
+        Resource::Home(collection) => collection.home_href(),
+        Resource::Collection(collection) => collection.href(),
+        Resource::Object(collection, name) => collection.object_href(name),
     }
 }
 
@@ -203,24 +261,35 @@ fn known_props(resource: &Resource) -> Vec<Prop> {
         Prop::new(DAV, "current-user-principal"),
     ];
     match resource {
-        Resource::Root | Resource::CalendarHome => {}
+        Resource::Root | Resource::Home(_) => {}
         Resource::Principal => props.extend([
             Prop::new(DAV, "displayname"),
             Prop::new(DAV, "principal-URL"),
             Prop::new(CALDAV, "calendar-home-set"),
             Prop::new(CALDAV, "calendar-user-address-set"),
+            Prop::new(CARDDAV, "addressbook-home-set"),
         ]),
-        Resource::Calendar => props.extend([
-            Prop::new(DAV, "displayname"),
-            Prop::new(DAV, "owner"),
-            Prop::new(DAV, "current-user-privilege-set"),
-            Prop::new(DAV, "supported-report-set"),
-            Prop::new(CALDAV, "supported-calendar-component-set"),
-            Prop::new(CALDAV, "calendar-description"),
-            Prop::new(CALENDARSERVER, "getctag"),
-            Prop::new(APPLE_ICAL, "calendar-color"),
-        ]),
-        Resource::Event(_) => {
+        Resource::Collection(collection) => {
+            props.extend([
+                Prop::new(DAV, "displayname"),
+                Prop::new(DAV, "owner"),
+                Prop::new(DAV, "current-user-privilege-set"),
+                Prop::new(DAV, "supported-report-set"),
+                Prop::new(CALENDARSERVER, "getctag"),
+            ]);
+            props.extend(match collection {
+                Collection::Calendar => vec![
+                    Prop::new(CALDAV, "supported-calendar-component-set"),
+                    Prop::new(CALDAV, "calendar-description"),
+                    Prop::new(APPLE_ICAL, "calendar-color"),
+                ],
+                Collection::Contacts => vec![
+                    Prop::new(CARDDAV, "supported-address-data"),
+                    Prop::new(CARDDAV, "addressbook-description"),
+                ],
+            });
+        }
+        Resource::Object(..) => {
             props.extend([Prop::new(DAV, "getetag"), Prop::new(DAV, "getcontenttype")])
         }
     }
@@ -233,7 +302,7 @@ fn value(
     resource: &Resource,
     prop: &Prop,
     ctag: &str,
-    object: Option<&CalendarObject>,
+    object: Option<&Object>,
     with_data: bool,
 ) -> Option<String> {
     let href = |href: String| format!("<d:href>{}</d:href>", xml::escape(&href));
@@ -243,10 +312,11 @@ fn value(
     if prop.is(DAV, "resourcetype") {
         return Some(
             match resource {
-                Resource::Root | Resource::CalendarHome => "<d:collection/>",
+                Resource::Root | Resource::Home(_) => "<d:collection/>",
                 Resource::Principal => "<d:principal/><d:collection/>",
-                Resource::Calendar => "<d:collection/><c:calendar/>",
-                Resource::Event(_) => "",
+                Resource::Collection(Collection::Calendar) => "<d:collection/><c:calendar/>",
+                Resource::Collection(Collection::Contacts) => "<d:collection/><card:addressbook/>",
+                Resource::Object(..) => "",
             }
             .to_owned(),
         );
@@ -258,16 +328,21 @@ fn value(
             } else if prop.is(DAV, "principal-URL") {
                 Some(href(principal_href(state)))
             } else if prop.is(CALDAV, "calendar-home-set") {
-                Some(href("/dav/calendars/".to_owned()))
+                Some(href(Collection::Calendar.home_href()))
             } else if prop.is(CALDAV, "calendar-user-address-set") {
                 Some(href(principal_href(state)))
+            } else if prop.is(CARDDAV, "addressbook-home-set") {
+                Some(href(Collection::Contacts.home_href()))
             } else {
                 None
             }
         }
-        Resource::Calendar => {
+        Resource::Collection(collection) => {
             if prop.is(DAV, "displayname") {
-                Some(xml::escape(&state.config.dav.calendar_name))
+                Some(xml::escape(match collection {
+                    Collection::Calendar => &state.config.dav.calendar_name,
+                    Collection::Contacts => &state.config.dav.addressbook_name,
+                }))
             } else if prop.is(DAV, "owner") {
                 Some(href(principal_href(state)))
             } else if prop.is(DAV, "current-user-privilege-set") {
@@ -284,41 +359,73 @@ fn value(
                     .concat(),
                 )
             } else if prop.is(DAV, "supported-report-set") {
+                let reports = match collection {
+                    Collection::Calendar => ["c:calendar-multiget", "c:calendar-query"],
+                    Collection::Contacts => ["card:addressbook-multiget", "card:addressbook-query"],
+                };
                 Some(
-                    ["calendar-multiget", "calendar-query"]
+                    reports
                         .map(|report| {
                             format!(
-                                "<d:supported-report><d:report><c:{report}/></d:report>\
+                                "<d:supported-report><d:report><{report}/></d:report>\
                                  </d:supported-report>"
                             )
                         })
                         .concat(),
                 )
-            } else if prop.is(CALDAV, "supported-calendar-component-set") {
-                Some(r#"<c:comp name="VEVENT"/>"#.to_owned())
-            } else if prop.is(CALDAV, "calendar-description") {
-                Some("Termine aus k-vet".to_owned())
             } else if prop.is(CALENDARSERVER, "getctag") {
                 Some(xml::escape(ctag))
-            } else if prop.is(APPLE_ICAL, "calendar-color") {
-                Some("#9A4A2FFF".to_owned())
             } else {
-                None
+                match collection {
+                    Collection::Calendar => {
+                        if prop.is(CALDAV, "supported-calendar-component-set") {
+                            Some(r#"<c:comp name="VEVENT"/>"#.to_owned())
+                        } else if prop.is(CALDAV, "calendar-description") {
+                            Some("Termine aus k-vet".to_owned())
+                        } else if prop.is(APPLE_ICAL, "calendar-color") {
+                            Some("#9A4A2FFF".to_owned())
+                        } else {
+                            None
+                        }
+                    }
+                    Collection::Contacts => {
+                        if prop.is(CARDDAV, "supported-address-data") {
+                            Some(
+                                r#"<card:address-data-type content-type="text/vcard" version="3.0"/>"#
+                                    .to_owned(),
+                            )
+                        } else if prop.is(CARDDAV, "addressbook-description") {
+                            Some("Kunden aus k-vet".to_owned())
+                        } else {
+                            None
+                        }
+                    }
+                }
             }
         }
-        Resource::Event(_) => {
+        Resource::Object(collection, _) => {
             let object = object?;
+            let data = match collection {
+                Collection::Calendar => prop.is(CALDAV, "calendar-data"),
+                Collection::Contacts => prop.is(CARDDAV, "address-data"),
+            };
             if prop.is(DAV, "getetag") {
                 Some(xml::escape(&object.etag))
             } else if prop.is(DAV, "getcontenttype") {
-                Some("text/calendar; charset=utf-8; component=VEVENT".to_owned())
-            } else if prop.is(CALDAV, "calendar-data") && with_data {
-                Some(xml::escape(&object.ics))
+                Some(
+                    match collection {
+                        Collection::Calendar => "text/calendar; charset=utf-8; component=VEVENT",
+                        Collection::Contacts => "text/vcard; charset=utf-8",
+                    }
+                    .to_owned(),
+                )
+            } else if data && with_data {
+                Some(xml::escape(&object.body))
             } else {
                 None
             }
         }
-        Resource::Root | Resource::CalendarHome => None,
+        Resource::Root | Resource::Home(_) => None,
     }
 }
 
@@ -327,7 +434,7 @@ fn response_for(
     resource: &Resource,
     wanted: &Propfind,
     ctag: &str,
-    object: Option<&CalendarObject>,
+    object: Option<&Object>,
 ) -> xml::Response {
     let props = match wanted {
         Propfind::All => known_props(resource),
@@ -376,6 +483,29 @@ fn conditions(headers: &HeaderMap) -> Conditions {
     }
 }
 
+async fn objects(
+    state: &AppState,
+    connection: &mut PgConnection,
+    collection: Collection,
+) -> AppResult<Vec<Object>> {
+    match collection {
+        Collection::Calendar => calendar::objects(state, connection).await,
+        Collection::Contacts => contacts::objects(state, connection).await,
+    }
+}
+
+async fn object(
+    state: &AppState,
+    connection: &mut PgConnection,
+    collection: Collection,
+    name: &str,
+) -> AppResult<Option<Object>> {
+    match collection {
+        Collection::Calendar => calendar::object(state, connection, name).await,
+        Collection::Contacts => contacts::object(state, connection, name).await,
+    }
+}
+
 /// One handler for every method under `/dav`, dispatched by method and path.
 async fn handle(
     State(state): State<AppState>,
@@ -412,7 +542,7 @@ fn options() -> Response {
         [
             (
                 header::HeaderName::from_static("dav"),
-                "1, 3, calendar-access",
+                "1, 3, calendar-access, addressbook",
             ),
             (
                 header::ALLOW,
@@ -428,7 +558,7 @@ async fn propfind(
     resource: &Resource,
     headers: &HeaderMap,
     body: &str,
-) -> Result<Response, crate::error::AppError> {
+) -> AppResult<Response> {
     let Some(wanted) = xml::parse_propfind(body) else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
@@ -438,34 +568,22 @@ async fn propfind(
         .is_some_and(|depth| depth.trim() != "0");
     let mut connection = state.pool.acquire().await?;
 
-    let (objects, ctag) = match resource {
-        Resource::Calendar => {
-            let objects = calendar::objects(state, &mut connection).await?;
-            let ctag = calendar::ctag(&objects);
-            (objects, ctag)
-        }
-        Resource::CalendarHome if depth_one => {
-            let objects = calendar::objects(state, &mut connection).await?;
-            let ctag = calendar::ctag(&objects);
-            (Vec::new(), ctag)
-        }
-        _ => (Vec::new(), String::new()),
-    };
-
     let responses = match resource {
-        Resource::Event(name) => {
-            let Some(object) = calendar::object(state, &mut connection, name).await? else {
+        Resource::Object(collection, name) => {
+            let Some(object) = object(state, &mut connection, *collection, name).await? else {
                 return Ok(StatusCode::NOT_FOUND.into_response());
             };
             vec![response_for(state, resource, &wanted, "", Some(&object))]
         }
-        Resource::Calendar => {
+        Resource::Collection(collection) => {
+            let objects = objects(state, &mut connection, *collection).await?;
+            let ctag = object::ctag(&objects);
             let mut responses = vec![response_for(state, resource, &wanted, &ctag, None)];
             if depth_one {
                 responses.extend(objects.iter().map(|object| {
                     response_for(
                         state,
-                        &Resource::Event(object.name.clone()),
+                        &Resource::Object(*collection, object.name.clone()),
                         &wanted,
                         "",
                         Some(object),
@@ -474,14 +592,15 @@ async fn propfind(
             }
             responses
         }
-        Resource::CalendarHome => {
+        Resource::Home(collection) => {
             let mut responses = vec![response_for(state, resource, &wanted, "", None)];
             if depth_one {
+                let objects = objects(state, &mut connection, *collection).await?;
                 responses.push(response_for(
                     state,
-                    &Resource::Calendar,
+                    &Resource::Collection(*collection),
                     &wanted,
-                    &ctag,
+                    &object::ctag(&objects),
                     None,
                 ));
             }
@@ -494,14 +613,10 @@ async fn propfind(
     Ok(multistatus(&responses))
 }
 
-async fn report(
-    state: &AppState,
-    resource: &Resource,
-    body: &str,
-) -> Result<Response, crate::error::AppError> {
-    if *resource != Resource::Calendar {
+async fn report(state: &AppState, target: &Resource, body: &str) -> AppResult<Response> {
+    let Resource::Collection(collection) = *target else {
         return Ok(StatusCode::FORBIDDEN.into_response());
-    }
+    };
     let Some(report) = xml::parse_report(body) else {
         return Ok(StatusCode::BAD_REQUEST.into_response());
     };
@@ -515,16 +630,16 @@ async fn report(
                     .find("/dav/")
                     .and_then(|start| href.get(start..))
                     .unwrap_or(&href);
-                let found = match resource_from_href(state, path) {
-                    Some(Resource::Event(name)) => {
-                        calendar::object(state, &mut connection, &name).await?
+                let found = match resource(path, &state.config.auth.username) {
+                    Some(Resource::Object(of, name)) if of == collection => {
+                        object(state, &mut connection, collection, &name).await?
                     }
                     _ => None,
                 };
                 responses.push(match found {
                     Some(object) => response_for(
                         state,
-                        &Resource::Event(object.name.clone()),
+                        &Resource::Object(collection, object.name.clone()),
                         &wanted,
                         "",
                         Some(&object),
@@ -538,9 +653,10 @@ async fn report(
             }
             responses
         }
+        // An address book query's filters are not applied: every contact matches.
         Report::Query { props, range } => {
             let wanted = Propfind::Props(props);
-            calendar::objects(state, &mut connection)
+            objects(state, &mut connection, collection)
                 .await?
                 .iter()
                 .filter(|object| match (range, object.starts_at) {
@@ -557,7 +673,7 @@ async fn report(
                 .map(|object| {
                     response_for(
                         state,
-                        &Resource::Event(object.name.clone()),
+                        &Resource::Object(collection, object.name.clone()),
                         &wanted,
                         "",
                         Some(object),
@@ -573,20 +689,12 @@ async fn report(
     Ok(multistatus(&responses))
 }
 
-fn resource_from_href(state: &AppState, path: &str) -> Option<Resource> {
-    resource(path, &state.config.auth.username)
-}
-
-async fn get(
-    state: &AppState,
-    resource: &Resource,
-    head: bool,
-) -> Result<Response, crate::error::AppError> {
-    let Resource::Event(name) = resource else {
+async fn get(state: &AppState, resource: &Resource, head: bool) -> AppResult<Response> {
+    let Resource::Object(collection, name) = resource else {
         return Ok(StatusCode::METHOD_NOT_ALLOWED.into_response());
     };
     let mut connection = state.pool.acquire().await?;
-    let Some(object) = calendar::object(state, &mut connection, name).await? else {
+    let Some(object) = object(state, &mut connection, *collection, name).await? else {
         return Ok(StatusCode::NOT_FOUND.into_response());
     };
     let etag =
@@ -594,14 +702,14 @@ async fn get(
     let body = if head {
         Body::empty()
     } else {
-        Body::from(object.ics)
+        Body::from(object.body)
     };
     Ok((
         StatusCode::OK,
         [
             (
                 header::CONTENT_TYPE,
-                HeaderValue::from_static("text/calendar; charset=utf-8"),
+                HeaderValue::from_static(collection.content_type()),
             ),
             (header::ETAG, etag),
         ],
@@ -615,7 +723,7 @@ fn write_failed(error: WriteError) -> Response {
         WriteError::Precondition => StatusCode::PRECONDITION_FAILED.into_response(),
         WriteError::NotFound => StatusCode::NOT_FOUND.into_response(),
         WriteError::Unreadable(reason) => {
-            tracing::info!(%reason, "calendar object refused");
+            tracing::info!(%reason, "DAV object refused");
             StatusCode::UNSUPPORTED_MEDIA_TYPE.into_response()
         }
         WriteError::App(error) => error.into_response(),
@@ -623,39 +731,41 @@ fn write_failed(error: WriteError) -> Response {
 }
 
 /// No ETag in the answer, ever: what k-vet keeps is not the text the phone sent (RFC 4791
-/// §5.3.4), so the phone fetches k-vet's version back.
+/// §5.3.4, RFC 6352 §6.3.2), so the phone fetches k-vet's version back.
 async fn put(
     state: &AppState,
     resource: &Resource,
     headers: &HeaderMap,
     body: &str,
-) -> Result<Response, crate::error::AppError> {
-    let Resource::Event(name) = resource else {
+) -> AppResult<Response> {
+    let Resource::Object(collection, name) = resource else {
         return Ok(StatusCode::METHOD_NOT_ALLOWED.into_response());
     };
-    Ok(
-        match calendar::put(state, name, body, &conditions(headers)).await {
-            Ok(Written::Created) => StatusCode::CREATED.into_response(),
-            Ok(Written::Updated) => StatusCode::NO_CONTENT.into_response(),
-            Err(error) => write_failed(error),
-        },
-    )
+    let conditions = conditions(headers);
+    let written = match collection {
+        Collection::Calendar => calendar::put(state, name, body, &conditions).await,
+        Collection::Contacts => contacts::put(state, name, body, &conditions).await,
+    };
+    Ok(match written {
+        Ok(Written::Created) => StatusCode::CREATED.into_response(),
+        Ok(Written::Updated) => StatusCode::NO_CONTENT.into_response(),
+        Err(error) => write_failed(error),
+    })
 }
 
-async fn delete(
-    state: &AppState,
-    resource: &Resource,
-    headers: &HeaderMap,
-) -> Result<Response, crate::error::AppError> {
-    let Resource::Event(name) = resource else {
+async fn delete(state: &AppState, resource: &Resource, headers: &HeaderMap) -> AppResult<Response> {
+    let Resource::Object(collection, name) = resource else {
         return Ok(StatusCode::METHOD_NOT_ALLOWED.into_response());
     };
-    Ok(
-        match calendar::delete(state, name, &conditions(headers)).await {
-            Ok(()) => StatusCode::NO_CONTENT.into_response(),
-            Err(error) => write_failed(error),
-        },
-    )
+    let conditions = conditions(headers);
+    let deleted = match collection {
+        Collection::Calendar => calendar::delete(state, name, &conditions).await,
+        Collection::Contacts => contacts::delete(state, name, &conditions).await,
+    };
+    Ok(match deleted {
+        Ok(()) => StatusCode::NO_CONTENT.into_response(),
+        Err(error) => write_failed(error),
+    })
 }
 
 #[cfg(test)]
@@ -673,17 +783,39 @@ mod tests {
         assert_eq!(resource("/dav/principals/jemand/", "tierarzt"), None);
         assert_eq!(
             resource("/dav/calendars/", "tierarzt"),
-            Some(Resource::CalendarHome)
+            Some(Resource::Home(Collection::Calendar))
         );
         assert_eq!(
             resource("/dav/calendars/praxis", "tierarzt"),
-            Some(Resource::Calendar)
+            Some(Resource::Collection(Collection::Calendar))
         );
         assert_eq!(
             resource("/dav/calendars/praxis/a%40b.ics", "tierarzt"),
-            Some(Resource::Event("a@b.ics".to_owned()))
+            Some(Resource::Object(Collection::Calendar, "a@b.ics".to_owned()))
         );
         assert_eq!(resource("/dav/calendars/andere/", "tierarzt"), None);
+        assert_eq!(
+            resource("/dav/addressbooks/", "tierarzt"),
+            Some(Resource::Home(Collection::Contacts))
+        );
+        assert_eq!(
+            resource("/dav/addressbooks/kunden/", "tierarzt"),
+            Some(Resource::Collection(Collection::Contacts))
+        );
+        assert_eq!(
+            resource("/dav/addressbooks/kunden/kvet-customer-3.vcf", "tierarzt"),
+            Some(Resource::Object(
+                Collection::Contacts,
+                "kvet-customer-3.vcf".to_owned()
+            ))
+        );
+        // Each collection lives under its own home only.
+        assert_eq!(resource("/dav/addressbooks/praxis/", "tierarzt"), None);
+        assert_eq!(resource("/dav/calendars/kunden/x.vcf", "tierarzt"), None);
+        assert_eq!(
+            Collection::Contacts.object_href("a b.vcf"),
+            "/dav/addressbooks/kunden/a%20b.vcf"
+        );
         assert_eq!(encode("a@b c.ics"), "a%40b%20c.ics");
         assert_eq!(decode("%zz"), None);
     }
