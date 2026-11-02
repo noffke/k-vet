@@ -2001,7 +2001,7 @@ dependencies = [
  "mime_guess",
  "minijinja",
  "phonenumber",
- "roxmltree 0.20.0",
+ "roxmltree 0.21.1",
  "rust_decimal",
  "rust_iso3166",
  "rustls",
