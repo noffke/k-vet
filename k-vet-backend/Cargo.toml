@@ -31,7 +31,7 @@ metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 mime_guess = "2.0.5"
 minijinja = "2.21.0"
 phonenumber = "0.3.10"
-roxmltree = "0.20.0"
+roxmltree = "0.21.1"
 rust_iso3166 = "0.2.0"
 rustls = { version = "0.23.46", default-features = false, features = ["ring", "std", "tls12"] }
 rust_decimal = { version = "1.42.1", features = ["serde-str", "serde-with-str"] }
