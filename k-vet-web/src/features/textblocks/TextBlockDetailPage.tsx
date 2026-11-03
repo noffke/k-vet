@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
+  deleteTextBlock,
   getGetTextBlockQueryKey,
   getListTextBlocksQueryKey,
   useArchiveTextBlock,
@@ -12,12 +13,14 @@ import {
 import type { TextBlock } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TextField } from '@/components/ui/field'
 import { RichTextField } from '@/components/ui/richtext'
 import { useAutoSave } from '@/lib/autosave'
+import { useGoBack } from '@/lib/trail'
 
 /** One Textbaustein: what it is called, and the text it inserts. */
 export function TextBlockDetailPage() {
@@ -45,6 +48,9 @@ export function TextBlockDetailPage() {
     onSaved: store,
   })
 
+  // Where a deleted draft leaves to: back the way the vet came, else the text block list.
+  const leave = useGoBack({ to: '/text-blocks' })
+
   if (block.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!block.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = block.data
@@ -57,12 +63,23 @@ export function TextBlockDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <ArchiveButton
-              archived={record.archived}
-              name={record.name ?? t('textBlocks.new')}
-              onArchive={() => archive.mutate({ id: blockId }, { onSuccess: store })}
-              onUnarchive={() => unarchive.mutate({ id: blockId }, { onSuccess: store })}
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={record.name ?? t('textBlocks.new')}
+                onDelete={async () => {
+                  await deleteTextBlock(blockId)
+                  await client.invalidateQueries({ queryKey: getListTextBlocksQueryKey() })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={record.name ?? t('textBlocks.new')}
+                onArchive={() => archive.mutate({ id: blockId }, { onSuccess: store })}
+                onUnarchive={() => unarchive.mutate({ id: blockId }, { onSuccess: store })}
+              />
+            )}
           </>
         }
       >

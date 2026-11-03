@@ -40,6 +40,10 @@
   "record": {
     "archive": "Archivieren",
     "archived": "Archiviert",
+    "deleteInUse": "„{{name}}“ wird noch verwendet und bleibt deshalb erhalten. Erst die Verwendung entfernen, dann löschen.",
+    "deleteRefused": "Nicht gelöscht",
+    "fromPhone": "Vom Handy",
+    "fromPhoneHint": "Auf dem Handy als Kontakt angelegt",
     "incomplete": "Unvollständig",
     "incompleteWithFields": "Unvollständig — fehlt: {{fields}}",
     "notBilled": "Nicht abgerechnet",
@@ -49,9 +53,7 @@
     "notSent": "Nicht versendet",
     "showArchived": "Archivierte anzeigen",
     "unarchive": "Wiederherstellen",
-    "warning": "Warnhinweis",
-    "fromPhone": "Vom Handy",
-    "fromPhoneHint": "Auf dem Handy als Kontakt angelegt"
+    "warning": "Warnhinweis"
   },
   "field": {
     "addon": "Adresszusatz",
@@ -172,7 +174,9 @@
   "confirm": {
     "archiveBody": "„{{name}}“ verschwindet aus Suche und Auswahllisten. Rechnungen und Behandlungen bleiben unverändert, und Wiederherstellen ist jederzeit möglich.",
     "archiveBodyNoRestore": "„{{name}}“ verschwindet aus Suche und Auswahllisten. Rechnungen und Behandlungen bleiben unverändert; auf dieser Seite lässt es sich aber nicht wieder einblenden.",
-    "archiveTitle": "Archivieren?"
+    "archiveTitle": "Archivieren?",
+    "deleteDraftBody": "„{{name}}“ ist noch unvollständig und wird endgültig gelöscht.",
+    "deleteDraftTitle": "Unvollständigen Eintrag löschen?"
   },
   "value": {
     "invalidBic": "Kein gültiger BIC (8 oder 11 Zeichen).",
@@ -509,6 +513,7 @@
     "notTravel": "Nur eine Wegegeld-Position hat eine Entfernung"
   },
   "packaging": {
+    "delete": "Packung löschen",
     "originalAlreadyExists": "Es gibt bereits eine Originalpackung",
     "supplierOnOriginalOnly": "Nur Originalpackungen haben einen Lieferanten"
   },

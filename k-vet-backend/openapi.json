@@ -790,6 +790,32 @@
           }
         }
       },
+      "delete": {
+        "tags": [
+          "customers"
+        ],
+        "summary": "Deletes an incomplete customer, with its e-mail addresses. Refused while animals,\nappointments or Preisauskünfte refer to it.",
+        "operationId": "deleteCustomer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
+          }
+        }
+      },
       "patch": {
         "tags": [
           "customers"
@@ -1105,6 +1131,32 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "pharmacy"
+        ],
+        "summary": "Deletes an incomplete drug, with its packagings. Refused while one of them is in use.",
+        "operationId": "deleteDrug",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
           }
         }
       },
@@ -1983,6 +2035,32 @@
           }
         }
       },
+      "delete": {
+        "tags": [
+          "pharmacy"
+        ],
+        "summary": "Deletes an incomplete manufacturer. Refused while a drug names it.",
+        "operationId": "deleteManufacturer",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
+          }
+        }
+      },
       "patch": {
         "tags": [
           "pharmacy"
@@ -2092,6 +2170,32 @@
       }
     },
     "/api/packagings/{id}": {
+      "delete": {
+        "tags": [
+          "pharmacy"
+        ],
+        "summary": "Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or\n\"Mitbringen\" refer to it.",
+        "operationId": "deletePackaging",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
+          }
+        }
+      },
       "patch": {
         "tags": [
           "pharmacy"
@@ -2532,6 +2636,32 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "patients"
+        ],
+        "summary": "Deletes an incomplete animal, with its files (the monthly sweep removes their bytes).",
+        "operationId": "deletePatient",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
           }
         }
       },
@@ -3256,6 +3386,32 @@
           }
         }
       },
+      "delete": {
+        "tags": [
+          "services"
+        ],
+        "summary": "Deletes an incomplete service. Refused while lines, templates or Preisauskünfte use it.",
+        "operationId": "deleteService",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
+          }
+        }
+      },
       "patch": {
         "tags": [
           "services"
@@ -3547,6 +3703,32 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "pharmacy"
+        ],
+        "summary": "Deletes an incomplete supplier. Refused while a packaging names it.",
+        "operationId": "deleteSupplier",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
           }
         }
       },
@@ -3889,6 +4071,32 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "textBlocks"
+        ],
+        "summary": "Deletes an incomplete text block.",
+        "operationId": "deleteTextBlock",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
           }
         }
       },
@@ -4315,6 +4523,32 @@
           },
           "404": {
             "description": "Not Found"
+          }
+        }
+      },
+      "delete": {
+        "tags": [
+          "templates"
+        ],
+        "summary": "Deletes an incomplete template, with its positions.",
+        "operationId": "deleteTemplate",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Deleted"
+          },
+          "409": {
+            "description": "Complete (archive it instead), or still in use"
           }
         }
       },

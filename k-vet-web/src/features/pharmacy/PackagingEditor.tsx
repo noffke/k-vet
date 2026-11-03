@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Boxes, Package, RotateCcw } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import {
+  deletePackaging,
   getListLotsQueryKey,
   getListPackagingsQueryKey,
   useCreatePackaging,
@@ -9,6 +10,7 @@ import {
   usePatchPackaging,
 } from '@/api/generated/endpoints'
 import type { AddressBookEntry, Drug, Packaging } from '@/api/generated/model'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { NumberInput } from '@/components/NumberInput'
 import { IncompleteBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
@@ -111,6 +113,18 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     </>
                   ) : null}
                   <IncompleteBadge missing={packaging.missing_fields} />
+                  {/* A packaging added by mistake goes again while it is incomplete. */}
+                  {packaging.draft ? (
+                    <DeleteDraftButton
+                      size="small"
+                      label={t('packaging.delete')}
+                      name={isOriginal ? t('pharmacy.original') : t('pharmacy.subset')}
+                      onDelete={async () => {
+                        await deletePackaging(packaging.id)
+                        await refresh()
+                      }}
+                    />
+                  ) : null}
                 </span>
               </div>
 

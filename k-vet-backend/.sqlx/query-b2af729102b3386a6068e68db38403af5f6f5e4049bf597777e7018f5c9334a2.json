@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT draft FROM patient WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "patient",
+            "name": "draft"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "b2af729102b3386a6068e68db38403af5f6f5e4049bf597777e7018f5c9334a2"
+}

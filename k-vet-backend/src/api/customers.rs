@@ -9,7 +9,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{ListQuery, double_option};
+use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
 use crate::api::settings::validate_country;
 use crate::domain::contact::{display_phone, validate_email, validate_phone};
 use crate::domain::draft::recompute_draft;
@@ -701,10 +701,37 @@ pub async fn load(state: &AppState, id: i64) -> AppResult<Customer> {
     })
 }
 
+/// Deletes an incomplete customer, with its e-mail addresses. Refused while animals,
+/// appointments or Preisauskünfte refer to it.
+#[utoipa::path(
+    delete,
+    path = "/api/customers/{id}",
+    operation_id = "deleteCustomer",
+    tag = "customers",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!("SELECT draft FROM customer WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM customer WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/customers", get(list).post(create))
-        .route("/customers/{id}", get(detail).patch(patch))
+        .route("/customers/{id}", get(detail).patch(patch).delete(delete))
         .route("/customers/{id}/archive", post(archive))
         .route("/customers/{id}/unarchive", post(unarchive))
         .route("/customers/{id}/emails", post(add_email))

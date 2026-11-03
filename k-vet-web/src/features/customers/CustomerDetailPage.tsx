@@ -4,6 +4,7 @@ import { Plus, Trash2 } from 'lucide-react'
 import { type FocusEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  deleteCustomer,
   getGetCustomerQueryKey,
   getListAppointmentsQueryKey,
   getListCustomersQueryKey,
@@ -30,6 +31,7 @@ import { AddressCheck } from '@/components/AddressCheck'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { LoadMore } from '@/components/LoadMore'
 import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
@@ -49,6 +51,7 @@ import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { useGoBack } from '@/lib/trail'
 import { CustomerQuotes } from '../quote/CustomerQuotes'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
@@ -130,6 +133,9 @@ export function CustomerDetailPage() {
       }),
     onSaved: store,
   })
+
+  // Where a deleted draft leaves to: back the way the vet came, else the customer list.
+  const leave = useGoBack({ to: '/customers' })
 
   if (customer.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!customer.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
@@ -246,12 +252,23 @@ export function CustomerDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <ArchiveButton
-              archived={record.archived}
-              name={displayName}
-              onArchive={() => archive.mutate({ id: customerId }, { onSuccess: store })}
-              onUnarchive={() => unarchive.mutate({ id: customerId }, { onSuccess: store })}
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={displayName}
+                onDelete={async () => {
+                  await deleteCustomer(customerId)
+                  await client.invalidateQueries({ queryKey: getListCustomersQueryKey() })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={displayName}
+                onArchive={() => archive.mutate({ id: customerId }, { onSuccess: store })}
+                onUnarchive={() => unarchive.mutate({ id: customerId }, { onSuccess: store })}
+              />
+            )}
           </>
         }
       >

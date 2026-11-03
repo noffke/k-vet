@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT draft FROM manufacturer WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "manufacturer",
+            "name": "draft"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1b21f01ee1ff18f2bf26796de623b725532853a14125663f0dac90cfc4745988"
+}

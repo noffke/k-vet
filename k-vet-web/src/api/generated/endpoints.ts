@@ -2032,6 +2032,82 @@ export function useGetCustomer<TData = Awaited<ReturnType<typeof getCustomer>>, 
 
 
 
+export const getDeleteCustomerUrl = (id: number,) => {
+
+
+
+
+  return `/api/customers/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete customer, with its e-mail addresses. Refused while animals,
+appointments or Preisauskünfte refer to it.
+ */
+export const deleteCustomer = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteCustomerUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteCustomerMutationKey = () => ['deleteCustomer'] as const;
+
+export const getDeleteCustomerMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError,DeleteCustomerMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError,DeleteCustomerMutationVariables, TContext> => {
+
+const mutationKey = getDeleteCustomerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteCustomer>>, DeleteCustomerMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteCustomer(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteCustomerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteCustomer>>>
+
+    export type DeleteCustomerMutationError = void
+    export type DeleteCustomerMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete customer, with its e-mail addresses. Refused while animals,
+appointments or Preisauskünfte refer to it.
+ */
+export const useDeleteCustomer = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteCustomer>>, TError,DeleteCustomerMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteCustomer>>,
+        TError,
+        DeleteCustomerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteCustomerMutationOptions(options), queryClient);
+    }
+
 export const getPatchCustomerUrl = (id: number,) => {
 
 
@@ -2788,6 +2864,80 @@ export function useGetDrug<TData = Awaited<ReturnType<typeof getDrug>>, TError =
 
 
 
+
+export const getDeleteDrugUrl = (id: number,) => {
+
+
+
+
+  return `/api/drugs/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete drug, with its packagings. Refused while one of them is in use.
+ */
+export const deleteDrug = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteDrugUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteDrugMutationKey = () => ['deleteDrug'] as const;
+
+export const getDeleteDrugMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDrug>>, TError,DeleteDrugMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDrug>>, TError,DeleteDrugMutationVariables, TContext> => {
+
+const mutationKey = getDeleteDrugMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDrug>>, DeleteDrugMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteDrug(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDrugMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDrug>>>
+
+    export type DeleteDrugMutationError = void
+    export type DeleteDrugMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete drug, with its packagings. Refused while one of them is in use.
+ */
+export const useDeleteDrug = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDrug>>, TError,DeleteDrugMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDrug>>,
+        TError,
+        DeleteDrugMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteDrugMutationOptions(options), queryClient);
+    }
 
 export const getPatchDrugUrl = (id: number,) => {
 
@@ -4803,6 +4953,80 @@ export function useGetManufacturer<TData = Awaited<ReturnType<typeof getManufact
 
 
 
+export const getDeleteManufacturerUrl = (id: number,) => {
+
+
+
+
+  return `/api/manufacturers/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete manufacturer. Refused while a drug names it.
+ */
+export const deleteManufacturer = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteManufacturerUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteManufacturerMutationKey = () => ['deleteManufacturer'] as const;
+
+export const getDeleteManufacturerMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteManufacturer>>, TError,DeleteManufacturerMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteManufacturer>>, TError,DeleteManufacturerMutationVariables, TContext> => {
+
+const mutationKey = getDeleteManufacturerMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteManufacturer>>, DeleteManufacturerMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteManufacturer(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteManufacturerMutationResult = NonNullable<Awaited<ReturnType<typeof deleteManufacturer>>>
+
+    export type DeleteManufacturerMutationError = void
+    export type DeleteManufacturerMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete manufacturer. Refused while a drug names it.
+ */
+export const useDeleteManufacturer = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteManufacturer>>, TError,DeleteManufacturerMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteManufacturer>>,
+        TError,
+        DeleteManufacturerMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteManufacturerMutationOptions(options), queryClient);
+    }
+
 export const getPatchManufacturerUrl = (id: number,) => {
 
 
@@ -5020,6 +5244,82 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getUnarchiveManufacturerMutationOptions(options), queryClient);
+    }
+
+export const getDeletePackagingUrl = (id: number,) => {
+
+
+
+
+  return `/api/packagings/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
+"Mitbringen" refer to it.
+ */
+export const deletePackaging = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeletePackagingUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePackagingMutationKey = () => ['deletePackaging'] as const;
+
+export const getDeletePackagingMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePackaging>>, TError,DeletePackagingMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePackaging>>, TError,DeletePackagingMutationVariables, TContext> => {
+
+const mutationKey = getDeletePackagingMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePackaging>>, DeletePackagingMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePackaging(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePackagingMutationResult = NonNullable<Awaited<ReturnType<typeof deletePackaging>>>
+
+    export type DeletePackagingMutationError = void
+    export type DeletePackagingMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
+"Mitbringen" refer to it.
+ */
+export const useDeletePackaging = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePackaging>>, TError,DeletePackagingMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deletePackaging>>,
+        TError,
+        DeletePackagingMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeletePackagingMutationOptions(options), queryClient);
     }
 
 export const getPatchPackagingUrl = (id: number,) => {
@@ -6036,6 +6336,80 @@ export function useGetPatient<TData = Awaited<ReturnType<typeof getPatient>>, TE
 
 
 
+
+export const getDeletePatientUrl = (id: number,) => {
+
+
+
+
+  return `/api/patients/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete animal, with its files (the monthly sweep removes their bytes).
+ */
+export const deletePatient = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeletePatientUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeletePatientMutationKey = () => ['deletePatient'] as const;
+
+export const getDeletePatientMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePatient>>, TError,DeletePatientMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deletePatient>>, TError,DeletePatientMutationVariables, TContext> => {
+
+const mutationKey = getDeletePatientMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deletePatient>>, DeletePatientMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deletePatient(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeletePatientMutationResult = NonNullable<Awaited<ReturnType<typeof deletePatient>>>
+
+    export type DeletePatientMutationError = void
+    export type DeletePatientMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete animal, with its files (the monthly sweep removes their bytes).
+ */
+export const useDeletePatient = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePatient>>, TError,DeletePatientMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deletePatient>>,
+        TError,
+        DeletePatientMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeletePatientMutationOptions(options), queryClient);
+    }
 
 export const getPatchPatientUrl = (id: number,) => {
 
@@ -7751,6 +8125,80 @@ export function useGetService<TData = Awaited<ReturnType<typeof getService>>, TE
 
 
 
+export const getDeleteServiceUrl = (id: number,) => {
+
+
+
+
+  return `/api/services/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete service. Refused while lines, templates or Preisauskünfte use it.
+ */
+export const deleteService = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteServiceUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteServiceMutationKey = () => ['deleteService'] as const;
+
+export const getDeleteServiceMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteService>>, TError,DeleteServiceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteService>>, TError,DeleteServiceMutationVariables, TContext> => {
+
+const mutationKey = getDeleteServiceMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteService>>, DeleteServiceMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteService(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteServiceMutationResult = NonNullable<Awaited<ReturnType<typeof deleteService>>>
+
+    export type DeleteServiceMutationError = void
+    export type DeleteServiceMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete service. Refused while lines, templates or Preisauskünfte use it.
+ */
+export const useDeleteService = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteService>>, TError,DeleteServiceMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteService>>,
+        TError,
+        DeleteServiceMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteServiceMutationOptions(options), queryClient);
+    }
+
 export const getPatchServiceUrl = (id: number,) => {
 
 
@@ -8507,6 +8955,80 @@ export function useGetSupplier<TData = Awaited<ReturnType<typeof getSupplier>>, 
 
 
 
+export const getDeleteSupplierUrl = (id: number,) => {
+
+
+
+
+  return `/api/suppliers/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete supplier. Refused while a packaging names it.
+ */
+export const deleteSupplier = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteSupplierUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteSupplierMutationKey = () => ['deleteSupplier'] as const;
+
+export const getDeleteSupplierMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSupplier>>, TError,DeleteSupplierMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteSupplier>>, TError,DeleteSupplierMutationVariables, TContext> => {
+
+const mutationKey = getDeleteSupplierMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteSupplier>>, DeleteSupplierMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteSupplier(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteSupplierMutationResult = NonNullable<Awaited<ReturnType<typeof deleteSupplier>>>
+
+    export type DeleteSupplierMutationError = void
+    export type DeleteSupplierMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete supplier. Refused while a packaging names it.
+ */
+export const useDeleteSupplier = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteSupplier>>, TError,DeleteSupplierMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteSupplier>>,
+        TError,
+        DeleteSupplierMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteSupplierMutationOptions(options), queryClient);
+    }
+
 export const getPatchSupplierUrl = (id: number,) => {
 
 
@@ -9224,6 +9746,80 @@ export function useGetTextBlock<TData = Awaited<ReturnType<typeof getTextBlock>>
 
 
 
+
+export const getDeleteTextBlockUrl = (id: number,) => {
+
+
+
+
+  return `/api/text-blocks/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete text block.
+ */
+export const deleteTextBlock = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteTextBlockUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTextBlockMutationKey = () => ['deleteTextBlock'] as const;
+
+export const getDeleteTextBlockMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTextBlock>>, TError,DeleteTextBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTextBlock>>, TError,DeleteTextBlockMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTextBlockMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTextBlock>>, DeleteTextBlockMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTextBlock(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTextBlockMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTextBlock>>>
+
+    export type DeleteTextBlockMutationError = void
+    export type DeleteTextBlockMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete text block.
+ */
+export const useDeleteTextBlock = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTextBlock>>, TError,DeleteTextBlockMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTextBlock>>,
+        TError,
+        DeleteTextBlockMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTextBlockMutationOptions(options), queryClient);
+    }
 
 export const getPatchTextBlockUrl = (id: number,) => {
 
@@ -10093,6 +10689,80 @@ export function useGetTemplate<TData = Awaited<ReturnType<typeof getTemplate>>, 
 
 
 
+
+export const getDeleteTemplateUrl = (id: number,) => {
+
+
+
+
+  return `/api/treatment-templates/${id}`
+}
+
+/**
+ * @summary Deletes an incomplete template, with its positions.
+ */
+export const deleteTemplate = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteTemplateUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteTemplateMutationKey = () => ['deleteTemplate'] as const;
+
+export const getDeleteTemplateMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTemplate>>, TError,DeleteTemplateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteTemplate>>, TError,DeleteTemplateMutationVariables, TContext> => {
+
+const mutationKey = getDeleteTemplateMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteTemplate>>, DeleteTemplateMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteTemplate(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteTemplateMutationResult = NonNullable<Awaited<ReturnType<typeof deleteTemplate>>>
+
+    export type DeleteTemplateMutationError = void
+    export type DeleteTemplateMutationVariables = {id: number}
+
+    /**
+ * @summary Deletes an incomplete template, with its positions.
+ */
+export const useDeleteTemplate = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteTemplate>>, TError,DeleteTemplateMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteTemplate>>,
+        TError,
+        DeleteTemplateMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteTemplateMutationOptions(options), queryClient);
+    }
 
 export const getPatchTemplateUrl = (id: number,) => {
 

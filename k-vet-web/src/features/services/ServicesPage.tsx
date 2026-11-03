@@ -4,6 +4,7 @@ import { EyeOff, House, Plus, Route } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  deleteService,
   getGetServiceQueryKey,
   getListServicesQueryKey,
   listServices,
@@ -17,6 +18,7 @@ import type { Service } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { LoadMore } from '@/components/LoadMore'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
@@ -28,6 +30,7 @@ import { VatSelect } from '@/components/VatSelect'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { useGoBack } from '@/lib/trail'
 
 /**
  * The service catalog: the imported GOT 2022 schedule plus the practice's own positions.
@@ -195,6 +198,9 @@ export function ServiceDetailPage() {
     onSaved: store,
   })
 
+  // Where a deleted draft leaves to: back the way the vet came, else the service list.
+  const leave = useGoBack({ to: '/services' })
+
   if (service.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!service.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = service.data
@@ -219,12 +225,23 @@ export function ServiceDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <ArchiveButton
-              archived={record.archived}
-              name={record.name ?? t('services.new')}
-              onArchive={() => archive.mutate({ id: serviceId }, { onSuccess: store })}
-              onUnarchive={() => unarchive.mutate({ id: serviceId }, { onSuccess: store })}
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={record.name ?? t('services.new')}
+                onDelete={async () => {
+                  await deleteService(serviceId)
+                  await client.invalidateQueries({ queryKey: getListServicesQueryKey() })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={record.name ?? t('services.new')}
+                onArchive={() => archive.mutate({ id: serviceId }, { onSuccess: store })}
+                onUnarchive={() => unarchive.mutate({ id: serviceId }, { onSuccess: store })}
+              />
+            )}
           </>
         }
       >

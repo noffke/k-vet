@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM drug_packaging WHERE drug_id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a0566356c9066a6f7ea2f5663578414458fe0c88ba1d02a186d55b904ecbf030"
+}

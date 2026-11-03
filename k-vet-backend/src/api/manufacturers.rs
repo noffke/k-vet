@@ -4,10 +4,11 @@
 //! `suppliers.rs`, only the statements differ (sqlx checks each against its table).
 
 use crate::AppState;
-use crate::api::common::ListQuery;
+use crate::api::common::{ListQuery, ensure_deletable, in_use};
 use crate::domain::draft::recompute_draft;
 use crate::error::{AppError, AppResult};
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 
@@ -225,10 +226,42 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<AddressBookEntry> {
     })
 }
 
+/// Deletes an incomplete manufacturer. Refused while a drug names it.
+#[utoipa::path(
+    delete,
+    path = "/api/manufacturers/{id}",
+    operation_id = "deleteManufacturer",
+    tag = "pharmacy",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!(
+        "SELECT draft FROM manufacturer WHERE id = $1 FOR UPDATE",
+        id
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM manufacturer WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/manufacturers", get(list).post(create))
-        .route("/manufacturers/{id}", get(detail).patch(patch))
+        .route(
+            "/manufacturers/{id}",
+            get(detail).patch(patch).delete(delete),
+        )
         .route("/manufacturers/{id}/archive", post(archive))
         .route("/manufacturers/{id}/unarchive", post(unarchive))
 }

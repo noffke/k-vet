@@ -5,6 +5,7 @@ import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
 import {
+  deletePatient,
   getAttachmentThumbnailUrl,
   getDownloadAttachmentUrl,
   getGetPatientQueryKey,
@@ -22,6 +23,7 @@ import type { Attachment, Patient } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
@@ -31,6 +33,7 @@ import { CheckboxField, SelectField, TextAreaField, TextField } from '@/componen
 import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
+import { useGoBack } from '@/lib/trail'
 
 const SEXES = ['female', 'male', 'unknown'] as const
 
@@ -77,6 +80,13 @@ export function PatientDetailPage() {
     return apiFetch<Attachment>('/api/attachments', { method: 'POST', body: form })
   }
 
+  // Where a deleted draft leaves to: back the way the vet came, else the customer.
+  const leave = useGoBack(
+    patient.data?.customer_id
+      ? { to: '/customers/$id', params: { id: String(patient.data.customer_id) } }
+      : { to: '/customers' },
+  )
+
   if (patient.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!patient.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = patient.data
@@ -113,12 +123,23 @@ export function PatientDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <ArchiveButton
-              archived={record.archived}
-              name={record.name ?? t('patients.new')}
-              onArchive={() => archive.mutate({ id: patientId }, { onSuccess: store })}
-              onUnarchive={() => unarchive.mutate({ id: patientId }, { onSuccess: store })}
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={record.name ?? t('patients.new')}
+                onDelete={async () => {
+                  await deletePatient(patientId)
+                  await client.invalidateQueries({ queryKey: getListPatientsQueryKey() })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={record.name ?? t('patients.new')}
+                onArchive={() => archive.mutate({ id: patientId }, { onSuccess: store })}
+                onUnarchive={() => unarchive.mutate({ id: patientId }, { onSuccess: store })}
+              />
+            )}
           </>
         }
       >

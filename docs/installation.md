@@ -395,7 +395,8 @@ its contacts; nothing goes to Google or anyone else.
   animals' species and a link back to k-vet. A contact made on the phone becomes a customer
   marked "Vom Handy" until it is completed in k-vet; an edit changes name, numbers, e-mail
   addresses and address. A contact deleted on the phone comes back at the next sync: archive the
-  customer in k-vet instead.
+  customer in k-vet instead — or, while it is still incomplete ("Vom Handy"), delete it there,
+  and it disappears from the phone too.
 - **Moving the customers off Google.** Once the address book has synced, delete the customers
   from the phone's Google contacts — otherwise each shows twice, and the Google copies stay with
   Google. Take the contacts permission away from messengers and other apps that upload the

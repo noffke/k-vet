@@ -4,6 +4,7 @@
 //! the quantity or the VAT rate changes — unless the vet overrode it by hand (FR-014).
 
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
@@ -13,7 +14,7 @@ use sqlx::{PgConnection, PgPool};
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{ListQuery, double_option};
+use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
 use crate::config::PharmacyConfig;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::PackagingKind;
@@ -779,16 +780,83 @@ pub async fn units(State(state): State<AppState>) -> AppResult<Json<Vec<String>>
     Ok(Json(units.into_iter().flatten().collect()))
 }
 
+/// Deletes an incomplete drug, with its packagings. Refused while one of them is in use.
+#[utoipa::path(
+    delete,
+    path = "/api/drugs/{id}",
+    operation_id = "deleteDrug",
+    tag = "pharmacy",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!("SELECT draft FROM drug WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+    ensure_deletable(draft)?;
+    // Its own packagings go with it — unless one is in use, which the foreign keys refuse.
+    sqlx::query!("DELETE FROM drug_packaging WHERE drug_id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    sqlx::query!("DELETE FROM drug WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
+/// Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
+/// "Mitbringen" refer to it.
+#[utoipa::path(
+    delete,
+    path = "/api/packagings/{id}",
+    operation_id = "deletePackaging",
+    tag = "pharmacy",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete_packaging(
+    State(state): State<AppState>,
+    Path(id): Path<i64>,
+) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!(
+        "SELECT draft FROM drug_packaging WHERE id = $1 FOR UPDATE",
+        id
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM drug_packaging WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/pharmacy/units", get(units))
         .route("/drugs", get(list).post(create))
-        .route("/drugs/{id}", get(detail).patch(patch))
+        .route("/drugs/{id}", get(detail).patch(patch).delete(delete))
         .route("/drugs/{id}/archive", post(archive))
         .route("/drugs/{id}/unarchive", post(unarchive))
         .route(
             "/drugs/{id}/packagings",
             get(list_packagings).post(create_packaging),
         )
-        .route("/packagings/{id}", axum::routing::patch(patch_packaging))
+        .route(
+            "/packagings/{id}",
+            axum::routing::patch(patch_packaging).delete(delete_packaging),
+        )
 }

@@ -1,6 +1,7 @@
 //! Patients: the practice's animal index, with photo, files and warnings (T044).
 
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -10,7 +11,7 @@ use sqlx::types::Json as Jsonb;
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{ListQuery, double_option};
+use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::InvoiceStatus;
 use crate::domain::rich_text::RichText;
@@ -607,11 +608,37 @@ pub async fn races(
     Ok(Json(races.into_iter().flatten().collect()))
 }
 
+/// Deletes an incomplete animal, with its files (the monthly sweep removes their bytes).
+#[utoipa::path(
+    delete,
+    path = "/api/patients/{id}",
+    operation_id = "deletePatient",
+    tag = "patients",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!("SELECT draft FROM patient WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM patient WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/patients/races", get(races))
         .route("/patients", get(list).post(create))
-        .route("/patients/{id}", get(detail).patch(patch))
+        .route("/patients/{id}", get(detail).patch(patch).delete(delete))
         .route("/patients/{id}/archive", post(archive))
         .route("/patients/{id}/unarchive", post(unarchive))
         .route("/patients/{id}/files", get(list_files))

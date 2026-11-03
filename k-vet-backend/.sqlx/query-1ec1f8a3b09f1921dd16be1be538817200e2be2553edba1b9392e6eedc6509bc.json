@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT draft FROM customer WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "customer",
+            "name": "draft"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "1ec1f8a3b09f1921dd16be1be538817200e2be2553edba1b9392e6eedc6509bc"
+}

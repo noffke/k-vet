@@ -5,6 +5,7 @@
 //! manufacturers and suppliers.
 
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
@@ -13,7 +14,7 @@ use sqlx::types::Json as Jsonb;
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{ListQuery, double_option};
+use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::rich_text::{self, RichText};
 use crate::error::{AppError, AppResult};
@@ -267,10 +268,36 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<TextBlock> {
     })
 }
 
+/// Deletes an incomplete text block.
+#[utoipa::path(
+    delete,
+    path = "/api/text-blocks/{id}",
+    operation_id = "deleteTextBlock",
+    tag = "textBlocks",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!("SELECT draft FROM text_block WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM text_block WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/text-blocks", get(list).post(create))
-        .route("/text-blocks/{id}", get(detail).patch(patch))
+        .route("/text-blocks/{id}", get(detail).patch(patch).delete(delete))
         .route("/text-blocks/{id}/archive", post(archive))
         .route("/text-blocks/{id}/unarchive", post(unarchive))
 }

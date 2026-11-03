@@ -1,6 +1,7 @@
 //! Services: the imported GOT fee schedule and the practice's own positions (T062).
 
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, Utc};
@@ -9,7 +10,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::AppState;
-use crate::api::common::{ListQuery, double_option};
+use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
 use crate::api::suppliers::blank_to_null;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::ServiceType;
@@ -357,10 +358,36 @@ pub async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Service> {
     Ok(service_row!(row))
 }
 
+/// Deletes an incomplete service. Refused while lines, templates or Preisauskünfte use it.
+#[utoipa::path(
+    delete,
+    path = "/api/services/{id}",
+    operation_id = "deleteService",
+    tag = "services",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!("SELECT draft FROM service WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM service WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/services", get(list).post(create))
-        .route("/services/{id}", get(detail).patch(patch))
+        .route("/services/{id}", get(detail).patch(patch).delete(delete))
         .route("/services/{id}/archive", post(archive))
         .route("/services/{id}/unarchive", post(unarchive))
 }

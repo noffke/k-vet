@@ -3,6 +3,8 @@
 use serde::{Deserialize, Deserializer, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
+use crate::error::{AppError, AppResult};
+
 /// Default page size for list endpoints; the practice's lists are small.
 const DEFAULT_LIMIT: i64 = 100;
 const MAX_LIMIT: i64 = 500;
@@ -38,6 +40,32 @@ impl ListQuery {
             .as_ref()
             .map(|term| term.trim().to_owned())
             .filter(|term| !term.is_empty())
+    }
+}
+
+/// Only an incomplete record can be deleted — the one clicked into existence by mistake. A
+/// complete one is archived, never deleted (`requirements/datamodel.md`). `draft` is the row's
+/// flag as read `FOR UPDATE`, `None` when there is no such row.
+pub fn ensure_deletable(draft: Option<bool>) -> AppResult<()> {
+    match draft {
+        None => Err(AppError::NotFound),
+        Some(false) => Err(AppError::Conflict(
+            "a complete record is archived, not deleted".to_owned(),
+        )),
+        Some(true) => Ok(()),
+    }
+}
+
+/// A delete refused by a foreign key: something still refers to the record. That is a 409 the
+/// screen can name, not the 422 "referenced record does not exist" an insert would earn.
+pub fn in_use(error: sqlx::Error) -> AppError {
+    let refused = error
+        .as_database_error()
+        .is_some_and(|db| matches!(db.kind(), sqlx::error::ErrorKind::ForeignKeyViolation));
+    if refused {
+        AppError::Conflict("still in use".to_owned())
+    } else {
+        AppError::Database(error)
     }
 }
 

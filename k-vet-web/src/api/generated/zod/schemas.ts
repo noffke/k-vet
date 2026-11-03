@@ -525,6 +525,17 @@ export const GetCustomerResponse = zod.object({
 })
 
 
+/**
+ * @summary Deletes an incomplete customer, with its e-mail addresses. Refused while animals,
+appointments or Preisauskünfte refer to it.
+ */
+export const DeleteCustomerParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteCustomerResponse = zod.void()
+
+
 export const PatchCustomerParams = zod.object({
   "id": zod.int()
 })
@@ -944,6 +955,16 @@ export const GetDrugResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+/**
+ * @summary Deletes an incomplete drug, with its packagings. Refused while one of them is in use.
+ */
+export const DeleteDrugParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteDrugResponse = zod.void()
 
 
 export const PatchDrugParams = zod.object({
@@ -1656,6 +1677,16 @@ export const GetManufacturerResponse = zod.object({
 }).describe('An address-book entry: a name and an optional postal address.')
 
 
+/**
+ * @summary Deletes an incomplete manufacturer. Refused while a drug names it.
+ */
+export const DeleteManufacturerParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteManufacturerResponse = zod.void()
+
+
 export const PatchManufacturerParams = zod.object({
   "id": zod.int()
 })
@@ -1722,6 +1753,17 @@ export const UnarchiveManufacturerResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 }).describe('An address-book entry: a name and an optional postal address.')
+
+
+/**
+ * @summary Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
+"Mitbringen" refer to it.
+ */
+export const DeletePackagingParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeletePackagingResponse = zod.void()
 
 
 export const PatchPackagingParams = zod.object({
@@ -2230,6 +2272,16 @@ export const GetPatientResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+/**
+ * @summary Deletes an incomplete animal, with its files (the monthly sweep removes their bytes).
+ */
+export const DeletePatientParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeletePatientResponse = zod.void()
 
 
 export const PatchPatientParams = zod.object({
@@ -2781,6 +2833,16 @@ export const GetServiceResponse = zod.object({
 })
 
 
+/**
+ * @summary Deletes an incomplete service. Refused while lines, templates or Preisauskünfte use it.
+ */
+export const DeleteServiceParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteServiceResponse = zod.void()
+
+
 export const PatchServiceParams = zod.object({
   "id": zod.int()
 })
@@ -2976,6 +3038,16 @@ export const GetSupplierResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 }).describe('An address-book entry: a name and an optional postal address.')
+
+
+/**
+ * @summary Deletes an incomplete supplier. Refused while a packaging names it.
+ */
+export const DeleteSupplierParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteSupplierResponse = zod.void()
 
 
 export const PatchSupplierParams = zod.object({
@@ -3260,6 +3332,16 @@ export const GetTextBlockResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+/**
+ * @summary Deletes an incomplete text block.
+ */
+export const DeleteTextBlockParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteTextBlockResponse = zod.void()
 
 
 export const PatchTextBlockParams = zod.object({
@@ -3709,6 +3791,16 @@ export const GetTemplateResponse = zod.object({
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
+
+
+/**
+ * @summary Deletes an incomplete template, with its positions.
+ */
+export const DeleteTemplateParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteTemplateResponse = zod.void()
 
 
 export const PatchTemplateParams = zod.object({

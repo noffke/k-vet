@@ -46,7 +46,7 @@ For treatment templates, we need normal CRUD functionality. Additionally, functi
 of the items within a group is needed: move one step up or down, move to top or bottom. 
 
 ## Master Data (Stammdaten)
-For master data, we need normal CRUD functionality. Master data is archived instead of deleted (soft delete): archived customers and patients are hidden from search and select boxes by default (with the option to show them); patients with a date of death are archived automatically. Data referenced by invoiced treatments is never hard-deleted.
+For master data, we need normal CRUD functionality. Master data is archived instead of deleted (soft delete): archived customers and patients are hidden from search and select boxes by default (with the option to show them); patients with a date of death are archived automatically. Data referenced by invoiced treatments is never hard-deleted. An incomplete record — the one a stray "Neu" left behind — is deleted instead: while a record is incomplete its page offers "Löschen" (asked first) in place of "Archivieren", for customers, animals, drugs and their packagings, services, manufacturers, suppliers, templates and text blocks. It is refused, and says so, while something else still refers to the record (a drug naming the manufacturer, an animal on the customer).
 
 If a warning remark has been set for a customer, it must be prominently displayed when "opening" the customer data.
 

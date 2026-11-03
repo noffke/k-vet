@@ -13,6 +13,7 @@ import {
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  deleteTemplate,
   getGetTemplateQueryKey,
   getListTemplateItemsQueryKey,
   getListTemplatesQueryKey,
@@ -32,6 +33,7 @@ import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DataList, type DataListColumn } from '@/components/DataList'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { ItemPicker } from '@/components/ItemPicker'
 import { LoadMore } from '@/components/LoadMore'
 import { NumberInput } from '@/components/NumberInput'
@@ -43,6 +45,7 @@ import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { useGoBack } from '@/lib/trail'
 
 /** The list of reusable line sets. */
 export function TemplatesPage() {
@@ -161,6 +164,9 @@ export function TemplateDetailPage() {
     },
   })
 
+  // Where a deleted draft leaves to: back the way the vet came, else the template list.
+  const leave = useGoBack({ to: '/templates' })
+
   if (template.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!template.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = template.data
@@ -188,16 +194,27 @@ export function TemplateDetailPage() {
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
             {/* No unarchive here: archiving leaves the page, so there is nothing to come
                 back to. The confirmation says as much rather than promising a restore. */}
-            <ArchiveButton
-              archived={record.archived}
-              name={record.name ?? t('templates.new')}
-              onArchive={() =>
-                archive.mutate(
-                  { id: templateId },
-                  { onSuccess: () => void navigate({ to: '/templates' }) },
-                )
-              }
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={record.name ?? t('templates.new')}
+                onDelete={async () => {
+                  await deleteTemplate(templateId)
+                  await client.invalidateQueries({ queryKey: getListTemplatesQueryKey() })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={record.name ?? t('templates.new')}
+                onArchive={() =>
+                  archive.mutate(
+                    { id: templateId },
+                    { onSuccess: () => void navigate({ to: '/templates' }) },
+                  )
+                }
+              />
+            )}
           </>
         }
       >

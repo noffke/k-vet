@@ -11,7 +11,9 @@ use sqlx::{PgConnection, Postgres, Transaction};
 use utoipa::ToSchema;
 
 use crate::AppState;
-use crate::api::common::{ListQuery, MoveDirection, MoveRequest, double_option};
+use crate::api::common::{
+    ListQuery, MoveDirection, MoveRequest, double_option, ensure_deletable, in_use,
+};
 use crate::api::suppliers::blank_to_null;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::TemplateItemKind;
@@ -596,10 +598,42 @@ async fn load_items(
         .collect())
 }
 
+/// Deletes an incomplete template, with its positions.
+#[utoipa::path(
+    delete,
+    path = "/api/treatment-templates/{id}",
+    operation_id = "deleteTemplate",
+    tag = "templates",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Deleted"),
+        (status = 409, description = "Complete (archive it instead), or still in use")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    let draft = sqlx::query_scalar!(
+        "SELECT draft FROM treatment_template WHERE id = $1 FOR UPDATE",
+        id
+    )
+    .fetch_optional(&mut *transaction)
+    .await?;
+    ensure_deletable(draft)?;
+    sqlx::query!("DELETE FROM treatment_template WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await
+        .map_err(in_use)?;
+    transaction.commit().await.map_err(in_use)?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/treatment-templates", get(list).post(create))
-        .route("/treatment-templates/{id}", get(detail).patch(patch))
+        .route(
+            "/treatment-templates/{id}",
+            get(detail).patch(patch).delete(delete),
+        )
         .route("/treatment-templates/{id}/archive", post(archive))
         .route("/treatment-templates/{id}/unarchive", post(unarchive))
         .route(

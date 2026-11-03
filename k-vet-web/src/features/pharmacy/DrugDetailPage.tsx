@@ -2,6 +2,7 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
+  deleteDrug,
   getGetDrugQueryKey,
   getListDrugsQueryKey,
   getListPackagingsQueryKey,
@@ -16,6 +17,7 @@ import {
 import type { Drug } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -24,6 +26,7 @@ import { VatSelect } from '@/components/VatSelect'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
 import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
+import { useGoBack } from '@/lib/trail'
 
 /** The regulatory flags of a drug — informational in this version (FR-012). */
 const FLAGS = [
@@ -71,6 +74,9 @@ export function DrugDetailPage() {
     },
   })
 
+  // Where a deleted draft leaves to: back the way the vet came, else the drug list.
+  const leave = useGoBack({ to: '/pharmacy' })
+
   if (drug.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!drug.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = drug.data
@@ -84,12 +90,23 @@ export function DrugDetailPage() {
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <ArchiveButton
-              archived={record.archived}
-              name={record.name ?? t('pharmacy.newDrug')}
-              onArchive={() => archive.mutate({ id: drugId }, { onSuccess: store })}
-              onUnarchive={() => unarchive.mutate({ id: drugId }, { onSuccess: store })}
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={record.name ?? t('pharmacy.newDrug')}
+                onDelete={async () => {
+                  await deleteDrug(drugId)
+                  await client.invalidateQueries({ queryKey: getListDrugsQueryKey() })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={record.name ?? t('pharmacy.newDrug')}
+                onArchive={() => archive.mutate({ id: drugId }, { onSuccess: store })}
+                onUnarchive={() => unarchive.mutate({ id: drugId }, { onSuccess: store })}
+              />
+            )}
           </>
         }
       >

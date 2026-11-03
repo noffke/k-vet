@@ -2,6 +2,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
 import { useTranslation } from 'react-i18next'
 import {
+  deleteManufacturer,
+  deleteSupplier,
   getGetManufacturerQueryKey,
   getGetSupplierQueryKey,
   getListManufacturersQueryKey,
@@ -18,11 +20,13 @@ import {
 import type { AddressBookEntry } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
+import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
+import { useGoBack } from '@/lib/trail'
 
 export function ManufacturerDetailPage() {
   const { id } = useParams({ from: '/app/masterdata/manufacturers/$id' })
@@ -82,6 +86,9 @@ function AddressBookDetail({
     onSaved: store,
   })
 
+  // Where a deleted draft leaves to: back the way the vet came, else Stammdaten.
+  const leave = useGoBack({ to: '/masterdata' })
+
   if (entry.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!entry.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = entry.data
@@ -112,12 +119,27 @@ function AddressBookDetail({
         actions={
           <>
             <SaveIndicator state={autoSave.state} error={autoSave.error} />
-            <ArchiveButton
-              archived={record.archived}
-              name={record.name ?? newLabel}
-              onArchive={() => archive.mutate({ id: entryId }, { onSuccess: store })}
-              onUnarchive={() => unarchive.mutate({ id: entryId }, { onSuccess: store })}
-            />
+            {record.draft ? (
+              <DeleteDraftButton
+                name={record.name ?? newLabel}
+                onDelete={async () => {
+                  await (isManufacturer ? deleteManufacturer(entryId) : deleteSupplier(entryId))
+                  await client.invalidateQueries({
+                    queryKey: isManufacturer
+                      ? getListManufacturersQueryKey()
+                      : getListSuppliersQueryKey(),
+                  })
+                  await leave()
+                }}
+              />
+            ) : (
+              <ArchiveButton
+                archived={record.archived}
+                name={record.name ?? newLabel}
+                onArchive={() => archive.mutate({ id: entryId }, { onSuccess: store })}
+                onUnarchive={() => unarchive.mutate({ id: entryId }, { onSuccess: store })}
+              />
+            )}
           </>
         }
       >

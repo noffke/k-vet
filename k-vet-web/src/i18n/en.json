@@ -40,6 +40,10 @@
   "record": {
     "archive": "Archive",
     "archived": "Archived",
+    "deleteInUse": "“{{name}}” is still in use and stays. Remove it where it is used first, then delete it.",
+    "deleteRefused": "Not deleted",
+    "fromPhone": "From the phone",
+    "fromPhoneHint": "Created as a contact on the phone",
     "incomplete": "Incomplete",
     "incompleteWithFields": "Incomplete — missing: {{fields}}",
     "notBilled": "Not billed",
@@ -49,9 +53,7 @@
     "notSent": "Not sent",
     "showArchived": "Show archived",
     "unarchive": "Restore",
-    "warning": "Warning",
-    "fromPhone": "From the phone",
-    "fromPhoneHint": "Created as a contact on the phone"
+    "warning": "Warning"
   },
   "field": {
     "addon": "Address addon",
@@ -172,7 +174,9 @@
   "confirm": {
     "archiveBody": "“{{name}}” disappears from search and the pickers. Invoices and treatments are untouched, and it can be restored at any time.",
     "archiveBodyNoRestore": "“{{name}}” disappears from search and the pickers. Invoices and treatments are untouched, but this page offers no way to bring it back.",
-    "archiveTitle": "Archive?"
+    "archiveTitle": "Archive?",
+    "deleteDraftBody": "“{{name}}” is still incomplete and will be deleted for good.",
+    "deleteDraftTitle": "Delete the incomplete record?"
   },
   "value": {
     "invalidBic": "Not a valid BIC (8 or 11 characters).",
@@ -509,6 +513,7 @@
     "notTravel": "Only a Wegegeld line has a distance"
   },
   "packaging": {
+    "delete": "Delete packaging",
     "originalAlreadyExists": "This drug already has an original packaging",
     "supplierOnOriginalOnly": "Only original packagings have a supplier"
   },
