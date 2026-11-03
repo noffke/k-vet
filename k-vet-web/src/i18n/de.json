@@ -93,7 +93,10 @@
     "lastName": "Nachname",
     "listPrice": "Listenpreis (netto)",
     "listPriceHint": "Aus der Liste des Großhändlers, nicht der Preis nach Rabatt (§ 3 Abs. 2 AMPreisV).",
+    "listPriceNet": "Listenpreis (netto)",
     "manufacturer": "Hersteller",
+    "manufacturerId": "Hersteller",
+    "mobile": "Mobil",
     "name": "Name",
     "neutered": "Kastriert",
     "note": "Notiz",
@@ -119,14 +122,15 @@
     "startsAt": "Datum und Uhrzeit",
     "street": "Straße und Hausnummer",
     "supplier": "Lieferant",
+    "supplierId": "Lieferant",
     "time": "Uhrzeit",
     "treatmentReason": "Vorbericht und Untersuchung",
     "unit": "Einheit",
     "vat": "USt.",
+    "vatPercent": "USt.",
     "warningRemark": "Warnhinweis",
     "weight": "Gewicht",
-    "zip": "PLZ",
-    "mobile": "Mobil"
+    "zip": "PLZ"
   },
   "salutation": {
     "familie": "Familie",
@@ -389,6 +393,8 @@
     "lots": "Chargen",
     "movements": "Bewegungen",
     "newDrug": "Neues Medikament",
+    "newManufacturerOption": "Neuer Hersteller …",
+    "newSupplierOption": "Neuer Lieferant …",
     "original": "Originalpackung",
     "packageCount": "{{count}} Packungen à {{size}}",
     "packageCountOnly": "{{count}} Packungen",
@@ -439,7 +445,9 @@
     "title": "Behandlungsgruppen"
   },
   "masterData": {
+    "createAndOpen": "Anlegen und öffnen",
     "manufacturers": "Hersteller",
+    "newEntryHint": "Wird hier gleich eingetragen. Danach öffnet sich der neue Eintrag für die Anschrift; „Zurück“ führt hierher zurück.",
     "newManufacturer": "Neuer Hersteller",
     "newSupplier": "Neuer Lieferant",
     "suppliers": "Lieferanten",

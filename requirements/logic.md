@@ -8,6 +8,8 @@ or service was used in a treatment. It's sufficient to update weights once at ni
 ## Pharmacy (Apotheke)
 For drugs and packagings, we need normal CRUD functionality. After selecting VAT and entering the list price, price calculation logic should be used to calculate the sales gross price.
 
+A drug's "Hersteller" select ends in "Neuer Hersteller …", and the original packaging's "Lieferant" in "Neuer Lieferant …": a small dialog asks for the name, the new entry is created complete, set on the drug or packaging, and opened for its address; "Zurück" leads back to the drug, which shows it chosen. Cancelling creates nothing. Incomplete manufacturers and suppliers are no choice in these selects, unless already set.
+
 Recording a stock intake (Wareneingang) creates a new lot for an original packaging: date of arrival (default today), packages received, batch number and expiration date (both optional). The initial quantity is snapshotted from the packaging definition (packages received × packaging quantity). The expiration date can be typed as month and year (`03.2027`, as packages print it), which means that month's last day; a full date is taken as typed, since a lot can expire on another day.
 
 For a drug stock lot, we need the option to do a correction movement. The default quantity should be the remainder of the stock of the lot. The reason should be an editable

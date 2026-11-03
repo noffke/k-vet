@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Boxes, Package, RotateCcw } from 'lucide-react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   deletePackaging,
@@ -15,6 +16,7 @@ import { NumberInput } from '@/components/NumberInput'
 import { IncompleteBadge } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
 import { SelectField, TextField } from '@/components/ui/field'
+import { NEW_ENTRY, NewEntryDialog } from '@/features/masterdata/NewEntryDialog'
 import { useLocaleFormat } from '@/lib/locale'
 
 interface PackagingEditorProps {
@@ -44,6 +46,8 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
   const createPackaging = useCreatePackaging({ mutation: { onSuccess: refresh } })
 
   const hasOriginal = packagings.some((packaging) => packaging.kind === 'original')
+  // The packaging a new supplier is being made for, from its "Neuer Lieferant …".
+  const [newSupplierFor, setNewSupplierFor] = useState<number | null>(null)
 
   return (
     <section className="mt-6">
@@ -171,18 +175,30 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     label={t('field.supplier')}
                     defaultValue={packaging.supplier_id ?? ''}
                     wrapperClassName="sm:col-span-2"
-                    onChange={(event) =>
+                    onChange={(event) => {
+                      if (event.target.value === NEW_ENTRY) {
+                        // Not a choice yet: the select keeps what it had until the new one exists.
+                        event.target.value = String(packaging.supplier_id ?? '')
+                        setNewSupplierFor(packaging.id)
+                        return
+                      }
                       patch({
                         supplier_id: event.target.value ? Number(event.target.value) : null,
                       })
-                    }
+                    }}
                   >
                     <option value="">—</option>
-                    {suppliers.map((supplier) => (
-                      <option key={supplier.id} value={supplier.id}>
-                        {supplier.name ?? ''}
-                      </option>
-                    ))}
+                    {/* Incomplete ones are no choice, unless already set. */}
+                    {suppliers
+                      .filter(
+                        (supplier) => !supplier.draft || supplier.id === packaging.supplier_id,
+                      )
+                      .map((supplier) => (
+                        <option key={supplier.id} value={supplier.id}>
+                          {supplier.name ?? ''}
+                        </option>
+                      ))}
+                    <option value={NEW_ENTRY}>{t('pharmacy.newSupplierOption')}</option>
                   </SelectField>
                 ) : null}
 
@@ -218,6 +234,21 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
           </li>
         ) : null}
       </ul>
+
+      <NewEntryDialog
+        kind="supplier"
+        open={newSupplierFor !== null}
+        onOpenChange={(open) => {
+          if (!open) setNewSupplierFor(null)
+        }}
+        onCreated={async (entry) => {
+          if (newSupplierFor === null) return
+          await patchPackaging.mutateAsync({
+            id: newSupplierFor,
+            data: { supplier_id: entry.id },
+          })
+        }}
+      />
     </section>
   )
 }

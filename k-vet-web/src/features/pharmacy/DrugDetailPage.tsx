@@ -1,5 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   deleteDrug,
@@ -23,6 +24,7 @@ import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { CheckboxField, SelectField, TextField } from '@/components/ui/field'
 import { VatSelect } from '@/components/VatSelect'
+import { NEW_ENTRY, NewEntryDialog } from '@/features/masterdata/NewEntryDialog'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
 import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
@@ -53,6 +55,7 @@ export function DrugDetailPage() {
   const patchDrug = usePatchDrug()
   const archive = useArchiveDrug()
   const unarchive = useUnarchiveDrug()
+  const [newManufacturer, setNewManufacturer] = useState(false)
 
   const store = (updated: Drug) => {
     client.setQueryData(getGetDrugQueryKey(drugId), updated)
@@ -127,6 +130,12 @@ export function DrugDetailPage() {
           label={t('field.manufacturer')}
           defaultValue={record.manufacturer_id ?? ''}
           onChange={(event) => {
+            if (event.target.value === NEW_ENTRY) {
+              // Not a choice yet: the select keeps what it had until the new one exists.
+              event.target.value = String(record.manufacturer_id ?? '')
+              setNewManufacturer(true)
+              return
+            }
             autoSave.set({
               manufacturer_id: event.target.value ? Number(event.target.value) : null,
             })
@@ -134,12 +143,27 @@ export function DrugDetailPage() {
           }}
         >
           <option value="">—</option>
-          {(manufacturers.data ?? []).map((manufacturer) => (
-            <option key={manufacturer.id} value={manufacturer.id}>
-              {manufacturer.name ?? ''}
-            </option>
-          ))}
+          {/* Incomplete ones are no choice (requirements/datamodel.md), unless already set. */}
+          {(manufacturers.data ?? [])
+            .filter(
+              (manufacturer) => !manufacturer.draft || manufacturer.id === record.manufacturer_id,
+            )
+            .map((manufacturer) => (
+              <option key={manufacturer.id} value={manufacturer.id}>
+                {manufacturer.name ?? ''}
+              </option>
+            ))}
+          <option value={NEW_ENTRY}>{t('pharmacy.newManufacturerOption')}</option>
         </SelectField>
+        <NewEntryDialog
+          kind="manufacturer"
+          open={newManufacturer}
+          onOpenChange={setNewManufacturer}
+          onCreated={async (entry) => {
+            autoSave.set({ manufacturer_id: entry.id })
+            await autoSave.flush()
+          }}
+        />
 
         {/* The VAT choices come from the operator's configuration; the rate is pinned per
             drug and again per invoice line. */}

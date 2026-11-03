@@ -93,7 +93,10 @@
     "lastName": "Last name",
     "listPrice": "List price (net)",
     "listPriceHint": "From the wholesaler's list, not the price after any rebate (§ 3(2) AMPreisV).",
+    "listPriceNet": "List price (net)",
     "manufacturer": "Manufacturer",
+    "manufacturerId": "Manufacturer",
+    "mobile": "Mobile",
     "name": "Name",
     "neutered": "Neutered",
     "note": "Note",
@@ -119,14 +122,15 @@
     "startsAt": "Date and time",
     "street": "Street and number",
     "supplier": "Supplier",
+    "supplierId": "Supplier",
     "time": "Time",
     "treatmentReason": "History and examination",
     "unit": "Unit",
     "vat": "VAT",
+    "vatPercent": "VAT",
     "warningRemark": "Warning",
     "weight": "Weight",
-    "zip": "ZIP",
-    "mobile": "Mobile"
+    "zip": "ZIP"
   },
   "salutation": {
     "familie": "Family",
@@ -389,6 +393,8 @@
     "lots": "Lots",
     "movements": "Movements",
     "newDrug": "New drug",
+    "newManufacturerOption": "New manufacturer …",
+    "newSupplierOption": "New supplier …",
     "original": "Original packaging",
     "packageCount": "{{count}} packages of {{size}}",
     "packageCountOnly": "{{count}} packages",
@@ -439,7 +445,9 @@
     "title": "Treatment templates"
   },
   "masterData": {
+    "createAndOpen": "Create and open",
     "manufacturers": "Manufacturers",
+    "newEntryHint": "It is entered here straight away. The new entry then opens for its address; “Back” returns here.",
     "newManufacturer": "New manufacturer",
     "newSupplier": "New supplier",
     "suppliers": "Suppliers",
