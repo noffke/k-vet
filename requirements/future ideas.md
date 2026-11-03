@@ -3,8 +3,6 @@
 * appointment date sanity check: if more than 1 week in future or past show confirmation dialog. make configurable and allow to disable alltogether
 * cloud form for customer self registration
 * send AGB, DSGVO via email
-* integrate google contacts
-* phone call integration (start phone call from address)
 * inventory (Inventur) support: list current stock, allow to tick off or correct stock of pharmaceuticals
 * scan EAN, Chargennummer, exp. date of inbound pharmaceuticals
 * scan chip no barcode
