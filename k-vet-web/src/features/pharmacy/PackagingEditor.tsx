@@ -22,7 +22,8 @@ import { useLocaleFormat } from '@/lib/locale'
 interface PackagingEditorProps {
   drug: Drug
   packagings: Packaging[]
-  suppliers: AddressBookEntry[]
+  /** `undefined` while they load: the supplier select waits for them (see there). */
+  suppliers: AddressBookEntry[] | undefined
 }
 
 /**
@@ -172,6 +173,9 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
 
                 {isOriginal ? (
                   <SelectField
+                    // Uncontrolled: mounted before the suppliers arrive, it would show "—" for
+                    // good, so it mounts again once they are in.
+                    key={suppliers ? 'ready' : 'loading'}
                     label={t('field.supplier')}
                     defaultValue={packaging.supplier_id ?? ''}
                     wrapperClassName="sm:col-span-2"
@@ -189,7 +193,7 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   >
                     <option value="">—</option>
                     {/* Incomplete ones are no choice, unless already set. */}
-                    {suppliers
+                    {(suppliers ?? [])
                       .filter(
                         (supplier) => !supplier.draft || supplier.id === packaging.supplier_id,
                       )

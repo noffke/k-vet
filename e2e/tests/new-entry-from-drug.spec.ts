@@ -54,6 +54,24 @@ test.describe('a new manufacturer or supplier from the drug', () => {
     await expect(page.getByLabel('Lieferant').locator('option:checked')).toHaveText(supplier)
   })
 
+  test('the choices show even when the lists arrive after the drug', async ({ page, request }) => {
+    const { drugId } = await seedDrug(request)
+    await signIn(page)
+    // Hold the lists back, so the drug is there first. A select that took its default before
+    // its options existed showed "—" for good (seen on a slow CI runner).
+    for (const list of ['manufacturers', 'suppliers']) {
+      await page.route(`**/api/${list}*`, async (route) => {
+        await new Promise((resolve) => setTimeout(resolve, 1500))
+        await route.continue()
+      })
+    }
+    await page.goto(`/pharmacy/${drugId}`)
+    await expect(page.getByLabel('Hersteller').locator('option:checked')).toHaveText('Pharma AG')
+    await expect(page.getByLabel('Lieferant').locator('option:checked')).toHaveText(
+      'Großhandel GmbH',
+    )
+  })
+
   test('cancelling makes nothing and leaves the choice as it was', async ({ page, request }) => {
     const { drugId } = await seedDrug(request)
     const typed = `Abgebrochen-${stamp()}`

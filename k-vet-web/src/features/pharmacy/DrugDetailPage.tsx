@@ -127,6 +127,9 @@ export function DrugDetailPage() {
           onBlur={() => void autoSave.flush()}
         />
         <SelectField
+          // Uncontrolled, so it takes its default once, when it mounts. Mounted before the
+          // manufacturers arrive it showed "—" for good, so it mounts again once they are in.
+          key={manufacturers.data ? 'ready' : 'loading'}
           label={t('field.manufacturer')}
           defaultValue={record.manufacturer_id ?? ''}
           onChange={(event) => {
@@ -215,7 +218,7 @@ export function DrugDetailPage() {
       <PackagingEditor
         drug={record}
         packagings={packagings.data ?? []}
-        suppliers={suppliers.data ?? []}
+        suppliers={suppliers.data}
       />
 
       <StockPanel drug={record} original={original} />
