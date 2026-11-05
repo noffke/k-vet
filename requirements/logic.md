@@ -10,6 +10,8 @@ For drugs and packagings, we need normal CRUD functionality. After selecting VAT
 
 A drug's "Hersteller" select ends in "Neuer Hersteller …", and the original packaging's "Lieferant" in "Neuer Lieferant …": a small dialog asks for the name, the new entry is created complete, set on the drug or packaging, and opened for its address; "Zurück" leads back to the drug, which shows it chosen. Cancelling creates nothing. Incomplete manufacturers and suppliers are no choice in these selects, unless already set.
 
+A drug lists the codes on its packs (EAN, PZN) at the bottom of its page; a code is scanned or typed into it, and removed again (asked first). A code belongs to one drug; one another drug has is named rather than taken. A whole Data Matrix may be scanned: only its product code is kept. A code typed into the Apotheke's search finds its drug.
+
 Recording a stock intake (Wareneingang) creates a new lot for an original packaging: date of arrival (default today), packages received, batch number and expiration date (both optional). The initial quantity is snapshotted from the packaging definition (packages received × packaging quantity). The expiration date can be typed as month and year (`03.2027`, as packages print it), which means that month's last day; a full date is taken as typed, since a lot can expire on another day.
 
 For a drug stock lot, we need the option to do a correction movement. The default quantity should be the remainder of the stock of the lot. The reason should be an editable

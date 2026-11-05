@@ -15,6 +15,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
+use crate::api::drug_codes::{DrugCode, codes_of};
 use crate::config::PharmacyConfig;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::PackagingKind;
@@ -66,6 +67,8 @@ pub struct Drug {
     /// Gross sales price of the original packaging — the figure the vet reads out to a customer
     /// asking what something costs. `None` until that packaging has a price.
     pub original_price_gross: Option<Decimal>,
+    /// The codes on its packs, by which a barcode scanner finds it (migration 0038).
+    pub codes: Vec<DrugCode>,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
 }
@@ -155,7 +158,10 @@ pub async fn list(
              AND ($1::text IS NULL
                   OR drug.name ILIKE '%' || $1 || '%'
                   OR drug.approval_number ILIKE '%' || $1 || '%'
-                  OR manufacturer.name ILIKE '%' || $1 || '%')
+                  OR manufacturer.name ILIKE '%' || $1 || '%'
+                  OR EXISTS (SELECT 1 FROM drug_code
+                              WHERE drug_code.drug_id = drug.id
+                                AND drug_code.gtin LIKE '%' || $1 || '%'))
            ORDER BY drug.name NULLS LAST, drug.id
            LIMIT $3 OFFSET $4"#,
         query.search(),
@@ -652,6 +658,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         original_price_gross: row
             .original_price_net
             .map(|net| money::add_vat(net, row.vat_percent.unwrap_or(Decimal::ZERO)).gross),
+        codes: codes_of(pool, id).await?,
         created_at: row.created_at,
         updated_at: row.updated_at,
     })

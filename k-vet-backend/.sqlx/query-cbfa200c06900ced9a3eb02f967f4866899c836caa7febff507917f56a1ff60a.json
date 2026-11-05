@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drug_id FROM drug_code WHERE gtin = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drug_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_code",
+            "name": "drug_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Text"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "cbfa200c06900ced9a3eb02f967f4866899c836caa7febff507917f56a1ff60a"
+}

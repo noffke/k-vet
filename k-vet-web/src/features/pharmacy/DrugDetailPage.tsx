@@ -25,6 +25,7 @@ import { SaveIndicator } from '@/components/SaveIndicator'
 import { CheckboxField, SelectField, TextField } from '@/components/ui/field'
 import { VatSelect } from '@/components/VatSelect'
 import { NEW_ENTRY, NewEntryDialog } from '@/features/masterdata/NewEntryDialog'
+import { DrugCodes } from '@/features/pharmacy/DrugCodes'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
 import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
@@ -222,6 +223,8 @@ export function DrugDetailPage() {
       />
 
       <StockPanel drug={record} original={original} />
+
+      <DrugCodes drug={record} />
     </div>
   )
 }

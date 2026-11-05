@@ -7,6 +7,7 @@
  */
 
 export * from './acceptInvoice';
+export * from './addDrugCode';
 export * from './addPatient';
 export * from './addressBookEntry';
 export * from './addressCheck';
@@ -43,6 +44,7 @@ export * from './dashboard';
 export * from './davAccess';
 export * from './docType';
 export * from './drug';
+export * from './drugCode';
 export * from './duplicateRequest';
 export * from './emailTemplate';
 export * from './emailType';
@@ -132,9 +134,11 @@ export * from './quoteLineInput';
 export * from './quotePrices';
 export * from './quoteSummary';
 export * from './quoteVatGroup';
+export * from './readScan';
 export * from './reminder';
 export * from './richText';
 export * from './salutation';
+export * from './scanResult';
 export * from './sendInvoice';
 export * from './service';
 export * from './serviceType';

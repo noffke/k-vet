@@ -1,6 +1,7 @@
 import type {
   InputHTMLAttributes,
   ReactNode,
+  Ref,
   SelectHTMLAttributes,
   TextareaHTMLAttributes,
 } from 'react'
@@ -67,6 +68,8 @@ export function Field({
 }
 
 export type TextFieldProps = Omit<InputHTMLAttributes<HTMLInputElement>, 'id'> & {
+  /** Handed on to the input (React 19: `ref` is a prop), for a page that moves the focus. */
+  ref?: Ref<HTMLInputElement> | undefined
   label: string
   error?: string | undefined
   warning?: string | undefined

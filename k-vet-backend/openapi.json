@@ -1022,6 +1022,33 @@
         }
       }
     },
+    "/api/drug-codes/{id}": {
+      "delete": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "deleteDrugCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "No Content"
+          },
+          "404": {
+            "description": "Not Found"
+          }
+        }
+      }
+    },
     "/api/drugs": {
       "get": {
         "tags": [
@@ -1233,6 +1260,56 @@
                 }
               }
             }
+          }
+        }
+      }
+    },
+    "/api/drugs/{id}/codes": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "addDrugCode",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/AddDrugCode"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/Drug"
+                }
+              }
+            }
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "The code belongs to another drug"
+          },
+          "422": {
+            "description": "No product code could be read"
           }
         }
       }
@@ -3247,6 +3324,36 @@
         }
       }
     },
+    "/api/scan": {
+      "post": {
+        "tags": [
+          "pharmacy"
+        ],
+        "operationId": "readScan",
+        "requestBody": {
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/ReadScan"
+              }
+            }
+          },
+          "required": true
+        },
+        "responses": {
+          "200": {
+            "description": "OK",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ScanResult"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/services": {
       "get": {
         "tags": [
@@ -5217,6 +5324,18 @@
           }
         }
       },
+      "AddDrugCode": {
+        "type": "object",
+        "required": [
+          "code"
+        ],
+        "properties": {
+          "code": {
+            "type": "string",
+            "description": "What was scanned or typed: an EAN, a PZN, a whole Data Matrix. Only the product code is\nkept — batch, expiry and serial belong to a lot, not to the drug."
+          }
+        }
+      },
       "AddPatient": {
         "type": "object",
         "required": [
@@ -6411,6 +6530,7 @@
           "draft",
           "missing_fields",
           "in_stock",
+          "codes",
           "created_at",
           "updated_at"
         ],
@@ -6504,6 +6624,13 @@
             ],
             "description": "Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price."
           },
+          "codes": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/DrugCode"
+            },
+            "description": "The codes on its packs, by which a barcode scanner finds it (migration 0038)."
+          },
           "created_at": {
             "type": "string",
             "format": "date-time"
@@ -6511,6 +6638,28 @@
           "updated_at": {
             "type": "string",
             "format": "date-time"
+          }
+        }
+      },
+      "DrugCode": {
+        "type": "object",
+        "required": [
+          "id",
+          "gtin",
+          "display"
+        ],
+        "properties": {
+          "id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "gtin": {
+            "type": "string",
+            "description": "14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit)."
+          },
+          "display": {
+            "type": "string",
+            "description": "As people know it: \"PZN 12345678\", or the EAN-13."
           }
         }
       },
@@ -9509,6 +9658,18 @@
           }
         }
       },
+      "ReadScan": {
+        "type": "object",
+        "required": [
+          "raw"
+        ],
+        "properties": {
+          "raw": {
+            "type": "string",
+            "description": "Exactly what the scanner typed, group separators (U+001D) included."
+          }
+        }
+      },
       "Reminder": {
         "type": "object",
         "required": [
@@ -9615,6 +9776,59 @@
           "herr",
           "familie"
         ]
+      },
+      "ScanResult": {
+        "type": "object",
+        "properties": {
+          "gtin": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The product code, as 14 digits; `None` when the scan held none that could be read."
+          },
+          "display": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "batch": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "expiry": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "format": "date"
+          },
+          "drug": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Drug",
+                "description": "The drug the code belongs to; `None` for a code no drug has yet."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "original": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Packaging",
+                "description": "That drug's original packaging — the one a Wareneingang stocks — once it has one."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
       },
       "SendInvoice": {
         "type": "object",

@@ -39,6 +39,11 @@ Generally, all entities should have a created and updated timestamp.
   * Relation: 1 Manufacturer
   * Relation: n Drug Packaging (exactly one of them has Kind = original)
   * Decision: the original packaging is modeled as a Drug Packaging (Kind = original), so invoice positions uniformly reference packagings and the subset price formula stays within one entity
+  * Relation: n Drug Code
+* Drug Code (EAN, PZN) — a code printed on the drug's packs, by which a barcode scanner finds the drug at the Wareneingang
+  * GTIN (14 digits, unique: a code names one drug). Every product code is kept in this one form: an EAN-13 with a leading zero; a PZN — from its Code 39 barcode, or inside the PPN of an IFA Data Matrix — as its NTIN (`04150` + PZN + check digit, per the securPharm coding rules). Shown as "PZN 12345678" or as the EAN-13.
+  * Only the product code is kept: batch, expiry and serial of a scanned Data Matrix change with every delivery and belong to the Drug Stock Lot.
+  * Relation: 1 Drug (deleted with it)
 * Drug Packaging (Verpackungseinheit, Teilmenge)
   * Kind (enum: original | subset) (see Modeling Conventions)
   * Unit

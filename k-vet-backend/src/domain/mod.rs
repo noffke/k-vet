@@ -1,5 +1,6 @@
 //! Pure domain logic — unit-tested without a database.
 
+pub mod barcode;
 pub mod contact;
 pub mod draft;
 pub mod enums;

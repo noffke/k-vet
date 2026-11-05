@@ -368,9 +368,14 @@
     "travelWithoutKm": "{{names}}: bitte erst die Kilometer eintragen — ohne sie kann keine Rechnung erstellt werden."
   },
   "pharmacy": {
+    "addCode": "Code hinzufügen",
+    "addCodePlaceholder": "Scannen oder eintippen, dann Enter",
     "approvalNumber": "Zulassungsnummer",
     "arrivalShort": "Eingang",
     "batchShort": "Ch.-B.",
+    "codeOfOther": "Dieser Code gehört schon zu „{{name}}“.",
+    "codes": "Codes (EAN, PZN)",
+    "codesHint": "Daran erkennt der Scanner das Medikament beim Wareneingang. Ein Code wird gescannt oder eingetippt; von einem Data-Matrix-Code bleibt nur die Produktnummer, Charge und Verfall gehören zur Lieferung.",
     "computedPerAmpreisv": "Berechnet nach AMPreisV",
     "correction": "Korrektur",
     "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht.",
@@ -401,6 +406,9 @@
     "packagings": "Packungen",
     "priceOverride": "Preis manuell überschrieben",
     "remaining": "Restbestand",
+    "removeCode": "Code {{code}} entfernen",
+    "removeCodeConfirm": "„{{code}}“ gehört dann nicht mehr zu diesem Medikament; der Scanner erkennt es daran nicht mehr.",
+    "removeCodeTitle": "Code entfernen?",
     "resetPrice": "Berechneten Preis verwenden",
     "reversal": "Storno",
     "showEmptyLots": "Leere Chargen anzeigen",
@@ -699,5 +707,11 @@
     "showAgain": "Wieder im Kalender zeigen",
     "badgeFromPhone": "Aus Kalender",
     "badgeHidden": "Im Kalender gelöscht"
+  },
+  "code": {
+    "invalid": "Kein gültiger Code (EAN, PZN oder Data Matrix)"
+  },
+  "scan": {
+    "lastRead": "Zuletzt gelesen"
   }
 }

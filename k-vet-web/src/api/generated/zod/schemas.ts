@@ -870,6 +870,13 @@ export const GetDashboardResponse = zod.object({
 })
 
 
+export const DeleteDrugCodeParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteDrugCodeResponse = zod.void()
+
+
 export const ListDrugsQueryParams = zod.object({
   "q": zod.string().optional().describe('Text filter (name, number, …).'),
   "archived": zod.boolean().optional().describe('Include archived records (default: false).'),
@@ -897,6 +904,11 @@ export const ListDrugsResponseItem = zod.object({
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -923,6 +935,11 @@ export const CreateDrugResponse = zod.object({
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -952,6 +969,11 @@ export const GetDrugResponse = zod.object({
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -1005,6 +1027,11 @@ export const PatchDrugResponse = zod.object({
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -1034,6 +1061,49 @@ export const ArchiveDrugResponse = zod.object({
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+})
+
+
+export const AddDrugCodeParams = zod.object({
+  "id": zod.int()
+})
+
+export const AddDrugCodeBody = zod.object({
+  "code": zod.string().describe('What was scanned or typed: an EAN, a PZN, a whole Data Matrix. Only the product code is\nkept — batch, expiry and serial belong to a lot, not to the drug.')
+})
+
+export const AddDrugCodeResponse = zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "manufacturer_id": zod.int().nullish(),
+  "manufacturer_name": zod.string().nullish(),
+  "submission_receipt": zod.boolean().describe('Informational flags in this version — no reminders or ledgers (FR-012).'),
+  "narcotic": zod.boolean(),
+  "vaccine": zod.boolean(),
+  "refrigerate": zod.boolean(),
+  "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "vat_percent": zod.string().nullish(),
+  "approval_number": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -1114,6 +1184,11 @@ export const UnarchiveDrugResponse = zod.object({
   "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
   "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
   "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
   "created_at": zod.iso.datetime({"offset":true}),
   "updated_at": zod.iso.datetime({"offset":true})
 })
@@ -2752,6 +2827,63 @@ export const TakeReminderResponse = zod.object({
   "position": zod.int(),
   "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
   "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+})
+
+
+export const ReadScanBody = zod.object({
+  "raw": zod.string().describe('Exactly what the scanner typed, group separators (U+001D) included.')
+})
+
+export const ReadScanResponse = zod.object({
+  "gtin": zod.string().nullish().describe('The product code, as 14 digits; `None` when the scan held none that could be read.'),
+  "display": zod.string().nullish(),
+  "batch": zod.string().nullish(),
+  "expiry": zod.iso.date().nullish(),
+  "drug": zod.union([zod.object({
+  "id": zod.int(),
+  "name": zod.string().nullish(),
+  "manufacturer_id": zod.int().nullish(),
+  "manufacturer_name": zod.string().nullish(),
+  "submission_receipt": zod.boolean().describe('Informational flags in this version — no reminders or ledgers (FR-012).'),
+  "narcotic": zod.boolean(),
+  "vaccine": zod.boolean(),
+  "refrigerate": zod.boolean(),
+  "redesignation": zod.boolean(),
+  "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
+  "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "vat_percent": zod.string().nullish(),
+  "approval_number": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string()),
+  "in_stock": zod.string().describe('Derived stock over the lots of the original packaging, in base units.'),
+  "unit": zod.string().nullish().describe('The original packaging\'s unit — what `in_stock` is counted in.'),
+  "original_price_gross": zod.string().nullish().describe('Gross sales price of the original packaging — the figure the vet reads out to a customer\nasking what something costs. `None` until that packaging has a price.'),
+  "codes": zod.array(zod.object({
+  "id": zod.int(),
+  "gtin": zod.string().describe('14 digits; a PZN is kept as its NTIN (`04150` + PZN + check digit).'),
+  "display": zod.string().describe('As people know it: "PZN 12345678", or the EAN-13.')
+})).describe('The codes on its packs, by which a barcode scanner finds it (migration 0038).'),
+  "created_at": zod.iso.datetime({"offset":true}),
+  "updated_at": zod.iso.datetime({"offset":true})
+}).describe('The drug the code belongs to; `None` for a code no drug has yet.'),zod.null()]).optional(),
+  "original": zod.union([zod.object({
+  "id": zod.int(),
+  "drug_id": zod.int(),
+  "kind": zod.enum(['original', 'subset']).describe('Original packaging (bought, stocked) versus a subset dispensed from it.'),
+  "unit": zod.string().nullish(),
+  "quantity": zod.string().nullish(),
+  "list_price_net": zod.string().nullish().describe('Purchase price without VAT; derived pro rata for subsets.'),
+  "sales_price_net": zod.string().nullish().describe('Sales price **without** VAT — the figure AMPreisV computes and the vet edits.'),
+  "sales_price_gross": zod.string().nullish().describe('Derived from `sales_price_net`; what the customer pays.'),
+  "price_overridden": zod.boolean().describe('`true` while the vet\'s manual price wins over the computed one.'),
+  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price.'),
+  "supplier_id": zod.int().nullish(),
+  "supplier_name": zod.string().nullish(),
+  "archived": zod.boolean(),
+  "draft": zod.boolean(),
+  "missing_fields": zod.array(zod.string())
+}).describe('That drug\'s original packaging — the one a Wareneingang stocks — once it has one.'),zod.null()]).optional()
 })
 
 

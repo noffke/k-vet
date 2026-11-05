@@ -368,9 +368,14 @@
     "travelWithoutKm": "{{names}}: please enter the kilometres first — no invoice can be created without them."
   },
   "pharmacy": {
+    "addCode": "Add code",
+    "addCodePlaceholder": "Scan or type, then Enter",
     "approvalNumber": "Approval number",
     "arrivalShort": "In",
     "batchShort": "Batch",
+    "codeOfOther": "This code already belongs to “{{name}}”.",
+    "codes": "Codes (EAN, PZN)",
+    "codesHint": "How the scanner recognises the drug at the stock intake. A code is scanned or typed; of a Data Matrix only the product number is kept, batch and expiry belong to the delivery.",
     "computedPerAmpreisv": "Computed per AMPreisV",
     "correction": "Correction",
     "correctionHint": "Enter the counted stock — the difference is booked.",
@@ -401,6 +406,9 @@
     "packagings": "Packagings",
     "priceOverride": "Price overridden manually",
     "remaining": "Remaining",
+    "removeCode": "Remove code {{code}}",
+    "removeCodeConfirm": "“{{code}}” then no longer belongs to this drug; the scanner no longer recognises it by it.",
+    "removeCodeTitle": "Remove the code?",
     "resetPrice": "Use the computed price",
     "reversal": "Reversal",
     "showEmptyLots": "Show empty lots",
@@ -699,5 +707,11 @@
     "showAgain": "Show in the calendar again",
     "badgeFromPhone": "From calendar",
     "badgeHidden": "Deleted in calendar"
+  },
+  "code": {
+    "invalid": "No valid code (EAN, PZN or Data Matrix)"
+  },
+  "scan": {
+    "lastRead": "Last read"
   }
 }

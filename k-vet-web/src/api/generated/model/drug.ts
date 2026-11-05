@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { DrugCode } from './drugCode';
 
 export interface Drug {
   id: number;
@@ -50,6 +51,8 @@ export interface Drug {
      * @nullable
      */
   original_price_gross?: string | null;
+  /** The codes on its packs, by which a barcode scanner finds it (migration 0038). */
+  codes: DrugCode[];
   created_at: string;
   updated_at: string;
 }

@@ -26,6 +26,7 @@ import type {
 
 import type {
   AcceptInvoice,
+  AddDrugCode,
   AddPatient,
   AddressBookEntry,
   AddressCheck,
@@ -106,7 +107,9 @@ import type {
   QuoteDistance,
   QuoteDistanceRequest,
   QuoteSummary,
+  ReadScan,
   Reminder,
+  ScanResult,
   SendInvoice,
   Service,
   SessionInfo,
@@ -2600,6 +2603,74 @@ export function useGetDashboard<TData = Awaited<ReturnType<typeof getDashboard>>
 
 
 
+export const getDeleteDrugCodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/drug-codes/${id}`
+}
+
+export const deleteDrugCode = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteDrugCodeUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteDrugCodeMutationKey = () => ['deleteDrugCode'] as const;
+
+export const getDeleteDrugCodeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDrugCode>>, TError,DeleteDrugCodeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteDrugCode>>, TError,DeleteDrugCodeMutationVariables, TContext> => {
+
+const mutationKey = getDeleteDrugCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteDrugCode>>, DeleteDrugCodeMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteDrugCode(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteDrugCodeMutationResult = NonNullable<Awaited<ReturnType<typeof deleteDrugCode>>>
+
+    export type DeleteDrugCodeMutationError = void
+    export type DeleteDrugCodeMutationVariables = {id: number}
+
+    export const useDeleteDrugCode = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteDrugCode>>, TError,DeleteDrugCodeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteDrugCode>>,
+        TError,
+        DeleteDrugCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteDrugCodeMutationOptions(options), queryClient);
+    }
+
 export const getListDrugsUrl = (params?: ListDrugsParams,) => {
   const normalizedParams = new URLSearchParams();
 
@@ -3088,6 +3159,89 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
         TContext
       > => {
       return useMutation(getArchiveDrugMutationOptions(options), queryClient);
+    }
+
+export const getAddDrugCodeUrl = (id: number,) => {
+
+
+
+
+  return `/api/drugs/${id}/codes`
+}
+
+export const addDrugCode = async (id: number,
+    addDrugCodeBody: AddDrugCode, options?: Parameters<typeof apiFetch>[1]): Promise<Drug> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<Drug>(getAddDrugCodeUrl(id),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(addDrugCodeBody)
+  }
+);}
+
+
+
+
+
+export const getAddDrugCodeMutationKey = () => ['addDrugCode'] as const;
+
+export const getAddDrugCodeMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addDrugCode>>, TError,AddDrugCodeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof addDrugCode>>, TError,AddDrugCodeMutationVariables, TContext> => {
+
+const mutationKey = getAddDrugCodeMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof addDrugCode>>, AddDrugCodeMutationVariables> = (props) => {
+          const {id,data} = props ?? {};
+
+          return  addDrugCode(id,data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type AddDrugCodeMutationResult = NonNullable<Awaited<ReturnType<typeof addDrugCode>>>
+    export type AddDrugCodeMutationBody = AddDrugCode
+    export type AddDrugCodeMutationError = void
+    export type AddDrugCodeMutationVariables = {id: number;data: AddDrugCode}
+
+    export const useAddDrugCode = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof addDrugCode>>, TError,AddDrugCodeMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof addDrugCode>>,
+        TError,
+        AddDrugCodeMutationVariables,
+        TContext
+      > => {
+      return useMutation(getAddDrugCodeMutationOptions(options), queryClient);
     }
 
 export const getListPackagingsUrl = (id: number,) => {
@@ -7844,6 +7998,88 @@ export const useTakeReminder = <TError = void,
         TContext
       > => {
       return useMutation(getTakeReminderMutationOptions(options), queryClient);
+    }
+
+export const getReadScanUrl = () => {
+
+
+
+
+  return `/api/scan`
+}
+
+export const readScan = async (readScanBody: ReadScan, options?: Parameters<typeof apiFetch>[1]): Promise<ScanResult> => {
+
+    const getHeaders = (h?: NonNullable<RequestInit['headers']>): Record<string, string | readonly string[]> => {
+    if (!h) return {};
+    if (h instanceof Headers) return Object.fromEntries(h.entries());
+    if (Symbol.iterator in h) {
+      return Object.fromEntries(
+        Array.from(h as Iterable<Iterable<string>>, (entry) => Array.from(entry) as [string, string]),
+      );
+    }
+    const headers: Record<string, string | readonly string[]> = {};
+    for (const [name, value] of Object.entries<string | readonly string[] | undefined>(h)) {
+      if (value !== undefined) headers[name] = value;
+    }
+    return headers;
+  };
+return apiFetch<ScanResult>(getReadScanUrl(),
+  {
+    ...options,
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', ...getHeaders(options?.headers) },
+    body: JSON.stringify(readScanBody)
+  }
+);}
+
+
+
+
+
+export const getReadScanMutationKey = () => ['readScan'] as const;
+
+export const getReadScanMutationOptions = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof readScan>>, TError,ReadScanMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof readScan>>, TError,ReadScanMutationVariables, TContext> => {
+
+const mutationKey = getReadScanMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof readScan>>, ReadScanMutationVariables> = (props) => {
+          const {data} = props ?? {};
+
+          return  readScan(data,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type ReadScanMutationResult = NonNullable<Awaited<ReturnType<typeof readScan>>>
+    export type ReadScanMutationBody = ReadScan
+    export type ReadScanMutationError = unknown
+    export type ReadScanMutationVariables = {data: ReadScan}
+
+    export const useReadScan = <TError = unknown,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof readScan>>, TError,ReadScanMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof readScan>>,
+        TError,
+        ReadScanMutationVariables,
+        TContext
+      > => {
+      return useMutation(getReadScanMutationOptions(options), queryClient);
     }
 
 export const getListServicesUrl = (params?: ListServicesParams,) => {
