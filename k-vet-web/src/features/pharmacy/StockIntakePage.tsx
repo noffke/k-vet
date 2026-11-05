@@ -1,47 +1,50 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useParams } from '@tanstack/react-router'
-import { PackagePlus } from 'lucide-react'
+import { Link2, PackagePlus } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
+  addDrugCode,
   getGetDrugQueryKey,
   getListDrugsQueryKey,
   getListLotsQueryKey,
+  getListPackagingsQueryKey,
+  readScan,
   useCreateStockIntake,
   useGetDrug,
   useListPackagings,
 } from '@/api/generated/endpoints'
 import { BackLink } from '@/components/BackLink'
-import { DateInput } from '@/components/DateInput'
-import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
+import { ScanField } from '@/components/ScanField'
 import { Button } from '@/components/ui/button'
-import { TextField } from '@/components/ui/field'
-import { todayIso } from '@/lib/format'
-import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
+import { IntakeFields } from './IntakeFields'
+import { canBook, freshIntake, intakeBody } from './intake'
 
 /**
- * A delivery: what arrived, when, in how many packages, and until when it keeps.
+ * A delivery of one drug: what arrived, when, in how many packages, until when it keeps — and
+ * whether the list price is still right.
  *
  * A page rather than a dialog — it is a record of goods received, entered while the box is
  * still in hand, and it opens fresh every time instead of holding the last delivery's count.
+ * Scanning the pack's Data Matrix fills batch and expiry; a code the drug does not know yet
+ * can be added to it from here.
  */
 export function StockIntakePage() {
   const { t } = useTranslation()
   const { id } = useParams({ from: '/app/pharmacy/$id/intake' })
   const drugId = Number(id)
   const client = useQueryClient()
-  const { quantity: formatQuantity } = useLocaleFormat()
 
   const drug = useGetDrug(drugId)
   const packagings = useListPackagings(drugId)
   const original = (packagings.data ?? []).find((packaging) => packaging.kind === 'original')
 
-  const [arrivalDate, setArrivalDate] = useState<string | null>(todayIso())
-  const [packages, setPackages] = useState<string | null>('1')
-  const [batchNumber, setBatchNumber] = useState('')
-  const [expirationDate, setExpirationDate] = useState<string | null>(null)
+  const [draft, setDraft] = useState(() => freshIntake())
+  const [scanProblem, setScanProblem] = useState<string | null>(null)
+  // A code of this pack that no drug has yet: offered to be added to this one.
+  const [unknownCode, setUnknownCode] = useState<string | null>(null)
 
   // Back where the vet came from — the appointment with its animal's tab — on success and on
   // cancel alike, rather than piling another entry onto the history.
@@ -51,12 +54,51 @@ export function StockIntakePage() {
       onSuccess: async () => {
         await client.invalidateQueries({ queryKey: getListLotsQueryKey() })
         await client.invalidateQueries({ queryKey: getListDrugsQueryKey() })
-        // The drug's derived stock changed with the delivery.
+        // The drug's derived stock changed with the delivery — and a changed list price moved
+        // the packagings' prices.
         await client.invalidateQueries({ queryKey: getGetDrugQueryKey(drugId) })
+        await client.invalidateQueries({ queryKey: getListPackagingsQueryKey(drugId) })
         await back()
       },
     },
   })
+
+  const scan = async (raw: string) => {
+    setScanProblem(null)
+    setUnknownCode(null)
+    try {
+      const scanned = await readScan({ raw })
+      if (scanned.drug && scanned.drug.id !== drugId) {
+        setScanProblem(t('pharmacy.codeOfOther', { name: scanned.drug.name ?? '' }))
+        return
+      }
+      if (!scanned.gtin && !scanned.batch && !scanned.expiry) {
+        setScanProblem(t('code.invalid'))
+        return
+      }
+      setDraft((current) => ({
+        ...current,
+        batch: scanned.batch ?? current.batch,
+        expiry: scanned.expiry ?? current.expiry,
+      }))
+      if (scanned.gtin && !scanned.drug) setUnknownCode(raw)
+    } catch {
+      setScanProblem(t('error.generic'))
+    }
+  }
+
+  const attachCode = async () => {
+    if (!unknownCode) return
+    try {
+      client.setQueryData(
+        getGetDrugQueryKey(drugId),
+        await addDrugCode(drugId, { code: unknownCode }),
+      )
+      setUnknownCode(null)
+    } catch {
+      setScanProblem(t('error.generic'))
+    }
+  }
 
   if (drug.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!drug.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
@@ -72,58 +114,45 @@ export function StockIntakePage() {
             label={record.name ?? t('pharmacy.title')}
           />
         }
+        eyebrow={record.name ?? undefined}
         title={t('pharmacy.intake')}
       />
 
-      <section className="mt-5 grid gap-4 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
-        <DateInput label={t('field.arrivalDate')} value={arrivalDate} onChange={setArrivalDate} />
-        <NumberInput
-          label={t('field.packagesReceived')}
-          value={packages}
-          decimals={0}
-          step={1}
-          min={1}
-          onChange={setPackages}
+      <section className="mt-5 flex flex-col gap-2 rounded-card border border-line bg-surface p-4">
+        <ScanField
+          label={t('intake.scan')}
+          placeholder={t('intake.scanPlaceholder')}
+          error={scanProblem ?? undefined}
+          autoFocus
+          onScan={(raw) => void scan(raw)}
         />
-        <TextField
-          label={t('field.batchNumber')}
-          value={batchNumber}
-          onChange={(event) => setBatchNumber(event.target.value)}
-        />
-        {/* Packages print the expiry as month and year; that is the month's last day. */}
-        <DateInput
-          label={t('field.expirationDate')}
-          value={expirationDate}
-          onChange={setExpirationDate}
-          monthEnd
-        />
-        {original?.quantity && packages ? (
-          <p className="numeric text-xs text-ink-faint sm:col-span-2">
-            {t('pharmacy.intakeResult', {
-              quantity: formatQuantity(String(Number(original.quantity) * Number(packages))),
-              unit: original.unit ?? '',
-            })}
-          </p>
+        {unknownCode ? (
+          <div className="flex flex-wrap items-center gap-2 text-sm text-ink-soft">
+            {t('intake.unknownCode')}
+            <Button size="small" onClick={() => void attachCode()}>
+              <Link2 className="size-4" />
+              {t('intake.attachCode', { name: record.name ?? '' })}
+            </Button>
+          </div>
         ) : null}
       </section>
 
-      <div className="mt-4 flex justify-end gap-2">
+      {original ? (
+        <section className="mt-4 rounded-card border border-line bg-surface p-4">
+          <IntakeFields drug={record} original={original} value={draft} onChange={setDraft} />
+        </section>
+      ) : null}
+
+      <div className="mt-4 flex flex-wrap items-center justify-end gap-2">
+        {!canBook(draft) && draft.price.state === 'open' ? (
+          <p className="text-xs text-ink-faint">{t('intake.needsPrice')}</p>
+        ) : null}
         <Button onClick={() => void back()}>{t('action.cancel')}</Button>
         <Button
           variant="primary"
-          disabled={!original || !packages || createIntake.isPending}
+          disabled={!original || !canBook(draft) || createIntake.isPending}
           onClick={() =>
-            original &&
-            packages &&
-            createIntake.mutate({
-              id: original.id,
-              data: {
-                arrival_date: arrivalDate,
-                packages_received: Number(packages),
-                batch_number: batchNumber || null,
-                expiration_date: expirationDate,
-              },
-            })
+            original && createIntake.mutate({ id: original.id, data: intakeBody(draft, original) })
           }
         >
           <PackagePlus className="size-4" />

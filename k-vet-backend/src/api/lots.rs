@@ -13,6 +13,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::AppState;
+use crate::api::drugs;
 use crate::domain::enums::{InvoiceStatus, MovementKind};
 use crate::error::{AppError, AppResult};
 
@@ -82,6 +83,11 @@ pub struct CreateIntake {
     pub packages_received: i32,
     pub batch_number: Option<String>,
     pub expiration_date: Option<NaiveDate>,
+    /// The original's list price as the vet confirmed it at this delivery — a changed
+    /// wholesaler price is easily missed. When it differs from the stored one, the stored one
+    /// changes together with the lot, and with it, per AMPreisV, the sales prices of the original
+    /// and its subsets (unless set by hand). Lines already billed keep their prices.
+    pub list_price_net: Option<Decimal>,
 }
 
 /// A stocktake: the vet states what is physically there, the server books the difference.
@@ -112,12 +118,21 @@ pub async fn create_intake(
     if body.packages_received <= 0 {
         return Err(AppError::field("packages_received", "value.mustBePositive"));
     }
+    if body
+        .list_price_net
+        .is_some_and(|price| price <= Decimal::ZERO)
+    {
+        return Err(AppError::field("list_price_net", "value.mustBePositive"));
+    }
 
+    let mut transaction = state.pool.begin().await?;
     let packaging = sqlx::query!(
-        "SELECT quantity, draft FROM drug_packaging WHERE id = $1 AND kind = 'original'",
+        "SELECT drug_id, quantity, list_price_net, draft FROM drug_packaging
+         WHERE id = $1 AND kind = 'original'
+         FOR UPDATE",
         packaging_id,
     )
-    .fetch_optional(&state.pool)
+    .fetch_optional(&mut *transaction)
     .await?
     .ok_or_else(|| AppError::field("packaging_id", "lot.originalPackagingOnly"))?;
 
@@ -134,6 +149,25 @@ pub async fn create_intake(
     let arrival_date = body
         .arrival_date
         .unwrap_or_else(|| chrono::Local::now().date_naive());
+    let batch_number = body
+        .batch_number
+        .as_deref()
+        .map(str::trim)
+        .filter(|batch| !batch.is_empty());
+
+    if let Some(price) = body.list_price_net
+        && packaging.list_price_net != Some(price)
+    {
+        sqlx::query!(
+            "UPDATE drug_packaging SET list_price_net = $2 WHERE id = $1",
+            packaging_id,
+            price,
+        )
+        .execute(&mut *transaction)
+        .await?;
+        drugs::recompute_prices(&mut transaction, packaging.drug_id, &state.config.pharmacy)
+            .await?;
+    }
 
     let id: i64 = sqlx::query_scalar!(
         r#"INSERT INTO drug_stock_lot
@@ -145,11 +179,12 @@ pub async fn create_intake(
         arrival_date,
         body.packages_received,
         initial_quantity,
-        body.batch_number,
+        batch_number,
         body.expiration_date,
     )
-    .fetch_one(&state.pool)
+    .fetch_one(&mut *transaction)
     .await?;
+    transaction.commit().await?;
 
     Ok(Json(load_lot(&state.pool, id).await?))
 }

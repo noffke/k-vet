@@ -1,0 +1,15 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug_packaging SET list_price_net = $2 WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "37ae356f0d246ec24dde96b7b78d02243c0fcecf3e6bee7afd0c8a0941a432fb"
+}

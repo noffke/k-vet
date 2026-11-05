@@ -5966,6 +5966,13 @@
               "null"
             ],
             "format": "date"
+          },
+          "list_price_net": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The original's list price as the vet confirmed it at this delivery — a changed\nwholesaler price is easily missed. When it differs from the stored one, the stored one\nchanges together with the lot, and with it, per AMPreisV, the sales prices of the original\nand its subsets (unless set by hand). Lines already billed keep their prices."
           }
         }
       },

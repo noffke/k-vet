@@ -59,6 +59,76 @@ async fn an_intake_snapshots_packages_times_packaging_quantity(pool: PgPool) {
     assert_eq!(unchanged["initial_quantity"], "200.00");
 }
 
+/// The list price is confirmed at every Wareneingang — a changed wholesaler price is easily
+/// missed. A changed one is stored with the lot, and the AMPreisV prices follow: the original's
+/// sales price and the subsets', unless set by hand. A blank batch is no batch.
+#[sqlx::test]
+async fn a_changed_list_price_comes_in_with_the_lot(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let intake = format!("/api/packagings/{}/stock-intakes", drug.packaging_id);
+    let packagings = format!("/api/drugs/{}/packagings", drug.drug_id);
+    let find = |all: &Value, id: i64| {
+        all.as_array()
+            .and_then(|list| list.iter().find(|packaging| packaging["id"] == id))
+            .cloned()
+            .expect("the packaging")
+    };
+
+    let lot = app
+        .post(
+            &intake,
+            json!({ "packages_received": 1, "batch_number": "  ", "list_price_net": "12.00" }),
+        )
+        .await;
+    assert_eq!(
+        lot.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&lot.body)
+    );
+    assert!(lot.json()["batch_number"].is_null());
+
+    let after = app.get(&packagings).await.json();
+    let original = find(&after, drug.packaging_id);
+    assert_eq!(original["list_price_net"], "12.00");
+    // Priced by AMPreisV again, from the new list price.
+    assert_eq!(original["sales_price_net"], original["computed_price_net"]);
+    let subset = find(&after, drug.subset_packaging_id);
+    assert_eq!(
+        subset["list_price_net"], "1.20",
+        "10 ml of the 100 ml bottle"
+    );
+
+    // A price set by hand stays; the list price still changes.
+    app.patch(
+        &format!("/api/packagings/{}", drug.packaging_id),
+        json!({ "sales_price_net": "20.00" }),
+    )
+    .await;
+    app.post(
+        &intake,
+        json!({ "packages_received": 1, "list_price_net": "13.00" }),
+    )
+    .await;
+    let original = find(&app.get(&packagings).await.json(), drug.packaging_id);
+    assert_eq!(original["list_price_net"], "13.00");
+    assert_eq!(original["sales_price_net"], "20.00");
+
+    let refused = app
+        .post(
+            &intake,
+            json!({ "packages_received": 1, "list_price_net": "0" }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(
+        refused
+            .error_fields()
+            .contains(&"list_price_net".to_owned())
+    );
+}
+
 #[sqlx::test]
 async fn stock_can_only_be_booked_on_original_packagings(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

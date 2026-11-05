@@ -17,4 +17,12 @@ export interface CreateIntake {
   batch_number?: string | null;
   /** @nullable */
   expiration_date?: string | null;
+  /**
+     * The original's list price as the vet confirmed it at this delivery — a changed
+     * wholesaler price is easily missed. When it differs from the stored one, the stored one
+     * changes together with the lot, and with it, per AMPreisV, the sales prices of the original
+     * and its subsets (unless set by hand). Lines already billed keep their prices.
+     * @nullable
+     */
+  list_price_net?: string | null;
 }

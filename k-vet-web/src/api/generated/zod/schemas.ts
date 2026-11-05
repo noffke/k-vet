@@ -1880,7 +1880,8 @@ export const CreateStockIntakeBody = zod.object({
   "arrival_date": zod.iso.date().nullish().describe('Defaults to today.'),
   "packages_received": zod.int(),
   "batch_number": zod.string().nullish(),
-  "expiration_date": zod.iso.date().nullish()
+  "expiration_date": zod.iso.date().nullish(),
+  "list_price_net": zod.string().nullish().describe('The original\'s list price as the vet confirmed it at this delivery — a changed\nwholesaler price is easily missed. When it differs from the stored one, the stored one\nchanges together with the lot, and with it, per AMPreisV, the sales prices of the original\nand its subsets (unless set by hand). Lines already billed keep their prices.')
 })
 
 export const CreateStockIntakeResponse = zod.object({

@@ -1,5 +1,6 @@
 import { expect, test } from '@playwright/test'
 import { germanDate } from '../fixtures/clock'
+import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -145,6 +146,9 @@ test.describe('pharmacy', () => {
     await page.getByLabel('Anzahl Packungen').fill('2')
     await page.getByLabel('Chargennummer').fill('CH-2026-07')
     await page.getByLabel('Verfallsdatum').fill('31.03.2027')
+    // Nothing is booked before the list price is checked.
+    await expect(page.getByRole('button', { name: 'Hinzufügen' })).toBeDisabled()
+    await page.getByRole('button', { name: 'Stimmt' }).click()
     await page.getByRole('button', { name: 'Hinzufügen' }).click()
 
     // 2 packages × 100 ml.
@@ -169,6 +173,7 @@ test.describe('pharmacy', () => {
     await expiry.fill('02.2028')
     await expiry.blur()
     await expect(expiry).toHaveValue('29.02.2028')
+    await page.getByRole('button', { name: 'Stimmt' }).click()
     await page.getByRole('button', { name: 'Hinzufügen' }).click()
     await expect(page.getByText('CH-MONAT').filter({ visible: true }).first()).toBeVisible()
 
@@ -177,6 +182,64 @@ test.describe('pharmacy', () => {
       expiration_date: string
     }[]
     expect(lots.find((lot) => lot.batch_number === 'CH-MONAT')?.expiration_date).toBe('2028-02-29')
+  })
+
+  test('a changed list price is entered at the Wareneingang and moves the sales price', async ({
+    page,
+    request,
+  }) => {
+    const { drugId, packagingId } = await seedDrug(request, { packages: 0 })
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}/intake`)
+
+    await expect(page.getByText('Listenpreis bisher 10,00 € netto — stimmt er noch?')).toBeVisible()
+    await page.getByRole('button', { name: 'Hat sich geändert' }).click()
+    const newPrice = page.getByLabel(/Neuer Listenpreis/)
+    await newPrice.fill('12,00')
+    await newPrice.blur()
+    // What the sale will cost is shown before anything is booked — the server's AMPreisV price
+    // for the new list price, not one computed here.
+    const preview = (await (
+      await request.post('/api/pricing/preview', {
+        data: { kind: 'original', list_price_net: '12.00', vat_percent: '19.000' },
+      })
+    ).json()) as { gross: string }
+    const gross = preview.gross.replace('.', ',')
+    await expect(page.getByText(`Verkaufspreis dann ${gross} €`, { exact: false })).toBeVisible()
+    await page.getByRole('button', { name: 'Hinzufügen' }).click()
+    await expect(page).toHaveURL(new RegExp(`/pharmacy/${drugId}$`))
+
+    const packagings = (await (
+      await request.get(`/api/drugs/${drugId}/packagings`)
+    ).json()) as { id: number; list_price_net: string; sales_price_gross: string }[]
+    const original = packagings.find((packaging) => packaging.id === packagingId)
+    expect(original?.list_price_net).toBe('12.00')
+    expect(original?.sales_price_gross).toBe(preview.gross)
+  })
+
+  test('a scanned Data Matrix fills batch and expiry, and an unknown code is added', async ({
+    page,
+    request,
+  }) => {
+    const { drugId, drugName } = await seedDrug(request, { packages: 0 })
+    const pzn = uniquePzn()
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}/intake`)
+
+    const scan = page.getByLabel('Packung scannen')
+    await scan.fill(ifaMatrix(pzn, 'CH-SCAN-1', '290800'))
+    await scan.press('Enter')
+    await expect(page.getByLabel('Chargennummer')).toHaveValue('CH-SCAN-1')
+    await expect(page.getByLabel('Verfallsdatum')).toHaveValue('31.08.2029')
+
+    // The drug does not know this pack's code yet: one click adds it.
+    await page.getByRole('button', { name: `Zu „${drugName}“ hinzufügen` }).click()
+    await page.getByRole('button', { name: 'Stimmt' }).click()
+    await page.getByRole('button', { name: 'Hinzufügen' }).click()
+
+    await expect(page).toHaveURL(new RegExp(`/pharmacy/${drugId}$`))
+    await expect(page.getByText(`PZN ${pzn}`)).toBeVisible()
+    await expect(page.getByText('CH-SCAN-1').filter({ visible: true }).first()).toBeVisible()
   })
 
   test('a stocktake books the difference and keeps the history', async ({ page, request }) => {

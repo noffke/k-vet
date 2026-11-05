@@ -155,6 +155,7 @@
     "add": "Hinzufügen",
     "back": "Zurück",
     "cancel": "Abbrechen",
+    "change": "Ändern",
     "close": "Schließen",
     "closeDialog": "Dialog schließen",
     "confirm": "Bestätigen",
@@ -713,5 +714,21 @@
   },
   "scan": {
     "lastRead": "Zuletzt gelesen"
+  },
+  "intake": {
+    "attachCode": "Zu „{{name}}“ hinzufügen",
+    "needsPrice": "Erst den Listenpreis bestätigen oder ändern.",
+    "newListPrice": "Neuer Listenpreis (netto, bisher {{price}})",
+    "priceChanged": "Hat sich geändert",
+    "priceCheck": "Listenpreis",
+    "priceConfirmed": "Listenpreis {{price}} bestätigt",
+    "priceConfirmedEarlier": "Listenpreis {{price}} — in dieser Lieferung schon bestätigt",
+    "priceQuestion": "Listenpreis bisher {{price}} netto — stimmt er noch?",
+    "priceSame": "Stimmt",
+    "salesPriceBecomes": "Verkaufspreis dann {{price}} (bisher {{before}})",
+    "salesPriceManual": "Verkaufspreis von Hand gesetzt ({{price}}) — bleibt so",
+    "scan": "Packung scannen",
+    "scanPlaceholder": "Data-Matrix-Code scannen: füllt Charge und Verfall",
+    "unknownCode": "Diesen Code kennt k-vet noch nicht."
   }
 }

@@ -155,6 +155,7 @@
     "add": "Add",
     "back": "Back",
     "cancel": "Cancel",
+    "change": "Change",
     "close": "Close",
     "closeDialog": "Close dialog",
     "confirm": "Confirm",
@@ -713,5 +714,21 @@
   },
   "scan": {
     "lastRead": "Last read"
+  },
+  "intake": {
+    "attachCode": "Add to “{{name}}”",
+    "needsPrice": "Confirm or change the list price first.",
+    "newListPrice": "New list price (net, so far {{price}})",
+    "priceChanged": "It has changed",
+    "priceCheck": "List price",
+    "priceConfirmed": "List price {{price}} confirmed",
+    "priceConfirmedEarlier": "List price {{price}} — already confirmed in this delivery",
+    "priceQuestion": "List price so far {{price}} net — is it still right?",
+    "priceSame": "Still right",
+    "salesPriceBecomes": "Sales price then {{price}} (so far {{before}})",
+    "salesPriceManual": "Sales price set by hand ({{price}}) — stays as it is",
+    "scan": "Scan the pack",
+    "scanPlaceholder": "Scan the Data Matrix: fills batch and expiry",
+    "unknownCode": "k-vet does not know this code yet."
   }
 }
