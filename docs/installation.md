@@ -402,6 +402,28 @@ its contacts; nothing goes to Google or anyone else.
   Google. Take the contacts permission away from messengers and other apps that upload the
   address book (Android: *Settings → Apps → … → Permissions → Contacts*).
 
+### A barcode scanner for deliveries
+
+"Lieferung einbuchen" (Apotheke) and every Wareneingang read a USB barcode scanner. k-vet needs no
+driver and no setting for it: the scanner works as a keyboard, types what it reads, and presses
+Enter. Set it up once, with its manual's configuration codes:
+
+- **Keyboard mode** (USB HID), with **Enter** after each scan.
+- **German keyboard layout** (Deutsch / QWERTZ). On the default US layout, Y and Z swap and
+  symbols come out wrong, so batch numbers read wrong.
+- **2D codes on.** The Data Matrix on a pack is what carries batch and expiry; a scanner for 1D
+  codes only reads the EAN and the PZN.
+- **The group separator (GS, FNC1) transmitted.** It ends the batch inside a GS1 Data Matrix;
+  most scanners send it as Ctrl+], which k-vet takes. Some can also send the code "written out"
+  (`(01)…(17)…(10)…`), which needs no separator.
+
+To check the setup, scan a pack into "Code hinzufügen" on a drug's page. "Zuletzt gelesen" under
+the field shows exactly what arrived, control characters as symbols (␝ for the group separator):
+a Data Matrix should show `[)>␞06␝9N11…␝1T…` (IFA format) or `0104150…17…10…␝21…` (GS1).
+
+The codes are attached to a drug once, on its page or right from the delivery when a pack is not
+known yet; only the product code is kept (EAN, or the PZN), not the batch or expiry.
+
 ## Monitoring
 
 - `GET /healthz` — liveness, no session required. Also the image's `HEALTHCHECK`.

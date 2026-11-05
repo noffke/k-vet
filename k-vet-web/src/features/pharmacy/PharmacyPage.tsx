@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
-import { Plus, Snowflake, Syringe } from 'lucide-react'
+import { Plus, ScanBarcode, Snowflake, Syringe } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -102,10 +102,16 @@ export function PharmacyPage() {
         eyebrow={t('app.practice')}
         title={t('pharmacy.title')}
         actions={
-          <Button variant="accent" onClick={() => createDrug.mutate()}>
-            <Plus className="size-4" />
-            {t('pharmacy.newDrug')}
-          </Button>
+          <>
+            <Button onClick={() => void navigate({ to: '/pharmacy/delivery' })}>
+              <ScanBarcode className="size-4" />
+              {t('delivery.title')}
+            </Button>
+            <Button variant="accent" onClick={() => createDrug.mutate()}>
+              <Plus className="size-4" />
+              {t('pharmacy.newDrug')}
+            </Button>
+          </>
         }
       />
 

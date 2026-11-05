@@ -4607,6 +4607,84 @@ export function useGetLot<TData = Awaited<ReturnType<typeof getLot>>, TError = v
 
 
 
+export const getDeleteLotUrl = (id: number,) => {
+
+
+
+
+  return `/api/lots/${id}`
+}
+
+/**
+ * @summary Takes back a lot booked by mistake — a wrong count, the wrong drug — while it is untouched:
+nothing dispensed from it, nothing corrected. Once a movement refers to it, the lot is part of
+the stock history and stays; a stocktake correction is then the way to put it right.
+ */
+export const deleteLot = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
+
+  return apiFetch<void>(getDeleteLotUrl(id),
+  {
+    ...options,
+    method: 'DELETE'
+
+
+  }
+);}
+
+
+
+
+
+export const getDeleteLotMutationKey = () => ['deleteLot'] as const;
+
+export const getDeleteLotMutationOptions = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLot>>, TError,DeleteLotMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+): UseMutationOptions<Awaited<ReturnType<typeof deleteLot>>, TError,DeleteLotMutationVariables, TContext> => {
+
+const mutationKey = getDeleteLotMutationKey();
+const {mutation: mutationOptions, request: requestOptions} = options ?
+      options.mutation && 'mutationKey' in options.mutation && options.mutation.mutationKey ?
+      options
+      : {...options, mutation: {...options.mutation, mutationKey}}
+      : {mutation: { mutationKey, }, request: undefined};
+
+
+
+
+      const mutationFn: MutationFunction<Awaited<ReturnType<typeof deleteLot>>, DeleteLotMutationVariables> = (props) => {
+          const {id} = props ?? {};
+
+          return  deleteLot(id,requestOptions)
+        }
+
+
+
+
+
+
+  return  { mutationFn, ...mutationOptions }}
+
+    export type DeleteLotMutationResult = NonNullable<Awaited<ReturnType<typeof deleteLot>>>
+
+    export type DeleteLotMutationError = void
+    export type DeleteLotMutationVariables = {id: number}
+
+    /**
+ * @summary Takes back a lot booked by mistake — a wrong count, the wrong drug — while it is untouched:
+nothing dispensed from it, nothing corrected. Once a movement refers to it, the lot is part of
+the stock history and stays; a stocktake correction is then the way to put it right.
+ */
+export const useDeleteLot = <TError = void,
+    TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deleteLot>>, TError,DeleteLotMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}
+ , queryClient?: QueryClient): UseMutationResult<
+        Awaited<ReturnType<typeof deleteLot>>,
+        TError,
+        DeleteLotMutationVariables,
+        TContext
+      > => {
+      return useMutation(getDeleteLotMutationOptions(options), queryClient);
+    }
+
 export const getCreateCorrectionUrl = (id: number,) => {
 
 

@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM drug_stock_lot WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "a1fb23b4e51b161bfc9a35ec29ae55d1467bb7cd22b62c689f6c7b91e348cf40"
+}

@@ -29,7 +29,9 @@ layouts are first-class — not one design squeezed onto a phone.
   contact named with the animals ("Erika Mustermann (Bello, Minka)"), so a call shows who it is.
   Entries and contacts made on the phone come into k-vet; nothing goes to a third party.
 - **Pharmacy** — drugs with original and subset packagings, lot-based stock with FEFO
-  dispensing, stocktakes that book the difference, and an append-only movement history.
+  dispensing, stocktakes that book the difference, and an append-only movement history. A
+  delivery is booked with a USB barcode scanner, pack by pack: the EAN or PZN finds the drug, the
+  Data Matrix brings batch and expiry, and every Wareneingang confirms the list price.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV
   § 3, § 4 and § 10, VAT summarised per rate, invoice numbers from an operator-defined pattern
   with a counter that never goes backwards. A Wegegeld line fills in its kilometres — the

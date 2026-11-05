@@ -64,6 +64,7 @@ Generally, all entities should have a created and updated timestamp.
   * Expiration Date (Verfallsdatum) (optional)
   * Relation: 1 Drug Packaging (Kind = original, enforced via composite FK on `(packaging_id, kind)` + CHECK)
   * Relation: n Drug Stock Movement
+  * A lot booked by mistake can be taken back (deleted) while untouched — no movement refers to it; after that it is stock history, put right by a correction.
 * Drug Stock Movement (Bestandsbewegung)
   * Kind (enum: dispense | correction) (see Modeling Conventions)
   * Quantity (base units, signed; CHECK: dispense < 0, correction may be positive or negative)

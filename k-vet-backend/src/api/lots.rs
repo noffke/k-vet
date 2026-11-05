@@ -5,6 +5,7 @@
 //! change is a movement — dispenses tied to a treatment line, corrections with a reason.
 
 use axum::extract::{Path, Query, State};
+use axum::http::StatusCode;
 use axum::routing::{get, post};
 use axum::{Json, Router};
 use chrono::{DateTime, NaiveDate, Utc};
@@ -415,11 +416,50 @@ async fn load_lot(pool: &sqlx::PgPool, id: i64) -> AppResult<Lot> {
     })
 }
 
+/// Takes back a lot booked by mistake — a wrong count, the wrong drug — while it is untouched:
+/// nothing dispensed from it, nothing corrected. Once a movement refers to it, the lot is part of
+/// the stock history and stays; a stocktake correction is then the way to put it right.
+#[utoipa::path(
+    delete,
+    path = "/api/lots/{id}",
+    operation_id = "deleteLot",
+    tag = "pharmacy",
+    params(("id" = i64, Path,)),
+    responses(
+        (status = 204, description = "Taken back"),
+        (status = 404),
+        (status = 409, description = "Something was dispensed from it or corrected")
+    )
+)]
+pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppResult<StatusCode> {
+    let mut transaction = state.pool.begin().await?;
+    sqlx::query_scalar!("SELECT id FROM drug_stock_lot WHERE id = $1 FOR UPDATE", id)
+        .fetch_optional(&mut *transaction)
+        .await?
+        .ok_or(AppError::NotFound)?;
+    let touched: Option<bool> = sqlx::query_scalar!(
+        "SELECT EXISTS (SELECT 1 FROM drug_stock_movement WHERE lot_id = $1)",
+        id
+    )
+    .fetch_one(&mut *transaction)
+    .await?;
+    if touched.unwrap_or(true) {
+        return Err(AppError::Conflict(
+            "the lot has movements and stays".to_owned(),
+        ));
+    }
+    sqlx::query!("DELETE FROM drug_stock_lot WHERE id = $1", id)
+        .execute(&mut *transaction)
+        .await?;
+    transaction.commit().await?;
+    Ok(StatusCode::NO_CONTENT)
+}
+
 pub fn routes() -> Router<AppState> {
     Router::new()
         .route("/packagings/{id}/stock-intakes", post(create_intake))
         .route("/lots", get(list))
-        .route("/lots/{id}", get(detail))
+        .route("/lots/{id}", get(detail).delete(delete))
         .route("/lots/{id}/corrections", post(create_correction))
         .route("/stock/correction-reasons", get(correction_reasons))
 }

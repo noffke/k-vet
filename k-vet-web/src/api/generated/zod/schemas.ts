@@ -1613,6 +1613,18 @@ export const GetLotResponse = zod.object({
 }))
 
 
+/**
+ * @summary Takes back a lot booked by mistake — a wrong count, the wrong drug — while it is untouched:
+nothing dispensed from it, nothing corrected. Once a movement refers to it, the lot is part of
+the stock history and stays; a stocktake correction is then the way to put it right.
+ */
+export const DeleteLotParams = zod.object({
+  "id": zod.int()
+})
+
+export const DeleteLotResponse = zod.void()
+
+
 export const CreateCorrectionParams = zod.object({
   "id": zod.int()
 })

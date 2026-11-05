@@ -1891,6 +1891,35 @@
             "description": "Not Found"
           }
         }
+      },
+      "delete": {
+        "tags": [
+          "pharmacy"
+        ],
+        "summary": "Takes back a lot booked by mistake — a wrong count, the wrong drug — while it is untouched:\nnothing dispensed from it, nothing corrected. Once a movement refers to it, the lot is part of\nthe stock history and stays; a stocktake correction is then the way to put it right.",
+        "operationId": "deleteLot",
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "schema": {
+              "type": "integer",
+              "format": "int64"
+            }
+          }
+        ],
+        "responses": {
+          "204": {
+            "description": "Taken back"
+          },
+          "404": {
+            "description": "Not Found"
+          },
+          "409": {
+            "description": "Something was dispensed from it or corrected"
+          }
+        }
       }
     },
     "/api/lots/{id}/corrections": {

@@ -160,6 +160,7 @@ const SESSION_LIFETIME_DAYS: i64 = 14;
         api::lots::create_intake,
         api::lots::list,
         api::lots::detail,
+        api::lots::delete,
         api::lots::create_correction,
         api::lots::correction_reasons,
         api::services::list,

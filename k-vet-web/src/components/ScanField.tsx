@@ -13,6 +13,8 @@ interface ScanFieldProps {
   label: string
   /** Called with exactly what was typed or scanned, once it ends with Enter. */
   onScan: (raw: string) => void
+  /** Enter on the empty field — the delivery page books the pack in hand with it. */
+  onEnterEmpty?: (() => void) | undefined
   placeholder?: string | undefined
   hint?: string | undefined
   error?: string | undefined
@@ -38,6 +40,7 @@ interface ScanFieldProps {
 export function ScanField({
   label,
   onScan,
+  onEnterEmpty,
   placeholder,
   hint,
   error,
@@ -53,9 +56,13 @@ export function ScanField({
   const onKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Enter') {
       event.preventDefault()
+      if (!value.trim()) {
+        onEnterEmpty?.()
+        return
+      }
       setValue('')
       setLast(value)
-      if (value.trim()) onScan(value)
+      onScan(value)
       return
     }
     // AltGr is Ctrl+Alt on Windows; those keys type characters (@, |, …) and stay alone.

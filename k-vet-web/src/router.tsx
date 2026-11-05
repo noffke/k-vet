@@ -21,6 +21,7 @@ import {
 } from '@/features/masterdata/AddressBookDetailPage'
 import { MasterDataPage } from '@/features/masterdata/MasterDataPage'
 import { PatientDetailPage } from '@/features/patients/PatientDetailPage'
+import { DeliveryPage } from '@/features/pharmacy/DeliveryPage'
 import { DrugDetailPage } from '@/features/pharmacy/DrugDetailPage'
 import { LotDetailPage } from '@/features/pharmacy/LotDetailPage'
 import { PharmacyPage } from '@/features/pharmacy/PharmacyPage'
@@ -139,6 +140,13 @@ const pharmacyRoute = createRoute({
   getParentRoute: () => appRoute,
   path: '/pharmacy',
   component: PharmacyPage,
+})
+
+// A static segment, so it wins over `/pharmacy/$id`.
+const deliveryRoute = createRoute({
+  getParentRoute: () => appRoute,
+  path: '/pharmacy/delivery',
+  component: DeliveryPage,
 })
 
 const drugDetailRoute = createRoute({
@@ -269,6 +277,7 @@ const routeTree = rootRoute.addChildren([
     patientDetailRoute,
     pharmacyRoute,
     drugDetailRoute,
+    deliveryRoute,
     stockIntakeRoute,
     lotDetailRoute,
     stockCorrectionRoute,

@@ -129,6 +129,52 @@ async fn a_changed_list_price_comes_in_with_the_lot(pool: PgPool) {
     );
 }
 
+/// A lot booked by mistake is taken back while untouched; once something was dispensed from it
+/// or corrected, it is stock history and stays.
+#[sqlx::test]
+async fn an_untouched_lot_can_be_taken_back(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let intake = format!("/api/packagings/{}/stock-intakes", drug.packaging_id);
+
+    let mistaken = app
+        .post(&intake, json!({ "packages_received": 3 }))
+        .await
+        .id();
+    assert_eq!(
+        app.delete(&format!("/api/lots/{mistaken}")).await.status,
+        StatusCode::NO_CONTENT
+    );
+    assert_eq!(
+        app.get(&format!("/api/lots/{mistaken}")).await.status,
+        StatusCode::NOT_FOUND
+    );
+    assert_eq!(
+        app.delete(&format!("/api/lots/{mistaken}")).await.status,
+        StatusCode::NOT_FOUND
+    );
+
+    let counted = app
+        .post(&intake, json!({ "packages_received": 1 }))
+        .await
+        .id();
+    let correction = app
+        .post(
+            &format!("/api/lots/{counted}/corrections"),
+            json!({ "new_remaining": "90", "reason": "Bruch" }),
+        )
+        .await;
+    assert_eq!(correction.status, StatusCode::OK);
+    assert_eq!(
+        app.delete(&format!("/api/lots/{counted}")).await.status,
+        StatusCode::CONFLICT
+    );
+    assert_eq!(
+        app.get(&format!("/api/lots/{counted}")).await.status,
+        StatusCode::OK
+    );
+}
+
 #[sqlx::test]
 async fn stock_can_only_be_booked_on_original_packagings(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

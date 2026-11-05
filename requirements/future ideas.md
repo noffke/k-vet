@@ -4,7 +4,6 @@
 * cloud form for customer self registration
 * send AGB, DSGVO via email
 * inventory (Inventur) support: list current stock, allow to tick off or correct stock of pharmaceuticals
-* scan EAN, Chargennummer, exp. date of inbound pharmaceuticals
 * scan chip no barcode
 * easy upload of files for pets from mobile (scan qr-code?)
 * vaccination reminders
