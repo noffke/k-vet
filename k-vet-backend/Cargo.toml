@@ -29,7 +29,7 @@ lettre = { version = "0.11.22", default-features = false, features = ["tokio1-ru
 metrics = { version = "0.24.6", default-features = false }
 metrics-exporter-prometheus = { version = "0.18.3", default-features = false }
 mime_guess = "2.0.5"
-minijinja = "2.21.0"
+minijinja = "3.0.0"
 phonenumber = "0.3.10"
 roxmltree = "0.21.1"
 rust_iso3166 = "0.2.0"
