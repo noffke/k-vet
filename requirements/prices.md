@@ -32,6 +32,16 @@ column is named `list_price_net` instead.
 drug, which undercharged a preparation listed at 1,00 € (0,68 € instead of 8,13 €) and overcharged
 one at 100,00 € (27,56 € instead of 11,10 €).
 
+## § 10 Abs. 2 caps, it never raises
+
+§ 10 Abs. 1 allows a vet at most the § 3 surcharge; § 10 Abs. 2 limits the part of the listed price
+above 51,13 € further (25 % up to 127,82 €, 20 % above). Both are read as ceilings, so the lower one
+wins. Below about 931,18 € the staging is always the lower; above it, it would not be: from
+543,92 € § 3 Abs. 3 grows by 8,263 % plus 118,24 €, the staging by 20 %. At a listed price of
+1.000 € the staging would allow 208,95 €, § 3 Abs. 3 allows 200,87 € — and that is what k-vet
+charges. § 10 Abs. 2 exists to lower a vet's margin on dear drugs, not to lift it above the
+pharmacy's (decided 2026-11-13; the vet confirms it under AMP-03 in `review.md`).
+
 ## The Teilmengenzuschlag rests on an analogy, not on the statute
 
 § 4 AMPreisV governs a *Stoff*, which AMG § 3 defines as a chemical element or compound, a plant,

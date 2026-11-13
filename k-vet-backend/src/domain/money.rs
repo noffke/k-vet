@@ -301,6 +301,12 @@ fn pharmacy_surcharge(basis: Decimal) -> Decimal {
 ///
 /// Up to 51.13 EUR the pharmacy surcharge applies unchanged. Above it, the first
 /// 51.13 EUR keep their band's rate and only the excess is surcharged at 25 % / 20 %.
+///
+/// Both paragraphs are read as ceilings, so the lower one wins. That matters only for very
+/// dear preparations: from 543,92 EUR § 3(3) grows by 8,263 % while the staging of § 10(2) grows
+/// by 20 %, and above a listed price of about 931,18 EUR the staging would allow *more* than
+/// § 3(3) itself — which § 10(1) ("höchstens Zuschläge entsprechend § 3") does not. § 10(2)
+/// exists to lower a vet's margin on dear drugs, not to raise it above the pharmacy's.
 fn vet_surcharge(basis: Decimal) -> Decimal {
     let threshold = decimal("51.13");
     let second_threshold = decimal("127.82");
@@ -308,13 +314,13 @@ fn vet_surcharge(basis: Decimal) -> Decimal {
         return pharmacy_surcharge(basis);
     }
 
-    let mut surcharge = pharmacy_surcharge(threshold);
+    let mut staged = pharmacy_surcharge(threshold);
     let middle = basis.min(second_threshold) - threshold;
-    surcharge += middle * decimal("25") / hundred();
+    staged += middle * decimal("25") / hundred();
     if basis > second_threshold {
-        surcharge += (basis - second_threshold) * decimal("20") / hundred();
+        staged += (basis - second_threshold) * decimal("20") / hundred();
     }
-    surcharge
+    staged.min(pharmacy_surcharge(basis))
 }
 
 /// § 3 Abs. 1 Satz 2: the most a vet may add to a **human** medicine used on an animal.
@@ -791,6 +797,36 @@ mod tests {
             expensive.surcharge / dec("200") < hundred.surcharge / dec("100"),
             "the relative surcharge must fall"
         );
+    }
+
+    #[test]
+    fn a_very_dear_drug_is_held_to_the_plain_ampreisv_3_3() {
+        // ⚠ FOR VET REVIEW: § 10(1) allows at most the § 3 surcharge, § 10(2) caps the excess
+        // further — the lower one wins. From 543,92 EUR § 3(3) is 8,263 % + 118,24 EUR; the
+        // staging of § 10(2) grows faster (20 %) and overtakes it at about 931,18 EUR.
+        //
+        // 800,00: staging 15,339 + 19,1725 + 134,436 = 168,9475 < § 3(3) 184,344 → staging.
+        let below = drug_price_original(dec("800.00"), dec("19"), PricingPolicy::veterinary());
+        assert_eq!(below.surcharge, dec("168.95"));
+        assert_eq!(below.gross, dec("1153.05"));
+
+        // 1.000,00: staging would be 208,9475; § 3(3) is 82,63 + 118,24 = 200,87 → § 3(3).
+        let dear = drug_price_original(dec("1000.00"), dec("19"), PricingPolicy::veterinary());
+        assert_eq!(dear.surcharge, dec("200.87"));
+        assert_eq!(dear.net, dec("1200.87"));
+        assert_eq!(dear.gross, dec("1429.04"));
+
+        // Across the hand-over, a cent more on the list never means less to charge.
+        let mut previous = Decimal::ZERO;
+        for cents in 90_000..100_000u64 {
+            let basis = Decimal::new(i64::try_from(cents).unwrap_or(i64::MAX), 2);
+            let price = drug_price_original(basis, Decimal::ZERO, PricingPolicy::veterinary());
+            assert!(
+                price.net >= previous,
+                "the price fell at a basis of {basis}"
+            );
+            previous = price.net;
+        }
     }
 
     #[test]

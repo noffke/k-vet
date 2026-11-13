@@ -199,10 +199,19 @@ Ab einem Listenpreis von **51,13 €** wird der übersteigende Teil geringer bez
 | ------------------- | -------- | ------------------------- |
 | 100,00 €            | 27,56 €  | **151,79 €**              |
 | 200,00 €            | 48,95 €  | **296,25 €**              |
+| 800,00 €            | 168,95 € | **1.153,05 €**            |
+| 1.000,00 €          | 200,87 € | **1.429,04 €**            |
 
 Die Spanne wird also mit steigendem Listenpreis kleiner — so ist die Verordnung gedacht.
 
-**Frage:** Passt das zu dem, was Sie bei teuren Präparaten abrechnen?
+Bei sehr teuren Präparaten greift eine zweite Grenze: § 10 Abs. 1 erlaubt höchstens den Zuschlag
+nach § 3, und der wächst ab 543,92 € nur noch um 8,263 % (plus 118,24 €). Die Staffel des § 10
+Abs. 2 wüchse mit 20 % schneller und läge ab etwa 931,18 € darüber. k-vet nimmt deshalb immer
+den niedrigeren der beiden Werte: bei 1.000,00 € Listenpreis 200,87 € (§ 3) statt 208,95 €
+(Staffel).
+
+**Frage:** Passt das zu dem, was Sie bei teuren Präparaten abrechnen? Und teilen Sie die Lesart,
+dass ab etwa 931 € Listenpreis der Zuschlag nach § 3 die Obergrenze bildet?
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
