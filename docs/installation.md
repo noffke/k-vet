@@ -426,10 +426,38 @@ known yet; only the product code is kept (EAN, or the PZN), not the batch or exp
 
 ## Monitoring
 
-- `GET /healthz` — liveness, no session required. Also the image's `HEALTHCHECK`.
+- `GET /healthz` — "ok" only while k-vet runs and its database answers (503 otherwise); no
+  session required. Also the image's `HEALTHCHECK`.
 - `GET /metrics` — Prometheus text format: request counts and latency histograms labelled by
   route pattern. Unauthenticated, so keep the published port off the open internet or restrict
   `/metrics` in a reverse proxy.
+
+### An alarm when k-vet is not up
+
+A Pi that reboots on its own can come back without k-vet — a unit that is not enabled, a start
+that failed. `k-vet-health@.timer` notices: every five minutes (the first time five minutes after
+boot) it asks the instance's `/healthz` and pings an outside service such as healthchecks.io —
+its ping URL when the answer is "ok", the URL's `/fail` with what went wrong otherwise. Since the
+alarm comes from outside, it also goes off when the pings stop altogether: the Pi is down, or the
+timer itself is not running.
+
+1. At healthchecks.io, create a check with the period **5 minutes** and the grace time
+   **10 minutes**, and copy its ping URL.
+2. Put it into the instance's env file: `KVET_HEALTHCHECK_URL=https://hc-ping.com/…` in
+   `/etc/k-vet/prod.env`.
+3. Install and start the timer:
+
+   ```bash
+   sudo cp deploy/k-vet-health@.service deploy/k-vet-health@.timer /etc/systemd/system/
+   sudo systemctl daemon-reload
+   sudo systemctl enable --now k-vet-health@prod.timer
+   sudo systemctl start k-vet-health@prod.service   # one check now; the check shows a ping
+   systemctl list-timers 'k-vet-health@*'
+   ```
+
+`systemctl status k-vet-health@prod.service` shows the last check; a failed one says why (for
+example `curl: (7) Failed to connect` when k-vet is not running, `503` when its database does not
+answer). A staging instance needs no alarm; leave its `KVET_HEALTHCHECK_URL` empty.
 
 Nightly at 03:00 the service refreshes the picker's usage weights and deletes abandoned drafts
 (opened, never filled in, older than a day). On the first of each month it also removes uploaded

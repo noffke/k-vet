@@ -120,6 +120,24 @@ async fn two_instances_on_one_host_keep_separate_logins(pool: PgPool) {
     assert_eq!(session.json()["authenticated"], true);
 }
 
+/// The health probe the monitoring timer asks says "ok" only while the database answers: a
+/// k-vet that cannot reach it serves nothing the vet could use.
+#[sqlx::test]
+async fn the_health_probe_fails_without_the_database(pool: PgPool) {
+    let app = TestApp::anonymous(pool.clone()).await;
+    let healthy = app.get("/healthz").await;
+    assert_eq!(healthy.status, StatusCode::OK);
+    assert_eq!(String::from_utf8_lossy(&healthy.body), "ok");
+
+    pool.close().await;
+    let unhealthy = app.get("/healthz").await;
+    assert_eq!(unhealthy.status, StatusCode::SERVICE_UNAVAILABLE);
+    assert_eq!(
+        String::from_utf8_lossy(&unhealthy.body),
+        "database unavailable"
+    );
+}
+
 #[sqlx::test]
 async fn health_and_metrics_answer_without_a_session(pool: PgPool) {
     let app = TestApp::anonymous(pool).await;

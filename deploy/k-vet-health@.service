@@ -1,0 +1,36 @@
+# The health check of one k-vet instance — `k-vet-health@prod` — for an outside alarm such as
+# healthchecks.io. Run by `k-vet-health@.timer` every five minutes.
+#
+#   sudo cp deploy/k-vet-health@.service deploy/k-vet-health@.timer /etc/systemd/system/
+#   sudo systemctl daemon-reload
+#   sudo systemctl enable --now k-vet-health@prod.timer
+#
+# It asks the instance's /healthz — "ok" only while k-vet runs and reaches its database — on the
+# published port, the way the laptop and the phone reach it, and pings KVET_HEALTHCHECK_URL from
+# /etc/k-vet/%i.env: the URL itself when the answer is "ok", the URL + "/fail" with what went
+# wrong otherwise, so the alarm goes off at once. When the pings stop altogether — the Pi is down,
+# this timer is not enabled, curl cannot get out — the service notices that by itself: that is
+# what a dead man's switch is for. Without a URL it does nothing.
+
+[Unit]
+Description=k-vet (%i) health check
+Documentation=https://github.com/noffke/k-vet/blob/main/docs/installation.md#monitoring
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=oneshot
+EnvironmentFile=/etc/k-vet/%i.env
+# systemd expands $VAR in a command line itself; $$ hands a literal $ on to the shell.
+ExecStart=/bin/sh -c '\
+    url="$${KVET_HEALTHCHECK_URL:-}"; \
+    [ -n "$$url" ] || exit 0; \
+    host="$${KVET_HTTP_BIND:-127.0.0.1}"; \
+    [ "$$host" = 0.0.0.0 ] && host=127.0.0.1; \
+    if answer=$$(curl -fsS -m 10 "http://$$host:$${KVET_HTTP_PORT}/healthz" 2>&1); then \
+        curl -fsS -m 10 --retry 3 -o /dev/null "$$url"; \
+    else \
+        curl -fsS -m 10 --retry 3 -o /dev/null --data-raw "k-vet (%i): $$answer" "$$url/fail"; \
+        echo "k-vet (%i) is not healthy: $$answer" >&2; \
+        exit 1; \
+    fi'

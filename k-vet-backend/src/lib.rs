@@ -5,6 +5,7 @@
 
 use std::sync::{Arc, OnceLock};
 
+use axum::extract::State;
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Router, middleware};
@@ -363,9 +364,25 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
         .with_state(state))
 }
 
-/// Liveness probe for the container health check and the monitoring setup.
-async fn healthz() -> (StatusCode, &'static str) {
-    (StatusCode::OK, "ok")
+/// How long the probe waits for the database before it says no.
+const HEALTH_DATABASE_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(3);
+
+/// Health probe for the container health check and the monitoring timer
+/// (`deploy/k-vet-health@.service`): "ok" only when the database answers, because a k-vet that
+/// cannot reach it serves nothing the vet could use. No session required.
+async fn healthz(State(state): State<AppState>) -> (StatusCode, &'static str) {
+    let probe = sqlx::query_scalar!(r#"SELECT 1 AS "one!""#).fetch_one(&state.pool);
+    match tokio::time::timeout(HEALTH_DATABASE_TIMEOUT, probe).await {
+        Ok(Ok(_)) => (StatusCode::OK, "ok"),
+        Ok(Err(error)) => {
+            tracing::warn!(%error, "health probe: the database does not answer");
+            (StatusCode::SERVICE_UNAVAILABLE, "database unavailable")
+        }
+        Err(_) => {
+            tracing::warn!("health probe: the database did not answer in time");
+            (StatusCode::SERVICE_UNAVAILABLE, "database unavailable")
+        }
+    }
 }
 
 async fn api_not_found() -> AppError {

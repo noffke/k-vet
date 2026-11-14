@@ -1,0 +1,15 @@
+# Runs `k-vet-health@<instance>.service` every five minutes — see there.
+#
+#   sudo systemctl enable --now k-vet-health@prod.timer
+
+[Unit]
+Description=k-vet (%i) health check every five minutes
+
+[Timer]
+# The first check five minutes after boot: time for Docker, PostgreSQL and k-vet's migrations.
+# A k-vet that is not up by then is reported.
+OnBootSec=5min
+OnUnitActiveSec=5min
+
+[Install]
+WantedBy=timers.target
