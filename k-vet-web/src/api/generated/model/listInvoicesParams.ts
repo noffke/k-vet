@@ -7,18 +7,12 @@
  */
 
 export type ListInvoicesParams = {
-/**
- * Matches the invoice number or the customer's name.
- */
-q?: string;
-/**
- * Only invoices waiting for the bookkeeper (sent, not yet submitted).
- */
-pending?: boolean;
-/**
- * Include cancelled invoices.
- */
-cancelled?: boolean;
-limit?: number;
-offset?: number;
+  /** Matches the invoice number or the customer's name. */
+  q?: string;
+  /** Only invoices waiting for the bookkeeper (sent, not yet submitted). */
+  pending?: boolean;
+  /** Include cancelled invoices. */
+  cancelled?: boolean;
+  limit?: number;
+  offset?: number;
 };

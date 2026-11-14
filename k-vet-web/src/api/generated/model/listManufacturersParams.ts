@@ -7,14 +7,10 @@
  */
 
 export type ListManufacturersParams = {
-/**
- * Text filter (name, number, …).
- */
-q?: string;
-/**
- * Include archived records (default: false).
- */
-archived?: boolean;
-limit?: number;
-offset?: number;
+  /** Text filter (name, number, …). */
+  q?: string;
+  /** Include archived records (default: false). */
+  archived?: boolean;
+  limit?: number;
+  offset?: number;
 };

@@ -7,8 +7,6 @@
  */
 
 export type ListRacesParams = {
-/**
- * Only the races recorded for this Tierart; absent means all of them.
- */
-species?: string;
+  /** Only the races recorded for this Tierart; absent means all of them. */
+  species?: string;
 };

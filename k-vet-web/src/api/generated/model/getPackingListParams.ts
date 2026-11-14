@@ -7,8 +7,6 @@
  */
 
 export type GetPackingListParams = {
-/**
- * The day (`yyyy-MM-dd`, the practice's own); today when left out.
- */
-date?: string;
+  /** The day (`yyyy-MM-dd`, the practice's own); today when left out. */
+  date?: string;
 };

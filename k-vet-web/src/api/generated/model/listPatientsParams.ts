@@ -7,18 +7,12 @@
  */
 
 export type ListPatientsParams = {
-/**
- * Text filter (name, number, …).
- */
-q?: string;
-/**
- * Include archived records (default: false).
- */
-archived?: boolean;
-limit?: number;
-offset?: number;
-/**
- * Only this customer's animals
- */
-customer_id?: number;
+  /** Text filter (name, number, …). */
+  q?: string;
+  /** Include archived records (default: false). */
+  archived?: boolean;
+  limit?: number;
+  offset?: number;
+  /** Only this customer's animals */
+  customer_id?: number;
 };
