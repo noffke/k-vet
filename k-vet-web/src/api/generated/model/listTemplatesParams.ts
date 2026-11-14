@@ -7,14 +7,10 @@
  */
 
 export type ListTemplatesParams = {
-/**
- * Text filter (name, number, …).
- */
-q?: string;
-/**
- * Include archived records (default: false).
- */
-archived?: boolean;
-limit?: number;
-offset?: number;
+  /** Text filter (name, number, …). */
+  q?: string;
+  /** Include archived records (default: false). */
+  archived?: boolean;
+  limit?: number;
+  offset?: number;
 };

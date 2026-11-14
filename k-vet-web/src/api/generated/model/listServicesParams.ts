@@ -8,19 +8,13 @@
 import type { ServiceType } from './serviceType';
 
 export type ListServicesParams = {
-/**
- * Text filter (name, number, …).
- */
-q?: string;
-/**
- * Include archived records (default: false).
- */
-archived?: boolean;
-limit?: number;
-offset?: number;
-/**
- * Include hidden services (the surgical GOT positions, by default).
- */
-hidden?: boolean;
-type?: ServiceType;
+  /** Text filter (name, number, …). */
+  q?: string;
+  /** Include archived records (default: false). */
+  archived?: boolean;
+  limit?: number;
+  offset?: number;
+  /** Include hidden services (the surgical GOT positions, by default). */
+  hidden?: boolean;
+  type?: ServiceType;
 };

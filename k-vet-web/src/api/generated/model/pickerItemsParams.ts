@@ -7,8 +7,6 @@
  */
 
 export type PickerItemsParams = {
-/**
- * Search term; empty returns the most-used entries.
- */
-q?: string;
+  /** Search term; empty returns the most-used entries. */
+  q?: string;
 };

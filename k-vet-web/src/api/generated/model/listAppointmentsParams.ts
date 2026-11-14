@@ -8,22 +8,14 @@
 import type { ListAppointmentsWhen } from './listAppointmentsWhen';
 
 export type ListAppointmentsParams = {
-/**
- * Text filter (name, number, …).
- */
-q?: string;
-/**
- * Include archived records (default: false).
- */
-archived?: boolean;
-limit?: number;
-offset?: number;
-/**
- * Only this customer's appointments — the customer page lists them.
- */
-customer_id?: number;
-/**
- * Which side of today an appointment list shows.
- */
-when?: ListAppointmentsWhen;
+  /** Text filter (name, number, …). */
+  q?: string;
+  /** Include archived records (default: false). */
+  archived?: boolean;
+  limit?: number;
+  offset?: number;
+  /** Only this customer's appointments — the customer page lists them. */
+  customer_id?: number;
+  /** Which side of today an appointment list shows. */
+  when?: ListAppointmentsWhen;
 };

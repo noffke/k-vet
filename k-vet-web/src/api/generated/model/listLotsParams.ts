@@ -7,10 +7,8 @@
  */
 
 export type ListLotsParams = {
-packaging_id?: number;
-drug_id?: number;
-/**
- * Include lots that are used up (default: only lots with stock).
- */
-empty?: boolean;
+  packaging_id?: number;
+  drug_id?: number;
+  /** Include lots that are used up (default: only lots with stock). */
+  empty?: boolean;
 };
