@@ -19,4 +19,12 @@ ignore = [
     # malformed archive; the only archives read are the ones the binary wrote
     # into its own cache. Fixed in rkyv >= 0.8.17, again upstream of us.
     "RUSTSEC-2026-0235",
+
+    # libsqlite3-sys 0.30.1, i.e. the C SQLite it bundles (CVE-2026-119375).
+    # Never compiled into k-vet: it is in Cargo.lock only because Cargo records
+    # sqlx's optional SQLite driver (sqlx-sqlite) there, and k-vet enables the
+    # postgres driver alone — `cargo tree -i libsqlite3-sys` finds no path to
+    # it. Fixed in >= 0.39.0, which sqlx 0.9.0 does not allow (< 0.38); drop
+    # this when a sqlx release moves.
+    "RUSTSEC-2026-0459",
 ]
