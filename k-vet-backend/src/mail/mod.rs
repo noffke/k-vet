@@ -13,6 +13,7 @@ use lettre::transport::smtp::authentication::Credentials;
 use std::path::PathBuf;
 
 use lettre::{AsyncSmtpTransport, AsyncTransport, Message, Tokio1Executor};
+use minijinja::value::Serde;
 use serde::Serialize;
 
 use crate::config::{Config, EmailTemplateConfig, SmtpTls};
@@ -318,11 +319,11 @@ fn render_template(template: &str, context: &InvoiceMail) -> AppResult<(String, 
 
     let subject = environment
         .get_template("subject")
-        .and_then(|template| template.render(context))
+        .and_then(|template| template.render(Serde(context)))
         .map_err(|error| AppError::internal("rendering the email subject", error))?;
     let body = environment
         .get_template("body")
-        .and_then(|template| template.render(context))
+        .and_then(|template| template.render(Serde(context)))
         .map_err(|error| AppError::internal("rendering the email body", error))?;
 
     let subject = subject.trim().to_owned();
