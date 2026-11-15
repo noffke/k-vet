@@ -59,6 +59,30 @@ contain it. Second, § 1 Abs. 3 Nr. 7 exempts Teilmengen dispensed on a *human* 
 the Apotheken price spans entirely, but per the BMWi that exemption does **not** extend to
 tierärztliche Hausapotheken, so a vet stays bound by the maxima.
 
+## A drug line is what was dispensed: whole packs plus a Teilmenge
+
+The vet picks a drug (only its original packaging is offered) and enters what was dispensed, in
+the original's base unit — 12 Tbl., 150 ml, 2,7 ml. k-vet bills ⌊q / Q⌋ whole packs at the pack
+price and the rest as a Teilmenge, and prints the two as **two invoice rows**, each with its own
+unit price, total and VAT (decided 2026-11-15; `money::dispense_rows`, `review.md` AMP-06).
+
+* **The rest's price** is the drug's **smallest Teilmenge**, pro rata — its stored price, computed
+  by § 4 analogy or set by hand. Every Teilmenge price is linear in its size, so a share of it is
+  exact. The rest's unit price is printed per base unit to four decimals; the row total is in cents.
+* **Which quantities go through:** the rest has to be a multiple of the smallest Teilmenge ("nur in
+  Schritten von 5 Tbl."); a drug without any Teilmenge goes in whole packs only.
+* **"Beliebig teilbar"** (`drug.freely_divisible`) is for injection liquids: any rest, to two
+  decimals. Without a Teilmenge of its own, such a drug takes its share of the whole pack priced as
+  a Teilmenge (`money::whole_pack_as_subset`) — the same 100 % and, if switched on, the same floor.
+  Without a listed price there is no such price, and it goes in whole packs only.
+* **A new line starts at 1** base unit where 1 can be dispensed, otherwise at the smallest
+  Teilmenge, otherwise at one pack.
+* **Everything is pinned** when the line is added — pack size, pack price, Teilmenge size and price,
+  and the flag — so a later change to the drug moves neither price nor the allowed steps of a line
+  already entered. On a line, the vet may type a gross pack price and a gross price per base unit
+  for the rest (`net_for_gross`, as for any position).
+* Lines billed before this change keep their old form (quantity counts packagings; one row).
+
 ## The Teilmengen floor is a deliberate deviation
 
 For a human preparation the whole pack carries the flat 8,10 € while a § 4 Teilmenge carries only a

@@ -265,6 +265,47 @@ nach Rabatt tatsächlich überwiesen haben? Und ist dieser Betrag netto?
 
 *Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
 
+### AMP-06 · Abgegebene Menge: ganze Packungen und der Rest als Teilmenge
+
+Sie wählen das Medikament und tragen ein, **was Sie tatsächlich abgegeben haben** — in Tabletten
+oder ml. Das Programm rechnet daraus ganze Packungen zum Packungspreis und den Rest als Teilmenge
+mit Anbruchzuschlag (AMP-04). Auf der Rechnung stehen dafür **zwei Zeilen**, jede mit eigenem
+Einzelpreis und Gesamtbetrag.
+
+Der Rest wird zum Preis der **kleinsten Teilmenge** abgerechnet, die am Medikament angelegt ist,
+anteilig. Bei der Flasche aus AMP-04 (100 ml, Teilmenge 10 ml zu 2,38 €) also 0,238 € je ml. Der
+Einzelpreis je ml oder Tablette steht deshalb mit bis zu vier Nachkommastellen auf der Rechnung,
+der Zeilenbetrag immer in Cent.
+
+| Abgabe                       | Zeile 1: Packungen      | Zeile 2: Teilmenge       | Zusammen  |
+| ---------------------------- | ----------------------- | ------------------------ | --------- |
+| 150 ml                       | 1 × 17,61 €             | 50 ml × 0,238 € = 11,90 € | **29,51 €** |
+| 10 ml                        | —                       | 10 ml = 2,38 €           | **2,38 €**  |
+| 200 ml                       | 2 × 17,61 € = 35,22 €   | —                        | **35,22 €** |
+| 12 Tabletten aus 10er-Packung (Listenpreis 20,00 €, Teilmenge 1 Tablette) | 1 × 33,74 € | 2 × 4,76 € = 9,52 € | **43,26 €** |
+
+**Welche Mengen gehen?**
+
+* Ohne weiteres nur Mengen, deren Rest **ein Vielfaches der kleinsten Teilmenge** ist. Bei einer
+  Teilmenge von 10 ml werden 15 ml abgelehnt („nur in Schritten von 10 ml"); bei einer Teilmenge
+  von 5 Tabletten auch 12 Tabletten (eine Packung plus 2).
+* Hat ein Medikament **keine Teilmenge**, gehen nur ganze Packungen.
+* Ein Medikament mit dem neuen Haken **„Beliebig teilbar"** nimmt jede Menge, z. B. 2,7 ml aus der
+  100-ml-Flasche: 0,64 €. Das ist für Injektionslösungen gedacht. Ist dort keine Teilmenge
+  angelegt, rechnet das Programm den Rest genauso — anteilig mit 100 % Zuschlag auf den
+  Listenpreis, also ebenfalls 0,238 € je ml.
+
+**Fragen:**
+
+1. Ist es richtig, dass der Rest wie eine Teilmenge (mit 100 % Zuschlag) abgerechnet wird, die
+   vollen Packungen aber zum Packungspreis?
+2. Stimmt die Regel „nur in Schritten der kleinsten Teilmenge" — oder geben Sie bei Tabletten auch
+   Mengen ab, die nicht in diese Schritte passen?
+
+*Fundstelle: `src/domain/money.rs`, Abschnitt „Dispensed quantities"*
+
+*Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
+
 ---
 
 ## C · Wegegeld (GOT § 10)

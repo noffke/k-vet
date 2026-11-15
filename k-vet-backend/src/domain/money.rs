@@ -440,6 +440,190 @@ fn price_from(basis: Decimal, surcharge: Decimal, vat_percent: Decimal) -> DrugP
 }
 
 // ---------------------------------------------------------------------------
+// Dispensed quantities — whole packs plus a Teilmenge
+// ---------------------------------------------------------------------------
+//
+// A drug line says what was dispensed, in the original pack's base unit (Tbl., ml): 12 tablets
+// out of a pack of 10, 150 ml out of a 100 ml bottle, 2,7 ml of an injection. Whole packs are
+// billed at the pack price, the rest as a Teilmenge — at the price of the drug's smallest
+// Teilmenge, pro rata, which carries the Teilmengenzuschlag (`drug_price_subset`). On the invoice
+// the two parts are two rows, each with its own unit price, total and VAT.
+
+/// Unit prices per base unit are shown to four decimals: a millilitre may cost 0,238 €.
+const UNIT_PRICE_PLACES: u32 = 4;
+
+/// The Teilmenge price a dispensed remainder is billed at: `size` base units cost `price_net`.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct SubsetPrice {
+    pub size: Decimal,
+    pub price_net: Decimal,
+}
+
+/// How a drug line in dispensed base units is priced — the values pinned on the line.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DispensePricing {
+    /// Base units in one original pack: 10 Tbl., 100 ml.
+    pub pack_size: Decimal,
+    /// Net price of one original pack.
+    pub pack_price_net: Decimal,
+    /// The price of the rest; `None` when the drug has no Teilmenge — whole packs only.
+    pub subset: Option<SubsetPrice>,
+    /// "Beliebig teilbar": any rest may be dispensed, not only multiples of the Teilmenge.
+    pub freely_divisible: bool,
+}
+
+/// One printed row of a dispensed line: the whole packs, or the Teilmenge.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DispenseRow {
+    /// Packs on the pack row, base units on the Teilmenge row.
+    pub quantity: Decimal,
+    /// Net price of one pack, or of one base unit (to four decimals).
+    pub unit_net: Decimal,
+    /// Gross price of one pack, or of one base unit (to four decimals) — the price column.
+    pub price_gross: Decimal,
+    pub line_net: Decimal,
+    /// `line_net` plus its own VAT, rounded per row (*horizontale Berechnung*).
+    pub line_gross: Decimal,
+}
+
+/// A dispensed line split into what the invoice prints. A row is absent when it would be zero.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct DispenseRows {
+    pub packs: Option<DispenseRow>,
+    pub remainder: Option<DispenseRow>,
+}
+
+impl DispenseRows {
+    /// The rows that exist, packs first.
+    pub fn rows(&self) -> impl Iterator<Item = &DispenseRow> {
+        self.packs.iter().chain(self.remainder.iter())
+    }
+
+    pub fn line_net(&self) -> Decimal {
+        self.rows().map(|row| row.line_net).sum()
+    }
+
+    pub fn line_gross(&self) -> Decimal {
+        self.rows().map(|row| row.line_gross).sum()
+    }
+}
+
+/// Why a dispensed quantity cannot be billed.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum DispenseRefusal {
+    /// The drug has no Teilmenge and is not "beliebig teilbar": whole packs only.
+    WholePacksOnly,
+    /// The rest is not a multiple of the drug's smallest Teilmenge.
+    SubsetStep,
+}
+
+/// Whole packs and the rest: 150 ml from 100 ml bottles is `(1, 50)`.
+pub fn dispense_split(pack_size: Decimal, quantity: Decimal) -> (Decimal, Decimal) {
+    if pack_size <= Decimal::ZERO || quantity <= Decimal::ZERO {
+        return (Decimal::ZERO, quantity.max(Decimal::ZERO));
+    }
+    let packs = (quantity / pack_size).floor();
+    (packs, quantity - packs * pack_size)
+}
+
+/// Whether a quantity can be dispensed: the rest after whole packs has to be a multiple of the
+/// smallest Teilmenge, unless the drug is "beliebig teilbar"; without a Teilmenge only whole
+/// packs can.
+pub fn dispense_check(pricing: &DispensePricing, quantity: Decimal) -> Result<(), DispenseRefusal> {
+    let (_, rest) = dispense_split(pricing.pack_size, quantity);
+    if rest.is_zero() {
+        return Ok(());
+    }
+    let Some(subset) = pricing.subset else {
+        return Err(DispenseRefusal::WholePacksOnly);
+    };
+    if pricing.freely_divisible {
+        return Ok(());
+    }
+    if subset.size > Decimal::ZERO && (rest % subset.size).is_zero() {
+        Ok(())
+    } else {
+        Err(DispenseRefusal::SubsetStep)
+    }
+}
+
+/// What a newly picked drug starts at: one base unit where that can be dispensed, otherwise the
+/// smallest Teilmenge, otherwise one whole pack.
+pub fn dispense_preset(pricing: &DispensePricing) -> Decimal {
+    if dispense_check(pricing, Decimal::ONE).is_ok() {
+        return Decimal::ONE;
+    }
+    match pricing.subset {
+        Some(subset) if dispense_check(pricing, subset.size).is_ok() => subset.size,
+        _ => pricing.pack_size,
+    }
+}
+
+/// The Teilmenge price of a "beliebig teilbar" drug that has no Teilmenge of its own: the whole
+/// pack priced as a Teilmenge (§ 4 by analogy, the floor included), which the rest then takes its
+/// share of. Every Teilmenge price is linear in its size, so nothing is lost by scaling it.
+pub fn whole_pack_as_subset(
+    list_price_net: Decimal,
+    pack_size: Decimal,
+    vat_percent: Decimal,
+    policy: PricingPolicy,
+) -> Option<SubsetPrice> {
+    let price = drug_price_subset(list_price_net, pack_size, pack_size, vat_percent, policy);
+    (price.net > Decimal::ZERO).then_some(SubsetPrice {
+        size: pack_size,
+        price_net: price.net,
+    })
+}
+
+/// The rows a dispensed quantity is billed as.
+///
+/// Whole packs: `line_amounts` of the pack price. The rest: its share of the Teilmenge price,
+/// `round(rest × price / size)`, with VAT added to that row alone — so each printed row's gross
+/// is exactly `net + vat`, and the invoice column still adds up (MWS-01). A rest with no
+/// Teilmenge to price it — only reachable through lines converted from the old form, since
+/// [`dispense_check`] refuses it — is billed pro rata of the pack, as the old form billed half a
+/// pack.
+pub fn dispense_rows(
+    pricing: &DispensePricing,
+    quantity: Decimal,
+    vat_percent: Decimal,
+) -> DispenseRows {
+    let (packs, rest) = dispense_split(pricing.pack_size, quantity);
+    let pack_row = (packs > Decimal::ZERO).then(|| {
+        let amounts = line_amounts(pricing.pack_price_net, packs, None, vat_percent);
+        DispenseRow {
+            quantity: packs,
+            unit_net: amounts.unit_net,
+            price_gross: amounts.price_gross,
+            line_net: amounts.line_net,
+            line_gross: amounts.line_gross,
+        }
+    });
+    let reference = pricing.subset.unwrap_or(SubsetPrice {
+        size: pricing.pack_size,
+        price_net: pricing.pack_price_net,
+    });
+    let remainder_row = (rest > Decimal::ZERO && reference.size > Decimal::ZERO).then(|| {
+        let per_unit = reference.price_net / reference.size;
+        let line_net = round_money(rest * per_unit);
+        let unit_price = |value: Decimal| {
+            value.round_dp_with_strategy(UNIT_PRICE_PLACES, RoundingStrategy::MidpointAwayFromZero)
+        };
+        DispenseRow {
+            quantity: rest,
+            unit_net: unit_price(per_unit),
+            price_gross: unit_price(per_unit * (Decimal::ONE + vat_percent / hundred())),
+            line_net,
+            line_gross: add_vat(line_net, vat_percent).gross,
+        }
+    });
+    DispenseRows {
+        packs: pack_row,
+        remainder: remainder_row,
+    }
+}
+
+// ---------------------------------------------------------------------------
 // GOT § 10 Wegegeld — travel expenses (research R10)
 // ---------------------------------------------------------------------------
 
@@ -1030,6 +1214,251 @@ mod tests {
             .gross,
             Decimal::ZERO
         );
+    }
+
+    // ── Dispensed quantities: whole packs plus a Teilmenge ──────────────────────────
+    //
+    // ⚠ FOR VET REVIEW (SC-005), item AMP-06 in `review.md`. The bottle of AMP-04: 100 ml listed
+    // at 10,00 € — the pack sells for 14,80 € net (17,61 € gross), its 10 ml Teilmenge for
+    // 2,00 € net (2,38 € gross).
+
+    fn bottle(subset: Option<(&str, &str)>, freely_divisible: bool) -> DispensePricing {
+        DispensePricing {
+            pack_size: dec("100"),
+            pack_price_net: dec("14.80"),
+            subset: subset.map(|(size, price)| SubsetPrice {
+                size: dec(size),
+                price_net: dec(price),
+            }),
+            freely_divisible,
+        }
+    }
+
+    fn gross(rows: &DispenseRows) -> (Option<Decimal>, Option<Decimal>) {
+        (
+            rows.packs.map(|row| row.line_gross),
+            rows.remainder.map(|row| row.line_gross),
+        )
+    }
+
+    #[test]
+    fn a_dispensed_quantity_is_billed_as_whole_packs_plus_a_teilmenge() {
+        let pricing = bottle(Some(("10", "2.00")), false);
+        // The pack's own price follows AMP-01.
+        assert_eq!(
+            drug_price_original(dec("10.00"), dec("19"), PricingPolicy::veterinary()).net,
+            dec("14.80")
+        );
+
+        // 150 ml: one bottle, and 50 ml as five Teilmengen of 10 ml.
+        let rows = dispense_rows(&pricing, dec("150"), dec("19"));
+        let packs = rows.packs.expect("a pack row");
+        assert_eq!(
+            (packs.quantity, packs.price_gross),
+            (dec("1"), dec("17.61"))
+        );
+        let rest = rows.remainder.expect("a Teilmenge row");
+        assert_eq!(rest.quantity, dec("50"));
+        assert_eq!(rest.unit_net, dec("0.2"));
+        assert_eq!(rest.price_gross, dec("0.238"));
+        assert_eq!(
+            (rest.line_net, rest.line_gross),
+            (dec("10.00"), dec("11.90"))
+        );
+        assert_eq!(rows.line_gross(), dec("29.51"));
+        assert_eq!(rows.line_net(), dec("24.80"));
+
+        // Less than a bottle is the Teilmenge alone; whole bottles are the pack row alone.
+        let ten = dispense_rows(&pricing, dec("10"), dec("19"));
+        assert_eq!(gross(&ten), (None, Some(dec("2.38"))));
+        let two = dispense_rows(&pricing, dec("200"), dec("19"));
+        assert_eq!(gross(&two), (Some(dec("35.22")), None));
+        assert_eq!(two.packs.map(|row| row.quantity), Some(dec("2")));
+    }
+
+    #[test]
+    fn twelve_tablets_from_a_pack_of_ten_are_a_pack_and_two_tablets() {
+        // 10 tablets listed at 20,00 € fall into the fixed band of § 3(4): 8,35 € → 28,35 € net.
+        let pack = drug_price_original(dec("20.00"), dec("19"), PricingPolicy::veterinary());
+        assert_eq!(pack.net, dec("28.35"));
+        // A Teilmenge of one tablet: 2,00 € pro rata plus 100 % → 4,00 € net.
+        let tablet = drug_price_subset(
+            dec("20.00"),
+            dec("10"),
+            dec("1"),
+            dec("19"),
+            PricingPolicy::veterinary(),
+        );
+        assert_eq!(tablet.net, dec("4.00"));
+
+        let pricing = DispensePricing {
+            pack_size: dec("10"),
+            pack_price_net: pack.net,
+            subset: Some(SubsetPrice {
+                size: dec("1"),
+                price_net: tablet.net,
+            }),
+            freely_divisible: false,
+        };
+        let rows = dispense_rows(&pricing, dec("12"), dec("19"));
+        assert_eq!(gross(&rows), (Some(dec("33.74")), Some(dec("9.52"))));
+        assert_eq!(rows.line_gross(), dec("43.26"));
+        assert_eq!(dispense_check(&pricing, dec("12")), Ok(()));
+    }
+
+    #[test]
+    fn a_freely_divisible_drug_takes_any_quantity() {
+        // 2,7 ml of an injection: 2,7 × 0,20 € = 0,54 € net, 0,64 € gross — the same with the
+        // 10 ml Teilmenge as with the whole bottle priced as a Teilmenge, because both are pro
+        // rata of the listed price.
+        let with_subset = bottle(Some(("10", "2.00")), true);
+        let whole = whole_pack_as_subset(
+            dec("10.00"),
+            dec("100"),
+            dec("19"),
+            PricingPolicy::veterinary(),
+        );
+        assert_eq!(
+            whole,
+            Some(SubsetPrice {
+                size: dec("100"),
+                price_net: dec("20.00"),
+            })
+        );
+        let without_subset = DispensePricing {
+            subset: whole,
+            ..bottle(None, true)
+        };
+        for pricing in [with_subset, without_subset] {
+            assert_eq!(dispense_check(&pricing, dec("2.7")), Ok(()));
+            let rows = dispense_rows(&pricing, dec("2.7"), dec("19"));
+            assert_eq!(gross(&rows), (None, Some(dec("0.64"))));
+            assert_eq!(dispense_preset(&pricing), dec("1"));
+        }
+        // 150 ml: a bottle and 50 ml, exactly as for the drug with steps.
+        let rows = dispense_rows(&without_subset, dec("150"), dec("19"));
+        assert_eq!(gross(&rows), (Some(dec("17.61")), Some(dec("11.90"))));
+        // Without a listed price there is no Teilmenge price to take a share of.
+        assert_eq!(
+            whole_pack_as_subset(
+                Decimal::ZERO,
+                dec("100"),
+                dec("19"),
+                PricingPolicy::veterinary()
+            ),
+            None
+        );
+    }
+
+    #[test]
+    fn a_rest_that_does_not_fit_the_teilmenge_is_refused() {
+        let steps_of_ten = bottle(Some(("10", "2.00")), false);
+        assert_eq!(
+            dispense_check(&steps_of_ten, dec("15")),
+            Err(DispenseRefusal::SubsetStep)
+        );
+        assert_eq!(
+            dispense_check(&steps_of_ten, dec("2.7")),
+            Err(DispenseRefusal::SubsetStep)
+        );
+        assert_eq!(dispense_check(&steps_of_ten, dec("130")), Ok(()));
+
+        // A blister of five: 12 tablets are a pack and two, and two is not a blister.
+        let blisters = DispensePricing {
+            pack_size: dec("10"),
+            pack_price_net: dec("28.35"),
+            subset: Some(SubsetPrice {
+                size: dec("5"),
+                price_net: dec("20.00"),
+            }),
+            freely_divisible: false,
+        };
+        assert_eq!(
+            dispense_check(&blisters, dec("12")),
+            Err(DispenseRefusal::SubsetStep)
+        );
+        assert_eq!(dispense_check(&blisters, dec("15")), Ok(()));
+
+        // No Teilmenge at all: whole packs only.
+        let packs_only = bottle(None, false);
+        assert_eq!(
+            dispense_check(&packs_only, dec("150")),
+            Err(DispenseRefusal::WholePacksOnly)
+        );
+        assert_eq!(dispense_check(&packs_only, dec("300")), Ok(()));
+    }
+
+    #[test]
+    fn a_new_line_starts_at_one_unit_where_one_unit_can_be_dispensed() {
+        let tablets = DispensePricing {
+            pack_size: dec("10"),
+            pack_price_net: dec("28.35"),
+            subset: Some(SubsetPrice {
+                size: dec("1"),
+                price_net: dec("4.00"),
+            }),
+            freely_divisible: false,
+        };
+        assert_eq!(dispense_preset(&tablets), dec("1"));
+        // Steps of 10 ml: one step. No Teilmenge: one bottle.
+        assert_eq!(
+            dispense_preset(&bottle(Some(("10", "2.00")), false)),
+            dec("10")
+        );
+        assert_eq!(dispense_preset(&bottle(None, false)), dec("100"));
+        // A pack of one is one pack.
+        let tube = DispensePricing {
+            pack_size: dec("1"),
+            pack_price_net: dec("8.00"),
+            subset: None,
+            freely_divisible: false,
+        };
+        assert_eq!(dispense_preset(&tube), dec("1"));
+    }
+
+    #[test]
+    fn a_teilmenge_unit_price_shows_four_decimals_and_the_row_stays_in_cents() {
+        // A blister of five at 11,87 € net: 2,374 € per tablet, 2,8251 € gross. Two blisters are
+        // 23,74 € net — the Teilmenge price twice, not the rounded unit price ten times.
+        let pricing = DispensePricing {
+            pack_size: dec("20"),
+            pack_price_net: dec("40.00"),
+            subset: Some(SubsetPrice {
+                size: dec("5"),
+                price_net: dec("11.87"),
+            }),
+            freely_divisible: false,
+        };
+        let rows = dispense_rows(&pricing, dec("10"), dec("19"));
+        let rest = rows.remainder.expect("a Teilmenge row");
+        assert_eq!(rest.unit_net, dec("2.374"));
+        assert_eq!(rest.price_gross, dec("2.8251"));
+        assert_eq!(rest.line_net, dec("23.74"));
+        assert_eq!(rest.line_gross, dec("28.25"));
+    }
+
+    #[test]
+    fn the_rows_add_up_to_the_vat_summary() {
+        // Every row's gross is its net plus its own VAT, so the rows feed `vat_summary` as they
+        // are and the printed column adds up (MWS-01).
+        let pricing = bottle(Some(("10", "2.00")), false);
+        for quantity in ["10", "90", "100", "110", "150", "250", "370"] {
+            let rows = dispense_rows(&pricing, dec(quantity), dec("19"));
+            let summary = vat_summary(
+                &rows
+                    .rows()
+                    .map(|row| (row.line_net, dec("19")))
+                    .collect::<Vec<_>>(),
+            );
+            assert_eq!(total_gross(&summary), rows.line_gross(), "{quantity} ml");
+        }
+    }
+
+    #[test]
+    fn a_converted_rest_without_a_teilmenge_is_billed_pro_rata() {
+        // Half a bottle, as the old form could bill it: half the pack price.
+        let rows = dispense_rows(&bottle(None, false), dec("50"), dec("19"));
+        assert_eq!(rows.remainder.map(|row| row.line_net), Some(dec("7.40")));
     }
 
     // ── GOT § 10 Wegegeld (T058) ─────────────────────────────────────────────────
