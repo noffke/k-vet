@@ -275,28 +275,45 @@ Vielen Dank für Ihr Vertrauen!
   ]
 ]
 
-// ── GiroCode ──────────────────────────────────────────────────────────────────
+// ── Zahlung ───────────────────────────────────────────────────────────────────
 // Last in the document: the report is what the customer reads through, the payment details are
-// what they act on once they have. `breakable: false` keeps the code together with the sentence
-// that explains it, and moves the pair to the next page only when they do not fit on this one —
-// no explicit page break, which would strand the block on a sheet of its own every time.
-#if invoice.qr_present [
+// what they act on once they have. The IBAN is set large and in groups of four (`pdf::iban_de`)
+// so it can be read off the sheet and typed without a slip — the footer's is too small for
+// that. A GiroCode, where there is one (euro invoices), stands to the left. `breakable: false`
+// keeps the block together and moves it to the next page only when it does not fit on this one
+// — no explicit page break, which would strand it on a sheet of its own every time.
+#if practice.iban != "" [
   #v(8mm)
+  #let bank = joined((
+    if practice.bic != "" { "BIC " + practice.bic },
+    practice.bank_name,
+  ))
+  #let details = [
+    #set text(9.5pt)
+    #set par(leading: 0.55em)
+    #text(weight: "bold")[Bankverbindung] \
+    #if practice.name != "" [Empfänger: #practice.name \ ]
+    #text(12pt, weight: "bold")[IBAN #practice.iban] \
+    #if bank != "" [#bank \ ]
+    Betrag #invoice.total · Verwendungszweck: Rechnung #invoice.number
+    #if invoice.qr_present [
+      \ #text(8.5pt, fill: muted)[
+        Oder bequem per GiroCode: Code mit der Banking-App scannen — Empfänger, IBAN, Betrag und
+        Verwendungszweck sind dann bereits ausgefüllt.
+      ]
+    ]
+  ]
   #block(breakable: false)[
-    #grid(
-      columns: (auto, 1fr),
-      column-gutter: 4mm,
-      align: (left + horizon, left + horizon),
-      image(bytes(inputs.qr), format: "svg", width: 23mm),
-      [
-        #set text(8.5pt)
-        #text(weight: "bold")[Bequem per GiroCode bezahlen] \
-        #text(fill: muted)[
-          Code mit der Banking-App scannen — Empfänger, IBAN, Betrag und
-          Verwendungszweck sind dann bereits ausgefüllt.
-        ] \
-        #invoice.total · Verwendungszweck: Rechnung #invoice.number
-      ],
-    )
+    #if invoice.qr_present {
+      grid(
+        columns: (auto, 1fr),
+        column-gutter: 4mm,
+        align: (left + horizon, left + horizon),
+        image(bytes(inputs.qr), format: "svg", width: 23mm),
+        details,
+      )
+    } else {
+      details
+    }
   ]
 ]

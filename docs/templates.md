@@ -77,7 +77,7 @@ faces stay available, so a template that prefers them only has to say so.
 | `address` | string | Street and town, one per line. |
 | `address_line` | string | The same address joined with `, ` — for a footer or sender line. |
 | `email` | string | Practice address for the footer; empty when not set. |
-| `iban` | string | Empty when not set — guard before printing a payment sentence. |
+| `iban` | string | In groups of four as it should be printed (`DE02 1203 0000 0000 2020 51`), however it was typed. Empty when not set — guard before printing a payment block. |
 | `bic` | string | Empty when not set. |
 | `bank_name` | string | Empty when not set. |
 | `ustid` | string | VAT ID, empty when not set. |

@@ -80,7 +80,8 @@ test.describe('dashboard and settings', () => {
     expect(response.status()).toBe(200)
     const text = await pdfText(Buffer.from(await response.body()))
 
-    expect(text).toContain(iban)
+    // Printed in groups of four, large in the payment block and small in the footer.
+    expect(text).toContain(`IBAN ${iban.replace(/(.{4})/g, '$1 ').trim()}`)
     expect(text).toContain(practiceName)
     expect(text).toContain(practiceEmail)
     expect(text).toContain(bic)

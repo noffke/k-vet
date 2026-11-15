@@ -222,6 +222,22 @@ fn load_template(config: &Config) -> AppResult<String> {
 // German formatting helpers — the single place where money and dates become text.
 // ---------------------------------------------------------------------------
 
+/// An IBAN as it is printed for a person to read and type: upper case, in groups of four —
+/// `DE02 1203 0000 0000 2020 51` — whatever spacing it was typed with. The GiroCode takes the
+/// raw value (`giro::epc_payload` strips the spaces itself).
+pub fn iban_de(iban: &str) -> String {
+    let compact: Vec<char> = iban
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .flat_map(char::to_uppercase)
+        .collect();
+    compact
+        .chunks(4)
+        .map(|group| group.iter().collect::<String>())
+        .collect::<Vec<_>>()
+        .join(" ")
+}
+
 /// `1234.5` → `"1.234,50 €"`.
 pub fn money_de(value: Decimal, currency: &str) -> String {
     let symbol = match currency {
@@ -400,6 +416,24 @@ mod tests {
 
     fn dec(value: &str) -> Decimal {
         Decimal::from_str_exact(value).expect("test literal is a decimal")
+    }
+
+    #[test]
+    fn an_iban_is_printed_in_groups_of_four() {
+        assert_eq!(
+            iban_de("DE02120300000000202051"),
+            "DE02 1203 0000 0000 2020 51"
+        );
+        assert_eq!(
+            iban_de("de02 1203 0000 0000 2020 51"),
+            "DE02 1203 0000 0000 2020 51"
+        );
+        assert_eq!(
+            iban_de(" DE02  1203\t0000 0000202051 "),
+            "DE02 1203 0000 0000 2020 51"
+        );
+        assert_eq!(iban_de("AT61"), "AT61");
+        assert_eq!(iban_de(""), "");
     }
 
     #[test]
@@ -618,7 +652,7 @@ mod tests {
                 address: "Musterweg 5\n12345 Musterstadt".to_owned(),
                 address_line: "Musterweg 5, 12345 Musterstadt".to_owned(),
                 email: "praxis@example.com".to_owned(),
-                iban: "DE02120300000000202051".to_owned(),
+                iban: iban_de("DE02120300000000202051"),
                 bic: "BYLADEM1001".to_owned(),
                 bank_name: "Musterbank".to_owned(),
                 ustid: "DE123456789".to_owned(),
@@ -1057,5 +1091,28 @@ mod tests {
         assert!(text.contains("Carprofen 50 (Umwidmung)"), "{text}");
         assert!(text.contains("Beratung"), "{text}");
         assert!(!text.contains("Beratung (Umwidmung)"), "{text}");
+    }
+
+    /// The bank details stand large in the body, the IBAN in groups of four — with or without a
+    /// GiroCode beside them — and only when the practice has an IBAN.
+    #[test]
+    fn the_iban_is_printed_large_and_grouped_without_a_girocode_too() {
+        let config = empty_config();
+        let mut document = minimal_document();
+        document.practice.iban = iban_de("de02120300000000202051");
+        document.invoice.qr_present = false;
+
+        let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
+        let text = page_texts(&paged).concat();
+        assert!(text.contains("Bankverbindung"), "{text}");
+        assert!(text.contains("IBAN DE02 1203 0000 0000 2020 51"), "{text}");
+        assert!(
+            !text.contains("GiroCode"),
+            "no code, no word about one: {text}"
+        );
+
+        document.practice.iban = String::new();
+        let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
+        assert!(!page_texts(&paged).concat().contains("Bankverbindung"));
     }
 }

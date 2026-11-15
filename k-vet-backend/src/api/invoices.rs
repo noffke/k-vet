@@ -1059,7 +1059,8 @@ async fn build_document(
             address: address_lines.join("\n"),
             address_line: address_lines.join(", "),
             email: settings.email,
-            iban: settings.iban,
+            // Grouped in fours for the reader; the GiroCode above took the raw value.
+            iban: pdf::iban_de(&settings.iban),
             bic: settings.bic,
             bank_name: settings.bank_name,
             ustid: settings.ustid,
