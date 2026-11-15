@@ -18,7 +18,9 @@ use utoipa::{IntoParams, ToSchema};
 
 use crate::AppState;
 use crate::api::common::double_option;
+use crate::api::dispense::{self, DispenseRule};
 use crate::api::treatment_items;
+use crate::config::PharmacyConfig;
 use crate::domain::enums::TreatmentItemKind;
 use crate::domain::stock;
 use crate::error::{AppError, AppResult};
@@ -32,10 +34,12 @@ pub struct Reminder {
     /// The drug's name.
     pub name: String,
     pub unit: Option<String>,
-    /// One packaging's size in its unit — `10` (ml).
+    /// The original pack's size in its unit — `100` (ml).
     pub size: Option<Decimal>,
-    /// Packagings, as a line counts them.
+    /// Base units of the original pack (Tbl., ml), as a line counts them.
     pub quantity: Decimal,
+    /// How the drug can be dispensed today — what the quantity field goes by.
+    pub rule: Option<DispenseRule>,
     pub note: Option<String>,
     /// Ticked off on the Packliste.
     pub packed: bool,
@@ -49,7 +53,7 @@ pub struct Reminder {
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateReminder {
     pub drug_packaging_id: i64,
-    /// Packagings; one when left out.
+    /// Base units; left out, what the drug starts at (`DispenseRule::preset`).
     pub quantity: Option<Decimal>,
 }
 
@@ -75,13 +79,13 @@ pub struct PackingTotal {
     pub drug_id: i64,
     pub name: String,
     pub unit: Option<String>,
+    /// The original pack's size in its unit.
     pub size: Option<Decimal>,
-    /// Packagings, summed over the day's appointments.
+    /// Base units, summed over the day's appointments.
     pub quantity: Decimal,
     /// What the drug's lots hold together, in base units.
     pub in_stock: Decimal,
-    /// The day needs more of the drug than its lots hold — counted over all of the drug's
-    /// packagings, since they draw from the same lots.
+    /// The day needs more of the drug than its lots hold.
     pub short: bool,
 }
 
@@ -120,7 +124,11 @@ struct Filter {
     until: Option<DateTime<Utc>>,
 }
 
-async fn load(connection: &mut PgConnection, filter: Filter) -> AppResult<Vec<Reminder>> {
+async fn load(
+    connection: &mut PgConnection,
+    filter: Filter,
+    pharmacy: &PharmacyConfig,
+) -> AppResult<Vec<Reminder>> {
     let rows = sqlx::query!(
         r#"WITH stock AS (
                SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id
@@ -130,15 +138,16 @@ async fn load(connection: &mut PgConnection, filter: Filter) -> AppResult<Vec<Re
                   packaging.unit, packaging.quantity AS size,
                   reminder.quantity, reminder.note, reminder.packed, reminder.position,
                   reminder.taken_item_id,
-                  (original.id IS NOT NULL
-                   AND COALESCE(stock.remaining, 0)
-                       < reminder.quantity * COALESCE(packaging.quantity, 1)) AS "stock_short!"
+                  (rule.original_id IS NOT NULL
+                   AND COALESCE(stock.remaining, 0) < reminder.quantity) AS "stock_short!",
+                  rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,
+                  rule.subset_price_net, rule.freely_divisible AS "freely_divisible?",
+                  rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?"
            FROM appointment_reminder reminder
            JOIN appointment ON appointment.id = reminder.appointment_id
            JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id
            JOIN drug ON drug.id = packaging.drug_id
-           LEFT JOIN drug_packaging original
-                  ON original.drug_id = drug.id AND original.kind = 'original'
+           LEFT JOIN drug_dispense_rule rule ON rule.drug_id = drug.id
            LEFT JOIN stock ON stock.drug_id = drug.id
            WHERE ($1::bigint IS NULL OR reminder.id = $1)
              AND ($2::bigint IS NULL OR reminder.appointment_id = $2)
@@ -157,6 +166,21 @@ async fn load(connection: &mut PgConnection, filter: Filter) -> AppResult<Vec<Re
     Ok(rows
         .into_iter()
         .map(|row| Reminder {
+            rule: dispense::pricing(
+                &dispense::Catalogue {
+                    pack_size: row.pack_size,
+                    pack_price_net: row.pack_price_net,
+                    list_price_net: row.list_price_net,
+                    subset_size: row.subset_size,
+                    subset_price_net: row.subset_price_net,
+                    freely_divisible: row.freely_divisible.unwrap_or(false),
+                    human_drug: row.human_drug.unwrap_or(false),
+                    vat_percent: row.vat_percent,
+                },
+                pharmacy,
+            )
+            .as_ref()
+            .map(DispenseRule::from),
             id: row.id,
             appointment_id: row.appointment_id,
             drug_packaging_id: row.drug_packaging_id,
@@ -174,13 +198,18 @@ async fn load(connection: &mut PgConnection, filter: Filter) -> AppResult<Vec<Re
         .collect())
 }
 
-async fn load_one(connection: &mut PgConnection, id: i64) -> AppResult<Reminder> {
+async fn load_one(
+    connection: &mut PgConnection,
+    id: i64,
+    pharmacy: &PharmacyConfig,
+) -> AppResult<Reminder> {
     load(
         connection,
         Filter {
             id: Some(id),
             ..Filter::default()
         },
+        pharmacy,
     )
     .await?
     .into_iter()
@@ -212,7 +241,9 @@ pub async fn list(
         appointment_id: Some(appointment_id),
         ..Filter::default()
     };
-    Ok(Json(load(&mut connection, filter).await?))
+    Ok(Json(
+        load(&mut connection, filter, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -229,10 +260,6 @@ pub async fn create(
     Path(appointment_id): Path<i64>,
     Json(body): Json<CreateReminder>,
 ) -> AppResult<Json<Reminder>> {
-    let quantity = body.quantity.unwrap_or(Decimal::ONE);
-    if quantity <= Decimal::ZERO {
-        return Err(AppError::field("quantity", "value.mustBePositive"));
-    }
     let mut transaction = state.pool.begin().await?;
     sqlx::query_scalar!(
         "SELECT id FROM appointment WHERE id = $1 FOR UPDATE",
@@ -257,6 +284,20 @@ pub async fn create(
             "reminder.drugUnavailable",
         ));
     }
+    // The drug's original pack, counted in base units, in the drug's steps.
+    let drug = dispense::drug_dispense(
+        &mut transaction,
+        body.drug_packaging_id,
+        &state.config.pharmacy,
+    )
+    .await?;
+    let quantity = match body.quantity {
+        Some(quantity) => {
+            dispense::check(&drug.pricing, quantity)?;
+            quantity
+        }
+        None => DispenseRule::from(&drug.pricing).preset,
+    };
     let id: i64 = sqlx::query_scalar!(
         "INSERT INTO appointment_reminder (appointment_id, drug_packaging_id, quantity, position)
          VALUES ($1, $2, $3,
@@ -264,7 +305,7 @@ pub async fn create(
                    WHERE appointment_id = $1))
          RETURNING id",
         appointment_id,
-        body.drug_packaging_id,
+        drug.original_id,
         quantity,
     )
     .fetch_one(&mut *transaction)
@@ -272,7 +313,9 @@ pub async fn create(
     transaction.commit().await?;
 
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_one(&mut connection, id).await?))
+    Ok(Json(
+        load_one(&mut connection, id, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -295,6 +338,20 @@ pub async fn patch_reminder(
     {
         return Err(AppError::field("quantity", "value.mustBePositive"));
     }
+    // A quantity has to fit the drug's steps as it has them today.
+    if let Some(quantity) = body.quantity {
+        let packaging_id = sqlx::query_scalar!(
+            "SELECT drug_packaging_id FROM appointment_reminder WHERE id = $1",
+            id
+        )
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
+        let mut connection = state.pool.acquire().await?;
+        let drug =
+            dispense::drug_dispense(&mut connection, packaging_id, &state.config.pharmacy).await?;
+        dispense::check(&drug.pricing, quantity)?;
+    }
     let updated = sqlx::query_scalar!(
         "UPDATE appointment_reminder SET
              quantity = COALESCE($2, quantity),
@@ -313,7 +370,9 @@ pub async fn patch_reminder(
     updated.ok_or(AppError::NotFound)?;
 
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_one(&mut connection, id).await?))
+    Ok(Json(
+        load_one(&mut connection, id, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -393,13 +452,13 @@ pub async fn take(
         reminder.treatment_id,
         TreatmentItemKind::DrugPackaging,
         reminder.drug_packaging_id,
-        reminder.quantity,
+        Some(reminder.quantity),
         body.patient_treatment_id.into(),
         None,
         None,
         false,
         None,
-        &state.config.travel_expenses,
+        &state.config,
     )
     .await?;
     sqlx::query!(
@@ -412,7 +471,9 @@ pub async fn take(
     transaction.commit().await?;
 
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_one(&mut connection, id).await?))
+    Ok(Json(
+        load_one(&mut connection, id, &state.config.pharmacy).await?,
+    ))
 }
 
 /// The practice's midnight starting `date`, as an instant.
@@ -426,8 +487,8 @@ fn start_of(date: NaiveDate) -> DateTime<Utc> {
         )
 }
 
-/// What to pack for a day: every drug the day's appointments are to get, added up per
-/// packaging and checked against the shelf, and the same items appointment by appointment.
+/// What to pack for a day: every drug the day's appointments are to get, added up in base units
+/// and checked against the shelf, and the same items appointment by appointment.
 /// Reminders already taken into a position are not on it.
 #[utoipa::path(
     get,
@@ -448,8 +509,7 @@ pub async fn packing_list(
 
     let totals = sqlx::query!(
         r#"WITH day AS (
-               SELECT reminder.drug_packaging_id, reminder.quantity,
-                      packaging.drug_id, packaging.quantity AS size
+               SELECT reminder.drug_packaging_id, reminder.quantity, packaging.drug_id
                FROM appointment_reminder reminder
                JOIN appointment ON appointment.id = reminder.appointment_id
                JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id
@@ -457,7 +517,7 @@ pub async fn packing_list(
                  AND reminder.taken_item_id IS NULL
            ),
            need AS (
-               SELECT drug_id, SUM(quantity * COALESCE(size, 1)) AS base FROM day GROUP BY drug_id
+               SELECT drug_id, SUM(quantity) AS base FROM day GROUP BY drug_id
            ),
            stock AS (
                SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id
@@ -525,6 +585,7 @@ pub async fn packing_list(
             until: Some(until),
             ..Filter::default()
         },
+        &state.config.pharmacy,
     )
     .await?;
     let appointments = visits

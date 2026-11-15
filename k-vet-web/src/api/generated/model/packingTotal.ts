@@ -15,15 +15,15 @@ export interface PackingTotal {
   name: string;
   /** @nullable */
   unit?: string | null;
-  /** @nullable */
+  /**
+     * The original pack's size in its unit.
+     * @nullable
+     */
   size?: string | null;
-  /** Packagings, summed over the day's appointments. */
+  /** Base units, summed over the day's appointments. */
   quantity: string;
   /** What the drug's lots hold together, in base units. */
   in_stock: string;
-  /**
-     * The day needs more of the drug than its lots hold — counted over all of the drug's
-     * packagings, since they draw from the same lots.
-     */
+  /** The day needs more of the drug than its lots hold. */
   short: boolean;
 }

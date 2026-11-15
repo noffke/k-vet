@@ -604,15 +604,17 @@ pub fn dispense_rows(
         price_net: pricing.pack_price_net,
     });
     let remainder_row = (rest > Decimal::ZERO && reference.size > Decimal::ZERO).then(|| {
-        let per_unit = reference.price_net / reference.size;
-        let line_net = round_money(rest * per_unit);
+        let line_net = round_money(rest * reference.price_net / reference.size);
         let unit_price = |value: Decimal| {
-            value.round_dp_with_strategy(UNIT_PRICE_PLACES, RoundingStrategy::MidpointAwayFromZero)
+            (value / reference.size)
+                .round_dp_with_strategy(UNIT_PRICE_PLACES, RoundingStrategy::MidpointAwayFromZero)
         };
         DispenseRow {
             quantity: rest,
-            unit_net: unit_price(per_unit),
-            price_gross: unit_price(per_unit * (Decimal::ONE + vat_percent / hundred())),
+            unit_net: unit_price(reference.price_net),
+            // The Teilmenge's own gross price shared out, so a millilitre reads as the drug page's
+            // 2,38 € for 10 ml does: 0,238 €.
+            price_gross: unit_price(add_vat(reference.price_net, vat_percent).gross),
             line_net,
             line_gross: add_vat(line_net, vat_percent).gross,
         }
@@ -1418,8 +1420,8 @@ mod tests {
 
     #[test]
     fn a_teilmenge_unit_price_shows_four_decimals_and_the_row_stays_in_cents() {
-        // A blister of five at 11,87 € net: 2,374 € per tablet, 2,8251 € gross. Two blisters are
-        // 23,74 € net — the Teilmenge price twice, not the rounded unit price ten times.
+        // A blister of five at 11,87 € net (14,13 € gross): 2,374 € per tablet, 2,826 € gross. Two
+        // blisters are 23,74 € net — the Teilmenge price twice, not a rounded unit price ten times.
         let pricing = DispensePricing {
             pack_size: dec("20"),
             pack_price_net: dec("40.00"),
@@ -1432,7 +1434,7 @@ mod tests {
         let rows = dispense_rows(&pricing, dec("10"), dec("19"));
         let rest = rows.remainder.expect("a Teilmenge row");
         assert_eq!(rest.unit_net, dec("2.374"));
-        assert_eq!(rest.price_gross, dec("2.8251"));
+        assert_eq!(rest.price_gross, dec("2.826"));
         assert_eq!(rest.line_net, dec("23.74"));
         assert_eq!(rest.line_gross, dec("28.25"));
     }

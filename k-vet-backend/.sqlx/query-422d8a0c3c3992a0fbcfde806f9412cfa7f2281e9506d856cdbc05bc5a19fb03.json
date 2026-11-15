@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT item.id, item.template_id, item.position,\n                  item.kind AS \"kind: TemplateItemKind\", item.drug_packaging_id,\n                  item.service_id, item.quantity, item.unit,\n                  drug.name AS \"drug_name?\", service.name AS \"service_name?\",\n                  packaging.quantity AS \"packaging_quantity?\"\n           FROM treatment_template_item item\n           LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id\n           LEFT JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN service ON service.id = item.service_id\n           WHERE item.template_id = $1\n           ORDER BY item.position",
+  "query": "SELECT item.id, item.template_id, item.position,\n                  item.kind AS \"kind: TemplateItemKind\", item.drug_packaging_id,\n                  item.service_id, item.quantity, item.unit,\n                  drug.name AS \"drug_name?\", service.name AS \"service_name?\",\n                  rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,\n                  rule.subset_price_net, rule.freely_divisible AS \"freely_divisible?\",\n                  rule.human_drug AS \"human_drug?\", rule.vat_percent AS \"vat_percent?\"\n           FROM treatment_template_item item\n           LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id\n           LEFT JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN drug_dispense_rule rule ON rule.drug_id = drug.id\n           LEFT JOIN service ON service.id = item.service_id\n           WHERE item.template_id = $1\n           ORDER BY item.position",
   "describe": {
     "columns": [
       {
@@ -125,12 +125,89 @@
       },
       {
         "ordinal": 10,
-        "name": "packaging_quantity?",
+        "name": "pack_size",
         "type_info": "Numeric",
         "origin": {
           "Table": {
-            "table": "drug_packaging",
-            "name": "quantity"
+            "table": "drug_dispense_rule",
+            "name": "pack_size"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "pack_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "pack_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "list_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "list_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "subset_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "subset_size"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "subset_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "subset_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "freely_divisible?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "freely_divisible"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "human_drug?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "human_drug"
+          }
+        }
+      },
+      {
+        "ordinal": 17,
+        "name": "vat_percent?",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "vat_percent"
           }
         }
       }
@@ -151,8 +228,15 @@
       true,
       true,
       true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
       true
     ]
   },
-  "hash": "99aaa170b371f2f03b46d46a969a57d2920d52db0d2c74617c5b7e1911cddc06"
+  "hash": "422d8a0c3c3992a0fbcfde806f9412cfa7f2281e9506d856cdbc05bc5a19fb03"
 }

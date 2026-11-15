@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { Dispense } from './dispense';
 import type { ItemLot } from './itemLot';
 import type { TreatmentItemKind } from './treatmentItemKind';
 
@@ -25,6 +26,10 @@ export interface TreatmentItem {
   patient_treatment_id?: number | null;
   /** Copied from the catalog; the vet may override it per line. */
   name: string;
+  /**
+     * A drug line: what was dispensed, in the original pack's base unit (`unit`) — or, for a
+     * line billed before migration 0039 (`dispense` absent), how many of its packaging.
+     */
   quantity: string;
   /** @nullable */
   unit?: string | null;
@@ -41,7 +46,10 @@ export interface TreatmentItem {
      * `travel_expenses` — the number itself stays pinned, this only picks the label.
      */
   got_analogous: boolean;
-  /** Per-unit **net** price, pinned at line entry — before the factor. */
+  /**
+     * Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one
+     * whole pack.
+     */
   price_net: string;
   /**
      * The net counterpart of `price_gross`: one unit, after the factor. What the line editor
@@ -79,10 +87,14 @@ export interface TreatmentItem {
      * date of death. Read from the drug, so the release page can say so beforehand.
      */
   euthanasia: boolean;
-  /** `price_net × quantity × factor/100`, rounded to cents — **net**. */
+  /**
+     * `price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of
+     * its rows in `dispense`.
+     */
   line_net: string;
   /** `line_net` plus VAT: what the customer pays for this line. */
   line_gross: string;
+  dispense?: Dispense | null;
   /** Lots the dispense was booked against (drug lines). */
   lots: ItemLot[];
   created_at: string;

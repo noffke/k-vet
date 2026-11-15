@@ -5736,8 +5736,8 @@ export const getGetPackingListUrl = (params?: GetPackingListParams,) => {
 }
 
 /**
- * @summary What to pack for a day: every drug the day's appointments are to get, added up per
-packaging and checked against the shelf, and the same items appointment by appointment.
+ * @summary What to pack for a day: every drug the day's appointments are to get, added up in base units
+and checked against the shelf, and the same items appointment by appointment.
 Reminders already taken into a position are not on it.
  */
 export const getPackingList = async (params?: GetPackingListParams, options?: Parameters<typeof apiFetch>[1]): Promise<PackingList> => {
@@ -5809,8 +5809,8 @@ export function useGetPackingList<TData = Awaited<ReturnType<typeof getPackingLi
  , queryClient?: QueryClient
   ):  UseQueryResult<TData, TError> & { queryKey: DataTag<QueryKey, TData, TError> }
 /**
- * @summary What to pack for a day: every drug the day's appointments are to get, added up per
-packaging and checked against the shelf, and the same items appointment by appointment.
+ * @summary What to pack for a day: every drug the day's appointments are to get, added up in base units
+and checked against the shelf, and the same items appointment by appointment.
 Reminders already taken into a position are not on it.
  */
 

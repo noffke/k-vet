@@ -61,24 +61,27 @@ async fn a_reminder_is_kept_changed_and_removed(pool: PgPool) {
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
     let (appointment_id, ..) = visit(&pool, noon(1)).await;
 
-    let bottle = remind(&app, appointment_id, drug.packaging_id, "1").await;
-    let subsets = remind(&app, appointment_id, drug.subset_packaging_id, "3").await;
+    let bottle = remind(&app, appointment_id, drug.packaging_id, "100").await;
+    // Named by its Teilmenge, the drug is still its original pack, counted in ml.
+    let subsets = remind(&app, appointment_id, drug.subset_packaging_id, "30").await;
     assert_eq!(bottle["name"], "Amoxicillin 100");
     assert_eq!(bottle["position"], 1);
     assert_eq!(subsets["position"], 2);
-    assert_eq!(subsets["size"], "10.00");
+    assert_eq!(subsets["drug_packaging_id"], drug.packaging_id);
+    assert_eq!(subsets["size"], "100.00");
     assert_eq!(subsets["unit"], "ml");
+    assert_eq!(subsets["rule"]["step"], "10.00");
     assert!(subsets["taken_item_id"].is_null());
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("100"));
 
     let changed = app
         .patch(
             &format!("/api/reminders/{}", subsets["id"]),
-            json!({ "quantity": "2", "note": "  für Bello  ", "packed": true }),
+            json!({ "quantity": "20", "note": "  für Bello  ", "packed": true }),
         )
         .await
         .json();
-    assert_eq!(changed["quantity"], "2.00");
+    assert_eq!(changed["quantity"], "20.00");
     assert_eq!(changed["note"], "für Bello");
     assert_eq!(changed["packed"], true);
     let zero = app
@@ -89,6 +92,17 @@ async fn a_reminder_is_kept_changed_and_removed(pool: PgPool) {
         .await;
     assert_eq!(zero.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(zero.error_fields(), vec!["quantity"]);
+    // In the steps of the drug's 10 ml Teilmenge.
+    let off_step = app
+        .patch(
+            &format!("/api/reminders/{}", subsets["id"]),
+            json!({ "quantity": "25" }),
+        )
+        .await;
+    assert_eq!(
+        off_step.json()["errors"],
+        json!([{ "field": "quantity", "message": "item.subsetStep" }])
+    );
 
     // The appointment counts what is still to bring.
     let appointment = app
@@ -135,8 +149,8 @@ async fn a_reminder_is_taken_into_a_position(pool: PgPool) {
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
     let (appointment_id, treatment_id, record_id) = visit(&pool, noon(0)).await;
-    let reminder = remind(&app, appointment_id, drug.subset_packaging_id, "3").await;
-    let too_much = remind(&app, appointment_id, drug.subset_packaging_id, "8").await;
+    let reminder = remind(&app, appointment_id, drug.subset_packaging_id, "30").await;
+    let too_much = remind(&app, appointment_id, drug.subset_packaging_id, "80").await;
     assert_eq!(too_much["stock_short"], false, "80 ml of 100 are there");
 
     let taken = app
@@ -159,7 +173,7 @@ async fn a_reminder_is_taken_into_a_position(pool: PgPool) {
     assert_eq!(lines.as_array().map(Vec::len), Some(1));
     assert_eq!(taken["taken_item_id"], lines[0]["id"]);
     assert_eq!(lines[0]["patient_treatment_id"], record_id);
-    assert_eq!(lines[0]["quantity"], "3.00");
+    assert_eq!(lines[0]["quantity"], "30.00");
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("70"));
 
     let again = app
@@ -231,7 +245,7 @@ async fn a_released_invoice_takes_no_reminder(pool: PgPool) {
         json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
     )
     .await;
-    let reminder = remind(&app, appointment_id, drug.subset_packaging_id, "1").await;
+    let reminder = remind(&app, appointment_id, drug.subset_packaging_id, "10").await;
 
     let refused = app
         .post(
@@ -242,9 +256,9 @@ async fn a_released_invoice_takes_no_reminder(pool: PgPool) {
     assert_eq!(refused.status, StatusCode::CONFLICT);
 }
 
-/// The Packliste adds up a day's open reminders per packaging and checks the shelf per drug —
-/// a bottle and its subsets draw from the same lots — and lists them visit by visit, in time
-/// order. Other days and reminders already taken are not on it.
+/// The Packliste adds up a day's open reminders per drug, in base units, and checks them against
+/// the shelf, and lists them visit by visit, in time order. Other days and reminders already
+/// taken are not on it.
 #[sqlx::test]
 async fn the_packing_list_adds_up_the_day(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;
@@ -254,11 +268,11 @@ async fn the_packing_list_adds_up_the_day(pool: PgPool) {
     let (early, ..) = visit(&pool, noon(0) - TimeDelta::hours(2)).await;
     let (tomorrow, ..) = visit(&pool, noon(1)).await;
 
-    remind(&app, late, drug.subset_packaging_id, "4").await;
-    remind(&app, early, drug.subset_packaging_id, "3").await;
-    remind(&app, early, drug.packaging_id, "1").await;
-    remind(&app, tomorrow, drug.packaging_id, "5").await;
-    let taken = remind(&app, late, drug.subset_packaging_id, "1").await;
+    remind(&app, late, drug.subset_packaging_id, "40").await;
+    remind(&app, early, drug.subset_packaging_id, "30").await;
+    remind(&app, early, drug.packaging_id, "100").await;
+    remind(&app, tomorrow, drug.packaging_id, "500").await;
+    let taken = remind(&app, late, drug.subset_packaging_id, "10").await;
     app.post(&format!("/api/reminders/{}/take", taken["id"]), json!({}))
         .await;
 
@@ -269,25 +283,14 @@ async fn the_packing_list_adds_up_the_day(pool: PgPool) {
         .json();
     assert_eq!(list["date"], today.to_string());
 
-    // 7 subsets (70 ml) and a bottle (100 ml) need 170 ml; 90 are left after the one taken.
+    // 40 + 30 + 100 ml need 170 ml; 90 are left after the one taken.
     let totals = list["totals"].as_array().expect("totals");
-    assert_eq!(totals.len(), 2, "{totals:?}");
-    let subset_total = totals
-        .iter()
-        .find(|total| total["drug_packaging_id"] == drug.subset_packaging_id)
-        .expect("the subsets");
-    assert_eq!(subset_total["quantity"], "7.00");
-    assert_eq!(subset_total["in_stock"], "90.00");
-    assert_eq!(subset_total["short"], true);
-    let bottle_total = totals
-        .iter()
-        .find(|total| total["drug_packaging_id"] == drug.packaging_id)
-        .expect("the bottle");
-    assert_eq!(bottle_total["quantity"], "1.00");
-    assert_eq!(
-        bottle_total["short"], true,
-        "the same lots, counted together"
-    );
+    assert_eq!(totals.len(), 1, "{totals:?}");
+    assert_eq!(totals[0]["drug_packaging_id"], drug.packaging_id);
+    assert_eq!(totals[0]["quantity"], "170.00");
+    assert_eq!(totals[0]["size"], "100.00");
+    assert_eq!(totals[0]["in_stock"], "90.00");
+    assert_eq!(totals[0]["short"], true);
 
     let visits = list["appointments"].as_array().expect("appointments");
     let order: Vec<i64> = visits
@@ -311,6 +314,6 @@ async fn the_packing_list_adds_up_the_day(pool: PgPool) {
         ))
         .await
         .json();
-    assert_eq!(tomorrow_list["totals"][0]["quantity"], "5.00");
+    assert_eq!(tomorrow_list["totals"][0]["quantity"], "500.00");
     assert_eq!(tomorrow_list["totals"][0]["short"], true, "500 ml of 90");
 }

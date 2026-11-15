@@ -213,6 +213,18 @@ export function DrugDetailPage() {
             />
             <p className="text-xs text-ink-faint">{t('pharmacy.euthanasiaHint')}</p>
           </div>
+          {/* Not informational either: it decides which quantities a position can take. */}
+          <div className="mt-2 flex flex-col gap-1">
+            <CheckboxField
+              label={t('pharmacy.flags.freelyDivisible')}
+              defaultChecked={record.freely_divisible}
+              onChange={(event) => {
+                autoSave.set({ freely_divisible: event.target.checked })
+                void autoSave.flush()
+              }}
+            />
+            <p className="text-xs text-ink-faint">{t('pharmacy.freelyDivisibleHint')}</p>
+          </div>
         </fieldset>
       </section>
 

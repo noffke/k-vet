@@ -62,8 +62,8 @@ async fn the_picker_usage_table_is_rebuilt_from_the_billed_lines(pool: PgPool) {
         &format!("/api/treatments/{treatment_id}/items"),
         json!({
             "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "1"
+            "drug_packaging_id": drug.packaging_id,
+            "quantity": "10"
         }),
     )
     .await;
@@ -89,7 +89,7 @@ async fn the_picker_usage_table_is_rebuilt_from_the_billed_lines(pool: PgPool) {
     let drug_uses: i64 = sqlx::query_scalar(
         "SELECT uses FROM picker_usage WHERE kind = 'drug_packaging' AND item_id = $1",
     )
-    .bind(drug.subset_packaging_id)
+    .bind(drug.packaging_id)
     .fetch_one(&pool)
     .await
     .expect("drug uses");

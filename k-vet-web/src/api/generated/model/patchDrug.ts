@@ -29,4 +29,6 @@ export interface PatchDrug {
   human_drug?: boolean | null;
   /** @nullable */
   euthanasia?: boolean | null;
+  /** @nullable */
+  freely_divisible?: boolean | null;
 }

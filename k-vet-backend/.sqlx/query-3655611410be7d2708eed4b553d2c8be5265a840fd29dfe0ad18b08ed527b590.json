@@ -1,0 +1,40 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO price_quote_line\n                     (quote_id, position, kind, drug_packaging_id, service_id, quantity, factor,\n                      km, km_multiplier, name, price_net, vat_percent, unit, pack_size,\n                      subset_size, subset_price_net, freely_divisible)\n                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,\n                         $17)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Int4",
+        {
+          "Custom": {
+            "name": "treatment_item_kind",
+            "kind": {
+              "Enum": [
+                "drug_packaging",
+                "service"
+              ]
+            }
+          }
+        },
+        "Int8",
+        "Int8",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Text",
+        "Numeric",
+        "Numeric",
+        "Numeric",
+        "Bool"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "3655611410be7d2708eed4b553d2c8be5265a840fd29dfe0ad18b08ed527b590"
+}

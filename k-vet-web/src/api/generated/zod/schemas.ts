@@ -205,8 +205,14 @@ export const ListRemindersResponseItem = zod.object({
   "drug_id": zod.int(),
   "name": zod.string().describe('The drug\'s name.'),
   "unit": zod.string().nullish(),
-  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
-  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "size": zod.string().nullish().describe('The original pack\'s size in its unit — `100` (ml).'),
+  "quantity": zod.string().describe('Base units of the original pack (Tbl., ml), as a line counts them.'),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('How the drug can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "note": zod.string().nullish(),
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
@@ -222,7 +228,7 @@ export const CreateReminderParams = zod.object({
 
 export const CreateReminderBody = zod.object({
   "drug_packaging_id": zod.int(),
-  "quantity": zod.string().nullish().describe('Packagings; one when left out.')
+  "quantity": zod.string().nullish().describe('Base units; left out, what the drug starts at (`DispenseRule::preset`).')
 })
 
 export const CreateReminderResponse = zod.object({
@@ -232,8 +238,14 @@ export const CreateReminderResponse = zod.object({
   "drug_id": zod.int(),
   "name": zod.string().describe('The drug\'s name.'),
   "unit": zod.string().nullish(),
-  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
-  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "size": zod.string().nullish().describe('The original pack\'s size in its unit — `100` (ml).'),
+  "quantity": zod.string().describe('Base units of the original pack (Tbl., ml), as a line counts them.'),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('How the drug can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "note": zod.string().nullish(),
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
@@ -896,6 +908,7 @@ export const ListDrugsResponseItem = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -927,6 +940,7 @@ export const CreateDrugResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -961,6 +975,7 @@ export const GetDrugResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1004,7 +1019,8 @@ export const PatchDrugBody = zod.object({
   "refrigerate": zod.boolean().nullish(),
   "redesignation": zod.boolean().nullish(),
   "human_drug": zod.boolean().nullish(),
-  "euthanasia": zod.boolean().nullish()
+  "euthanasia": zod.boolean().nullish(),
+  "freely_divisible": zod.boolean().nullish()
 })
 
 export const PatchDrugResponse = zod.object({
@@ -1019,6 +1035,7 @@ export const PatchDrugResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1053,6 +1070,7 @@ export const ArchiveDrugResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1091,6 +1109,7 @@ export const AddDrugCodeResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1176,6 +1195,7 @@ export const UnarchiveDrugResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1914,8 +1934,8 @@ export const CreateStockIntakeResponse = zod.object({
 
 
 /**
- * @summary What to pack for a day: every drug the day's appointments are to get, added up per
-packaging and checked against the shelf, and the same items appointment by appointment.
+ * @summary What to pack for a day: every drug the day's appointments are to get, added up in base units
+and checked against the shelf, and the same items appointment by appointment.
 Reminders already taken into a position are not on it.
  */
 export const GetPackingListQueryParams = zod.object({
@@ -1929,10 +1949,10 @@ export const GetPackingListResponse = zod.object({
   "drug_id": zod.int(),
   "name": zod.string(),
   "unit": zod.string().nullish(),
-  "size": zod.string().nullish(),
-  "quantity": zod.string().describe('Packagings, summed over the day\'s appointments.'),
+  "size": zod.string().nullish().describe('The original pack\'s size in its unit.'),
+  "quantity": zod.string().describe('Base units, summed over the day\'s appointments.'),
   "in_stock": zod.string().describe('What the drug\'s lots hold together, in base units.'),
-  "short": zod.boolean().describe('The day needs more of the drug than its lots hold — counted over all of the drug\'s\npackagings, since they draw from the same lots.')
+  "short": zod.boolean().describe('The day needs more of the drug than its lots hold.')
 }).describe('One packaging\'s total for the day, and whether the shelf covers the drug.')),
   "appointments": zod.array(zod.object({
   "appointment_id": zod.int(),
@@ -1946,8 +1966,14 @@ export const GetPackingListResponse = zod.object({
   "drug_id": zod.int(),
   "name": zod.string().describe('The drug\'s name.'),
   "unit": zod.string().nullish(),
-  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
-  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "size": zod.string().nullish().describe('The original pack\'s size in its unit — `100` (ml).'),
+  "quantity": zod.string().describe('Base units of the original pack (Tbl., ml), as a line counts them.'),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('How the drug can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "note": zod.string().nullish(),
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
@@ -2522,19 +2548,25 @@ export const PickerItemsQueryParams = zod.object({
 })
 
 export const PickerItemsResponseItem = zod.union([zod.object({
-  "id": zod.int(),
+  "id": zod.int().describe('The original packaging\'s id.'),
   "drug_id": zod.int(),
   "name": zod.string().describe('Drug name; the UI composes the display label with locale formatting.'),
   "unit": zod.string().nullish(),
-  "quantity": zod.string().nullish(),
-  "price_net": zod.string().describe('Net price, before the Steigerungssatz; `price_gross` is what the line will cost.'),
+  "quantity": zod.string().nullish().describe('Base units in one pack.'),
+  "price_net": zod.string().describe('One pack, net; `price_gross` with VAT.'),
   "price_gross": zod.string(),
   "vat_percent": zod.string(),
-  "in_stock": zod.string().describe('Derived stock over all lots — a shortfall is visible before picking.'),
-  "stock_short": zod.boolean().describe('One of this packaging is more than the lots hold together: picking it is refused\n(`item.stockShort`). False for a drug with no original packaging, whose dispenses\nbook nothing.'),
+  "in_stock": zod.string().describe('Derived stock over all lots, in base units — a shortfall is visible before picking.'),
+  "stock_short": zod.boolean().describe('What the drug starts at (`rule.preset`) is more than the lots hold together: picking\nit is refused (`item.stockShort`).'),
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('How it can be dispensed: whole packs, the Teilmenge\'s steps, or any amount.'),
   "uses": zod.int(),
   "kind": zod.enum(['drug_packaging'])
-}),zod.object({
+}).describe('A drug, always as its original packaging: the line counts what is dispensed from it, in\nits base unit, and bills whole packs and the rest as a Teilmenge (migration 0039).'),zod.object({
   "id": zod.int(),
   "name": zod.string(),
   "got_number": zod.string().nullish(),
@@ -2612,13 +2644,40 @@ export const CreateQuoteResponse = zod.object({
   "factor": zod.string().nullish(),
   "vat_percent": zod.string(),
   "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug: base units dispensed (Tbl., ml).'),
+  "unit": zod.string().nullish().describe('A drug: the original pack\'s base unit.'),
   "km": zod.string().nullish(),
   "km_multiplier": zod.string().nullish(),
-  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.'),
+  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.\nOn a drug line, one whole pack.'),
   "price_gross": zod.string().describe('Gross per unit after the factor, as quoted.'),
   "line_net": zod.string(),
   "line_gross": zod.string(),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug: whole packs and the rest as quoted, and the rule it was quoted by.'),zod.null()]).optional(),
+  "today_rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "today_price_net": zod.string().nullish().describe('Net per unit before the factor at today\'s catalogue; absent when the position can no\nlonger be priced.'),
   "today_vat_percent": zod.string().nullish(),
   "today_line_gross": zod.string().nullish().describe('The line at today\'s catalogue, gross — what the page shows beside the quoted one.'),
@@ -2679,13 +2738,40 @@ export const GetQuoteResponse = zod.object({
   "factor": zod.string().nullish(),
   "vat_percent": zod.string(),
   "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug: base units dispensed (Tbl., ml).'),
+  "unit": zod.string().nullish().describe('A drug: the original pack\'s base unit.'),
   "km": zod.string().nullish(),
   "km_multiplier": zod.string().nullish(),
-  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.'),
+  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.\nOn a drug line, one whole pack.'),
   "price_gross": zod.string().describe('Gross per unit after the factor, as quoted.'),
   "line_net": zod.string(),
   "line_gross": zod.string(),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug: whole packs and the rest as quoted, and the rule it was quoted by.'),zod.null()]).optional(),
+  "today_rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "today_price_net": zod.string().nullish().describe('Net per unit before the factor at today\'s catalogue; absent when the position can no\nlonger be priced.'),
   "today_vat_percent": zod.string().nullish(),
   "today_line_gross": zod.string().nullish().describe('The line at today\'s catalogue, gross — what the page shows beside the quoted one.'),
@@ -2726,7 +2812,7 @@ export const PatchQuoteBody = zod.object({
   "lines": zod.array(zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a billing line refers to.'),
   "id": zod.int().describe('The drug packaging\'s or the service\'s id, as the picker gives it.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug: base units dispensed (Tbl., ml), as a treatment line counts them.'),
   "factor": zod.string().nullish().describe('Services: the factor in percent (100 = single rate); absent, the catalogue\'s. Drug lines\nhave none.'),
   "km": zod.string().nullish().describe('Wegegeld: kilometres one way; absent, the line costs the catalogue price.'),
   "km_multiplier": zod.string().nullish().describe('Wegegeld: the factor for adverse travel conditions (1–3).')
@@ -2754,13 +2840,40 @@ export const PatchQuoteResponse = zod.object({
   "factor": zod.string().nullish(),
   "vat_percent": zod.string(),
   "travel_expenses": zod.boolean().describe('The service bills travel expenses: the line takes kilometres.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug: base units dispensed (Tbl., ml).'),
+  "unit": zod.string().nullish().describe('A drug: the original pack\'s base unit.'),
   "km": zod.string().nullish(),
   "km_multiplier": zod.string().nullish(),
-  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.'),
+  "price_net": zod.string().describe('Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.\nOn a drug line, one whole pack.'),
   "price_gross": zod.string().describe('Gross per unit after the factor, as quoted.'),
   "line_net": zod.string(),
   "line_gross": zod.string(),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug: whole packs and the rest as quoted, and the rule it was quoted by.'),zod.null()]).optional(),
+  "today_rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "today_price_net": zod.string().nullish().describe('Net per unit before the factor at today\'s catalogue; absent when the position can no\nlonger be priced.'),
   "today_vat_percent": zod.string().nullish(),
   "today_line_gross": zod.string().nullish().describe('The line at today\'s catalogue, gross — what the page shows beside the quoted one.'),
@@ -2804,8 +2917,14 @@ export const PatchReminderResponse = zod.object({
   "drug_id": zod.int(),
   "name": zod.string().describe('The drug\'s name.'),
   "unit": zod.string().nullish(),
-  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
-  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "size": zod.string().nullish().describe('The original pack\'s size in its unit — `100` (ml).'),
+  "quantity": zod.string().describe('Base units of the original pack (Tbl., ml), as a line counts them.'),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('How the drug can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "note": zod.string().nullish(),
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
@@ -2833,8 +2952,14 @@ export const TakeReminderResponse = zod.object({
   "drug_id": zod.int(),
   "name": zod.string().describe('The drug\'s name.'),
   "unit": zod.string().nullish(),
-  "size": zod.string().nullish().describe('One packaging\'s size in its unit — `10` (ml).'),
-  "quantity": zod.string().describe('Packagings, as a line counts them.'),
+  "size": zod.string().nullish().describe('The original pack\'s size in its unit — `100` (ml).'),
+  "quantity": zod.string().describe('Base units of the original pack (Tbl., ml), as a line counts them.'),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('How the drug can be dispensed today — what the quantity field goes by.'),zod.null()]).optional(),
   "note": zod.string().nullish(),
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
@@ -2864,6 +2989,7 @@ export const ReadScanResponse = zod.object({
   "redesignation": zod.boolean(),
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -3286,8 +3412,14 @@ export const PatchTemplateItemResponseItem = zod.object({
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
   "name": zod.string().describe('Current catalog name — a template stores the reference, not a price.'),
-  "quantity": zod.string(),
-  "unit": zod.string().nullish()
+  "quantity": zod.string().describe('A drug: base units of its original pack (Tbl., ml), as a treatment line counts them.'),
+  "unit": zod.string().nullish(),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional()
 })
 export const PatchTemplateItemResponse = zod.array(PatchTemplateItemResponseItem)
 
@@ -3308,8 +3440,14 @@ export const MoveTemplateItemResponseItem = zod.object({
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
   "name": zod.string().describe('Current catalog name — a template stores the reference, not a price.'),
-  "quantity": zod.string(),
-  "unit": zod.string().nullish()
+  "quantity": zod.string().describe('A drug: base units of its original pack (Tbl., ml), as a treatment line counts them.'),
+  "unit": zod.string().nullish(),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional()
 })
 export const MoveTemplateItemResponse = zod.array(MoveTemplateItemResponseItem)
 
@@ -3711,6 +3849,7 @@ export const PatchTreatmentItemParams = zod.object({
 export const PatchTreatmentItemBody = zod.object({
   "quantity": zod.string().nullish(),
   "price_gross": zod.string().nullish().describe('The unit price as the customer sees it: gross, after the factor — what `price_gross`\nreports. Stored as the net that comes closest (`money::net_for_gross`), so a gross no\nnet in whole cents can give comes back a cent lower. Refused on a GOT position, whose\nprice is the fee schedule\'s.'),
+  "subset_price_gross": zod.string().nullish().describe('A drug line: the gross price of one base unit of its rest (the Teilmenge row). Stored as\nthe net of its Teilmenge that comes closest, so the steps stay what they were.'),
   "name": zod.string().nullish(),
   "factor": zod.string().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('Moves the line to another animal. It lands at the end of the target\'s order; its\ndispensed lots follow, because they hang off the line. A line of a per-visit service\nstays the visit\'s, and every other line keeps an animal: `null` is refused for those.'),
@@ -3728,12 +3867,12 @@ export const PatchTreatmentItemResponse = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -3742,8 +3881,28 @@ export const PatchTreatmentItemResponse = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -3773,12 +3932,12 @@ export const SetTreatmentItemLotsResponse = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -3787,8 +3946,28 @@ export const SetTreatmentItemLotsResponse = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -3816,12 +3995,12 @@ export const MoveTreatmentItemResponseItem = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -3830,8 +4009,28 @@ export const MoveTreatmentItemResponseItem = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -3856,12 +4055,12 @@ export const RecomputeTreatmentItemKmResponse = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -3870,8 +4069,28 @@ export const RecomputeTreatmentItemKmResponse = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -3996,8 +4215,14 @@ export const ListTemplateItemsResponseItem = zod.object({
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
   "name": zod.string().describe('Current catalog name — a template stores the reference, not a price.'),
-  "quantity": zod.string(),
-  "unit": zod.string().nullish()
+  "quantity": zod.string().describe('A drug: base units of its original pack (Tbl., ml), as a treatment line counts them.'),
+  "unit": zod.string().nullish(),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional()
 })
 export const ListTemplateItemsResponse = zod.array(ListTemplateItemsResponseItem)
 
@@ -4010,7 +4235,7 @@ export const CreateTemplateItemBody = zod.object({
   "kind": zod.enum(['drug_packaging', 'service']).describe('What a template line refers to.'),
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
-  "quantity": zod.string().optional()
+  "quantity": zod.string().nullish().describe('A drug: base units; left out, what the drug starts at (`DispenseRule::preset`). A\nservice: one when left out.')
 })
 
 export const CreateTemplateItemResponseItem = zod.object({
@@ -4021,8 +4246,14 @@ export const CreateTemplateItemResponseItem = zod.object({
   "drug_packaging_id": zod.int().nullish(),
   "service_id": zod.int().nullish(),
   "name": zod.string().describe('Current catalog name — a template stores the reference, not a price.'),
-  "quantity": zod.string(),
-  "unit": zod.string().nullish()
+  "quantity": zod.string().describe('A drug: base units of its original pack (Tbl., ml), as a treatment line counts them.'),
+  "unit": zod.string().nullish(),
+  "rule": zod.union([zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('A drug: how it can be dispensed today — what the quantity field goes by.'),zod.null()]).optional()
 })
 export const CreateTemplateItemResponse = zod.array(CreateTemplateItemResponseItem)
 
@@ -4176,12 +4407,12 @@ export const ApplyQuoteResponseItem = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -4190,8 +4421,28 @@ export const ApplyQuoteResponseItem = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -4221,12 +4472,12 @@ export const ApplyTemplateResponseItem = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -4235,8 +4486,28 @@ export const ApplyTemplateResponseItem = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -4311,12 +4582,12 @@ export const ListTreatmentItemsResponseItem = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -4325,8 +4596,28 @@ export const ListTreatmentItemsResponseItem = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -4347,7 +4638,7 @@ export const CreateTreatmentItemBody = zod.object({
   "drug_packaging_id": zod.int().nullish().describe('Required for `drug_packaging` lines.'),
   "service_id": zod.int().nullish().describe('Required for `service` lines.'),
   "patient_treatment_id": zod.int().nullish().describe('The animal the line belongs to; absent, the treatment\'s only animal when it has exactly\none. Drug dispensing and treatment are attributed to a single animal, so every line\nneeds one — except a line of a service marked "pro Termin" (`per_visit`: house-call fee,\nWegegeld), which belongs to the whole visit and ignores this field.'),
-  "quantity": zod.string().optional(),
+  "quantity": zod.string().nullish().describe('A drug: base units dispensed; left out, what the drug starts at (`DispenseRule::preset`).\nA service: one when left out.'),
   "km": zod.string().nullish().describe('Travel-expense lines: kilometres driven (one way).'),
   "km_multiplier": zod.string().nullish().describe('Multiplier for adverse travel conditions (1–3).'),
   "redesignation": zod.boolean().optional().describe('Ad-hoc Umwidmung; only meaningful on a drug line.')
@@ -4362,12 +4653,12 @@ export const CreateTreatmentItemResponse = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -4376,8 +4667,28 @@ export const CreateTreatmentItemResponse = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),
@@ -4413,12 +4724,12 @@ export const BulkDeleteTreatmentItemsResponseItem = zod.object({
   "service_id": zod.int().nullish(),
   "patient_treatment_id": zod.int().nullish().describe('The Patientenbehandlung this line belongs to, or null for a line that covers the\nvisit rather than one animal — the Wegegeld of a house call for two of them.'),
   "name": zod.string().describe('Copied from the catalog; the vet may override it per line.'),
-  "quantity": zod.string(),
+  "quantity": zod.string().describe('A drug line: what was dispensed, in the original pack\'s base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging.'),
   "unit": zod.string().nullish(),
   "factor": zod.string().nullish().describe('GOT factor in percent (100 = single rate).'),
   "got_number": zod.string().nullish(),
   "got_analogous": zod.boolean().describe('`true` when the number above is a position this line is only charged *analogously* to\n(§ 8 GOT), rather than the line\'s own GOT position. Read from the service, like\n`travel_expenses` — the number itself stays pinned, this only picks the label.'),
-  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor.'),
+  "price_net": zod.string().describe('Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack.'),
   "unit_net": zod.string().describe('The net counterpart of `price_gross`: one unit, after the factor. What the line editor\nshows under the gross price the vet types.'),
   "price_gross": zod.string().describe('The customer-facing unit price: gross, **with the Steigerungssatz already applied**.\n\nThis is the "Einzelpreis" of the invoice, and it has to be the figure that multiplies out\nto the line total — the bare catalogue fee would not (a GOT position at Faktor 150 % would\nprint `28,11 € × 1 = 42,16 €`). Derived with `money::line_total` at quantity 1, so the\nrounding matches `line_gross` exactly for a quantity of one; at larger quantities the\nper-unit rounding may differ from `line_gross / quantity` by a cent, and `line_gross`\nis the authoritative amount.'),
   "vat_percent": zod.string(),
@@ -4427,8 +4738,28 @@ export const BulkDeleteTreatmentItemsResponseItem = zod.object({
   "travel_expenses": zod.boolean().describe('`true` when the line\'s service bills travel expenses — the UI then asks for km.'),
   "redesignation": zod.boolean().describe('Ad-hoc Umwidmung: this dispense is outside the preparation\'s approval — an eye\npreparation used in an ear. Documentation only; it does not move the price.'),
   "euthanasia": zod.boolean().describe('The drug is a euthanasia preparation: releasing the invoice sets this line\'s animal\'s\ndate of death. Read from the drug, so the release page can say so beforehand.'),
-  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**.'),
+  "line_net": zod.string().describe('`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`.'),
   "line_gross": zod.string().describe('`line_net` plus VAT: what the customer pays for this line.'),
+  "dispense": zod.union([zod.object({
+  "rule": zod.object({
+  "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
+  "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
+  "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any rest, to two decimals.'),
+  "preset": zod.string().describe('What a newly picked drug starts at: one unit where it can, else one step, else one pack.')
+}).describe('As pinned on the line.'),
+  "packs": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('Whole packs at the pack price; absent below one pack.'),zod.null()]).optional(),
+  "remainder": zod.union([zod.object({
+  "quantity": zod.string().describe('Packs on the pack row, base units on the Teilmenge row.'),
+  "price_gross": zod.string().describe('Gross per pack, or per base unit (to four decimals).'),
+  "line_net": zod.string(),
+  "line_gross": zod.string()
+}).describe('The rest as a Teilmenge, priced per base unit; absent for whole packs.'),zod.null()]).optional()
+}).describe('A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings.'),zod.null()]).optional(),
   "lots": zod.array(zod.object({
   "lot_id": zod.int(),
   "quantity": zod.string(),

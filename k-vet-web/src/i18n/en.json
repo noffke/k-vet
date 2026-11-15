@@ -292,7 +292,7 @@
     },
     "recomputeKm": "Recompute the distance (Google Maps)",
     "kmRequiredForInvoice": "No invoice can be created without the kilometres.",
-    "stockShort": "Not enough stock for one packaging"
+    "stockShort": "Not enough stock"
   },
   "invoices": {
     "accept": "Accept invoice",
@@ -386,6 +386,7 @@
     "expiryShort": "Expires",
     "flags": {
       "euthanasia": "Euthanasia",
+      "freelyDivisible": "Any quantity",
       "humanDrug": "Human preparation",
       "narcotic": "Narcotic",
       "redesignation": "Redesignation",
@@ -394,6 +395,7 @@
       "vaccine": "Vaccine"
     },
     "flagsLegend": "Flags",
+    "freelyDivisibleHint": "E.g. injection liquids: any quantity can be billed, such as 2.7 ml from a 100 ml bottle. Without it, what is left after whole packs goes only in steps of the smallest part pack.",
     "initialStock": "Initial stock",
     "intake": "Stock intake",
     "intakeResult": "Adds {{quantity}} {{unit}} initial stock.",
@@ -528,7 +530,9 @@
     "patientRequired": "This line needs an animal",
     "perVisit": "This service is per visit, not for one animal",
     "stockShort": "The drug's stock does not cover that quantity (all lots together). Record the intake or a stocktake first.",
-    "notTravel": "Only a Wegegeld line has a distance"
+    "notTravel": "Only a Wegegeld line has a distance",
+    "subsetStep": "Only in steps of the smallest part pack",
+    "wholePacksOnly": "Whole packs only – the drug has no part pack"
   },
   "packaging": {
     "delete": "Delete packaging",
@@ -693,7 +697,8 @@
     "nothing": "Nothing to take along on this day.",
     "together": "Together",
     "byVisit": "By appointment",
-    "short": "Not enough stock ({{stock}} left)"
+    "short": "Not enough stock ({{stock}} left)",
+    "pack": "pack of {{size}}"
   },
   "reminder": {
     "drugUnavailable": "This drug is not available (any more).",
@@ -759,5 +764,15 @@
     "undoTitle": "Take the booking back?",
     "unknown": "Unknown code {{code}}",
     "unknownHint": "Add it to an existing drug, or create a new one; “Back” returns here from there."
+  },
+  "dispense": {
+    "anyQuantity": "any quantity",
+    "inSteps": "in steps of {{step}}",
+    "wholePacks": "whole packs of {{size}} only",
+    "refused": "This quantity cannot be dispensed: {{rule}}.",
+    "packsPart": "{{count}} × {{size}} at {{price}}",
+    "restPart": "{{amount}} part pack at {{price}}/{{unit}}",
+    "packPrice": "Price per pack (gross)",
+    "subsetPrice": "Part pack per {{unit}} (gross)"
   }
 }

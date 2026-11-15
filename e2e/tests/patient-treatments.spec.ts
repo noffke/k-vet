@@ -53,7 +53,7 @@ test.describe('patient treatments', () => {
     const tabBar = page.getByRole('tablist')
     expect(await tabBar.evaluate((list) => list.scrollHeight - list.clientHeight)).toBe(0)
     await picker.fill(drug.drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
     await expect(panel.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
     await panel.getByLabel('Vorbericht und Untersuchung').fill('Verbandswechsel')
     await panel.getByLabel('Therapie und weiteres Vorgehen').fill('Wunde sauber und trocken.')
@@ -288,7 +288,7 @@ test.describe('patient treatments', () => {
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
     await expect(page.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
 
     // Which animal received which batch is what the ownership is for, so the API refuses.

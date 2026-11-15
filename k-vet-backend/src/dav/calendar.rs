@@ -43,7 +43,7 @@ pub struct EventSource {
     pub city: Option<String>,
     /// "Bello (Hund)" — the name and the species, never the breed.
     pub animals: Vec<String>,
-    /// "2× Metacam · 10 ml – für Bello".
+    /// "20 ml Metacam – für Bello".
     pub reminders: Vec<String>,
 }
 
@@ -120,23 +120,12 @@ pub fn event_ics(source: &EventSource, duration_minutes: u32, link: &str) -> Str
     calendar.done().to_string()
 }
 
-/// "2× Metacam · 10 ml – für Bello".
-fn reminder_line(
-    quantity: Decimal,
-    name: &str,
-    size: Option<Decimal>,
-    unit: Option<&str>,
-    note: Option<&str>,
-) -> String {
-    let mut line = format!("{}× {name}", number_de(quantity));
-    if let Some(size) = size {
-        line.push_str(&format!(
-            " · {} {}",
-            number_de(size),
-            unit.unwrap_or_default()
-        ));
-        line = line.trim_end().to_owned();
-    }
+/// "20 ml Metacam – für Bello": what was asked for, in the unit a line counts it in.
+fn reminder_line(quantity: Decimal, name: &str, unit: Option<&str>, note: Option<&str>) -> String {
+    let mut line = match unit.map(str::trim).filter(|unit| !unit.is_empty()) {
+        Some(unit) => format!("{} {unit} {name}", number_de(quantity)),
+        None => format!("{}× {name}", number_de(quantity)),
+    };
     if let Some(note) = note.filter(|note| !note.trim().is_empty()) {
         line.push_str(&format!(" – {}", note.trim()));
     }
@@ -189,7 +178,7 @@ pub async fn sources(
     let mut reminders: HashMap<i64, Vec<String>> = HashMap::new();
     for row in sqlx::query!(
         r#"SELECT reminder.appointment_id, reminder.quantity, reminder.note,
-                  COALESCE(drug.name, '') AS "name!", packaging.quantity AS size, packaging.unit
+                  COALESCE(drug.name, '') AS "name!", packaging.unit
            FROM appointment_reminder reminder
            JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id
            JOIN drug ON drug.id = packaging.drug_id
@@ -206,7 +195,6 @@ pub async fn sources(
             .push(reminder_line(
                 row.quantity,
                 &row.name,
-                row.size,
                 row.unit.as_deref(),
                 row.note.as_deref(),
             ));
@@ -559,9 +547,8 @@ mod tests {
             city: Some("Musterstadt".to_owned()),
             animals: vec!["Bello (Hund)".to_owned(), "Minka (Katze)".to_owned()],
             reminders: vec![reminder_line(
-                Decimal::from(2),
+                Decimal::from(20),
                 "Metacam",
-                Some(Decimal::new(1000, 2)),
                 Some("ml"),
                 Some("für Bello"),
             )],
@@ -590,7 +577,7 @@ mod tests {
             "{description}"
         );
         assert!(
-            description.contains("Mitbringen:\n– 2× Metacam · 10 ml – für Bello"),
+            description.contains("Mitbringen:\n– 20 ml Metacam – für Bello"),
             "{description}"
         );
         assert!(description.ends_with("http://pi:8080/appointments/12"));

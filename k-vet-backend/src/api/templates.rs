@@ -14,7 +14,9 @@ use crate::AppState;
 use crate::api::common::{
     ListQuery, MoveDirection, MoveRequest, double_option, ensure_deletable, in_use,
 };
+use crate::api::dispense::{self, DispenseRule};
 use crate::api::suppliers::blank_to_null;
+use crate::config::PharmacyConfig;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::TemplateItemKind;
 use crate::error::{AppError, AppResult};
@@ -41,8 +43,11 @@ pub struct TemplateItem {
     pub service_id: Option<i64>,
     /// Current catalog name — a template stores the reference, not a price.
     pub name: String,
+    /// A drug: base units of its original pack (Tbl., ml), as a treatment line counts them.
     pub quantity: Decimal,
     pub unit: Option<String>,
+    /// A drug: how it can be dispensed today — what the quantity field goes by.
+    pub rule: Option<DispenseRule>,
 }
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
@@ -56,12 +61,9 @@ pub struct CreateTemplateItem {
     pub kind: TemplateItemKind,
     pub drug_packaging_id: Option<i64>,
     pub service_id: Option<i64>,
-    #[serde(default = "one")]
-    pub quantity: Decimal,
-}
-
-fn one() -> Decimal {
-    Decimal::ONE
+    /// A drug: base units; left out, what the drug starts at (`DispenseRule::preset`). A
+    /// service: one when left out.
+    pub quantity: Option<Decimal>,
 }
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
@@ -250,7 +252,9 @@ pub async fn list_items(
     Path(template_id): Path<i64>,
 ) -> AppResult<Json<Vec<TemplateItem>>> {
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_items(&mut connection, template_id).await?))
+    Ok(Json(
+        load_items(&mut connection, template_id, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -267,10 +271,6 @@ pub async fn create_item(
     Path(template_id): Path<i64>,
     Json(body): Json<CreateTemplateItem>,
 ) -> AppResult<Json<Vec<TemplateItem>>> {
-    if body.quantity <= Decimal::ZERO {
-        return Err(AppError::field("quantity", "value.mustBePositive"));
-    }
-
     let mut transaction = state.pool.begin().await?;
     let position: i32 = sqlx::query_scalar!(
         "SELECT COALESCE(MAX(position), 0) + 1 FROM treatment_template_item
@@ -282,25 +282,34 @@ pub async fn create_item(
     .unwrap_or(1);
 
     // A template stores a reference and a quantity — never a price. Prices are pinned when
-    // the template is applied to a treatment.
-    let (packaging_id, service_id, unit) = match body.kind {
+    // the template is applied to a treatment. A drug is its original packaging, counted in base
+    // units, and the quantity has to fit its steps as on a treatment line.
+    let (packaging_id, service_id, unit, quantity) = match body.kind {
         TemplateItemKind::DrugPackaging => {
             let id = body
                 .drug_packaging_id
                 .ok_or_else(|| AppError::field("drug_packaging_id", "field.required"))?;
-            let unit = sqlx::query_scalar!("SELECT unit FROM drug_packaging WHERE id = $1", id)
-                .fetch_optional(&mut *transaction)
-                .await?
-                .ok_or_else(|| AppError::field("drug_packaging_id", "record.notFound"))?;
-            (Some(id), None, unit)
+            let drug =
+                dispense::drug_dispense(&mut transaction, id, &state.config.pharmacy).await?;
+            let quantity = match body.quantity {
+                Some(quantity) => {
+                    dispense::check(&drug.pricing, quantity)?;
+                    quantity
+                }
+                None => DispenseRule::from(&drug.pricing).preset,
+            };
+            (Some(drug.original_id), None, drug.unit, quantity)
         }
         TemplateItemKind::Service => {
             let id = body
                 .service_id
                 .ok_or_else(|| AppError::field("service_id", "field.required"))?;
-            (None, Some(id), None)
+            (None, Some(id), None, body.quantity.unwrap_or(Decimal::ONE))
         }
     };
+    if quantity <= Decimal::ZERO {
+        return Err(AppError::field("quantity", "value.mustBePositive"));
+    }
 
     sqlx::query!(
         "INSERT INTO treatment_template_item
@@ -311,7 +320,7 @@ pub async fn create_item(
         body.kind as TemplateItemKind,
         packaging_id,
         service_id,
-        body.quantity,
+        quantity,
         unit,
     )
     .execute(&mut *transaction)
@@ -319,7 +328,9 @@ pub async fn create_item(
 
     transaction.commit().await?;
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_items(&mut connection, template_id).await?))
+    Ok(Json(
+        load_items(&mut connection, template_id, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -341,6 +352,23 @@ pub async fn patch_item(
     {
         return Err(AppError::field("quantity", "value.mustBePositive"));
     }
+    // A drug's quantity has to fit its steps as the drug has them today.
+    if let Some(quantity) = body.quantity {
+        let packaging_id = sqlx::query_scalar!(
+            "SELECT drug_packaging_id FROM treatment_template_item WHERE id = $1",
+            id
+        )
+        .fetch_optional(&state.pool)
+        .await?
+        .ok_or(AppError::NotFound)?;
+        if let Some(packaging_id) = packaging_id {
+            let mut connection = state.pool.acquire().await?;
+            let drug =
+                dispense::drug_dispense(&mut connection, packaging_id, &state.config.pharmacy)
+                    .await?;
+            dispense::check(&drug.pricing, quantity)?;
+        }
+    }
 
     let template_id: i64 = sqlx::query_scalar!(
         "UPDATE treatment_template_item SET quantity = COALESCE($2, quantity)
@@ -353,7 +381,9 @@ pub async fn patch_item(
     .ok_or(AppError::NotFound)?;
 
     let mut connection = state.pool.acquire().await?;
-    Ok(Json(load_items(&mut connection, template_id).await?))
+    Ok(Json(
+        load_items(&mut connection, template_id, &state.config.pharmacy).await?,
+    ))
 }
 
 #[utoipa::path(
@@ -429,7 +459,7 @@ pub async fn move_item(
     transaction.commit().await?;
     let mut connection = state.pool.acquire().await?;
     Ok(Json(
-        load_items(&mut connection, current.template_id).await?,
+        load_items(&mut connection, current.template_id, &state.config.pharmacy).await?,
     ))
 }
 
@@ -553,16 +583,20 @@ async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Template> {
 async fn load_items(
     connection: &mut PgConnection,
     template_id: i64,
+    pharmacy: &PharmacyConfig,
 ) -> AppResult<Vec<TemplateItem>> {
     let rows = sqlx::query!(
         r#"SELECT item.id, item.template_id, item.position,
                   item.kind AS "kind: TemplateItemKind", item.drug_packaging_id,
                   item.service_id, item.quantity, item.unit,
                   drug.name AS "drug_name?", service.name AS "service_name?",
-                  packaging.quantity AS "packaging_quantity?"
+                  rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,
+                  rule.subset_price_net, rule.freely_divisible AS "freely_divisible?",
+                  rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?"
            FROM treatment_template_item item
            LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id
            LEFT JOIN drug ON drug.id = packaging.drug_id
+           LEFT JOIN drug_dispense_rule rule ON rule.drug_id = drug.id
            LEFT JOIN service ON service.id = item.service_id
            WHERE item.template_id = $1
            ORDER BY item.position"#,
@@ -574,18 +608,30 @@ async fn load_items(
     Ok(rows
         .into_iter()
         .map(|row| TemplateItem {
-            name: match (&row.drug_name, &row.service_name, row.packaging_quantity) {
-                (Some(drug), _, Some(quantity)) => {
-                    format!(
-                        "{drug} · {} {}",
-                        crate::pdf::number_de(quantity),
-                        row.unit.clone().unwrap_or_default()
-                    )
-                }
-                (Some(drug), _, None) => drug.clone(),
-                (None, Some(service), _) => service.clone(),
+            name: match (&row.drug_name, &row.service_name) {
+                (Some(drug), _) => drug.clone(),
+                (None, Some(service)) => service.clone(),
                 _ => String::new(),
             },
+            rule: row
+                .drug_packaging_id
+                .and_then(|_| {
+                    dispense::pricing(
+                        &dispense::Catalogue {
+                            pack_size: row.pack_size,
+                            pack_price_net: row.pack_price_net,
+                            list_price_net: row.list_price_net,
+                            subset_size: row.subset_size,
+                            subset_price_net: row.subset_price_net,
+                            freely_divisible: row.freely_divisible.unwrap_or(false),
+                            human_drug: row.human_drug.unwrap_or(false),
+                            vat_percent: row.vat_percent,
+                        },
+                        pharmacy,
+                    )
+                })
+                .as_ref()
+                .map(DispenseRule::from),
             id: row.id,
             template_id: row.template_id,
             position: row.position,

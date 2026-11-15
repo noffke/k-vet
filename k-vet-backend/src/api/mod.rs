@@ -11,6 +11,7 @@ pub mod common;
 pub mod config;
 pub mod customers;
 pub mod dashboard;
+pub mod dispense;
 pub mod drug_codes;
 pub mod drugs;
 pub mod email_templates;

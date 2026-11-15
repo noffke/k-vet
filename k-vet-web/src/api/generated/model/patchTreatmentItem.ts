@@ -17,6 +17,12 @@ export interface PatchTreatmentItem {
      * @nullable
      */
   price_gross?: string | null;
+  /**
+     * A drug line: the gross price of one base unit of its rest (the Teilmenge row). Stored as
+     * the net of its Teilmenge that comes closest, so the steps stay what they were.
+     * @nullable
+     */
+  subset_price_gross?: string | null;
   /** @nullable */
   name?: string | null;
   /** @nullable */

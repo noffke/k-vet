@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_treatment_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,\n                  item.redesignation,\n                  item.km_multiplier, item.created_at,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\",\n                  COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)\n                      AS \"got_analogous!\",\n                  COALESCE(drug.euthanasia, false) AS \"euthanasia!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id\n           LEFT JOIN drug ON drug.id = packaging.drug_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
+  "query": "SELECT item.id, item.treatment_id, item.position,\n                  item.kind AS \"kind: TreatmentItemKind\", item.drug_packaging_id,\n                  item.service_id, item.patient_treatment_id, item.name, item.quantity, item.unit,\n                  item.factor, item.got_number, item.price_net, item.vat_percent, item.km,\n                  item.redesignation,\n                  item.km_multiplier, item.created_at,\n                  item.pack_size, item.subset_size, item.subset_price_net, item.freely_divisible,\n                  COALESCE(service.travel_expenses, false) AS \"travel_expenses!\",\n                  COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)\n                      AS \"got_analogous!\",\n                  COALESCE(drug.euthanasia, false) AS \"euthanasia!\"\n           FROM treatment_item item\n           LEFT JOIN service ON service.id = item.service_id\n           LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id\n           LEFT JOIN drug ON drug.id = packaging.drug_id\n           WHERE item.treatment_id = $1 ORDER BY item.position",
   "describe": {
     "columns": [
       {
@@ -213,18 +213,62 @@
       },
       {
         "ordinal": 18,
+        "name": "pack_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "pack_size"
+          }
+        }
+      },
+      {
+        "ordinal": 19,
+        "name": "subset_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "subset_size"
+          }
+        }
+      },
+      {
+        "ordinal": 20,
+        "name": "subset_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "subset_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 21,
+        "name": "freely_divisible",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "freely_divisible"
+          }
+        }
+      },
+      {
+        "ordinal": 22,
         "name": "travel_expenses!",
         "type_info": "Bool",
         "origin": "Expression"
       },
       {
-        "ordinal": 19,
+        "ordinal": 23,
         "name": "got_analogous!",
         "type_info": "Bool",
         "origin": "Expression"
       },
       {
-        "ordinal": 20,
+        "ordinal": 24,
         "name": "euthanasia!",
         "type_info": "Bool",
         "origin": "Expression"
@@ -254,10 +298,14 @@
       false,
       true,
       false,
+      true,
+      true,
+      true,
+      false,
       null,
       null,
       null
     ]
   },
-  "hash": "d117a938f51209bf1c83420f920455620d041352b37021eca019816acc6fa500"
+  "hash": "7b3a9a9633282d9c73523693406d1f476a9bff841788bd17889bf6970aad2aac"
 }

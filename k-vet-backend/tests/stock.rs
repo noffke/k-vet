@@ -196,7 +196,7 @@ async fn remaining_stock_reconciles_after_every_kind_of_movement(pool: PgPool) {
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
 
-    // Dispense 30 ml through a treatment (three 10 ml subsets).
+    // Dispense 30 ml through a treatment.
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
     let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
@@ -205,8 +205,8 @@ async fn remaining_stock_reconciles_after_every_kind_of_movement(pool: PgPool) {
         &format!("/api/treatments/{treatment_id}/items"),
         json!({
             "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "3"
+            "drug_packaging_id": drug.packaging_id,
+            "quantity": "30"
         }),
     )
     .await;
@@ -317,8 +317,8 @@ async fn the_lot_history_links_every_dispense_to_its_treatment_and_customer(pool
         &format!("/api/treatments/{treatment_id}/items"),
         json!({
             "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "1"
+            "drug_packaging_id": drug.packaging_id,
+            "quantity": "10"
         }),
     )
     .await;
@@ -369,8 +369,8 @@ async fn cancelling_an_invoice_appends_a_linked_counter_movement(pool: PgPool) {
         &format!("/api/treatments/{treatment_id}/items"),
         json!({
             "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "2"
+            "drug_packaging_id": drug.packaging_id,
+            "quantity": "20"
         }),
     )
     .await;
@@ -474,8 +474,8 @@ async fn frozen_movements_are_append_only(pool: PgPool) {
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "1"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "10"
             }),
         )
         .await
@@ -497,7 +497,7 @@ async fn frozen_movements_are_append_only(pool: PgPool) {
     assert_eq!(
         app.patch(
             &format!("/api/treatment-items/{item_id}"),
-            json!({ "quantity": "5" })
+            json!({ "quantity": "50" })
         )
         .await
         .status,
@@ -648,26 +648,25 @@ async fn a_dispense_beyond_the_stock_is_marked_and_refused_with_its_reason(pool:
 
     let picker = app.get("/api/picker/items?q=Amoxicillin").await.json();
     assert_eq!(short(&picker, drug.packaging_id), json!(false));
-    assert_eq!(short(&picker, drug.subset_packaging_id), json!(false));
 
     // The whole bottle goes: 100 ml of 100.
     let line = app
         .post(
             &format!("/api/treatments/{treatment_id}/items"),
-            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "1" }),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "100" }),
         )
         .await;
     assert_eq!(line.status, StatusCode::OK);
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 
+    // The drug starts at its 10 ml Teilmenge, which the empty lot cannot give.
     let picker = app.get("/api/picker/items?q=Amoxicillin").await.json();
     assert_eq!(short(&picker, drug.packaging_id), json!(true));
-    assert_eq!(short(&picker, drug.subset_packaging_id), json!(true));
 
     let refused = app
         .post(
             &format!("/api/treatments/{treatment_id}/items"),
-            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id, "quantity": "1" }),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "10" }),
         )
         .await;
     assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -679,7 +678,7 @@ async fn a_dispense_beyond_the_stock_is_marked_and_refused_with_its_reason(pool:
     let raised = app
         .patch(
             &format!("/api/treatment-items/{}", line.json()["id"]),
-            json!({ "quantity": "2" }),
+            json!({ "quantity": "200" }),
         )
         .await;
     assert_eq!(raised.status, StatusCode::UNPROCESSABLE_ENTITY);

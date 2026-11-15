@@ -5,31 +5,37 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { DispenseRule } from './dispenseRule';
 
 /**
  * A pickable catalog entry — a tagged union so the UI can show distinct icons.
  */
 export type PickerItem = {
+  /** The original packaging's id. */
   id: number;
   drug_id: number;
   /** Drug name; the UI composes the display label with locale formatting. */
   name: string;
   /** @nullable */
   unit?: string | null;
-  /** @nullable */
+  /**
+     * Base units in one pack.
+     * @nullable
+     */
   quantity?: string | null;
-  /** Net price, before the Steigerungssatz; `price_gross` is what the line will cost. */
+  /** One pack, net; `price_gross` with VAT. */
   price_net: string;
   price_gross: string;
   vat_percent: string;
-  /** Derived stock over all lots — a shortfall is visible before picking. */
+  /** Derived stock over all lots, in base units — a shortfall is visible before picking. */
   in_stock: string;
   /**
-     * One of this packaging is more than the lots hold together: picking it is refused
-     * (`item.stockShort`). False for a drug with no original packaging, whose dispenses
-     * book nothing.
+     * What the drug starts at (`rule.preset`) is more than the lots hold together: picking
+     * it is refused (`item.stockShort`).
      */
   stock_short: boolean;
+  /** How it can be dispensed: whole packs, the Teilmenge's steps, or any amount. */
+  rule: DispenseRule;
   uses: number;
   kind: 'drug_packaging';
 } | {

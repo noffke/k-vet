@@ -1,0 +1,160 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT rule.original_id, rule.unit, rule.pack_size, rule.pack_price_net,\n                  rule.list_price_net, rule.original_draft, rule.drug_name, rule.vat_percent,\n                  rule.human_drug, rule.freely_divisible, rule.subset_size, rule.subset_price_net\n           FROM drug_packaging picked\n           LEFT JOIN drug_dispense_rule rule ON rule.drug_id = picked.drug_id\n           WHERE picked.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "original_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "original_id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 2,
+        "name": "pack_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "pack_size"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "pack_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "pack_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "list_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "list_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "original_draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "original_draft"
+          }
+        }
+      },
+      {
+        "ordinal": 6,
+        "name": "drug_name",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "drug_name"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
+        "name": "vat_percent",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "vat_percent"
+          }
+        }
+      },
+      {
+        "ordinal": 8,
+        "name": "human_drug",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "human_drug"
+          }
+        }
+      },
+      {
+        "ordinal": 9,
+        "name": "freely_divisible",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "freely_divisible"
+          }
+        }
+      },
+      {
+        "ordinal": 10,
+        "name": "subset_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "subset_size"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "subset_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "subset_price_net"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true,
+      true
+    ]
+  },
+  "hash": "65b65e74878705e7bff1d0f3ee8f2cde004622b49701f969cd3d44cae39f4d5a"
+}

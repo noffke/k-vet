@@ -5,6 +5,8 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { Dispense } from './dispense';
+import type { DispenseRule } from './dispenseRule';
 import type { TreatmentItemKind } from './treatmentItemKind';
 
 export interface QuoteLine {
@@ -19,17 +21,28 @@ export interface QuoteLine {
   vat_percent: string;
   /** The service bills travel expenses: the line takes kilometres. */
   travel_expenses: boolean;
+  /** A drug: base units dispensed (Tbl., ml). */
   quantity: string;
+  /**
+     * A drug: the original pack's base unit.
+     * @nullable
+     */
+  unit?: string | null;
   /** @nullable */
   km?: string | null;
   /** @nullable */
   km_multiplier?: string | null;
-  /** Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`. */
+  /**
+     * Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.
+     * On a drug line, one whole pack.
+     */
   price_net: string;
   /** Gross per unit after the factor, as quoted. */
   price_gross: string;
   line_net: string;
   line_gross: string;
+  dispense?: Dispense | null;
+  today_rule?: DispenseRule | null;
   /**
      * Net per unit before the factor at today's catalogue; absent when the position can no
      * longer be priced.

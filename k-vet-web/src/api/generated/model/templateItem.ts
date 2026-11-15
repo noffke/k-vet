@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { DispenseRule } from './dispenseRule';
 import type { TemplateItemKind } from './templateItemKind';
 
 export interface TemplateItem {
@@ -18,7 +19,9 @@ export interface TemplateItem {
   service_id?: number | null;
   /** Current catalog name — a template stores the reference, not a price. */
   name: string;
+  /** A drug: base units of its original pack (Tbl., ml), as a treatment line counts them. */
   quantity: string;
   /** @nullable */
   unit?: string | null;
+  rule?: DispenseRule | null;
 }

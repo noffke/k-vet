@@ -292,7 +292,7 @@
     },
     "recomputeKm": "Entfernung neu berechnen (Google Maps)",
     "kmRequiredForInvoice": "Ohne Kilometer kann keine Rechnung erstellt werden.",
-    "stockShort": "Bestand reicht nicht für eine Packung"
+    "stockShort": "Nicht genug Bestand"
   },
   "invoices": {
     "accept": "Rechnung freigeben",
@@ -386,6 +386,7 @@
     "expiryShort": "Verfall",
     "flags": {
       "euthanasia": "Euthanasie",
+      "freelyDivisible": "Beliebig teilbar",
       "humanDrug": "Humanpräparat",
       "narcotic": "BTM",
       "redesignation": "Umwidmung",
@@ -394,6 +395,7 @@
       "vaccine": "Impfstoff"
     },
     "flagsLegend": "Kennzeichen",
+    "freelyDivisibleHint": "Z. B. Injektionslösungen: jede Menge abrechenbar, etwa 2,7 ml aus einer 100-ml-Flasche. Ohne diesen Haken geht der Rest nach ganzen Packungen nur in Schritten der kleinsten Teilmenge.",
     "initialStock": "Anfangsbestand",
     "intake": "Wareneingang",
     "intakeResult": "Ergibt {{quantity}} {{unit}} Anfangsbestand.",
@@ -528,7 +530,9 @@
     "patientRequired": "Diese Position braucht ein Tier",
     "perVisit": "Diese Leistung gilt pro Termin, nicht für ein Tier",
     "stockShort": "Der Bestand des Medikaments reicht für diese Menge nicht aus (alle Chargen zusammen). Bitte zuerst den Wareneingang oder eine Inventur erfassen.",
-    "notTravel": "Nur eine Wegegeld-Position hat eine Entfernung"
+    "notTravel": "Nur eine Wegegeld-Position hat eine Entfernung",
+    "subsetStep": "Nur in Schritten der kleinsten Teilmenge",
+    "wholePacksOnly": "Nur ganze Packungen – das Medikament hat keine Teilmenge"
   },
   "packaging": {
     "delete": "Packung löschen",
@@ -693,7 +697,8 @@
     "nothing": "Für diesen Tag ist nichts mitzunehmen.",
     "together": "Zusammen",
     "byVisit": "Nach Termin",
-    "short": "Bestand reicht nicht ({{stock}} da)"
+    "short": "Bestand reicht nicht ({{stock}} da)",
+    "pack": "Packung {{size}}"
   },
   "reminder": {
     "drugUnavailable": "Dieses Medikament ist nicht (mehr) verfügbar.",
@@ -759,5 +764,15 @@
     "undoTitle": "Einbuchung zurücknehmen?",
     "unknown": "Unbekannter Code {{code}}",
     "unknownHint": "Zu einem vorhandenen Medikament hinzufügen, oder ein neues anlegen; „Zurück“ führt von dort hierher zurück."
+  },
+  "dispense": {
+    "anyQuantity": "beliebige Menge",
+    "inSteps": "in Schritten von {{step}}",
+    "wholePacks": "nur ganze Packungen zu {{size}}",
+    "refused": "Diese Menge geht nicht: {{rule}}.",
+    "packsPart": "{{count}} × {{size}} à {{price}}",
+    "restPart": "{{amount}} Teilmenge à {{price}}/{{unit}}",
+    "packPrice": "Preis je Packung (brutto)",
+    "subsetPrice": "Teilmenge je {{unit}} (brutto)"
   }
 }

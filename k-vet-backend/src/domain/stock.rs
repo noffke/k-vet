@@ -188,16 +188,43 @@ where
     }))
 }
 
+/// What a drug line's quantity counts.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Dispensed {
+    /// Base units of the original packaging (Tbl., ml) — every line since migration 0039.
+    BaseUnits(Decimal),
+    /// Packagings of the line's packaging — a line billed before 0039 (`pack_size` NULL).
+    Packagings(Decimal),
+}
+
+impl Dispensed {
+    /// The form a line's quantity is in: its `pack_size` is set for base units.
+    pub fn of_line(quantity: Decimal, pack_size: Option<Decimal>) -> Self {
+        if pack_size.is_some() {
+            Self::BaseUnits(quantity)
+        } else {
+            Self::Packagings(quantity)
+        }
+    }
+
+    /// Base units taken off the shelf, for a packaging of `base_units` each.
+    pub fn base_units(self, target: &StockTarget) -> Decimal {
+        match self {
+            Self::BaseUnits(quantity) => quantity,
+            Self::Packagings(quantity) => quantity * target.base_units,
+        }
+    }
+}
+
 /// Replaces the draft dispenses of a drug line with a fresh FEFO allocation.
 ///
-/// `billed_quantity` counts packagings; the booked amount is converted to base units.
 /// Returns the allocation actually booked, so the API can tell the UI which lots were
 /// used and whether stock was short.
 pub async fn rewrite_draft_dispenses(
     connection: &mut PgConnection,
     treatment_item_id: i64,
     packaging_id: i64,
-    billed_quantity: Decimal,
+    dispensed: Dispensed,
 ) -> AppResult<Vec<LotAllocation>> {
     let Some(target) = stock_target(&mut *connection, packaging_id).await? else {
         tracing::warn!(
@@ -206,7 +233,11 @@ pub async fn rewrite_draft_dispenses(
         );
         return Ok(Vec::new());
     };
-    let needed = billed_quantity * target.base_units;
+    let needed = dispensed.base_units(&target);
+    // What the line holds now goes back on the shelf first: raising 10 ml to the whole 100 ml
+    // bottle must count the 10 ml the line already took. Every caller is inside a transaction,
+    // so a refusal below puts them back.
+    remove_draft_dispenses(&mut *connection, treatment_item_id).await?;
     let lots = lot_availability(&mut *connection, target.packaging_id).await?;
     // Refused rather than booked against lots that cannot supply it. The message points at the
     // intake and the stocktake, because one of them is what the vet has to do next — the numbers

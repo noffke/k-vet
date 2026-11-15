@@ -1,16 +1,16 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT unit FROM drug_packaging WHERE id = $1",
+  "query": "SELECT quantity FROM drug_packaging WHERE id = $1",
   "describe": {
     "columns": [
       {
         "ordinal": 0,
-        "name": "unit",
-        "type_info": "Text",
+        "name": "quantity",
+        "type_info": "Numeric",
         "origin": {
           "Table": {
             "table": "drug_packaging",
-            "name": "unit"
+            "name": "quantity"
           }
         }
       }
@@ -24,5 +24,5 @@
       true
     ]
   },
-  "hash": "1f129c0b772c88637dbb5f62d19b769714d08dee7e1c788bfdb63ca58a7c4a46"
+  "hash": "92ae5bde52d4443d113beff109e49d2bfee1db0fb96b1afb35cbfb27b950614a"
 }

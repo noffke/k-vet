@@ -31,6 +31,11 @@ export interface Drug {
      * of that line's animal to the appointment's day (and archives it), unless one is entered.
      */
   euthanasia: boolean;
+  /**
+     * "Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not
+     * only whole packs and multiples of the smallest Teilmenge. For injection liquids.
+     */
+  freely_divisible: boolean;
   /** @nullable */
   vat_percent?: string | null;
   /** @nullable */

@@ -90,7 +90,7 @@ async fn a_quote_comes_to_what_the_invoice_would(pool: PgPool) {
         Some(customer_id),
         json!([
             { "kind": "service", "id": got, "quantity": "1", "factor": "230" },
-            { "kind": "drug_packaging", "id": drug.subset_packaging_id, "quantity": "2" },
+            { "kind": "drug_packaging", "id": drug.subset_packaging_id, "quantity": "20" },
             { "kind": "service", "id": reduced, "quantity": "1" },
             { "kind": "service", "id": wegegeld, "quantity": "1", "km": "12", "km_multiplier": "2" },
         ]),
@@ -123,7 +123,7 @@ async fn a_quote_comes_to_what_the_invoice_would(pool: PgPool) {
     )
     .await;
     add(json!({
-        "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id, "quantity": "2"
+        "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "20"
     }))
     .await;
     add(json!({ "kind": "service", "service_id": reduced, "quantity": "1" })).await;
@@ -149,6 +149,7 @@ async fn a_quote_comes_to_what_the_invoice_would(pool: PgPool) {
             "line_net",
             "line_gross",
             "factor",
+            "dispense",
         ] {
             assert_eq!(line[field], item[field], "{} {field}", line["name"]);
         }
@@ -168,9 +169,12 @@ async fn a_quote_comes_to_what_the_invoice_would(pool: PgPool) {
     assert_eq!(invoice.status, StatusCode::OK);
     assert_eq!(priced["total_gross"], invoice.json()["total_gross"]);
 
-    // GOT 1 at 2.3×: 23.62 → 54.33 net; subset 2 × 2.50; 18.40 at 7 %; Wegegeld 12 km × 3.50 × 2.
+    // GOT 1 at 2.3×: 23.62 → 54.33 net; 20 ml as two 10 ml Teilmengen at 2.50; 18.40 at 7 %;
+    // Wegegeld 12 km × 3.50 × 2.
     assert_eq!(priced["lines"][0]["line_net"], "54.33");
     assert_eq!(priced["lines"][1]["line_net"], "5.00");
+    assert_eq!(priced["lines"][1]["unit"], "ml");
+    assert_eq!(priced["lines"][1]["today_rule"]["step"], "10.00");
     assert_eq!(priced["lines"][3]["price_net"], "84.00");
     assert_eq!(priced["vat_groups"].as_array().unwrap().len(), 2);
     assert_eq!(priced["total_net"], "161.73");
@@ -464,7 +468,7 @@ async fn a_quote_is_taken_into_a_visit_at_the_prices_quoted(pool: PgPool) {
         Some(customer_id),
         json!([
             { "kind": "service", "id": got, "quantity": "2", "factor": "180" },
-            { "kind": "drug_packaging", "id": drug.subset_packaging_id, "quantity": "1" },
+            { "kind": "drug_packaging", "id": drug.subset_packaging_id, "quantity": "10" },
             { "kind": "service", "id": wegegeld, "quantity": "1", "km": "10", "km_multiplier": "2" },
         ]),
     )

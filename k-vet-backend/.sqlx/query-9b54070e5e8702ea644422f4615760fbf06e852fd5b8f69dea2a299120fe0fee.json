@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT treatment_id, kind AS \"kind: TreatmentItemKind\", drug_packaging_id, quantity,\n                  patient_treatment_id, per_visit, position, km, km_multiplier, service_id,\n                  vat_percent, factor\n           FROM treatment_item WHERE id = $1 FOR UPDATE",
+  "query": "SELECT treatment_id, kind AS \"kind: TreatmentItemKind\", drug_packaging_id, quantity,\n                  patient_treatment_id, per_visit, position, km, km_multiplier, service_id,\n                  vat_percent, factor, price_net, pack_size, subset_size, subset_price_net,\n                  freely_divisible\n           FROM treatment_item WHERE id = $1 FOR UPDATE",
   "describe": {
     "columns": [
       {
@@ -144,6 +144,61 @@
             "name": "factor"
           }
         }
+      },
+      {
+        "ordinal": 12,
+        "name": "price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "pack_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "pack_size"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "subset_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "subset_size"
+          }
+        }
+      },
+      {
+        "ordinal": 15,
+        "name": "subset_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "subset_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 16,
+        "name": "freely_divisible",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "treatment_item",
+            "name": "freely_divisible"
+          }
+        }
       }
     ],
     "parameters": {
@@ -163,8 +218,13 @@
       true,
       true,
       false,
-      true
+      true,
+      false,
+      true,
+      true,
+      true,
+      false
     ]
   },
-  "hash": "07a264bd8bf9d7404b4a9e2b1879837f29e838b2cbf78158ddf2958db69c2fbb"
+  "hash": "9b54070e5e8702ea644422f4615760fbf06e852fd5b8f69dea2a299120fe0fee"
 }

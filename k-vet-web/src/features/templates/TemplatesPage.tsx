@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { toast } from 'sonner'
 import {
   deleteTemplate,
   getGetTemplateQueryKey,
@@ -43,8 +44,10 @@ import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
+import { dispenseRuleText, quantityStep, refusalText } from '@/lib/dispense'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
+import { refusalKey } from '@/lib/refusal'
 import { useGoBack } from '@/lib/trail'
 
 /** The list of reusable line sets. */
@@ -146,7 +149,17 @@ export function TemplateDetailPage() {
   }
 
   const addItem = useCreateTemplateItem({ mutation: { onSuccess: afterItemChange } })
-  const patchItem = usePatchTemplateItem({ mutation: { onSuccess: afterItemChange } })
+  // A quantity off a drug's steps is refused with the steps themselves, and the field reloads.
+  const patchItem = usePatchTemplateItem({
+    mutation: {
+      onSuccess: afterItemChange,
+      onError: (error, variables) => {
+        const line = items.data?.find((item) => item.id === variables.id)
+        toast.error(refusalText(refusalKey(error), line?.rule, line?.unit, t, formatQuantity))
+        void refreshItems()
+      },
+    },
+  })
   const moveItem = useMoveTemplateItem({ mutation: { onSuccess: afterItemChange } })
   const deleteItem = useDeleteTemplateItem({ mutation: { onSuccess: afterItemChange } })
   /** The line a removal is being confirmed for — the bin sits beside the reorder arrows. */
@@ -177,7 +190,8 @@ export function TemplateDetailPage() {
       id: templateId,
       data:
         item.kind === 'drug_packaging'
-          ? { kind: 'drug_packaging', drug_packaging_id: item.id, quantity: '1' }
+          ? // No quantity: the drug starts at what it allows — one unit, else one step.
+            { kind: 'drug_packaging', drug_packaging_id: item.id }
           : { kind: 'service', service_id: item.id, quantity: '1' },
     })
 
@@ -249,17 +263,22 @@ export function TemplateDetailPage() {
                 <Stethoscope className="size-4 shrink-0 text-ink-soft" aria-hidden />
               )}
               <span className="min-w-0 flex-1 truncate text-sm text-ink">{item.name}</span>
-              <span className="w-24">
+              <span className="w-36">
                 <NumberInput
                   label={t('field.quantity')}
                   value={item.quantity}
+                  unit={item.unit ?? undefined}
+                  step={item.rule ? quantityStep(item.rule) : undefined}
+                  min={item.rule ? quantityStep(item.rule) : undefined}
+                  hint={
+                    item.rule
+                      ? dispenseRuleText(item.rule, item.unit, t, formatQuantity)
+                      : undefined
+                  }
                   onChange={(value) =>
                     value && patchItem.mutate({ id: item.id, data: { quantity: value } })
                   }
                 />
-              </span>
-              <span className="numeric text-xs text-ink-faint">
-                {item.unit ? formatQuantity(item.quantity) : ''} {item.unit ?? ''}
               </span>
               <span className="flex gap-1">
                 <Button

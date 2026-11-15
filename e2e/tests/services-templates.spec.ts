@@ -154,11 +154,11 @@ test.describe('services and templates', () => {
     await page.getByLabel('Name').fill(templateName)
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
-    // Two lines: a GOT position and a drug subset, in that order.
+    // Two lines: a GOT position and a drug, in that order.
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill('Beratung im')
     await page.getByRole('option').first().click()
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
     // Reordering moves the drug up. The navigation is a list too, so scope to the lines.
     const lines = page.locator('section li')
@@ -177,9 +177,12 @@ test.describe('services and templates', () => {
     await page.getByRole('option', { name: new RegExp(templateName) }).first().click()
 
     await expect(page.getByLabel('Name').first()).toHaveValue(new RegExp(drugName))
-    // The 10 ml subset of a 100 ml bottle bought for 10.00 net: § 4 basis 1.00, +100 % = 2.00
-    // net — pinned at apply time. The customer pays 2,38 € once VAT is added.
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('2,38')
+    // The group's 10 ml are the drug's 10 ml Teilmenge of a 100 ml bottle listed at 10.00 net:
+    // § 4 basis 1.00, +100 % = 2.00 net — pinned at apply time, 2,38 € with VAT. The bottle
+    // itself is pinned too, at 17,61 €.
+    await expect(page.getByText(/10 ml Teilmenge à 0,238/)).toBeVisible()
+    await expect(page.getByLabel('Preis je Packung (brutto)').first()).toHaveValue('17,61')
+    await expect(page.getByLabel('Teilmenge je ml (brutto)').first()).toHaveValue('0,238')
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
 
@@ -198,7 +201,7 @@ test.describe('services and templates', () => {
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill('Beratung im')
     await page.getByRole('option').first().click()
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
     // One position the vet entered herself — the undo must not touch it. Named explicitly:
     // this picker lists the Behandlungsgruppen above the positions, so the first option is
@@ -239,10 +242,10 @@ test.describe('treatment lines', () => {
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
     // The price before and after must be identical: an Umwidmung documents, it does not price.
-    const price = page.getByLabel('Preis (brutto)').first()
+    const price = page.getByLabel('Preis je Packung (brutto)').first()
     const before = await price.inputValue()
 
     const umwidmung = page.getByLabel('Umwidmung')
@@ -350,7 +353,7 @@ test.describe('treatment lines', () => {
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
     // Scoped to the position: the treatment's patient list carries a "Löschen" of its own.
     const positionRow = page

@@ -2397,7 +2397,7 @@
         "tags": [
           "appointments"
         ],
-        "summary": "What to pack for a day: every drug the day's appointments are to get, added up per\npackaging and checked against the shelf, and the same items appointment by appointment.\nReminders already taken into a position are not on it.",
+        "summary": "What to pack for a day: every drug the day's appointments are to get, added up in base units\nand checked against the shelf, and the same items appointment by appointment.\nReminders already taken into a position are not on it.",
         "operationId": "getPackingList",
         "parameters": [
           {
@@ -6073,7 +6073,7 @@
               "string",
               "null"
             ],
-            "description": "Packagings; one when left out."
+            "description": "Base units; left out, what the drug starts at (`DispenseRule::preset`)."
           }
         }
       },
@@ -6112,7 +6112,11 @@
             "format": "int64"
           },
           "quantity": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A drug: base units; left out, what the drug starts at (`DispenseRule::preset`). A\nservice: one when left out."
           }
         }
       },
@@ -6150,7 +6154,11 @@
             "description": "The animal the line belongs to; absent, the treatment's only animal when it has exactly\none. Drug dispensing and treatment are attributed to a single animal, so every line\nneeds one — except a line of a service marked \"pro Termin\" (`per_visit`: house-call fee,\nWegegeld), which belongs to the whole visit and ignores this field."
           },
           "quantity": {
-            "type": "string"
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A drug: base units dispensed; left out, what the drug starts at (`DispenseRule::preset`).\nA service: one when left out."
           },
           "km": {
             "type": [
@@ -6545,6 +6553,97 @@
           }
         }
       },
+      "Dispense": {
+        "type": "object",
+        "description": "A drug line in dispensed base units, split as the invoice prints it.",
+        "required": [
+          "rule"
+        ],
+        "properties": {
+          "rule": {
+            "$ref": "#/components/schemas/DispenseRule",
+            "description": "As pinned on the line."
+          },
+          "packs": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DispensePart",
+                "description": "Whole packs at the pack price; absent below one pack."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "remainder": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DispensePart",
+                "description": "The rest as a Teilmenge, priced per base unit; absent for whole packs."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          }
+        }
+      },
+      "DispensePart": {
+        "type": "object",
+        "description": "One printed row of a drug line: the whole packs, or the Teilmenge.",
+        "required": [
+          "quantity",
+          "price_gross",
+          "line_net",
+          "line_gross"
+        ],
+        "properties": {
+          "quantity": {
+            "type": "string",
+            "description": "Packs on the pack row, base units on the Teilmenge row."
+          },
+          "price_gross": {
+            "type": "string",
+            "description": "Gross per pack, or per base unit (to four decimals)."
+          },
+          "line_net": {
+            "type": "string"
+          },
+          "line_gross": {
+            "type": "string"
+          }
+        }
+      },
+      "DispenseRule": {
+        "type": "object",
+        "description": "How a drug can be dispensed — what a quantity field shows beside itself.",
+        "required": [
+          "pack_size",
+          "freely_divisible",
+          "preset"
+        ],
+        "properties": {
+          "pack_size": {
+            "type": "string",
+            "description": "Base units in one original pack: 10 (Tbl.), 100 (ml)."
+          },
+          "step": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only."
+          },
+          "freely_divisible": {
+            "type": "boolean",
+            "description": "\"Beliebig teilbar\": any rest, to two decimals."
+          },
+          "preset": {
+            "type": "string",
+            "description": "What a newly picked drug starts at: one unit where it can, else one step, else one pack."
+          }
+        }
+      },
       "DocType": {
         "type": "string",
         "enum": [
@@ -6562,6 +6661,7 @@
           "redesignation",
           "human_drug",
           "euthanasia",
+          "freely_divisible",
           "archived",
           "draft",
           "missing_fields",
@@ -6617,6 +6717,10 @@
           "euthanasia": {
             "type": "boolean",
             "description": "A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line's animal to the appointment's day (and archives it), unless one is entered."
+          },
+          "freely_divisible": {
+            "type": "boolean",
+            "description": "\"Beliebig teilbar\": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids."
           },
           "vat_percent": {
             "type": [
@@ -7733,11 +7837,12 @@
             "type": [
               "string",
               "null"
-            ]
+            ],
+            "description": "The original pack's size in its unit."
           },
           "quantity": {
             "type": "string",
-            "description": "Packagings, summed over the day's appointments."
+            "description": "Base units, summed over the day's appointments."
           },
           "in_stock": {
             "type": "string",
@@ -7745,7 +7850,7 @@
           },
           "short": {
             "type": "boolean",
-            "description": "The day needs more of the drug than its lots hold — counted over all of the drug's\npackagings, since they draw from the same lots."
+            "description": "The day needs more of the drug than its lots hold."
           }
         }
       },
@@ -8087,6 +8192,12 @@
             ]
           },
           "euthanasia": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "freely_divisible": {
             "type": [
               "boolean",
               "null"
@@ -8555,6 +8666,13 @@
             ],
             "description": "The unit price as the customer sees it: gross, after the factor — what `price_gross`\nreports. Stored as the net that comes closest (`money::net_for_gross`), so a gross no\nnet in whole cents can give comes back a cent lower. Refused on a GOT position, whose\nprice is the fee schedule's."
           },
+          "subset_price_gross": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A drug line: the gross price of one base unit of its rest (the Teilmenge row). Stored as\nthe net of its Teilmenge that comes closest, so the steps stay what they were."
+          },
           "name": {
             "type": [
               "string",
@@ -8956,6 +9074,7 @@
         "oneOf": [
           {
             "type": "object",
+            "description": "A drug, always as its original packaging: the line counts what is dispensed from it, in\nits base unit, and bills whole packs and the rest as a Teilmenge (migration 0039).",
             "required": [
               "id",
               "drug_id",
@@ -8965,13 +9084,15 @@
               "vat_percent",
               "in_stock",
               "stock_short",
+              "rule",
               "uses",
               "kind"
             ],
             "properties": {
               "id": {
                 "type": "integer",
-                "format": "int64"
+                "format": "int64",
+                "description": "The original packaging's id."
               },
               "drug_id": {
                 "type": "integer",
@@ -8991,11 +9112,12 @@
                 "type": [
                   "string",
                   "null"
-                ]
+                ],
+                "description": "Base units in one pack."
               },
               "price_net": {
                 "type": "string",
-                "description": "Net price, before the Steigerungssatz; `price_gross` is what the line will cost."
+                "description": "One pack, net; `price_gross` with VAT."
               },
               "price_gross": {
                 "type": "string"
@@ -9005,11 +9127,15 @@
               },
               "in_stock": {
                 "type": "string",
-                "description": "Derived stock over all lots — a shortfall is visible before picking."
+                "description": "Derived stock over all lots, in base units — a shortfall is visible before picking."
               },
               "stock_short": {
                 "type": "boolean",
-                "description": "One of this packaging is more than the lots hold together: picking it is refused\n(`item.stockShort`). False for a drug with no original packaging, whose dispenses\nbook nothing."
+                "description": "What the drug starts at (`rule.preset`) is more than the lots hold together: picking\nit is refused (`item.stockShort`)."
+              },
+              "rule": {
+                "$ref": "#/components/schemas/DispenseRule",
+                "description": "How it can be dispensed: whole packs, the Teilmenge's steps, or any amount."
               },
               "uses": {
                 "type": "integer",
@@ -9495,7 +9621,15 @@
             "description": "The service bills travel expenses: the line takes kilometres."
           },
           "quantity": {
-            "type": "string"
+            "type": "string",
+            "description": "A drug: base units dispensed (Tbl., ml)."
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "A drug: the original pack's base unit."
           },
           "km": {
             "type": [
@@ -9511,7 +9645,7 @@
           },
           "price_net": {
             "type": "string",
-            "description": "Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`."
+            "description": "Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.\nOn a drug line, one whole pack."
           },
           "price_gross": {
             "type": "string",
@@ -9522,6 +9656,28 @@
           },
           "line_gross": {
             "type": "string"
+          },
+          "dispense": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Dispense",
+                "description": "A drug: whole packs and the rest as quoted, and the rule it was quoted by."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
+          "today_rule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DispenseRule",
+                "description": "A drug: how it can be dispensed today — what the quantity field goes by."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "today_price_net": {
             "type": [
@@ -9566,7 +9722,8 @@
             "description": "The drug packaging's or the service's id, as the picker gives it."
           },
           "quantity": {
-            "type": "string"
+            "type": "string",
+            "description": "A drug: base units dispensed (Tbl., ml), as a treatment line counts them."
           },
           "factor": {
             "type": [
@@ -9751,11 +9908,22 @@
               "string",
               "null"
             ],
-            "description": "One packaging's size in its unit — `10` (ml)."
+            "description": "The original pack's size in its unit — `100` (ml)."
           },
           "quantity": {
             "type": "string",
-            "description": "Packagings, as a line counts them."
+            "description": "Base units of the original pack (Tbl., ml), as a line counts them."
+          },
+          "rule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DispenseRule",
+                "description": "How the drug can be dispensed today — what the quantity field goes by."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "note": {
             "type": [
@@ -10194,12 +10362,24 @@
             "description": "Current catalog name — a template stores the reference, not a price."
           },
           "quantity": {
-            "type": "string"
+            "type": "string",
+            "description": "A drug: base units of its original pack (Tbl., ml), as a treatment line counts them."
           },
           "unit": {
             "type": [
               "string",
               "null"
+            ]
+          },
+          "rule": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/DispenseRule",
+                "description": "A drug: how it can be dispensed today — what the quantity field goes by."
+              },
+              {
+                "type": "null"
+              }
             ]
           }
         }
@@ -10485,7 +10665,8 @@
             "description": "Copied from the catalog; the vet may override it per line."
           },
           "quantity": {
-            "type": "string"
+            "type": "string",
+            "description": "A drug line: what was dispensed, in the original pack's base unit (`unit`) — or, for a\nline billed before migration 0039 (`dispense` absent), how many of its packaging."
           },
           "unit": {
             "type": [
@@ -10512,7 +10693,7 @@
           },
           "price_net": {
             "type": "string",
-            "description": "Per-unit **net** price, pinned at line entry — before the factor."
+            "description": "Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one\nwhole pack."
           },
           "unit_net": {
             "type": "string",
@@ -10552,11 +10733,22 @@
           },
           "line_net": {
             "type": "string",
-            "description": "`price_net × quantity × factor/100`, rounded to cents — **net**."
+            "description": "`price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of\nits rows in `dispense`."
           },
           "line_gross": {
             "type": "string",
             "description": "`line_net` plus VAT: what the customer pays for this line."
+          },
+          "dispense": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/Dispense",
+                "description": "A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two\nrows the invoice prints — and the rule it was entered by. Absent for a service, and for a\nline billed before migration 0039, whose quantity counts packagings."
+              },
+              {
+                "type": "null"
+              }
+            ]
           },
           "lots": {
             "type": "array",

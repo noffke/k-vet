@@ -19,9 +19,10 @@ use crate::AppState;
 use crate::api::appointments::{self, Appointment};
 use crate::api::attachments;
 use crate::api::common::PriceMode;
+use crate::api::dispense;
 use crate::api::travel_distance::{self, KmSource};
-use crate::api::treatment_items::{self, Attribution, CatalogLine, TreatmentItem};
-use crate::config::TravelExpenseConfig;
+use crate::api::treatment_items::{self, Attribution, CatalogLine, PinnedDispense, TreatmentItem};
+use crate::config::Config;
 use crate::domain::enums::{InvoiceStatus, TreatmentItemKind};
 use crate::domain::money;
 use crate::domain::rich_text::RichText;
@@ -556,7 +557,7 @@ pub async fn apply_template(
             id,
             item.kind,
             reference_id,
-            item.quantity,
+            Some(item.quantity),
             body.patient_treatment_id
                 .map_or(Attribution::Default, Attribution::Record),
             // The kilometres go on the Wegegeld line only: a line stores what it is given.
@@ -564,7 +565,7 @@ pub async fn apply_template(
             None,
             false,
             None,
-            &state.config.travel_expenses,
+            &state.config,
         )
         .await?;
     }
@@ -590,7 +591,7 @@ pub async fn copy_treatment(
     target_appointment_id: i64,
     customer_id: Option<i64>,
     price_mode: PriceMode,
-    travel: &TravelExpenseConfig,
+    config: &Config,
 ) -> AppResult<i64> {
     let exists: Option<bool> = sqlx::query_scalar!(
         "SELECT EXISTS (SELECT 1 FROM treatment WHERE id = $1)",
@@ -636,7 +637,8 @@ pub async fn copy_treatment(
                   item.service_id, record.patient_id AS "patient_id?",
                   item.name, item.quantity, item.unit, item.factor, item.got_number,
                   item.price_net, item.vat_percent, item.km, item.km_multiplier,
-                  item.redesignation, item.per_visit
+                  item.redesignation, item.per_visit, item.pack_size, item.subset_size,
+                  item.subset_price_net, item.freely_divisible
            FROM treatment_item item
            LEFT JOIN patient_treatment record ON record.id = item.patient_treatment_id
            WHERE item.treatment_id = $1 ORDER BY item.position"#,
@@ -652,18 +654,42 @@ pub async fn copy_treatment(
         }
         .ok_or_else(|| AppError::Internal("treatment item without reference".to_owned()))?;
 
-        let pinned = match price_mode {
-            PriceMode::Verbatim => Some(CatalogLine {
-                name: item.name,
-                price_net: item.price_net,
-                vat_percent: item.vat_percent,
-                unit: item.unit,
-                factor: item.factor,
-                got_number: item.got_number,
-                travel_expenses: item.km.is_some(),
-                per_visit: item.per_visit,
-            }),
-            PriceMode::Refresh => None,
+        // A line billed before migration 0039 counts packagings: copied verbatim it stays so, and
+        // refreshed from the catalogue it becomes what it dispensed, in base units.
+        let pricing = dispense::pinned(
+            item.pack_size,
+            item.price_net,
+            item.subset_size,
+            item.subset_price_net,
+            item.freely_divisible,
+        );
+        let (pinned, quantity) = match price_mode {
+            PriceMode::Verbatim => (
+                Some(CatalogLine {
+                    name: item.name,
+                    price_net: item.price_net,
+                    vat_percent: item.vat_percent,
+                    unit: item.unit,
+                    factor: item.factor,
+                    got_number: item.got_number,
+                    travel_expenses: item.km.is_some(),
+                    per_visit: item.per_visit,
+                    dispense: pricing.map(|pricing| PinnedDispense {
+                        original_id: reference_id,
+                        pricing,
+                    }),
+                }),
+                item.quantity,
+            ),
+            PriceMode::Refresh => (
+                None,
+                match (item.kind, pricing) {
+                    (TreatmentItemKind::DrugPackaging, None) => {
+                        item.quantity * packaging_size(transaction, reference_id).await?
+                    }
+                    _ => item.quantity,
+                },
+            ),
         };
 
         treatment_items::insert_pinned_item(
@@ -671,7 +697,7 @@ pub async fn copy_treatment(
             new_id,
             item.kind,
             reference_id,
-            item.quantity,
+            Some(quantity),
             // The visit's line stays the visit's in the copy, also one from before its service
             // decided (0024): with one animal, "unsaid" would file it under that animal.
             item.patient_id
@@ -681,11 +707,28 @@ pub async fn copy_treatment(
             item.km_multiplier,
             item.redesignation,
             pinned,
-            travel,
+            config,
         )
         .await?;
     }
     Ok(new_id)
+}
+
+/// Base units in one of a packaging — what a quantity counting packagings is multiplied by.
+async fn packaging_size(
+    transaction: &mut Transaction<'_, Postgres>,
+    packaging_id: i64,
+) -> AppResult<Decimal> {
+    let size = sqlx::query_scalar!(
+        "SELECT quantity FROM drug_packaging WHERE id = $1",
+        packaging_id
+    )
+    .fetch_optional(&mut **transaction)
+    .await?
+    .flatten();
+    Ok(size
+        .filter(|size| *size > Decimal::ZERO)
+        .unwrap_or(Decimal::ONE))
 }
 
 /// Loads a treatment with its patients, live invoice and total.
@@ -737,12 +780,7 @@ pub async fn load(connection: &mut PgConnection, id: i64) -> AppResult<Treatment
     });
 
     let items = treatment_items::load_items(&mut *connection, id).await?;
-    let groups = money::vat_summary(
-        &items
-            .iter()
-            .map(|item| (item.line_net, item.vat_percent))
-            .collect::<Vec<_>>(),
-    );
+    let groups = money::vat_summary(&treatment_items::billing_rows(&items));
 
     // Read, no longer guessed: it used to be `patients.first()` after ordering by name, which
     // silently picked an owner when a treatment held more than one.

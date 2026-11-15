@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT kind AS \"kind: TreatmentItemKind\", drug_packaging_id, service_id, quantity,\n                  factor, km, km_multiplier, name, price_net, vat_percent\n           FROM price_quote_line WHERE quote_id = $1 ORDER BY position",
+  "query": "SELECT kind AS \"kind: TreatmentItemKind\", drug_packaging_id, service_id, quantity,\n                  factor, km, km_multiplier, name, price_net, vat_percent, unit, pack_size,\n                  subset_size, subset_price_net, freely_divisible\n           FROM price_quote_line WHERE quote_id = $1 ORDER BY position",
   "describe": {
     "columns": [
       {
@@ -122,6 +122,61 @@
             "name": "vat_percent"
           }
         }
+      },
+      {
+        "ordinal": 10,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 11,
+        "name": "pack_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "pack_size"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "subset_size",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "subset_size"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "subset_price_net",
+        "type_info": "Numeric",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "subset_price_net"
+          }
+        }
+      },
+      {
+        "ordinal": 14,
+        "name": "freely_divisible",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "price_quote_line",
+            "name": "freely_divisible"
+          }
+        }
       }
     ],
     "parameters": {
@@ -139,8 +194,13 @@
       true,
       false,
       false,
+      false,
+      true,
+      true,
+      true,
+      true,
       false
     ]
   },
-  "hash": "6fc73a5265c40bb3d5e741a4a95827c2edbfde7c0ddf71851cb4d93102f5b53e"
+  "hash": "d170be34b23707bf2bb8809e85b026c37bce4cf2970abcfbb4af1bc0f9397811"
 }

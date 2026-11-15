@@ -8,7 +8,7 @@ use std::time::Instant;
 
 use axum::http::StatusCode;
 use common::TestApp;
-use serde_json::Value;
+use serde_json::{Value, json};
 use sqlx::PgPool;
 
 fn kinds(items: &Value) -> Vec<String> {
@@ -87,20 +87,20 @@ async fn returns_drugs_and_services_as_a_tagged_union(pool: PgPool) {
         "a shortfall is visible before picking"
     );
     assert_eq!(drug_item["price_net"], "12.50");
-
-    let subset_item = items
-        .as_array()
-        .and_then(|items| {
-            items.iter().find(|item| {
-                item["kind"] == "drug_packaging" && item["id"] == drug.subset_packaging_id
-            })
-        })
-        .expect("the subset packaging is pickable too");
-    assert_eq!(subset_item["quantity"], "10.00");
-    assert_eq!(subset_item["price_net"], "2.50");
+    // It is dispensed in steps of its 10 ml Teilmenge, and starts at one of them.
     assert_eq!(
-        subset_item["in_stock"], "100.00",
-        "stock is reported per drug, in base units"
+        drug_item["rule"],
+        json!({ "pack_size": "100.00", "step": "10.00", "freely_divisible": false,
+                "preset": "10.00" })
+    );
+    assert_eq!(drug_item["stock_short"], false);
+
+    // The Teilmenge is not offered: the vet picks the drug and enters what was dispensed.
+    assert!(
+        !items.as_array().into_iter().flatten().any(|item| {
+            item["kind"] == "drug_packaging" && item["id"] == drug.subset_packaging_id
+        }),
+        "only the original pack is pickable: {items:?}"
     );
 
     let service_item = items
@@ -120,14 +120,14 @@ async fn searches_by_name_and_got_number(pool: PgPool) {
     common::seed_drug(&pool).await;
     common::seed_got_service(&pool).await;
 
-    // The drug has an original and a subset packaging; both are pickable.
+    // The drug has an original and a subset packaging; the drug is offered once, as its pack.
     let by_name = app.get("/api/picker/items?q=Amoxi").await.json();
-    assert_eq!(kinds(&by_name), vec!["drug_packaging", "drug_packaging"]);
+    assert_eq!(kinds(&by_name), vec!["drug_packaging"]);
 
     let by_typo = app.get("/api/picker/items?q=Amoxicilin").await.json();
     assert_eq!(
         kinds(&by_typo),
-        vec!["drug_packaging", "drug_packaging"],
+        vec!["drug_packaging"],
         "trigram search forgives typos"
     );
 

@@ -13,5 +13,10 @@ export interface CreateTemplateItem {
   drug_packaging_id?: number | null;
   /** @nullable */
   service_id?: number | null;
-  quantity?: string;
+  /**
+     * A drug: base units; left out, what the drug starts at (`DispenseRule::preset`). A
+     * service: one when left out.
+     * @nullable
+     */
+  quantity?: string | null;
 }

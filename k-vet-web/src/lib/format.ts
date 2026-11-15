@@ -67,6 +67,24 @@ export function formatMoney(
 }
 
 /**
+ * A price per unit that may need more than the currency's minor units — a millilitre of a
+ * Teilmenge at 0,238 € — with up to four decimals, never fewer than the minor units.
+ */
+export function formatUnitPrice(
+  value: string | number | null | undefined,
+  locale: Locale,
+  currency = 'EUR',
+): string {
+  const minor = currencyDecimals(locale, currency)
+  return formatNumber(value, locale, {
+    style: 'currency',
+    currency,
+    minimumFractionDigits: minor,
+    maximumFractionDigits: Math.max(minor, 4),
+  })
+}
+
+/**
  * The currency's own symbol ("€"), for labelling an input that holds a bare amount.
  * Taken from the same formatter as `formatMoney`, so both follow the currency in step.
  */

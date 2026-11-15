@@ -274,14 +274,14 @@ async fn drug_lines_dispense_fefo_and_split_across_lots(pool: PgPool) {
     )
     .await;
 
-    // Three 10 ml subsets take 30 ml off the shelf.
+    // 30 ml dispensed take 30 ml off the shelf.
     let item = app
         .post(
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "3"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "30"
             }),
         )
         .await
@@ -317,8 +317,8 @@ async fn changing_the_quantity_recalculates_the_draft_dispense(pool: PgPool) {
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "1"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "10"
             }),
         )
         .await
@@ -328,7 +328,7 @@ async fn changing_the_quantity_recalculates_the_draft_dispense(pool: PgPool) {
     let item_id = item["id"].as_i64().unwrap_or_default();
     app.patch(
         &format!("/api/treatment-items/{item_id}"),
-        json!({ "quantity": "3" }),
+        json!({ "quantity": "30" }),
     )
     .await;
     assert_eq!(
@@ -354,14 +354,14 @@ async fn a_dispense_the_stock_cannot_cover_is_refused(pool: PgPool) {
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("10"), None).await;
 
-    // Three 10 ml subsets off a lot holding 10 ml.
+    // 30 ml off a lot holding 10 ml.
     let refused = app
         .post(
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "3"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "30"
             }),
         )
         .await;
@@ -383,8 +383,8 @@ async fn a_dispense_the_stock_cannot_cover_is_refused(pool: PgPool) {
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "1"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "10"
             }),
         )
         .await;
@@ -419,8 +419,8 @@ async fn the_lot_selection_can_be_overridden(pool: PgPool) {
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "1"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "10"
             }),
         )
         .await
@@ -465,7 +465,7 @@ async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool
     let drug_line = app
         .post(
             &format!("/api/treatments/{treatment_id}/items"),
-            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "1" }),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "10" }),
         )
         .await
         .json();
@@ -792,7 +792,7 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
     let without_patient = app
         .post(
             &format!("/api/treatments/{treatment_id}/items"),
-            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "1" }),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "10" }),
         )
         .await;
     assert_eq!(without_patient.status, StatusCode::UNPROCESSABLE_ENTITY);
@@ -803,7 +803,7 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
             json!({
                 "kind": "drug_packaging",
                 "drug_packaging_id": drug.packaging_id,
-                "quantity": "1",
+                "quantity": "10",
                 "patient_treatment_id": seconds_record
             }),
         )
@@ -1168,8 +1168,8 @@ async fn deleting_a_line_removes_its_draft_dispense_and_closes_the_gap(pool: PgP
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "1"
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "10"
             }),
         )
         .await
@@ -1207,8 +1207,8 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
-    // The template's drug line is five of the 100 ml original, so the lot has to hold 500 —
-    // a line the stock cannot cover is refused now (FR-018) and this test is about ordering.
+    // The template's drug line is five 100 ml bottles, so the lot has to hold 500 — a line the
+    // stock cannot cover is refused now (FR-018) and this test is about ordering.
     common::seed_lot(&pool, drug.packaging_id, 5, dec("500"), None).await;
 
     let template_id: i64 = sqlx::query_scalar(
@@ -1229,7 +1229,7 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
     sqlx::query(
         "INSERT INTO treatment_template_item
              (template_id, position, kind, drug_packaging_id, quantity, unit)
-         VALUES ($1, 2, 'drug_packaging', $2, 5, 'ml')",
+         VALUES ($1, 2, 'drug_packaging', $2, 500, 'ml')",
     )
     .bind(template_id)
     .bind(drug.packaging_id)
@@ -1261,7 +1261,7 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
     assert_eq!(items[0]["service_id"], service_id, "template order is kept");
     assert_eq!(items[0]["price_net"], "30.00", "current price is copied");
     assert_eq!(items[1]["drug_packaging_id"], drug.packaging_id);
-    assert_eq!(items[1]["quantity"], "5.00");
+    assert_eq!(items[1]["quantity"], "500.00");
     assert_eq!(
         items[1]["lots"].as_array().map(Vec::len),
         Some(1),
@@ -1548,8 +1548,8 @@ async fn a_drug_line_can_be_redesignated_but_a_service_line_cannot(pool: PgPool)
             &format!("/api/treatments/{treatment_id}/items"),
             json!({
                 "kind": "drug_packaging",
-                "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "1",
+                "drug_packaging_id": drug.packaging_id,
+                "quantity": "10",
                 "patient_id": patient_id,
                 "redesignation": true,
             }),
@@ -1637,8 +1637,8 @@ async fn two_animals(app: &TestApp, pool: &PgPool) -> TwoAnimals {
     let minka_line = add_line(
         app,
         treatment_id,
-        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "3", "patient_treatment_id": minka_record }),
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+                "quantity": "30", "patient_treatment_id": minka_record }),
     )
     .await
     .json()["id"]

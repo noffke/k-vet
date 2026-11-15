@@ -9,6 +9,7 @@ import {
   formatPercent,
   formatQuantity,
   formatTime,
+  formatUnitPrice,
   type Locale,
   parseDate,
   parseNumber,
@@ -41,6 +42,9 @@ export function useLocaleFormat() {
       formatNumber(value, locale, options),
     quantity: (value: string | number | null | undefined) => formatQuantity(value, locale),
     money: (value: string | number | null | undefined) => formatMoney(value, locale, currency),
+    /** A price per tablet or ml, to up to four decimals. */
+    unitPrice: (value: string | number | null | undefined) =>
+      formatUnitPrice(value, locale, currency),
     percent: (value: string | number | null | undefined) => formatPercent(value, locale),
     date: (value: string | null | undefined) => formatDate(value, locale),
     dateTime: (value: string | null | undefined) => formatDateTime(value, locale),

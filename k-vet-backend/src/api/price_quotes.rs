@@ -24,11 +24,12 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::double_option;
+use crate::api::dispense::{self, Dispense, DispenseRule};
 use crate::api::travel_distance::{self, KmSuggestion};
-use crate::api::treatment_items::{self, Attribution, TreatmentItem};
-use crate::config::TravelExpenseConfig;
+use crate::api::treatment_items::{self, Attribution, PinnedDispense, TreatmentItem};
+use crate::config::Config;
 use crate::domain::enums::TreatmentItemKind;
-use crate::domain::money;
+use crate::domain::money::{self, DispensePricing};
 use crate::domain::stock;
 use crate::error::{AppError, AppResult};
 
@@ -49,6 +50,7 @@ pub struct QuoteLineInput {
     pub kind: TreatmentItemKind,
     /// The drug packaging's or the service's id, as the picker gives it.
     pub id: i64,
+    /// A drug: base units dispensed (Tbl., ml), as a treatment line counts them.
     pub quantity: Decimal,
     /// Services: the factor in percent (100 = single rate); absent, the catalogue's. Drug lines
     /// have none.
@@ -72,22 +74,26 @@ struct PricedLine {
     km: Option<Decimal>,
     km_multiplier: Option<Decimal>,
     price_net: Decimal,
+    unit: Option<String>,
+    /// A drug: how its quantity is priced.
+    dispense: Option<DispensePricing>,
 }
 
 /// Prices one position as a line added to a treatment today would be (`insert_pinned_item`).
 async fn price_line(
     connection: &mut PgConnection,
-    travel: &TravelExpenseConfig,
+    config: &Config,
     input: &QuoteLineInput,
 ) -> AppResult<PricedLine> {
-    let catalog = treatment_items::catalog_line(connection, input.kind, input.id).await?;
+    let catalog =
+        treatment_items::catalog_line(connection, input.kind, input.id, &config.pharmacy).await?;
     let (km, km_multiplier) = if catalog.travel_expenses {
         (input.km, input.km_multiplier)
     } else {
         (None, None)
     };
     let price_net = match km {
-        Some(km) => travel_distance::travel_price(travel, km, km_multiplier),
+        Some(km) => travel_distance::travel_price(&config.travel_expenses, km, km_multiplier),
         None => catalog.price_net,
     };
     let factor = match input.kind {
@@ -103,7 +109,10 @@ async fn price_line(
     };
     Ok(PricedLine {
         kind: input.kind,
-        id: input.id,
+        // A drug is its original packaging, whichever of its packagings was named.
+        id: catalog
+            .dispense
+            .map_or(input.id, |dispense| dispense.original_id),
         name: catalog.name,
         got_number: catalog.got_number,
         factor,
@@ -113,7 +122,51 @@ async fn price_line(
         km,
         km_multiplier,
         price_net,
+        unit: catalog.unit,
+        dispense: catalog.dispense.map(|dispense| dispense.pricing),
     })
+}
+
+/// A line's amounts: one row, or a drug's pack and Teilmenge rows.
+struct Amounts {
+    price_gross: Decimal,
+    line_net: Decimal,
+    line_gross: Decimal,
+    /// `(net, vat_percent)` per printed row, for the VAT summary.
+    rows: Vec<(Decimal, Decimal)>,
+    dispense: Option<Dispense>,
+}
+
+fn amounts(
+    price_net: Decimal,
+    quantity: Decimal,
+    factor: Option<Decimal>,
+    vat_percent: Decimal,
+    pricing: Option<&DispensePricing>,
+) -> Amounts {
+    let unit = money::line_amounts(price_net, Decimal::ONE, factor, vat_percent);
+    match pricing {
+        Some(pricing) => {
+            let rows = money::dispense_rows(pricing, quantity, vat_percent);
+            Amounts {
+                price_gross: unit.price_gross,
+                line_net: rows.line_net(),
+                line_gross: rows.line_gross(),
+                rows: rows.rows().map(|row| (row.line_net, vat_percent)).collect(),
+                dispense: Some(Dispense::new(pricing, &rows)),
+            }
+        }
+        None => {
+            let line = money::line_amounts(price_net, quantity, factor, vat_percent);
+            Amounts {
+                price_gross: line.price_gross,
+                line_net: line.line_net,
+                line_gross: line.line_gross,
+                rows: vec![(line.line_net, vat_percent)],
+                dispense: None,
+            }
+        }
+    }
 }
 
 /// The ranges a treatment line holds too: a positive quantity and factor, kilometres not below
@@ -148,12 +201,17 @@ fn validate(lines: &[QuoteLineInput]) -> AppResult<()> {
 
 /// Names the line a catalogue refusal is about: `drug_packaging_id` becomes `lines.3.id`.
 fn at_line(index: usize, error: AppError) -> AppError {
+    at_line_field(index, "id", error)
+}
+
+/// Names the line and field a refusal is about: `lines.3.quantity`.
+fn at_line_field(index: usize, field: &str, error: AppError) -> AppError {
     match error {
         AppError::Validation(errors) => AppError::Validation(
             errors
                 .into_iter()
                 .map(|mut error| {
-                    error.field = format!("lines.{index}.id");
+                    error.field = format!("lines.{index}.{field}");
                     error
                 })
                 .collect(),
@@ -209,15 +267,23 @@ pub struct QuoteLine {
     pub vat_percent: Decimal,
     /// The service bills travel expenses: the line takes kilometres.
     pub travel_expenses: bool,
+    /// A drug: base units dispensed (Tbl., ml).
     pub quantity: Decimal,
+    /// A drug: the original pack's base unit.
+    pub unit: Option<String>,
     pub km: Option<Decimal>,
     pub km_multiplier: Option<Decimal>,
     /// Net per unit before the factor, as quoted — the catalogue price, or the Wegegeld for `km`.
+    /// On a drug line, one whole pack.
     pub price_net: Decimal,
     /// Gross per unit after the factor, as quoted.
     pub price_gross: Decimal,
     pub line_net: Decimal,
     pub line_gross: Decimal,
+    /// A drug: whole packs and the rest as quoted, and the rule it was quoted by.
+    pub dispense: Option<Dispense>,
+    /// A drug: how it can be dispensed today — what the quantity field goes by.
+    pub today_rule: Option<DispenseRule>,
     /// Net per unit before the factor at today's catalogue; absent when the position can no
     /// longer be priced.
     pub today_price_net: Option<Decimal>,
@@ -290,11 +356,7 @@ impl From<Quote> for QuoteSummary {
 }
 
 /// A quote with its lines as quoted and as priced today.
-async fn load_quote(
-    connection: &mut PgConnection,
-    travel: &TravelExpenseConfig,
-    id: i64,
-) -> AppResult<Quote> {
+async fn load_quote(connection: &mut PgConnection, config: &Config, id: i64) -> AppResult<Quote> {
     let quote = sqlx::query!(
         r#"SELECT quote.id, quote.customer_id,
                   NULLIF(concat_ws(' ', customer.first_name, customer.last_name), '') AS customer_name,
@@ -310,7 +372,8 @@ async fn load_quote(
 
     let stored = sqlx::query!(
         r#"SELECT kind AS "kind: TreatmentItemKind", drug_packaging_id, service_id, quantity,
-                  factor, km, km_multiplier, name, price_net, vat_percent
+                  factor, km, km_multiplier, name, price_net, vat_percent, unit, pack_size,
+                  subset_size, subset_price_net, freely_divisible
            FROM price_quote_line WHERE quote_id = $1 ORDER BY position"#,
         id,
     )
@@ -318,7 +381,8 @@ async fn load_quote(
     .await?;
 
     let mut lines = Vec::with_capacity(stored.len());
-    let mut today_nets = Vec::with_capacity(stored.len());
+    let mut quoted_rows = Vec::with_capacity(stored.len());
+    let mut today_rows = Vec::with_capacity(stored.len());
     for line in stored {
         let reference = line
             .drug_packaging_id
@@ -333,24 +397,38 @@ async fn load_quote(
             km_multiplier: line.km_multiplier,
         };
         // A position that can no longer be priced is a change too, not a failure of the quote.
-        let today = match price_line(connection, travel, &input).await {
+        let today = match price_line(connection, config, &input).await {
             Ok(today) => Some(today),
             Err(AppError::Validation(_)) => None,
             Err(error) => return Err(error),
         };
-        let quoted =
-            money::line_amounts(line.price_net, line.quantity, line.factor, line.vat_percent);
+        let pricing = dispense::pinned(
+            line.pack_size,
+            line.price_net,
+            line.subset_size,
+            line.subset_price_net,
+            line.freely_divisible,
+        );
+        let quoted = amounts(
+            line.price_net,
+            line.quantity,
+            line.factor,
+            line.vat_percent,
+            pricing.as_ref(),
+        );
         let today_amounts = today.as_ref().map(|today| {
-            money::line_amounts(
+            amounts(
                 today.price_net,
                 line.quantity,
                 today.factor,
                 today.vat_percent,
+                today.dispense.as_ref(),
             )
         });
-        today_nets.push(match (&today, &today_amounts) {
-            (Some(today), Some(amounts)) => (amounts.line_net, today.vat_percent),
-            _ => (quoted.line_net, line.vat_percent),
+        quoted_rows.extend(quoted.rows.iter().copied());
+        today_rows.extend(match &today_amounts {
+            Some(amounts) => amounts.rows.iter().copied(),
+            None => quoted.rows.iter().copied(),
         });
         lines.push(QuoteLine {
             kind: line.kind,
@@ -361,28 +439,32 @@ async fn load_quote(
             vat_percent: line.vat_percent,
             travel_expenses: today.as_ref().is_some_and(|today| today.travel_expenses),
             quantity: line.quantity,
+            unit: line.unit,
             km: line.km,
             km_multiplier: line.km_multiplier,
             price_net: line.price_net,
             price_gross: quoted.price_gross,
             line_net: quoted.line_net,
             line_gross: quoted.line_gross,
+            dispense: quoted.dispense,
+            today_rule: today
+                .as_ref()
+                .and_then(|today| today.dispense.as_ref())
+                .map(DispenseRule::from),
             today_price_net: today.as_ref().map(|today| today.price_net),
             today_vat_percent: today.as_ref().map(|today| today.vat_percent),
-            today_line_gross: today_amounts.map(|amounts| amounts.line_gross),
+            today_line_gross: today_amounts.as_ref().map(|amounts| amounts.line_gross),
+            // A Teilmenge price or a pack size that moved is a change too.
             price_changed: today.as_ref().is_none_or(|today| {
-                today.price_net != line.price_net || today.vat_percent != line.vat_percent
+                today.price_net != line.price_net
+                    || today.vat_percent != line.vat_percent
+                    || today.dispense != pricing
             }),
         });
     }
 
-    let groups = money::vat_summary(
-        &lines
-            .iter()
-            .map(|line| (line.line_net, line.vat_percent))
-            .collect::<Vec<_>>(),
-    );
-    let today_groups = money::vat_summary(&today_nets);
+    let groups = money::vat_summary(&quoted_rows);
+    let today_groups = money::vat_summary(&today_rows);
     let removed_on = quote.draft.then(|| {
         (quote.updated_at.with_timezone(&Local) + TimeDelta::days(DRAFT_QUOTE_MAX_AGE_DAYS))
             .date_naive()
@@ -461,7 +543,7 @@ pub async fn create_quote(
     )
     .fetch_one(&mut *connection)
     .await?;
-    load_quote(&mut connection, &state.config.travel_expenses, id)
+    load_quote(&mut connection, &state.config, id)
         .await
         .map(Json)
 }
@@ -479,7 +561,7 @@ pub async fn get_quote(
     Path(id): Path<i64>,
 ) -> AppResult<Json<Quote>> {
     let mut connection = state.pool.acquire().await?;
-    load_quote(&mut connection, &state.config.travel_expenses, id)
+    load_quote(&mut connection, &state.config, id)
         .await
         .map(Json)
 }
@@ -580,11 +662,15 @@ pub async fn patch_quote(
     if let Some(lines) = &body.lines {
         let mut priced = Vec::with_capacity(lines.len());
         for (index, input) in lines.iter().enumerate() {
-            priced.push(
-                price_line(&mut transaction, &state.config.travel_expenses, input)
-                    .await
-                    .map_err(|error| at_line(index, error))?,
-            );
+            let line = price_line(&mut transaction, &state.config, input)
+                .await
+                .map_err(|error| at_line(index, error))?;
+            // A quantity typed for a drug has to fit its steps, as on a treatment line.
+            if let Some(pricing) = &line.dispense {
+                dispense::check(pricing, line.quantity)
+                    .map_err(|error| at_line_field(index, "quantity", error))?;
+            }
+            priced.push(line);
         }
         sqlx::query!("DELETE FROM price_quote_line WHERE quote_id = $1", id)
             .execute(&mut *transaction)
@@ -594,11 +680,14 @@ pub async fn patch_quote(
                 TreatmentItemKind::DrugPackaging => (Some(line.id), None),
                 TreatmentItemKind::Service => (None, Some(line.id)),
             };
+            let subset = line.dispense.and_then(|pricing| pricing.subset);
             sqlx::query!(
                 "INSERT INTO price_quote_line
                      (quote_id, position, kind, drug_packaging_id, service_id, quantity, factor,
-                      km, km_multiplier, name, price_net, vat_percent)
-                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)",
+                      km, km_multiplier, name, price_net, vat_percent, unit, pack_size,
+                      subset_size, subset_price_net, freely_divisible)
+                 VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16,
+                         $17)",
                 id,
                 position,
                 line.kind as TreatmentItemKind,
@@ -611,6 +700,12 @@ pub async fn patch_quote(
                 line.name,
                 line.price_net,
                 line.vat_percent,
+                line.unit,
+                line.dispense.map(|pricing| pricing.pack_size),
+                subset.map(|subset| subset.size),
+                subset.map(|subset| subset.price_net),
+                line.dispense
+                    .is_some_and(|pricing| pricing.freely_divisible),
             )
             .execute(&mut *transaction)
             .await?;
@@ -619,7 +714,7 @@ pub async fn patch_quote(
 
     transaction.commit().await?;
     let mut connection = state.pool.acquire().await?;
-    load_quote(&mut connection, &state.config.travel_expenses, id)
+    load_quote(&mut connection, &state.config, id)
         .await
         .map(Json)
 }
@@ -651,11 +746,7 @@ async fn summaries(state: &AppState, ids: Vec<i64>) -> AppResult<Vec<QuoteSummar
     let mut connection = state.pool.acquire().await?;
     let mut rows = Vec::with_capacity(ids.len());
     for id in ids {
-        rows.push(
-            load_quote(&mut connection, &state.config.travel_expenses, id)
-                .await?
-                .into(),
-        );
+        rows.push(load_quote(&mut connection, &state.config, id).await?.into());
     }
     Ok(rows)
 }
@@ -763,7 +854,8 @@ pub async fn apply_quote(
 
     let lines = sqlx::query!(
         r#"SELECT kind AS "kind: TreatmentItemKind", drug_packaging_id, service_id, quantity,
-                  factor, km, km_multiplier, name, price_net, vat_percent
+                  factor, km, km_multiplier, name, price_net, vat_percent, pack_size,
+                  subset_size, subset_price_net, freely_divisible
            FROM price_quote_line WHERE quote_id = $1 ORDER BY position"#,
         body.quote_id,
     )
@@ -776,8 +868,13 @@ pub async fn apply_quote(
             .drug_packaging_id
             .or(line.service_id)
             .ok_or_else(|| AppError::Internal("quote line without reference".to_owned()))?;
-        let mut catalog =
-            treatment_items::catalog_line(&mut transaction, line.kind, reference).await?;
+        let mut catalog = treatment_items::catalog_line(
+            &mut transaction,
+            line.kind,
+            reference,
+            &state.config.pharmacy,
+        )
+        .await?;
         if line.kind == TreatmentItemKind::Service {
             catalog.factor = line.factor.or(catalog.factor);
         }
@@ -786,6 +883,22 @@ pub async fn apply_quote(
             catalog.name = line.name;
             catalog.price_net = line.price_net;
             catalog.vat_percent = line.vat_percent;
+            // The pack and Teilmenge prices as quoted, too.
+            if let (Some(today), Some(pricing)) = (
+                catalog.dispense,
+                dispense::pinned(
+                    line.pack_size,
+                    line.price_net,
+                    line.subset_size,
+                    line.subset_price_net,
+                    line.freely_divisible,
+                ),
+            ) {
+                catalog.dispense = Some(PinnedDispense {
+                    original_id: today.original_id,
+                    pricing,
+                });
+            }
             // The quoted price wins: a Wegegeld line is not priced again from its kilometres at
             // today's rates. Its kilometres are kept, and editing them later re-prices it.
             catalog.travel_expenses = false;
@@ -795,14 +908,14 @@ pub async fn apply_quote(
             id,
             line.kind,
             reference,
-            line.quantity,
+            Some(line.quantity),
             body.patient_treatment_id
                 .map_or(Attribution::Default, Attribution::Record),
             line.km,
             line.km_multiplier,
             false,
             Some(catalog),
-            &state.config.travel_expenses,
+            &state.config,
         )
         .await?;
     }

@@ -55,6 +55,9 @@ pub struct Drug {
     /// A euthanasia preparation: releasing an invoice with it on a line sets the date of death
     /// of that line's animal to the appointment's day (and archives it), unless one is entered.
     pub euthanasia: bool,
+    /// "Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not
+    /// only whole packs and multiples of the smallest Teilmenge. For injection liquids.
+    pub freely_divisible: bool,
     pub vat_percent: Option<Decimal>,
     pub approval_number: Option<String>,
     pub archived: bool,
@@ -114,6 +117,7 @@ pub struct PatchDrug {
     pub redesignation: Option<bool>,
     pub human_drug: Option<bool>,
     pub euthanasia: Option<bool>,
+    pub freely_divisible: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -268,7 +272,8 @@ pub async fn patch(
                redesignation      = COALESCE($14, redesignation),
                human_drug         = COALESCE($15, human_drug),
                draft              = $16,
-               euthanasia         = COALESCE($17, euthanasia)
+               euthanasia         = COALESCE($17, euthanasia),
+               freely_divisible   = COALESCE($18, freely_divisible)
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -287,6 +292,7 @@ pub async fn patch(
         body.human_drug,
         draft,
         body.euthanasia,
+        body.freely_divisible,
     )
     .execute(&mut *transaction)
     .await?;
@@ -605,7 +611,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
     let row = sqlx::query!(
         r#"SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,
                   drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,
-                  drug.human_drug, drug.euthanasia,
+                  drug.human_drug, drug.euthanasia, drug.freely_divisible,
                   drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
@@ -647,6 +653,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         redesignation: row.redesignation,
         human_drug: row.human_drug,
         euthanasia: row.euthanasia,
+        freely_divisible: row.freely_divisible,
         vat_percent: row.vat_percent,
         approval_number: row.approval_number,
         archived: row.archived,

@@ -67,7 +67,7 @@ test.describe('pharmacy', () => {
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     await request.post(`/api/treatments/${treatmentId}/items`, {
-      data: { kind: 'drug_packaging', drug_packaging_id: drug.subsetPackagingId, quantity: '1' },
+      data: { kind: 'drug_packaging', drug_packaging_id: drug.subsetPackagingId, quantity: '10' },
     })
     await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
 
@@ -316,10 +316,10 @@ test.describe('pharmacy', () => {
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
 
-    // Three 10 ml subsets = 30 ml: 20 from CH-A, 10 from CH-B.
+    // 30 ml: 20 from CH-A, 10 from CH-B.
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
-    await page.getByLabel('Menge').first().fill('3')
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page.getByLabel('Menge').first().fill('30')
     await expect(page.getByText(/CH-A/).first()).toBeVisible()
     await expect(page.getByText(/CH-B/).first()).toBeVisible()
 
@@ -359,7 +359,7 @@ test.describe('pharmacy', () => {
     await signIn(page)
     await page.goto(`/treatments/${treatmentId}`)
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
-    const short = 'Bestand reicht nicht für eine Packung'
+    const short = 'Nicht genug Bestand'
 
     await picker.fill(drugName)
     const bottle = page.getByRole('option', { name: /· 100 ml/ }).first()
@@ -367,22 +367,27 @@ test.describe('pharmacy', () => {
     await expect(bottle.getByLabel(short)).toHaveCount(0)
     await bottle.click()
     await expect(page.getByText(`„${drugName}“ hinzugefügt`)).toBeVisible()
+    // It starts at the 10 ml Teilmenge; the whole bottle goes.
+    const quantity = page.getByLabel('Menge').first()
+    await expect(quantity).toHaveValue('10')
+    await quantity.fill('100')
+    await quantity.blur()
+    await expect(page.getByText(/1 × 100 ml à 17,61/)).toBeVisible()
 
     // The shelf is empty now: said before picking, and the pick is refused with the reason.
     await picker.fill(drugName)
-    const subset = page.getByRole('option', { name: /· 10 ml/ }).first()
-    await expect(subset.getByLabel(short)).toBeVisible()
-    await subset.click()
+    const again = page.getByRole('option', { name: /· 100 ml/ }).first()
+    await expect(again.getByLabel(short)).toBeVisible()
+    await again.click()
     await expect(page.getByText(refusal)).toBeVisible()
     await expect(page.getByLabel('Name')).toHaveCount(1)
 
-    // Raising the bottle's quantity is refused alike, and the field shows what was kept.
+    // Raising the line's quantity is refused alike, and the field shows what was kept.
     await expect(page.getByText(refusal)).toHaveCount(0, { timeout: 10_000 })
-    const quantity = page.getByLabel('Menge').first()
-    await quantity.fill('2')
+    await quantity.fill('110')
     await quantity.blur()
     await expect(page.getByText(refusal)).toBeVisible()
-    await expect(quantity).toHaveValue('1')
+    await expect(quantity).toHaveValue('100')
   })
 
   test('a lot history links each dispense to patient, customer and invoice', async ({
@@ -404,7 +409,7 @@ test.describe('pharmacy', () => {
       data: {
         kind: 'drug_packaging',
         drug_packaging_id: subsetPackagingId,
-        quantity: '1',
+        quantity: '10',
       },
     })
     const invoice = await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })

@@ -154,12 +154,16 @@ export function PackingListPage() {
 function TotalRow({ total }: { total: PackingTotal }) {
   const { t } = useTranslation()
   const { quantity } = useLocaleFormat()
+  // Counted in the pack's unit, as a line counts it: "170 ml Amoxicillin · Packung 100 ml".
   const size = total.size ? `${quantity(total.size)} ${total.unit ?? ''}`.trim() : ''
   return (
     <li className="flex flex-wrap items-baseline justify-between gap-x-3 gap-y-0.5 px-3 py-2">
       <span className="text-ink">
-        <span className="numeric font-semibold">{quantity(total.quantity)} ×</span> {total.name}
-        {size ? <span className="text-ink-soft"> · {size}</span> : null}
+        <span className="numeric font-semibold">
+          {`${quantity(total.quantity)} ${total.unit ?? ''}`.trim()}
+        </span>{' '}
+        {total.name}
+        {size ? <span className="text-ink-soft"> · {t('packing.pack', { size })}</span> : null}
       </span>
       {total.short ? (
         <span className="flex items-center gap-1 text-xs font-semibold text-danger">
@@ -185,7 +189,6 @@ function PackRow({
   // Ticked at once, saved behind it; the server's answer (or a refusal) puts it right.
   const [packed, setPacked] = useState(reminder.packed)
   useEffect(() => setPacked(reminder.packed), [reminder.packed])
-  const size = reminder.size ? `${format(reminder.size)} ${reminder.unit ?? ''}`.trim() : ''
   return (
     <li>
       <label
@@ -204,9 +207,10 @@ function PackRow({
           }}
         />
         <span>
-          <span className="numeric font-semibold">{format(reminder.quantity)} ×</span>{' '}
+          <span className="numeric font-semibold">
+            {`${format(reminder.quantity)} ${reminder.unit ?? ''}`.trim()}
+          </span>{' '}
           {reminder.name}
-          {size ? ` · ${size}` : ''}
           {reminder.note ? <span className="text-ink-soft"> — {reminder.note}</span> : null}
         </span>
       </label>

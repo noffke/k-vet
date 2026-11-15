@@ -27,7 +27,12 @@ export interface CreateTreatmentItem {
      * @nullable
      */
   patient_treatment_id?: number | null;
-  quantity?: string;
+  /**
+     * A drug: base units dispensed; left out, what the drug starts at (`DispenseRule::preset`).
+     * A service: one when left out.
+     * @nullable
+     */
+  quantity?: string | null;
   /**
      * Travel-expense lines: kilometres driven (one way).
      * @nullable

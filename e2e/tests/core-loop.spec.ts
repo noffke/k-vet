@@ -56,14 +56,14 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   // ── Two lines from the picker: a stocked drug and a service ──────────────────
   const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
   await picker.fill(drugName)
-  await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+  await page.getByRole('option', { name: /· 100 ml/ }).first().click()
   await picker.fill(serviceName)
   await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
 
   const lines = page.getByLabel('Name')
   await expect(lines).toHaveCount(2)
-  // Net 2,00 € for the 10 ml subset (AMPreisV § 4) plus 23,62 € for the service = 25,62 €,
-  // plus 19 % VAT = 4,87 €.
+  // The drug is offered as its 100 ml bottle and starts at its 10 ml Teilmenge: net 2,00 € (AMPreisV
+  // § 4) plus 23,62 € for the service = 25,62 €, plus 19 % VAT = 4,87 €.
   await expect(page.getByText('30,49 €').first()).toBeVisible()
 
   // ── Invoice with the finding printed ────────────────────────────────────────

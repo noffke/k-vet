@@ -11,6 +11,7 @@ export interface QuoteLineInput {
   kind: TreatmentItemKind;
   /** The drug packaging's or the service's id, as the picker gives it. */
   id: number;
+  /** A drug: base units dispensed (Tbl., ml), as a treatment line counts them. */
   quantity: string;
   /**
      * Services: the factor in percent (100 = single rate); absent, the catalogue's. Drug lines

@@ -35,6 +35,7 @@ import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
 import { ApplyQuote } from '@/features/quote/ApplyQuoteDialog'
 import { useOperatorConfig } from '@/lib/config'
+import { dispenseBreakdown, dispenseRuleText, refusalText } from '@/lib/dispense'
 import { useLocaleFormat } from '@/lib/locale'
 import { refusalKey } from '@/lib/refusal'
 import { cn } from '@/lib/utils'
@@ -76,7 +77,7 @@ export function PositionGroup({
   showPicker = true,
 }: PositionGroupProps) {
   const { t } = useTranslation()
-  const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
+  const { money, unitPrice, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
   const { maps_enabled: mapsEnabled } = useOperatorConfig()
   const client = useQueryClient()
 
@@ -103,7 +104,19 @@ export function PositionGroup({
   const mutation = { onSuccess: invalidate, onError: refused }
 
   const addItem = useCreateTreatmentItem({ mutation })
-  const patchItem = usePatchTreatmentItem({ mutation })
+  // A quantity off a drug's steps is refused with the steps themselves: "in Schritten von 10 ml".
+  const patchItem = usePatchTreatmentItem({
+    mutation: {
+      onSuccess: invalidate,
+      onError: (error, variables) => {
+        const line = items.find((item) => item.id === variables.id)
+        toast.error(
+          refusalText(refusalKey(error), line?.dispense?.rule, line?.unit, t, formatQuantity),
+        )
+        void invalidate()
+      },
+    },
+  })
   const moveItem = useMoveTreatmentItem({ mutation })
   const deleteItem = useDeleteTreatmentItem({ mutation })
   const recomputeKm = useRecomputeTreatmentItemKm({ mutation })
@@ -163,12 +176,8 @@ export function PositionGroup({
         id: treatment.id,
         data:
           item.kind === 'drug_packaging'
-            ? {
-                kind: 'drug_packaging',
-                drug_packaging_id: item.id,
-                quantity: '1',
-                patient_treatment_id,
-              }
+            ? // No quantity: the drug starts at what it allows — one unit, else one step.
+              { kind: 'drug_packaging', drug_packaging_id: item.id, patient_treatment_id }
             : { kind: 'service', service_id: item.id, quantity: '1', patient_treatment_id },
       },
       {
@@ -287,6 +296,16 @@ export function PositionGroup({
                     : ''}
                   {percent(item.vat_percent)} {t('field.vat')}
                 </p>
+                {/* What the invoice prints for the quantity: whole packs and a Teilmenge. */}
+                {item.dispense ? (
+                  <p className="numeric text-xs text-ink-soft">
+                    {dispenseBreakdown(item.dispense, item.unit, t, {
+                      quantity: formatQuantity,
+                      money,
+                      unitPrice,
+                    })}
+                  </p>
+                ) : null}
               </div>
               <span className="numeric shrink-0 font-semibold text-ink">
                 {money(item.line_gross)}
@@ -297,6 +316,12 @@ export function PositionGroup({
               <NumberInput
                 label={t('field.quantity')}
                 value={item.quantity}
+                unit={item.dispense ? (item.unit ?? undefined) : undefined}
+                hint={
+                  item.dispense
+                    ? dispenseRuleText(item.dispense.rule, item.unit, t, formatQuantity)
+                    : undefined
+                }
                 disabled={readOnly}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { quantity: value } })
@@ -409,7 +434,7 @@ export function PositionGroup({
                   comes closest, so a cent rounding moved shows here once the field is left. */}
               {gotPosition(item) ? null : (
                 <NumberInput
-                  label={t('field.priceGross')}
+                  label={item.dispense ? t('dispense.packPrice') : t('field.priceGross')}
                   value={item.price_gross}
                   unit={currencySymbol}
                   money
@@ -420,6 +445,20 @@ export function PositionGroup({
                   }
                 />
               )}
+              {/* The rest's price per unit, when there is a rest: stored for the Teilmenge, so
+                  the steps stay what they are. */}
+              {item.dispense?.remainder ? (
+                <NumberInput
+                  label={t('dispense.subsetPrice', { unit: item.unit ?? '' })}
+                  value={item.dispense.remainder.price_gross}
+                  unit={currencySymbol}
+                  decimals={4}
+                  disabled={readOnly}
+                  onChange={(value) =>
+                    value && patchItem.mutate({ id: item.id, data: { subset_price_gross: value } })
+                  }
+                />
+              ) : null}
             </div>
 
             {item.kind === 'drug_packaging' ? (

@@ -26,6 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
+import { dispenseRuleText, quantityStep, refusalText } from '@/lib/dispense'
 import { useLocaleFormat } from '@/lib/locale'
 import { refusalKey } from '@/lib/refusal'
 import { scheduleOf } from '@/lib/schedule'
@@ -81,11 +82,9 @@ export function RemindersCard({ appointmentId, treatmentId, startsAt }: Reminder
           drugsOnly
           placeholder={t('reminders.pickerPlaceholder')}
           disabled={create.isPending}
+          // No quantity: the drug starts at what it allows — one unit, else one step.
           onPick={(item) =>
-            create.mutate({
-              id: appointmentId,
-              data: { drug_packaging_id: item.id, quantity: '1' },
-            })
+            create.mutate({ id: appointmentId, data: { drug_packaging_id: item.id } })
           }
         />
       </div>
@@ -204,8 +203,25 @@ function ReminderRow({
             <NumberInput
               label={t('field.quantity')}
               value={reminder.quantity}
-              step={1}
-              min={1}
+              unit={reminder.unit ?? undefined}
+              step={reminder.rule ? quantityStep(reminder.rule) : 1}
+              min={reminder.rule ? quantityStep(reminder.rule) : 1}
+              hint={
+                reminder.rule
+                  ? dispenseRuleText(reminder.rule, reminder.unit, t, quantity)
+                  : undefined
+              }
+              error={
+                autoSave.fieldErrors.quantity
+                  ? refusalText(
+                      autoSave.fieldErrors.quantity,
+                      reminder.rule,
+                      reminder.unit,
+                      t,
+                      quantity,
+                    )
+                  : undefined
+              }
               onChange={(value) => {
                 if (value) {
                   autoSave.set({ quantity: value })

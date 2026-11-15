@@ -38,7 +38,7 @@ use crate::error::{AppError, AppResult};
 use crate::mail::{InvoiceMail, MailFailure, OutgoingInvoice, TemplateProblem, greeting};
 use crate::pdf::{
     self, CustomerAddress, InvoiceBlock, InvoiceDocument, InvoiceLine, PatientGroup, PracticeBlock,
-    date_de, money_de, number_de, percent_de,
+    date_de, money_de, number_de, percent_de, unit_price_de,
 };
 
 /// Retries when a rendered number collides with a historical one (pattern flip-flop).
@@ -978,37 +978,24 @@ async fn build_document(
     })
     .collect();
 
-    let groups = money::vat_summary(
-        &items
-            .iter()
-            .map(|item| (item.line_net, item.vat_percent))
-            .collect::<Vec<_>>(),
-    );
+    // One entry per printed row: a dispensed drug line prints its whole packs and its rest as two.
+    let groups = money::vat_summary(&treatment_items::billing_rows(&items));
 
-    let lines: Vec<InvoiceLine> = items
+    // Each printed row with the animal it is for: a line can print as two rows.
+    let rows: Vec<(Option<i64>, InvoiceLine)> = items
         .iter()
-        .map(|item| InvoiceLine {
-            position: item.position,
-            name: item.name.clone(),
+        .flat_map(|item| {
             // Only worth printing when the invoice covers more than one animal.
-            patient: if patients.len() > 1 {
+            let patient = if patients.len() > 1 {
                 item.patient_treatment_id
                     .and_then(|id| patient_names.get(&id).cloned())
                     .unwrap_or_default()
             } else {
                 String::new()
-            },
-            quantity: number_de(item.quantity),
-            unit: item.unit.clone().unwrap_or_default(),
-            factor: item.factor.map(percent_de).unwrap_or_default(),
-            got_number: item.got_number.clone().unwrap_or_default(),
-            km: item.km.map(number_de).unwrap_or_default(),
-            vat: percent_de(item.vat_percent),
-            detail: line_detail(item, &packagings),
-            price: money_de(item.price_gross, &currency),
-            // Exact by construction: VAT is rounded per line, so `net + vat` needs no further
-            // rounding and the column sums to the VAT group's gross (`money::vat_summary`).
-            total: money_de(item.line_gross, &currency),
+            };
+            invoice_rows(item, &packagings, patient, &currency)
+                .into_iter()
+                .map(|row| (item.patient_treatment_id, row))
         })
         .collect();
 
@@ -1124,14 +1111,8 @@ async fn build_document(
                     })
                 })
                 .collect(),
-            patient_groups: group_by_patient(
-                &lines,
-                &items,
-                &patient_names,
-                &descriptions,
-                &treatment_date,
-            ),
-            items: lines,
+            patient_groups: group_by_patient(&rows, &patient_names, &descriptions, &treatment_date),
+            items: rows.into_iter().map(|(_, row)| row).collect(),
             vat_groups: pdf::vat_groups_de(&groups, &currency),
             total: money_de(total, &currency),
             note: invoice.note.unwrap_or_default(),
@@ -1198,6 +1179,87 @@ fn patient_description(
 }
 
 /// The grey second line under a billing position.
+/// The rows one line prints: one, or a dispensed drug's whole packs and its rest as a Teilmenge,
+/// each with its own unit price and total (requirements/prices.md).
+fn invoice_rows(
+    item: &treatment_items::TreatmentItem,
+    packagings: &[PackagingDetail],
+    patient: String,
+    currency: &str,
+) -> Vec<InvoiceLine> {
+    let row = |quantity: Decimal, unit: String, detail: String, price: String, total: Decimal| {
+        InvoiceLine {
+            position: item.position,
+            name: item.name.clone(),
+            patient: patient.clone(),
+            quantity: number_de(quantity),
+            unit,
+            factor: item.factor.map(percent_de).unwrap_or_default(),
+            got_number: item.got_number.clone().unwrap_or_default(),
+            km: item.km.map(number_de).unwrap_or_default(),
+            vat: percent_de(item.vat_percent),
+            detail,
+            price,
+            // Exact by construction: VAT is rounded per row, so `net + vat` needs no further
+            // rounding and the column sums to the VAT group's gross (`money::vat_summary`).
+            total: money_de(total, currency),
+        }
+    };
+    let Some(dispense) = &item.dispense else {
+        return vec![row(
+            item.quantity,
+            item.unit.clone().unwrap_or_default(),
+            line_detail(item, packagings),
+            money_de(item.price_gross, currency),
+            item.line_gross,
+        )];
+    };
+    let unit = item.unit.clone().unwrap_or_default();
+    let mut rows = Vec::with_capacity(2);
+    if let Some(packs) = &dispense.packs {
+        let label = if packs.quantity == Decimal::ONE {
+            "Originalpackung"
+        } else {
+            "Originalpackungen"
+        };
+        let mut detail = format!(
+            "{} {label} à {} {unit}",
+            number_de(packs.quantity),
+            number_de(dispense.rule.pack_size)
+        );
+        if let Some(approval) = item
+            .drug_packaging_id
+            .and_then(|id| packagings.iter().find(|row| row.id == id))
+            .and_then(|packaging| packaging.approval_number.as_deref())
+            .map(str::trim)
+            .filter(|approval| !approval.is_empty())
+        {
+            detail.push_str(&format!(", Zulassungsnr: {approval}"));
+        }
+        rows.push(row(
+            packs.quantity,
+            label.to_owned(),
+            detail.trim_end().to_owned(),
+            money_de(packs.price_gross, currency),
+            packs.line_gross,
+        ));
+    }
+    if let Some(rest) = &dispense.remainder {
+        rows.push(row(
+            rest.quantity,
+            unit.clone(),
+            format!(
+                "Teilmenge {} {unit}, mit Anbruchaufschlag",
+                number_de(rest.quantity)
+            )
+            .replace(" ,", ","),
+            unit_price_de(rest.price_gross, currency),
+            rest.line_gross,
+        ));
+    }
+    rows
+}
+
 fn line_detail(item: &treatment_items::TreatmentItem, packagings: &[PackagingDetail]) -> String {
     // A GOT position always prints its number; a self-defined position that names one is only
     // charged *analogously* to it (§ 8 GOT), and the customer-facing document says which.
@@ -1273,15 +1335,14 @@ fn treatment_heading(
 /// animal (a service the vet left unattributed) collect into a trailing group with an empty
 /// name, which the template prints without a `Tier:` heading.
 fn group_by_patient(
-    lines: &[InvoiceLine],
-    items: &[treatment_items::TreatmentItem],
+    rows: &[(Option<i64>, InvoiceLine)],
     names: &std::collections::HashMap<i64, String>,
     descriptions: &std::collections::HashMap<i64, String>,
     service_date: &str,
 ) -> Vec<PatientGroup> {
     let mut groups: Vec<(Option<i64>, PatientGroup)> = Vec::new();
-    for (line, item) in lines.iter().zip(items.iter()) {
-        let key = item.patient_treatment_id;
+    for (key, line) in rows {
+        let key = *key;
         if let Some((_, group)) = groups.iter_mut().find(|(existing, _)| *existing == key) {
             group.items.push(line.clone());
             continue;
@@ -1726,6 +1787,139 @@ mod tests {
         assert!(
             !heading.contains("Chipnummer"),
             "the chip belongs on the position table only"
+        );
+    }
+
+    fn dispensed_line() -> treatment_items::TreatmentItem {
+        use crate::api::dispense::{Dispense, DispensePart, DispenseRule};
+        let dec = |value: &str| Decimal::from_str_exact(value).unwrap_or_default();
+        treatment_items::TreatmentItem {
+            id: 1,
+            treatment_id: 1,
+            position: 1,
+            kind: crate::domain::enums::TreatmentItemKind::DrugPackaging,
+            drug_packaging_id: Some(7),
+            service_id: None,
+            patient_treatment_id: Some(1),
+            name: "Amoxicillin 100".to_owned(),
+            quantity: dec("150"),
+            unit: Some("ml".to_owned()),
+            factor: None,
+            got_number: None,
+            got_analogous: false,
+            price_net: dec("12.50"),
+            unit_net: dec("12.50"),
+            price_gross: dec("14.88"),
+            vat_percent: dec("19"),
+            km: None,
+            km_multiplier: None,
+            travel_expenses: false,
+            redesignation: false,
+            euthanasia: false,
+            line_net: dec("25.00"),
+            line_gross: dec("29.76"),
+            dispense: Some(Dispense {
+                rule: DispenseRule {
+                    pack_size: dec("100"),
+                    step: Some(dec("10")),
+                    freely_divisible: false,
+                    preset: dec("10"),
+                },
+                packs: Some(DispensePart {
+                    quantity: dec("1"),
+                    price_gross: dec("14.88"),
+                    line_net: dec("12.50"),
+                    line_gross: dec("14.88"),
+                }),
+                remainder: Some(DispensePart {
+                    quantity: dec("50"),
+                    price_gross: dec("0.298"),
+                    line_net: dec("12.50"),
+                    line_gross: dec("14.88"),
+                }),
+            }),
+            lots: Vec::new(),
+            created_at: chrono::Utc::now(),
+        }
+    }
+
+    #[test]
+    fn a_dispensed_line_prints_its_packs_and_its_teilmenge_as_two_rows() {
+        let packagings = [PackagingDetail {
+            id: 7,
+            kind: PackagingKind::Original,
+            approval_number: Some("402485.00.00".to_owned()),
+        }];
+        let rows = invoice_rows(&dispensed_line(), &packagings, String::new(), "EUR");
+        let printed: Vec<(&str, &str, &str, &str, &str)> = rows
+            .iter()
+            .map(|row| {
+                (
+                    row.name.as_str(),
+                    row.detail.as_str(),
+                    row.quantity.as_str(),
+                    row.price.as_str(),
+                    row.total.as_str(),
+                )
+            })
+            .collect();
+        assert_eq!(
+            printed,
+            vec![
+                (
+                    "Amoxicillin 100",
+                    "1 Originalpackung à 100 ml, Zulassungsnr: 402485.00.00",
+                    "1",
+                    "14,88 €",
+                    "14,88 €",
+                ),
+                (
+                    "Amoxicillin 100",
+                    "Teilmenge 50 ml, mit Anbruchaufschlag",
+                    "50",
+                    "0,298 €",
+                    "14,88 €",
+                ),
+            ]
+        );
+        assert_eq!(rows[0].vat, "19 %");
+    }
+
+    #[test]
+    fn whole_packs_alone_print_one_row_in_the_plural() {
+        let mut line = dispensed_line();
+        if let Some(dispense) = line.dispense.as_mut() {
+            dispense.remainder = None;
+            if let Some(packs) = dispense.packs.as_mut() {
+                packs.quantity = Decimal::from(2);
+            }
+        }
+        let rows = invoice_rows(&line, &[], String::new(), "EUR");
+        assert_eq!(rows.len(), 1);
+        assert_eq!(rows[0].detail, "2 Originalpackungen à 100 ml");
+    }
+
+    #[test]
+    fn both_rows_of_a_dispensed_line_go_to_its_animal() {
+        let packagings = [];
+        let rows: Vec<(Option<i64>, InvoiceLine)> =
+            invoice_rows(&dispensed_line(), &packagings, String::new(), "EUR")
+                .into_iter()
+                .map(|row| (Some(1), row))
+                .collect();
+        let names = std::collections::HashMap::from([(1, "Bello".to_owned())]);
+        let groups = group_by_patient(
+            &rows,
+            &names,
+            &std::collections::HashMap::new(),
+            "15.11.2026",
+        );
+        assert_eq!(groups.len(), 1);
+        assert_eq!(groups[0].patient, "Bello");
+        assert_eq!(
+            groups[0].items.len(),
+            2,
+            "the pack row and the Teilmenge row"
         );
     }
 }

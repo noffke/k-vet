@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT reminder.appointment_id, reminder.quantity, reminder.note,\n                  COALESCE(drug.name, '') AS \"name!\", packaging.quantity AS size, packaging.unit\n           FROM appointment_reminder reminder\n           JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           WHERE reminder.appointment_id = ANY($1) AND reminder.taken_item_id IS NULL\n           ORDER BY reminder.appointment_id, reminder.position",
+  "query": "SELECT reminder.appointment_id, reminder.quantity, reminder.note,\n                  COALESCE(drug.name, '') AS \"name!\", packaging.unit\n           FROM appointment_reminder reminder\n           JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           WHERE reminder.appointment_id = ANY($1) AND reminder.taken_item_id IS NULL\n           ORDER BY reminder.appointment_id, reminder.position",
   "describe": {
     "columns": [
       {
@@ -44,17 +44,6 @@
       },
       {
         "ordinal": 4,
-        "name": "size",
-        "type_info": "Numeric",
-        "origin": {
-          "Table": {
-            "table": "drug_packaging",
-            "name": "quantity"
-          }
-        }
-      },
-      {
-        "ordinal": 5,
         "name": "unit",
         "type_info": "Text",
         "origin": {
@@ -75,9 +64,8 @@
       false,
       true,
       null,
-      true,
       true
     ]
   },
-  "hash": "7f91dc86ec0b0cfc6d7e45b6141cfc2e9f7973383f239dc3b7ac1ac82964219f"
+  "hash": "dc98e44768cb93c16a8c6a9db0766a15816553e779e00c3a1c27f9d90a77fcb4"
 }

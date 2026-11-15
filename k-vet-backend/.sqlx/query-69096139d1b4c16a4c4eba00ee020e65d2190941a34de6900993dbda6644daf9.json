@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drug_packaging_id FROM appointment_reminder WHERE id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "drug_packaging_id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "appointment_reminder",
+            "name": "drug_packaging_id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "69096139d1b4c16a4c4eba00ee020e65d2190941a34de6900993dbda6644daf9"
+}

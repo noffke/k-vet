@@ -9,7 +9,7 @@
 export interface CreateReminder {
   drug_packaging_id: number;
   /**
-     * Packagings; one when left out.
+     * Base units; left out, what the drug starts at (`DispenseRule::preset`).
      * @nullable
      */
   quantity?: string | null;

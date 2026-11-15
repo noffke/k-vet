@@ -16,11 +16,12 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{MoveDirection, MoveRequest, double_option};
+use crate::api::dispense::{self, Dispense};
 use crate::api::travel_distance::{self, KmSource, TreatmentItemWithKm};
-use crate::config::TravelExpenseConfig;
+use crate::config::{Config, PharmacyConfig};
 use crate::domain::enums::TreatmentItemKind;
-use crate::domain::money;
-use crate::domain::stock::{self, LotAllocation};
+use crate::domain::money::{self, DispensePricing};
+use crate::domain::stock::{self, Dispensed, LotAllocation};
 use crate::error::{AppError, AppResult, FieldError};
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -36,6 +37,8 @@ pub struct TreatmentItem {
     pub patient_treatment_id: Option<i64>,
     /// Copied from the catalog; the vet may override it per line.
     pub name: String,
+    /// A drug line: what was dispensed, in the original pack's base unit (`unit`) — or, for a
+    /// line billed before migration 0039 (`dispense` absent), how many of its packaging.
     pub quantity: Decimal,
     pub unit: Option<String>,
     /// GOT factor in percent (100 = single rate).
@@ -45,7 +48,8 @@ pub struct TreatmentItem {
     /// (§ 8 GOT), rather than the line's own GOT position. Read from the service, like
     /// `travel_expenses` — the number itself stays pinned, this only picks the label.
     pub got_analogous: bool,
-    /// Per-unit **net** price, pinned at line entry — before the factor.
+    /// Per-unit **net** price, pinned at line entry — before the factor. On a drug line, one
+    /// whole pack.
     pub price_net: Decimal,
     /// The net counterpart of `price_gross`: one unit, after the factor. What the line editor
     /// shows under the gross price the vet types.
@@ -71,13 +75,37 @@ pub struct TreatmentItem {
     /// The drug is a euthanasia preparation: releasing the invoice sets this line's animal's
     /// date of death. Read from the drug, so the release page can say so beforehand.
     pub euthanasia: bool,
-    /// `price_net × quantity × factor/100`, rounded to cents — **net**.
+    /// `price_net × quantity × factor/100`, rounded to cents — **net**. On a drug line, the sum of
+    /// its rows in `dispense`.
     pub line_net: Decimal,
     /// `line_net` plus VAT: what the customer pays for this line.
     pub line_gross: Decimal,
+    /// A drug line: how its quantity is billed — whole packs and the rest as a Teilmenge, the two
+    /// rows the invoice prints — and the rule it was entered by. Absent for a service, and for a
+    /// line billed before migration 0039, whose quantity counts packagings.
+    pub dispense: Option<Dispense>,
     /// Lots the dispense was booked against (drug lines).
     pub lots: Vec<ItemLot>,
     pub created_at: DateTime<Utc>,
+}
+
+impl TreatmentItem {
+    /// `(net, vat_percent)` per printed row — what `money::vat_summary` adds up. A drug line
+    /// prints a pack row and a Teilmenge row, each with its own VAT.
+    pub fn billing_rows(&self) -> Vec<(Decimal, Decimal)> {
+        match &self.dispense {
+            Some(dispense) => dispense
+                .parts()
+                .map(|part| (part.line_net, self.vat_percent))
+                .collect(),
+            None => vec![(self.line_net, self.vat_percent)],
+        }
+    }
+}
+
+/// `(net, vat_percent)` of every printed row of these lines.
+pub fn billing_rows(items: &[TreatmentItem]) -> Vec<(Decimal, Decimal)> {
+    items.iter().flat_map(TreatmentItem::billing_rows).collect()
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -100,8 +128,9 @@ pub struct CreateTreatmentItem {
     /// needs one — except a line of a service marked "pro Termin" (`per_visit`: house-call fee,
     /// Wegegeld), which belongs to the whole visit and ignores this field.
     pub patient_treatment_id: Option<i64>,
-    #[serde(default = "one")]
-    pub quantity: Decimal,
+    /// A drug: base units dispensed; left out, what the drug starts at (`DispenseRule::preset`).
+    /// A service: one when left out.
+    pub quantity: Option<Decimal>,
     /// Travel-expense lines: kilometres driven (one way).
     pub km: Option<Decimal>,
     /// Multiplier for adverse travel conditions (1–3).
@@ -131,10 +160,6 @@ impl From<Option<i64>> for Attribution {
     }
 }
 
-fn one() -> Decimal {
-    Decimal::ONE
-}
-
 #[derive(Debug, Default, Deserialize, ToSchema)]
 pub struct PatchTreatmentItem {
     pub quantity: Option<Decimal>,
@@ -143,6 +168,9 @@ pub struct PatchTreatmentItem {
     /// net in whole cents can give comes back a cent lower. Refused on a GOT position, whose
     /// price is the fee schedule's.
     pub price_gross: Option<Decimal>,
+    /// A drug line: the gross price of one base unit of its rest (the Teilmenge row). Stored as
+    /// the net of its Teilmenge that comes closest, so the steps stay what they were.
+    pub subset_price_gross: Option<Decimal>,
     pub name: Option<String>,
     pub factor: Option<Decimal>,
     /// Moves the line to another animal. It lands at the end of the target's order; its
@@ -175,55 +203,48 @@ pub struct CatalogLine {
     pub travel_expenses: bool,
     /// The service is marked "pro Termin": its line belongs to the visit, not to an animal.
     pub per_visit: bool,
+    /// A drug: its original packaging and how it is priced when dispensed. Absent for a service,
+    /// and for the copy of a line billed before migration 0039.
+    pub dispense: Option<PinnedDispense>,
+}
+
+/// What a drug line pins about dispensing besides its pack price.
+#[derive(Debug, Clone, Copy)]
+pub struct PinnedDispense {
+    /// The original packaging the line references.
+    pub original_id: i64,
+    pub pricing: DispensePricing,
 }
 
 /// Reads the current catalog values for a packaging or service.
 ///
 /// Used when a line is added, when a template is applied and when a duplicate refreshes
-/// its prices — the three places where pinning happens.
+/// its prices — the three places where pinning happens. A drug is always its original
+/// packaging, whichever of its packagings is named: the line counts base units of it.
 pub async fn catalog_line(
     connection: &mut PgConnection,
     kind: TreatmentItemKind,
     reference_id: i64,
+    pharmacy: &PharmacyConfig,
 ) -> AppResult<CatalogLine> {
     match kind {
         TreatmentItemKind::DrugPackaging => {
-            let row = sqlx::query!(
-                r#"SELECT drug.name, drug.vat_percent, packaging.unit, packaging.sales_price_net,
-                          packaging.quantity, packaging.draft, packaging.archived
-                   FROM drug_packaging packaging
-                   JOIN drug ON drug.id = packaging.drug_id
-                   WHERE packaging.id = $1"#,
-                reference_id,
-            )
-            .fetch_optional(&mut *connection)
-            .await?
-            .ok_or_else(|| AppError::field("drug_packaging_id", "record.notFound"))?;
-
-            if row.draft {
-                return Err(AppError::field("drug_packaging_id", "record.incomplete"));
-            }
-            let (Some(price), Some(vat)) = (row.sales_price_net, row.vat_percent) else {
-                return Err(AppError::field("drug_packaging_id", "record.incomplete"));
-            };
-            // The line has to say *what* was dispensed: a 10 ml subset and the 100 ml
-            // bottle are both "Amoxicillin 100" otherwise (invoice and stock history).
-            let drug_name = row.name.unwrap_or_default();
-            let name = match (row.quantity, &row.unit) {
-                (Some(quantity), Some(unit)) => {
-                    format!("{drug_name} · {} {unit}", crate::pdf::number_de(quantity))
-                }
-                _ => drug_name,
-            };
+            let drug = dispense::drug_dispense(connection, reference_id, pharmacy).await?;
             Ok(CatalogLine {
-                name,
-                price_net: price,
-                vat_percent: vat,
-                unit: row.unit,
+                // The quantity says how much, in the unit; the invoice's rows name the pack and
+                // the Teilmenge.
+                name: drug.name,
+                price_net: drug.pricing.pack_price_net,
+                vat_percent: drug.vat_percent,
+                unit: drug.unit,
                 factor: None,
                 got_number: None,
                 travel_expenses: false,
                 per_visit: false,
+                dispense: Some(PinnedDispense {
+                    original_id: drug.original_id,
+                    pricing: drug.pricing,
+                }),
             })
         }
         TreatmentItemKind::Service => {
@@ -252,6 +273,7 @@ pub async fn catalog_line(
                 got_number: row.got_number,
                 travel_expenses: row.travel_expenses,
                 per_visit: row.per_visit,
+                dispense: None,
             })
         }
     }
@@ -323,6 +345,18 @@ pub async fn create(
             .ok_or_else(|| AppError::field("service_id", "field.required"))?,
     };
 
+    // A quantity typed for a drug has to fit its steps.
+    let catalog = catalog_line(
+        &mut transaction,
+        body.kind,
+        reference_id,
+        &state.config.pharmacy,
+    )
+    .await?;
+    if let (Some(quantity), Some(drug)) = (body.quantity, &catalog.dispense) {
+        dispense::check(&drug.pricing, quantity)?;
+    }
+
     let item_id = insert_pinned_item(
         &mut transaction,
         treatment_id,
@@ -333,8 +367,8 @@ pub async fn create(
         km,
         body.km_multiplier,
         body.redesignation,
-        None,
-        &state.config.travel_expenses,
+        Some(catalog),
+        &state.config,
     )
     .await?;
     // Kilometres typed or freshly from Google make the customer's previous visit count again.
@@ -355,7 +389,11 @@ pub async fn create(
 
 /// Inserts a line with catalog values pinned; shared by add, apply-template and duplicate.
 ///
-/// `pinned` short-circuits the catalog read when a duplicate copies values verbatim.
+/// `pinned` short-circuits the catalog read when a duplicate copies values verbatim, a quote is
+/// taken over as quoted, or the caller has read the catalogue already. A quantity left out is
+/// what the drug starts at (one for a service). The drug's steps are checked where a quantity is
+/// typed (`dispense::check`), not here: a Behandlungsgruppe, a quote or a duplicate carries a
+/// quantity that was checked then, and it is still priced if the drug's Teilmengen have changed.
 // A billing line has this many independent inputs; grouping them into a struct would only
 // move the argument list one level out.
 #[allow(clippy::too_many_arguments)]
@@ -364,22 +402,27 @@ pub async fn insert_pinned_item(
     treatment_id: i64,
     kind: TreatmentItemKind,
     reference_id: i64,
-    quantity: Decimal,
+    quantity: Option<Decimal>,
     attribution: Attribution,
     km: Option<Decimal>,
     km_multiplier: Option<Decimal>,
     redesignation: bool,
     pinned: Option<CatalogLine>,
-    travel: &TravelExpenseConfig,
+    config: &Config,
 ) -> AppResult<i64> {
+    let catalog = match pinned {
+        Some(values) => values,
+        None => catalog_line(transaction, kind, reference_id, &config.pharmacy).await?,
+    };
+    let pricing = catalog.dispense.map(|dispense| dispense.pricing);
+    let quantity = quantity.unwrap_or_else(|| {
+        pricing
+            .as_ref()
+            .map_or(Decimal::ONE, money::dispense_preset)
+    });
     if quantity <= Decimal::ZERO {
         return Err(AppError::field("quantity", "value.mustBePositive"));
     }
-
-    let catalog = match pinned {
-        Some(values) => values,
-        None => catalog_line(transaction, kind, reference_id).await?,
-    };
 
     // Drug dispensing and treatment are attributed to a single animal, so a line names one —
     // for a drug it is what ties a dispensed batch to the animal that received it. The visit's
@@ -407,23 +450,35 @@ pub async fn insert_pinned_item(
     // A travel-expense line is priced from the distance per GOT § 10; every other line
     // pins the catalog price (FR-023).
     let price_net = match (catalog.travel_expenses, km) {
-        (true, Some(km)) => travel_distance::travel_price(travel, km, km_multiplier),
+        (true, Some(km)) => {
+            travel_distance::travel_price(&config.travel_expenses, km, km_multiplier)
+        }
         _ => catalog.price_net,
     };
 
     let position = next_position(transaction, treatment_id, patient_treatment_id).await?;
 
     let (packaging_id, service_id) = match kind {
-        TreatmentItemKind::DrugPackaging => (Some(reference_id), None),
+        TreatmentItemKind::DrugPackaging => (
+            Some(
+                catalog
+                    .dispense
+                    .map_or(reference_id, |dispense| dispense.original_id),
+            ),
+            None,
+        ),
         TreatmentItemKind::Service => (None, Some(reference_id)),
     };
+    let subset = pricing.and_then(|pricing| pricing.subset);
 
     let item_id: i64 = sqlx::query_scalar!(
         r#"INSERT INTO treatment_item
                (treatment_id, position, kind, drug_packaging_id, service_id, patient_treatment_id,
                 per_visit, name, quantity, unit, factor, got_number, price_net, vat_percent,
-                km, km_multiplier, redesignation)
-           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17)
+                km, km_multiplier, redesignation, pack_size, subset_size, subset_price_net,
+                freely_divisible)
+           VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12, $13, $14, $15, $16, $17,
+                   $18, $19, $20, $21)
            RETURNING id"#,
         treatment_id,
         position,
@@ -442,13 +497,21 @@ pub async fn insert_pinned_item(
         km,
         km_multiplier,
         redesignation,
+        pricing.map(|pricing| pricing.pack_size),
+        subset.map(|subset| subset.size),
+        subset.map(|subset| subset.price_net),
+        pricing.is_some_and(|pricing| pricing.freely_divisible),
     )
     .fetch_one(&mut **transaction)
     .await?;
 
     if let Some(packaging_id) = packaging_id {
         // Drug lines write draft dispense movements right away (FEFO).
-        stock::rewrite_draft_dispenses(transaction, item_id, packaging_id, quantity).await?;
+        let dispensed = match pricing {
+            Some(_) => Dispensed::BaseUnits(quantity),
+            None => Dispensed::Packagings(quantity),
+        };
+        stock::rewrite_draft_dispenses(transaction, item_id, packaging_id, dispensed).await?;
     }
     Ok(item_id)
 }
@@ -474,7 +537,8 @@ pub async fn patch(
     let current = sqlx::query!(
         r#"SELECT treatment_id, kind AS "kind: TreatmentItemKind", drug_packaging_id, quantity,
                   patient_treatment_id, per_visit, position, km, km_multiplier, service_id,
-                  vat_percent, factor
+                  vat_percent, factor, price_net, pack_size, subset_size, subset_price_net,
+                  freely_divisible
            FROM treatment_item WHERE id = $1 FOR UPDATE"#,
         id,
     )
@@ -489,6 +553,41 @@ pub async fn patch(
     {
         return Err(AppError::field("quantity", "value.mustBePositive"));
     }
+    // A drug line takes the quantities its pinned rule allows: whole packs, the Teilmenge's
+    // steps, or any amount for a drug that is "beliebig teilbar".
+    let pricing = dispense::pinned(
+        current.pack_size,
+        current.price_net,
+        current.subset_size,
+        current.subset_price_net,
+        current.freely_divisible,
+    );
+    if let (Some(quantity), Some(pricing)) = (body.quantity, &pricing)
+        && quantity != current.quantity
+    {
+        dispense::check(pricing, quantity)?;
+    }
+    // The Teilmenge's price, typed per base unit: stored for the Teilmenge as pinned, so its
+    // size — the step — stays.
+    let subset_price_net = match body.subset_price_gross {
+        None => None,
+        Some(gross) if gross < Decimal::ZERO => {
+            return Err(AppError::field(
+                "subset_price_gross",
+                "value.mustNotBeNegative",
+            ));
+        }
+        Some(gross) => {
+            let subset = pricing.and_then(|pricing| pricing.subset).ok_or_else(|| {
+                AppError::BadRequest("this line has no Teilmenge to price".to_owned())
+            })?;
+            Some(money::net_for_gross(
+                gross * subset.size,
+                current.vat_percent,
+                None,
+            ))
+        }
+    };
     // A line moves between animals, never between an animal and the visit: which of the two it
     // belongs to was decided by its service when it was added (the database holds it, too).
     match body.patient_treatment_id {
@@ -575,7 +674,8 @@ pub async fn patch(
                position      = COALESCE($14, position),
                km            = CASE WHEN $9 THEN $10 ELSE km END,
                km_multiplier = CASE WHEN $11 THEN $12 ELSE km_multiplier END,
-               redesignation = COALESCE($13, redesignation)
+               redesignation = COALESCE($13, redesignation),
+               subset_price_net = COALESCE($15, subset_price_net)
            WHERE id = $1"#,
         id,
         body.quantity,
@@ -591,6 +691,7 @@ pub async fn patch(
         body.km_multiplier.flatten(),
         body.redesignation,
         moved_to,
+        subset_price_net,
     )
     .execute(&mut *transaction)
     .await?;
@@ -604,7 +705,8 @@ pub async fn patch(
     if let (Some(quantity), Some(packaging_id)) = (body.quantity, current.drug_packaging_id)
         && quantity != current.quantity
     {
-        stock::rewrite_draft_dispenses(&mut transaction, id, packaging_id, quantity).await?;
+        let dispensed = Dispensed::of_line(quantity, current.pack_size);
+        stock::rewrite_draft_dispenses(&mut transaction, id, packaging_id, dispensed).await?;
     }
 
     transaction.commit().await?;
@@ -893,7 +995,8 @@ pub async fn set_lots(
 ) -> AppResult<Json<TreatmentItem>> {
     let mut transaction = state.pool.begin().await?;
     let current = sqlx::query!(
-        "SELECT treatment_id, drug_packaging_id, quantity FROM treatment_item WHERE id = $1",
+        "SELECT treatment_id, drug_packaging_id, quantity, pack_size
+         FROM treatment_item WHERE id = $1",
         id
     )
     .fetch_optional(&mut *transaction)
@@ -908,8 +1011,8 @@ pub async fn set_lots(
         .await?
         .ok_or_else(|| AppError::field("drug_packaging_id", "lot.noOriginalPackaging"))?;
 
-    // Lot quantities are base units (ml, pieces); the line counts packagings.
-    let needed = current.quantity * target.base_units;
+    // Lot quantities are base units (ml, pieces), as a line counts them since migration 0039.
+    let needed = Dispensed::of_line(current.quantity, current.pack_size).base_units(&target);
     let selected: Decimal = selections.iter().map(|selection| selection.quantity).sum();
     if selected != needed {
         return Err(AppError::Validation(vec![FieldError::new(
@@ -1047,6 +1150,7 @@ pub async fn load_items(
                   item.factor, item.got_number, item.price_net, item.vat_percent, item.km,
                   item.redesignation,
                   item.km_multiplier, item.created_at,
+                  item.pack_size, item.subset_size, item.subset_price_net, item.freely_divisible,
                   COALESCE(service.travel_expenses, false) AS "travel_expenses!",
                   COALESCE(service.type = 'self_defined' AND item.got_number IS NOT NULL, false)
                       AS "got_analogous!",
@@ -1084,13 +1188,42 @@ pub async fn load_items(
     Ok(rows
         .into_iter()
         .map(|row| {
-            let amounts =
-                money::line_amounts(row.price_net, row.quantity, row.factor, row.vat_percent);
+            // The unit price is one unit — on a drug line, one pack — and the line's total is
+            // the sum of the rows it prints.
+            let unit =
+                money::line_amounts(row.price_net, Decimal::ONE, row.factor, row.vat_percent);
+            let pricing = dispense::pinned(
+                row.pack_size,
+                row.price_net,
+                row.subset_size,
+                row.subset_price_net,
+                row.freely_divisible,
+            );
+            let (line_net, line_gross, dispense) = match pricing {
+                Some(pricing) => {
+                    let rows = money::dispense_rows(&pricing, row.quantity, row.vat_percent);
+                    (
+                        rows.line_net(),
+                        rows.line_gross(),
+                        Some(Dispense::new(&pricing, &rows)),
+                    )
+                }
+                None => {
+                    let amounts = money::line_amounts(
+                        row.price_net,
+                        row.quantity,
+                        row.factor,
+                        row.vat_percent,
+                    );
+                    (amounts.line_net, amounts.line_gross, None)
+                }
+            };
             TreatmentItem {
-                line_net: amounts.line_net,
-                line_gross: amounts.line_gross,
-                price_gross: amounts.price_gross,
-                unit_net: amounts.unit_net,
+                line_net,
+                line_gross,
+                dispense,
+                price_gross: unit.price_gross,
+                unit_net: unit.unit_net,
                 redesignation: row.redesignation,
                 euthanasia: row.euthanasia,
                 lots: lots
@@ -1135,12 +1268,7 @@ pub async fn treatment_total_gross(
     treatment_id: i64,
 ) -> AppResult<Decimal> {
     let items = load_items(connection, treatment_id).await?;
-    let groups = money::vat_summary(
-        &items
-            .iter()
-            .map(|item| (item.line_net, item.vat_percent))
-            .collect::<Vec<_>>(),
-    );
+    let groups = money::vat_summary(&billing_rows(&items));
     Ok(money::total_gross(&groups))
 }
 

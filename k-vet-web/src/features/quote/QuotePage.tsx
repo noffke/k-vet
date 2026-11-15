@@ -40,6 +40,7 @@ import { TextAreaField, TextField } from '@/components/ui/field'
 import { useKmToast } from '@/features/treatments/kmToast'
 import type { SaveState } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
+import { dispenseBreakdown, dispenseRuleText, refusalText } from '@/lib/dispense'
 import { useLocaleFormat } from '@/lib/locale'
 import { addressLine } from '@/lib/maps'
 import { cn } from '@/lib/utils'
@@ -81,7 +82,7 @@ function refusedLine(error: unknown): { index: number; message: string } | null 
  */
 export function QuotePage() {
   const { t } = useTranslation()
-  const { money } = useLocaleFormat()
+  const { money, quantity: formatQuantity } = useLocaleFormat()
   const { maps_enabled: mapsEnabled, default_country: defaultCountry } = useOperatorConfig()
   const kmToast = useKmToast()
   const client = useQueryClient()
@@ -254,7 +255,16 @@ export function QuotePage() {
 
   const pick = (item: PickerItem) =>
     edit(
-      (current) => addPositions(current, [{ kind: item.kind, id: item.id, name: item.name }]),
+      (current) =>
+        addPositions(current, [
+          {
+            kind: item.kind,
+            id: item.id,
+            name: item.name,
+            // A drug starts at what it allows — one unit, else one step.
+            quantity: item.kind === 'drug_packaging' ? item.rule.preset : undefined,
+          },
+        ]),
       'lines',
     )
 
@@ -472,7 +482,17 @@ export function QuotePage() {
                 key={line.key}
                 line={line}
                 priced={pricedLine(index, line)}
-                error={refusal?.index === index ? t(refusal.message) : undefined}
+                error={
+                  refusal?.index === index
+                    ? refusalText(
+                        refusal.message,
+                        pricedLine(index, line)?.today_rule,
+                        pricedLine(index, line)?.unit,
+                        t,
+                        formatQuantity,
+                      )
+                    : undefined
+                }
                 canLookUp={mapsEnabled && destination !== null}
                 onChange={(patch) =>
                   edit((current) => updateLine(current, line.key, patch), 'lines')
@@ -600,8 +620,9 @@ function QuoteLineCard({
   onRemove,
 }: QuoteLineCardProps) {
   const { t } = useTranslation()
-  const { money, percent } = useLocaleFormat()
+  const { money, percent, unitPrice, quantity } = useLocaleFormat()
   const Icon = line.kind === 'drug_packaging' ? Pill : Stethoscope
+  const rule = priced?.today_rule ?? priced?.dispense?.rule
 
   return (
     <li className="rounded-card border border-line bg-surface p-3">
@@ -619,6 +640,12 @@ function QuoteLineCard({
             <p className="text-xs text-ink-faint">
               {priced.got_number ? `GOT ${priced.got_number} · ` : ''}
               {percent(priced.vat_percent)} {t('field.vat')}
+            </p>
+          ) : null}
+          {/* Whole packs and the rest as a Teilmenge, as the invoice will print them. */}
+          {priced?.dispense ? (
+            <p className="numeric text-xs text-ink-soft">
+              {dispenseBreakdown(priced.dispense, priced.unit, t, { quantity, money, unitPrice })}
             </p>
           ) : null}
         </div>
@@ -655,6 +682,8 @@ function QuoteLineCard({
         <NumberInput
           label={t('field.quantity')}
           value={line.quantity}
+          unit={priced?.unit ?? undefined}
+          hint={rule ? dispenseRuleText(rule, priced?.unit, t, quantity) : undefined}
           onChange={(value) => value && onChange({ quantity: value })}
         />
         {line.kind === 'service' ? (

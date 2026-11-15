@@ -22,7 +22,8 @@ struct Billed {
     packaging_id: i64,
 }
 
-/// A treatment with one GOT service line and one drug line dispensing a 10 ml subset.
+/// A treatment with one GOT service line and one drug line dispensing 10 ml — the drug's 10 ml
+/// Teilmenge, so a single Teilmenge row.
 async fn billable_treatment(app: &TestApp, pool: &PgPool) -> Billed {
     let customer_id = common::seed_customer(pool).await;
     common::seed_customer_email(pool, customer_id, "kundin@example.com").await;
@@ -43,8 +44,8 @@ async fn billable_treatment(app: &TestApp, pool: &PgPool) -> Billed {
         &format!("/api/treatments/{treatment_id}/items"),
         json!({
             "kind": "drug_packaging",
-            "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "1"
+            "drug_packaging_id": drug.packaging_id,
+            "quantity": "10"
         }),
     )
     .await;
@@ -241,7 +242,7 @@ async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock(po
     let patched = app
         .patch(
             &format!("/api/treatment-items/{drug_item}"),
-            json!({ "quantity": "2" }),
+            json!({ "quantity": "20" }),
         )
         .await;
     assert_eq!(
@@ -856,8 +857,8 @@ async fn euthanasia_visit(app: &TestApp, pool: &PgPool) -> (i64, i64, i64) {
     app.post(
         &format!("/api/treatments/{treatment_id}/items"),
         json!({
-            "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
-            "quantity": "1", "patient_treatment_id": record
+            "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+            "quantity": "10", "patient_treatment_id": record
         }),
     )
     .await;
@@ -1086,7 +1087,7 @@ async fn what_changed_since_the_pdf_is_said_everywhere(pool: PgPool) {
         .expect("the new line");
     app.patch(
         &format!("/api/treatment-items/{drug_line}"),
-        json!({ "quantity": "2" }),
+        json!({ "quantity": "20" }),
     )
     .await;
     app.delete(&format!("/api/treatment-items/{service_line}"))

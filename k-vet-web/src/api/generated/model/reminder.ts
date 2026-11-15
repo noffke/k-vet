@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { DispenseRule } from './dispenseRule';
 
 export interface Reminder {
   id: number;
@@ -16,12 +17,13 @@ export interface Reminder {
   /** @nullable */
   unit?: string | null;
   /**
-     * One packaging's size in its unit — `10` (ml).
+     * The original pack's size in its unit — `100` (ml).
      * @nullable
      */
   size?: string | null;
-  /** Packagings, as a line counts them. */
+  /** Base units of the original pack (Tbl., ml), as a line counts them. */
   quantity: string;
+  rule?: DispenseRule | null;
   /** @nullable */
   note?: string | null;
   /** Ticked off on the Packliste. */

@@ -84,7 +84,7 @@ async fn template_lines_reference_the_catalog_without_a_price(pool: PgPool) {
         .post(
             &format!("/api/treatment-templates/{template_id}/items"),
             json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
-                    "quantity": "2" }),
+                    "quantity": "20" }),
         )
         .await
         .json();
@@ -92,15 +92,52 @@ async fn template_lines_reference_the_catalog_without_a_price(pool: PgPool) {
     assert_eq!(items[0]["position"], 1);
     assert_eq!(items[0]["name"], "Allgemeine Untersuchung");
     assert_eq!(items[1]["position"], 2);
-    assert_eq!(items[1]["quantity"], "2.00");
-    assert_eq!(items[1]["unit"], "ml", "the unit comes from the packaging");
-    assert!(
-        items[1]["name"]
-            .as_str()
-            .unwrap_or_default()
-            .contains("10 ml"),
-        "the line says which packaging it means: {items:?}"
+    // Named by any of its packagings, a drug is its original pack, counted in base units.
+    assert_eq!(items[1]["drug_packaging_id"], drug.packaging_id);
+    assert_eq!(items[1]["quantity"], "20.00");
+    assert_eq!(
+        items[1]["unit"], "ml",
+        "the unit comes from the original pack"
     );
+    assert_eq!(items[1]["name"], "Amoxicillin 100");
+    assert_eq!(
+        items[1]["rule"],
+        json!({ "pack_size": "100.00", "step": "10.00", "freely_divisible": false,
+                "preset": "10.00" }),
+        "the quantity field goes in steps of the 10 ml Teilmenge"
+    );
+
+    // A quantity off those steps is refused, on creating and on changing it.
+    let off_step = app
+        .post(
+            &format!("/api/treatment-templates/{template_id}/items"),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+                    "quantity": "15" }),
+        )
+        .await;
+    assert_eq!(off_step.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        off_step.json()["errors"],
+        json!([{ "field": "quantity", "message": "item.subsetStep" }])
+    );
+    let item_id = items[1]["id"].as_i64().expect("the drug item");
+    let changed = app
+        .patch(
+            &format!("/api/template-items/{item_id}"),
+            json!({ "quantity": "25" }),
+        )
+        .await;
+    assert_eq!(changed.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    // Left out, the quantity is what the drug starts at.
+    let preset = app
+        .post(
+            &format!("/api/treatment-templates/{template_id}/items"),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id }),
+        )
+        .await
+        .json();
+    assert_eq!(preset[2]["quantity"], "10.00");
 }
 
 #[sqlx::test]
@@ -209,8 +246,8 @@ async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool)
     .await;
     app.post(
         &format!("/api/treatment-templates/{template_id}/items"),
-        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "2" }),
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+                "quantity": "20" }),
     )
     .await;
     app.post(
@@ -246,9 +283,11 @@ async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool)
     let items = applied.json();
 
     // Template order, current prices, and the drug line dispensed FEFO.
-    assert_eq!(items[0]["drug_packaging_id"], drug.subset_packaging_id);
-    assert_eq!(items[0]["quantity"], "2.00");
-    assert_eq!(items[0]["price_net"], "2.50");
+    assert_eq!(items[0]["drug_packaging_id"], drug.packaging_id);
+    assert_eq!(items[0]["quantity"], "20.00");
+    // The pack price, and 20 ml as two 10 ml Teilmengen at 2,50 € each.
+    assert_eq!(items[0]["price_net"], "12.50");
+    assert_eq!(items[0]["line_net"], "5.00");
     assert_eq!(items[0]["lots"].as_array().map(Vec::len), Some(1));
     assert_eq!(items[1]["service_id"], service_id);
     assert_eq!(
@@ -288,8 +327,8 @@ async fn a_group_applied_by_mistake_can_be_taken_back_in_one_call(pool: PgPool) 
     .await;
     app.post(
         &format!("/api/treatment-templates/{template_id}/items"),
-        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.subset_packaging_id,
-                "quantity": "2" }),
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+                "quantity": "20" }),
     )
     .await;
     app.post(

@@ -228,6 +228,17 @@ pub fn money_de(value: Decimal, currency: &str) -> String {
     format!("{} {symbol}", group_de(value, 2))
 }
 
+/// A unit price that may need more than cents — a millilitre of a Teilmenge at 0,238 € — with two
+/// to four decimals: `0,238 €`, `2,38 €`.
+pub fn unit_price_de(value: Decimal, currency: &str) -> String {
+    let symbol = match currency {
+        "EUR" => "€",
+        other => other,
+    };
+    let decimals = value.normalize().scale().clamp(2, 4);
+    format!("{} {symbol}", group_de(value, decimals))
+}
+
 /// Quantities and factors: German decimal comma, trailing zeros trimmed.
 pub fn number_de(value: Decimal) -> String {
     let normalized = value.normalize();
@@ -391,6 +402,11 @@ mod tests {
     #[test]
     fn money_uses_german_conventions() {
         assert_eq!(money_de(dec("1234.5"), "EUR"), "1.234,50 €");
+        // A Teilmenge's price per ml may need more than cents, never fewer than two decimals.
+        assert_eq!(unit_price_de(dec("0.238"), "EUR"), "0,238 €");
+        assert_eq!(unit_price_de(dec("0.30"), "EUR"), "0,30 €");
+        assert_eq!(unit_price_de(dec("2.8251"), "EUR"), "2,8251 €");
+        assert_eq!(unit_price_de(dec("1234.5"), "EUR"), "1.234,50 €");
         assert_eq!(money_de(dec("0.5"), "EUR"), "0,50 €");
         assert_eq!(money_de(dec("1234567.89"), "EUR"), "1.234.567,89 €");
         assert_eq!(money_de(dec("-12.30"), "EUR"), "-12,30 €");

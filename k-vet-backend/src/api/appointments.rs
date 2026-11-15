@@ -526,7 +526,7 @@ pub async fn duplicate(
         new_id,
         source.customer_id,
         body.price_mode,
-        &state.config.travel_expenses,
+        &state.config,
     )
     .await?;
 

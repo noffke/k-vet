@@ -15,6 +15,7 @@ use serde::{Deserialize, Serialize};
 use utoipa::{IntoParams, ToSchema};
 
 use crate::AppState;
+use crate::api::dispense::{self, DispenseRule};
 use crate::domain::money;
 use crate::error::AppResult;
 
@@ -32,23 +33,28 @@ pub struct PickerQuery {
 #[derive(Debug, Serialize, ToSchema)]
 #[serde(tag = "kind", rename_all = "snake_case")]
 pub enum PickerItem {
+    /// A drug, always as its original packaging: the line counts what is dispensed from it, in
+    /// its base unit, and bills whole packs and the rest as a Teilmenge (migration 0039).
     DrugPackaging {
+        /// The original packaging's id.
         id: i64,
         drug_id: i64,
         /// Drug name; the UI composes the display label with locale formatting.
         name: String,
         unit: Option<String>,
+        /// Base units in one pack.
         quantity: Option<Decimal>,
-        /// Net price, before the Steigerungssatz; `price_gross` is what the line will cost.
+        /// One pack, net; `price_gross` with VAT.
         price_net: Decimal,
         price_gross: Decimal,
         vat_percent: Decimal,
-        /// Derived stock over all lots — a shortfall is visible before picking.
+        /// Derived stock over all lots, in base units — a shortfall is visible before picking.
         in_stock: Decimal,
-        /// One of this packaging is more than the lots hold together: picking it is refused
-        /// (`item.stockShort`). False for a drug with no original packaging, whose dispenses
-        /// book nothing.
+        /// What the drug starts at (`rule.preset`) is more than the lots hold together: picking
+        /// it is refused (`item.stockShort`).
         stock_short: bool,
+        /// How it can be dispensed: whole packs, the Teilmenge's steps, or any amount.
+        rule: DispenseRule,
         uses: i64,
     },
     Service {
@@ -93,17 +99,19 @@ pub async fn items(
                FROM lot_remaining GROUP BY drug_id
            )
            SELECT 'drug_packaging' AS kind,
-                  packaging.id            AS id,
+                  original.id             AS id,
                   drug.id                 AS reference_id,
                   drug.name               AS name,
-                  packaging.unit          AS unit,
-                  packaging.quantity      AS quantity,
-                  packaging.sales_price_net AS price_net,
+                  original.unit           AS unit,
+                  original.quantity       AS quantity,
+                  original.sales_price_net AS price_net,
                   drug.vat_percent        AS vat_percent,
                   COALESCE(stock.remaining, 0) AS in_stock,
-                  (original.id IS NOT NULL
-                   AND COALESCE(stock.remaining, 0) < COALESCE(packaging.quantity, 1))
-                                          AS stock_short,
+                  original.list_price_net AS list_price_net,
+                  rule.subset_size        AS subset_size,
+                  rule.subset_price_net   AS subset_price_net,
+                  drug.freely_divisible   AS freely_divisible,
+                  drug.human_drug         AS human_drug,
                   NULL::text              AS got_number,
                   NULL::numeric           AS factor,
                   false                   AS travel_expenses,
@@ -111,14 +119,19 @@ pub async fn items(
                   COALESCE(usage.uses, 0) AS uses,
                   CASE WHEN $1::text IS NULL THEN 0
                        ELSE similarity(drug.name, $1) END AS score
-           FROM drug_packaging packaging
-           JOIN drug ON drug.id = packaging.drug_id
-           LEFT JOIN picker_usage usage
-                  ON usage.kind = 'drug_packaging' AND usage.item_id = packaging.id
-           LEFT JOIN stock ON stock.drug_id = packaging.drug_id
-           LEFT JOIN drug_packaging original
-                  ON original.drug_id = packaging.drug_id AND original.kind = 'original'
-           WHERE NOT packaging.draft AND NOT packaging.archived
+           FROM drug_packaging original
+           JOIN drug ON drug.id = original.drug_id
+           JOIN drug_dispense_rule rule ON rule.original_id = original.id
+           -- Every packaging's uses count for the drug: lines of a Teilmenge from before
+           -- migration 0039 included.
+           LEFT JOIN (SELECT packaging.drug_id, SUM(usage.uses)::bigint AS uses
+                        FROM picker_usage usage
+                        JOIN drug_packaging packaging ON packaging.id = usage.item_id
+                       WHERE usage.kind = 'drug_packaging'
+                       GROUP BY packaging.drug_id) usage ON usage.drug_id = drug.id
+           LEFT JOIN stock ON stock.drug_id = drug.id
+           WHERE original.kind = 'original'
+             AND NOT original.draft AND NOT original.archived
              AND NOT drug.draft AND NOT drug.archived
              -- No search term: only what the practice has used before.
              AND ($1::text IS NOT NULL OR COALESCE(usage.uses, 0) > 0)
@@ -136,7 +149,11 @@ pub async fn items(
                   service.net_price AS price_net,
                   service.vat_percent AS vat_percent,
                   0::numeric        AS in_stock,
-                  false             AS stock_short,
+                  NULL::numeric     AS list_price_net,
+                  NULL::numeric     AS subset_size,
+                  NULL::numeric     AS subset_price_net,
+                  false             AS freely_divisible,
+                  false             AS human_drug,
                   service.got_number AS got_number,
                   service.factor    AS factor,
                   service.travel_expenses AS travel_expenses,
@@ -161,6 +178,7 @@ pub async fn items(
     .fetch_all(&state.pool)
     .await?;
 
+    let pharmacy = &state.config.pharmacy;
     let items = rows
         .into_iter()
         .filter_map(|row| {
@@ -176,19 +194,38 @@ pub async fn items(
             let name = row.name.unwrap_or_default();
             let uses = row.uses.unwrap_or(0);
             match row.kind.as_deref() {
-                Some("drug_packaging") => Some(PickerItem::DrugPackaging {
-                    id: row.id?,
-                    drug_id: row.reference_id?,
-                    name,
-                    unit: row.unit,
-                    quantity: row.quantity,
-                    price_net,
-                    price_gross,
-                    vat_percent,
-                    in_stock: row.in_stock.unwrap_or_default(),
-                    stock_short: row.stock_short.unwrap_or(false),
-                    uses,
-                }),
+                Some("drug_packaging") => {
+                    // A drug that cannot be priced yet (no pack size) is not offered.
+                    let pricing = dispense::pricing(
+                        &dispense::Catalogue {
+                            pack_size: row.quantity,
+                            pack_price_net: Some(price_net),
+                            list_price_net: row.list_price_net,
+                            subset_size: row.subset_size,
+                            subset_price_net: row.subset_price_net,
+                            freely_divisible: row.freely_divisible.unwrap_or(false),
+                            human_drug: row.human_drug.unwrap_or(false),
+                            vat_percent: Some(vat_percent),
+                        },
+                        pharmacy,
+                    )?;
+                    let rule = DispenseRule::from(&pricing);
+                    let in_stock = row.in_stock.unwrap_or_default();
+                    Some(PickerItem::DrugPackaging {
+                        id: row.id?,
+                        drug_id: row.reference_id?,
+                        name,
+                        unit: row.unit,
+                        quantity: row.quantity,
+                        price_net,
+                        price_gross,
+                        vat_percent,
+                        in_stock,
+                        stock_short: in_stock < rule.preset,
+                        rule,
+                        uses,
+                    })
+                }
                 Some("service") => Some(PickerItem::Service {
                     id: row.id?,
                     name,

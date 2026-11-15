@@ -22,10 +22,12 @@ test.describe('Mitbringen', () => {
     await signIn(page)
     await page.goto(`/appointments/${appointmentId}`)
     await page.getByPlaceholder('Medikament suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 10 ml/ }).first().click()
+    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
     const card = page.locator('section').filter({ hasText: 'Mitbringen' }).first()
     const row = card.getByRole('listitem').filter({ has: page.getByLabel('Notiz') })
-    await expect(row).toContainText(`${drugName} · 10 ml`)
+    await expect(row).toContainText(`${drugName} · 100 ml`)
+    // In ml, starting at the drug's 10 ml Teilmenge.
+    await expect(row.getByLabel('Menge')).toHaveValue('10')
     await row.getByLabel('Notiz').fill('für den Rücken')
     await row.getByLabel('Notiz').blur()
     // Written down, not dispensed: no position yet.
@@ -34,7 +36,7 @@ test.describe('Mitbringen', () => {
     // The day's Packliste has it, added up and visit by visit; a tick survives a reload.
     await card.getByRole('link', { name: 'Packliste' }).click()
     await expect(page.getByText(`Was für ${germanDate()} mitzunehmen ist`)).toBeVisible()
-    await expect(page.getByText(new RegExp(`1 × ${drugName}`)).first()).toBeVisible()
+    await expect(page.getByText(new RegExp(`10 ml ${drugName}`)).first()).toBeVisible()
     await expect(page.getByText(lastName).filter({ visible: true }).first()).toBeVisible()
     const packed = page.getByRole('checkbox', { name: new RegExp(drugName) })
     await packed.check()

@@ -222,7 +222,7 @@ async fn appointments_are_events(pool: PgPool) {
     let drug = common::seed_drug(&pool).await;
     app.post(
         &format!("/api/appointments/{appointment_id}/reminders"),
-        json!({ "drug_packaging_id": drug.subset_packaging_id, "quantity": "2" }),
+        json!({ "drug_packaging_id": drug.subset_packaging_id, "quantity": "20" }),
     )
     .await;
 
@@ -251,7 +251,7 @@ async fn appointments_are_events(pool: PgPool) {
         "{ics}"
     );
     assert!(ics.contains("Tel. 030 1234567"), "{ics}");
-    assert!(ics.contains("2× Amoxicillin 100 · 10 ml"), "{ics}");
+    assert!(ics.contains("20 ml Amoxicillin 100"), "{ics}");
     assert!(ics.contains(&format!("http://pi:8080/appointments/{appointment_id}")));
 
     let multiget = format!(
