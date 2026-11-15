@@ -16,7 +16,7 @@ test.describe('navigation', () => {
 
     await signIn(page)
     await page.goto(`/customers/${customerId}`)
-    await page.getByRole('button', { name: new RegExp(name) }).click()
+    await page.getByRole('button', { name: new RegExp(`^${name}`) }).click()
     await expect(page).toHaveURL(new RegExp(`/patients/${patientId}$`))
 
     // The visit history opens the appointment on this animal's tab.

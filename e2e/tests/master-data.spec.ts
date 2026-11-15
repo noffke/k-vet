@@ -289,7 +289,7 @@ test.describe('customers and patients', () => {
 
     // The customer lists the animal to begin with, on the page and in the customers index.
     await page.goto(`/customers/${customerId}`)
-    await expect(page.getByRole('button', { name: new RegExp(name) })).toBeVisible()
+    await expect(page.getByRole('button', { name: new RegExp(`^${name}`) })).toBeVisible()
 
     await page.goto(`/patients/${patientId}`)
     await page.getByLabel('Todesdatum').fill('04.05.2026')
@@ -298,7 +298,7 @@ test.describe('customers and patients', () => {
 
     // Archived: gone from the owner's list of animals, and from the name the index shows.
     await page.goto(`/customers/${customerId}`)
-    await expect(page.getByRole('button', { name: new RegExp(name) })).toHaveCount(0)
+    await expect(page.getByRole('button', { name: new RegExp(`^${name}`) })).toHaveCount(0)
 
     await navigate(page, 'Kunden')
     await page.getByPlaceholder('Suchen …').fill(name)
