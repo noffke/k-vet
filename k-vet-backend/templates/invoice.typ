@@ -38,12 +38,12 @@
 
 // `label` leads the first paragraph, the way the plain text always followed it; a text that
 // opens with a list puts the label on a line of its own above it — `sticky`, so a page break
-// never comes between the label and its list. An empty paragraph is a blank line the vet left,
-// so it keeps a little space rather than vanishing.
+// never comes between the label and its list. An empty paragraph is a blank line the vet left:
+// exactly one empty line, as in the editor — a paragraph holding only a zero-width space.
 #let formatted(label, blocks) = for (index, part) in blocks.enumerate() {
   if part.kind == "paragraph" {
     if part.spans.len() == 0 {
-      v(0.6em)
+      par(sym.zws)
     } else if index == 0 {
       par[#label #spans-content(part.spans)]
     } else {
@@ -252,7 +252,10 @@ Vielen Dank für Ihr Vertrauen!
     #v(2mm)
   ]
   #set text(9.5pt)
-  #set par(leading: 0.65em)
+  // Paragraphs and lists follow one another like lines in a paragraph — no extra space between
+  // them, as the vet writes them in the editor (`.rich-text` in the app's index.css).
+  #set par(leading: 0.65em, spacing: 0.65em)
+  #set block(spacing: 0.65em)
   #for report in invoice.reports [
     #block(sticky: true)[
       #text(weight: "bold")[#report.patient]
