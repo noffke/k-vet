@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { Boxes, Package, RotateCcw } from 'lucide-react'
+import { Boxes, Package, RotateCcw, Trash2 } from 'lucide-react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -11,6 +11,7 @@ import {
   usePatchPackaging,
 } from '@/api/generated/endpoints'
 import type { AddressBookEntry, Drug, Packaging } from '@/api/generated/model'
+import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { DeleteDraftButton } from '@/components/DeleteDraftButton'
 import { NumberInput } from '@/components/NumberInput'
 import { IncompleteBadge } from '@/components/RecordBadges'
@@ -47,6 +48,12 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
   const createPackaging = useCreatePackaging({ mutation: { onSuccess: refresh } })
 
   const hasOriginal = packagings.some((packaging) => packaging.kind === 'original')
+  // The Teilmenge whose deletion is being confirmed.
+  const [pendingSubset, setPendingSubset] = useState<Packaging | null>(null)
+  const subsetLabel = (packaging: Packaging | null) =>
+    packaging?.quantity
+      ? `${formatQuantity(packaging.quantity)} ${packaging.unit ?? ''}`.trim()
+      : t('pharmacy.subset')
   // The packaging a new supplier is being made for, from its "Neuer Lieferant …".
   const [newSupplierFor, setNewSupplierFor] = useState<number | null>(null)
 
@@ -64,9 +71,11 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
             <Package className="size-4" />
             {t('pharmacy.original')}
           </Button>
+          {/* A drug that is "beliebig teilbar" takes any amount and has no Teilmengen. */}
           <Button
             size="small"
-            disabled={!hasOriginal}
+            disabled={!hasOriginal || drug.freely_divisible}
+            title={drug.freely_divisible ? t('packaging.freelyDivisible') : undefined}
             onClick={() => createPackaging.mutate({ id: drug.id, data: { kind: 'subset' } })}
           >
             <Boxes className="size-4" />
@@ -118,6 +127,19 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                     </>
                   ) : null}
                   <IncompleteBadge missing={packaging.missing_fields} />
+                  {/* A Teilmenge goes whenever the vet wants — to make the drug "beliebig
+                      teilbar", say. Lines that billed it keep it (the server archives it). */}
+                  {!isOriginal && !packaging.draft ? (
+                    <Button
+                      size="icon"
+                      variant="ghost"
+                      aria-label={t('packaging.deleteSubset')}
+                      title={t('packaging.deleteSubset')}
+                      onClick={() => setPendingSubset(packaging)}
+                    >
+                      <Trash2 className="size-4 text-danger" />
+                    </Button>
+                  ) : null}
                   {/* A packaging added by mistake goes again while it is incomplete. */}
                   {packaging.draft ? (
                     <DeleteDraftButton
@@ -253,6 +275,21 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
           })
         }}
       />
+
+      <ConfirmDialog
+        open={pendingSubset !== null}
+        onOpenChange={(open) => {
+          if (!open) setPendingSubset(null)
+        }}
+        title={t('packaging.deleteSubset')}
+        confirmLabel={t('action.delete')}
+        onConfirm={() => {
+          const subset = pendingSubset
+          if (subset) void deletePackaging(subset.id).then(refresh)
+        }}
+      >
+        {t('packaging.deleteSubsetConfirm', { size: subsetLabel(pendingSubset) })}
+      </ConfirmDialog>
     </section>
   )
 }

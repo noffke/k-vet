@@ -195,6 +195,9 @@ fn constraint_field_message(constraint: &str) -> Option<(&'static str, &'static 
         "drug_packaging_quantity_positive" => ("quantity", "value.mustBePositive"),
         "drug_packaging_supplier_kind" => ("supplier_id", "packaging.supplierOnOriginalOnly"),
         "drug_packaging_one_original_idx" => ("kind", "packaging.originalAlreadyExists"),
+        // The triggers that keep "Beliebig teilbar" and Teilmengen apart (migration 0041).
+        "drug_packaging_no_subset_when_freely_divisible" => ("kind", "packaging.freelyDivisible"),
+        "drug_freely_divisible_without_subsets" => ("freely_divisible", "drug.hasSubsets"),
         "service_complete" => ("draft", "record.incomplete"),
         "service_got_shape" => ("got_number", "service.gotFieldsRequired"),
         "service_factor_positive" => ("factor", "value.mustBePositive"),

@@ -1,0 +1,50 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT draft, kind AS \"kind: PackagingKind\"\n           FROM drug_packaging WHERE id = $1 FOR UPDATE",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "draft",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "draft"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "kind: PackagingKind",
+        "type_info": {
+          "Custom": {
+            "name": "packaging_kind",
+            "kind": {
+              "Enum": [
+                "original",
+                "subset"
+              ]
+            }
+          }
+        },
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "kind"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false,
+      false
+    ]
+  },
+  "hash": "fb52ba1a9726ea0bc994f463d6a4e7fe66f4b394421373dfbe6cf48c08e1a41e"
+}

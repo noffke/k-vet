@@ -291,9 +291,10 @@ der Zeilenbetrag immer in Cent.
   von 5 Tabletten auch 12 Tabletten (eine Packung plus 2).
 * Hat ein Medikament **keine Teilmenge**, gehen nur ganze Packungen.
 * Ein Medikament mit dem neuen Haken **„Beliebig teilbar"** nimmt jede Menge, z. B. 2,7 ml aus der
-  100-ml-Flasche: 0,64 €. Das ist für Injektionslösungen gedacht. Ist dort keine Teilmenge
-  angelegt, rechnet das Programm den Rest genauso — anteilig mit 100 % Zuschlag auf den
-  Listenpreis, also ebenfalls 0,238 € je ml.
+  100-ml-Flasche: 0,64 €. Das ist für Injektionslösungen gedacht. Ein solches Medikament hat
+  **keine Teilmengen** — der Haken lässt sich erst setzen, wenn sie gelöscht sind. Den Rest
+  rechnet das Programm anteilig mit 100 % Zuschlag auf den Listenpreis, also ebenfalls 0,238 € je
+  ml.
 
 **Fragen:**
 

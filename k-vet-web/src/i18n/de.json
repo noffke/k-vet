@@ -398,6 +398,7 @@
     },
     "flagsLegend": "Kennzeichen",
     "freelyDivisibleHint": "Z. B. Injektionslösungen: jede Menge abrechenbar, etwa 2,7 ml aus einer 100-ml-Flasche. Ohne diesen Haken geht der Rest nach ganzen Packungen nur in Schritten der kleinsten Teilmenge.",
+    "freelyDivisibleNeedsNoSubsets": "Erst die Teilmengen unten löschen: ein beliebig teilbares Medikament hat keine – jede Menge wird anteilig mit Anbruchaufschlag berechnet.",
     "initialStock": "Anfangsbestand",
     "intake": "Wareneingang",
     "intakeResult": "Ergibt {{quantity}} {{unit}} Anfangsbestand.",
@@ -538,6 +539,9 @@
   },
   "packaging": {
     "delete": "Packung löschen",
+    "deleteSubset": "Teilmenge löschen",
+    "deleteSubsetConfirm": "Teilmenge {{size}} löschen? Bereits abgerechnete Positionen behalten sie.",
+    "freelyDivisible": "Ein beliebig teilbares Medikament hat keine Teilmengen.",
     "originalAlreadyExists": "Es gibt bereits eine Originalpackung",
     "supplierOnOriginalOnly": "Nur Originalpackungen haben einen Lieferanten"
   },
@@ -776,5 +780,8 @@
     "restPart": "{{amount}} Teilmenge à {{price}}/{{unit}}",
     "packPrice": "Preis je Packung (brutto)",
     "subsetPrice": "Teilmenge je {{unit}} (brutto)"
+  },
+  "drug": {
+    "hasSubsets": "Erst die Teilmengen löschen – ein beliebig teilbares Medikament hat keine."
   }
 }

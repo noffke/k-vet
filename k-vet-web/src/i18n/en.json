@@ -398,6 +398,7 @@
     },
     "flagsLegend": "Flags",
     "freelyDivisibleHint": "E.g. injection liquids: any quantity can be billed, such as 2.7 ml from a 100 ml bottle. Without it, what is left after whole packs goes only in steps of the smallest part pack.",
+    "freelyDivisibleNeedsNoSubsets": "Delete the part packs below first: a drug that takes any quantity has none – every amount is priced pro rata with the part-pack surcharge.",
     "initialStock": "Initial stock",
     "intake": "Stock intake",
     "intakeResult": "Adds {{quantity}} {{unit}} initial stock.",
@@ -538,6 +539,9 @@
   },
   "packaging": {
     "delete": "Delete packaging",
+    "deleteSubset": "Delete part pack",
+    "deleteSubsetConfirm": "Delete the part pack {{size}}? Positions already billed keep it.",
+    "freelyDivisible": "A drug that takes any quantity has no part packs.",
     "originalAlreadyExists": "This drug already has an original packaging",
     "supplierOnOriginalOnly": "Only original packagings have a supplier"
   },
@@ -776,5 +780,8 @@
     "restPart": "{{amount}} part pack at {{price}}/{{unit}}",
     "packPrice": "Price per pack (gross)",
     "subsetPrice": "Part pack per {{unit}} (gross)"
+  },
+  "drug": {
+    "hasSubsets": "Delete the part packs first – a drug that takes any quantity has none."
   }
 }

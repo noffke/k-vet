@@ -709,6 +709,8 @@ pub async fn load_packagings(
            JOIN drug ON drug.id = packaging.drug_id
            LEFT JOIN supplier ON supplier.id = packaging.supplier_id
            WHERE packaging.drug_id = $1
+             -- A Teilmenge deleted while billed lines still name it is kept for them only.
+             AND NOT (packaging.kind = 'subset' AND packaging.archived)
            ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id"#,
         drug_id,
     )
@@ -832,8 +834,13 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
     Ok(StatusCode::NO_CONTENT)
 }
 
-/// Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
-/// "Mitbringen" refer to it.
+/// Deletes an incomplete packaging, or a Teilmenge.
+///
+/// An incomplete packaging is refused while stock, lines, templates, Preisauskünfte or
+/// "Mitbringen" refer to it. A complete Teilmenge goes too — so a drug can be made "Beliebig
+/// teilbar" (migration 0041) — and where lines billed before migration 0039 still name it, it
+/// is archived instead: gone from the drug and its prices, kept for those lines and their
+/// invoices. An original is deleted only while incomplete.
 #[utoipa::path(
     delete,
     path = "/api/packagings/{id}",
@@ -841,8 +848,8 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
     tag = "pharmacy",
     params(("id" = i64, Path,)),
     responses(
-        (status = 204, description = "Deleted"),
-        (status = 409, description = "Complete (archive it instead), or still in use")
+        (status = 204, description = "Deleted, or a Teilmenge still named by billed lines archived"),
+        (status = 409, description = "A complete original (archive the drug instead), or still in use")
     )
 )]
 pub async fn delete_packaging(
@@ -850,17 +857,41 @@ pub async fn delete_packaging(
     Path(id): Path<i64>,
 ) -> AppResult<StatusCode> {
     let mut transaction = state.pool.begin().await?;
-    let draft = sqlx::query_scalar!(
-        "SELECT draft FROM drug_packaging WHERE id = $1 FOR UPDATE",
+    let packaging = sqlx::query!(
+        r#"SELECT draft, kind AS "kind: PackagingKind"
+           FROM drug_packaging WHERE id = $1 FOR UPDATE"#,
         id
     )
     .fetch_optional(&mut *transaction)
-    .await?;
-    ensure_deletable(draft)?;
-    sqlx::query!("DELETE FROM drug_packaging WHERE id = $1", id)
-        .execute(&mut *transaction)
+    .await?
+    .ok_or(AppError::NotFound)?;
+    if packaging.kind == PackagingKind::Original {
+        ensure_deletable(Some(packaging.draft))?;
+    }
+
+    // Tried in a savepoint: a foreign key refusing it leaves the transaction usable.
+    let mut attempt = sqlx::Acquire::begin(&mut *transaction).await?;
+    match sqlx::query!("DELETE FROM drug_packaging WHERE id = $1", id)
+        .execute(&mut *attempt)
         .await
-        .map_err(in_use)?;
+    {
+        Ok(_) => attempt.commit().await?,
+        Err(error) if packaging.kind == PackagingKind::Subset && !packaging.draft => {
+            // Only a reference makes it an archive; anything else is the failure it is.
+            let refusal = in_use(error);
+            if !matches!(refusal, AppError::Conflict(_)) {
+                return Err(refusal);
+            }
+            attempt.rollback().await?;
+            sqlx::query!(
+                "UPDATE drug_packaging SET archived = true WHERE id = $1",
+                id
+            )
+            .execute(&mut *transaction)
+            .await?;
+        }
+        Err(error) => return Err(in_use(error)),
+    }
     transaction.commit().await.map_err(in_use)?;
     Ok(StatusCode::NO_CONTENT)
 }

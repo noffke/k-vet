@@ -46,7 +46,7 @@ test.describe('deleting incomplete records', () => {
 
     const subsets = page.getByRole('button', { name: 'Packung löschen' })
     await expect(subsets).toHaveCount(0)
-    await page.getByRole('button', { name: 'Teilmenge' }).click()
+    await page.getByRole('button', { name: 'Teilmenge', exact: true }).click()
     await expect(subsets).toHaveCount(1)
     await subsets.click()
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click()

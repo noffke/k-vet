@@ -86,6 +86,7 @@ export function DrugDetailPage() {
   if (!drug.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = drug.data
   const original = (packagings.data ?? []).find((packaging) => packaging.kind === 'original')
+  const hasSubsets = (packagings.data ?? []).some((packaging) => packaging.kind === 'subset')
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -214,17 +215,28 @@ export function DrugDetailPage() {
             />
             <p className="text-xs text-ink-faint">{t('pharmacy.euthanasiaHint')}</p>
           </div>
-          {/* Not informational either: it decides which quantities a position can take. */}
+          {/* Not informational either: it decides which quantities a position can take. It
+              excludes Teilmengen (migration 0041), so it waits until they are deleted. */}
           <div className="mt-2 flex flex-col gap-1">
             <CheckboxField
               label={t('pharmacy.flags.freelyDivisible')}
               defaultChecked={record.freely_divisible}
+              disabled={hasSubsets && !record.freely_divisible}
               onChange={(event) => {
                 autoSave.set({ freely_divisible: event.target.checked })
                 void autoSave.flush()
               }}
             />
-            <p className="text-xs text-ink-faint">{t('pharmacy.freelyDivisibleHint')}</p>
+            <p className="text-xs text-ink-faint">
+              {hasSubsets && !record.freely_divisible
+                ? t('pharmacy.freelyDivisibleNeedsNoSubsets')
+                : t('pharmacy.freelyDivisibleHint')}
+            </p>
+            {autoSave.fieldErrors.freely_divisible ? (
+              <p className="text-xs text-danger" role="alert">
+                {t(autoSave.fieldErrors.freely_divisible)}
+              </p>
+            ) : null}
           </div>
         </fieldset>
       </section>

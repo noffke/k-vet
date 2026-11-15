@@ -65,9 +65,20 @@ test.describe('dispensing a drug', () => {
 
     await signIn(page)
     await page.goto(`/pharmacy/${drugId}`)
-    await page.getByLabel('Beliebig teilbar').check()
+    // It has its 10 ml Teilmenge: the mark waits until that is deleted (asked first).
+    const flag = page.getByLabel('Beliebig teilbar')
+    await expect(flag).toBeDisabled()
+    await expect(page.getByText(/Erst die Teilmengen unten löschen/)).toBeVisible()
+    await page.getByRole('button', { name: 'Teilmenge löschen' }).click()
+    await expect(page.getByRole('dialog')).toContainText('Teilmenge 10 ml löschen?')
+    await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()
+    await expect(page.getByRole('button', { name: 'Teilmenge löschen' })).toHaveCount(0)
+
+    await flag.check()
     await expect(page.getByText(/jede Menge abrechenbar/)).toBeVisible()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    // Marked, it takes no Teilmenge.
+    await expect(page.getByRole('button', { name: 'Teilmenge', exact: true })).toBeDisabled()
 
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
@@ -79,7 +90,8 @@ test.describe('dispensing a drug', () => {
     await quantity.fill('2,7')
     await quantity.blur()
     await expect(page.getByText(/2,7 ml Teilmenge à 0,238.€\/ml/).first()).toBeVisible()
-    // 2,7 × 0,20 € = 0,54 € net, 0,64 € with VAT.
+    // The whole bottle priced as a Teilmenge, shared out: 2,7 × 0,20 € = 0,54 € net, 0,64 € with
+    // VAT.
     await expect(page.getByText('0,64 €').first()).toBeVisible()
   })
 })

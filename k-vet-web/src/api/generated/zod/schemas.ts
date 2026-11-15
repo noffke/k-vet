@@ -1872,8 +1872,12 @@ export const UnarchiveManufacturerResponse = zod.object({
 
 
 /**
- * @summary Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
-"Mitbringen" refer to it.
+ * An incomplete packaging is refused while stock, lines, templates, Preisauskünfte or
+ * "Mitbringen" refer to it. A complete Teilmenge goes too — so a drug can be made "Beliebig
+ * teilbar" (migration 0041) — and where lines billed before migration 0039 still name it, it
+ * is archived instead: gone from the drug and its prices, kept for those lines and their
+ * invoices. An original is deleted only while incomplete.
+ * @summary Deletes an incomplete packaging, or a Teilmenge.
  */
 export const DeletePackagingParams = zod.object({
   "id": zod.int()

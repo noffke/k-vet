@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent, drug.human_drug\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
+  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent, drug.human_drug\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n             -- A Teilmenge deleted while billed lines still name it is kept for them only.\n             AND NOT (packaging.kind = 'subset' AND packaging.archived)\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
   "describe": {
     "columns": [
       {
@@ -190,5 +190,5 @@
       false
     ]
   },
-  "hash": "005daa7261cf9e882380ffae10bdbc4cdadc95399cae4cfb88691a0b28597009"
+  "hash": "f6cfad2ada363d7f48d223feab62cbaa06920f9f8838faca6f7b56f48c9ac307"
 }

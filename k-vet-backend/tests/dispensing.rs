@@ -142,6 +142,11 @@ async fn the_rest_goes_in_teilmenge_steps_unless_the_drug_is_freely_divisible(po
     assert_eq!(refusal(&changed), off_step);
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("80"));
 
+    // "Beliebig teilbar" takes the place of the Teilmenge (migration 0041).
+    let deleted = app
+        .delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        .await;
+    assert_eq!(deleted.status, StatusCode::NO_CONTENT);
     set_freely_divisible(&app, drug.drug_id).await;
     let injection = dispense(
         &app,
@@ -152,8 +157,8 @@ async fn the_rest_goes_in_teilmenge_steps_unless_the_drug_is_freely_divisible(po
     .await;
     assert_eq!(injection.status, StatusCode::OK);
     let injection = injection.json();
-    // Changing the drug priced its 10 ml Teilmenge by AMPreisV again: 1,00 € pro rata plus
-    // 100 % = 2,00 €. 2,7 ml at 0,20 € per ml = 0,54 € net.
+    // The whole bottle priced as a Teilmenge: 10,00 € listed plus 100 % = 20,00 € for 100 ml,
+    // 0,20 € per ml. 2,7 ml = 0,54 € net.
     assert_eq!(injection["line_net"], "0.54");
     assert_eq!(injection["dispense"]["rule"]["freely_divisible"], true);
     assert_eq!(injection["dispense"]["rule"]["step"], Value::Null);
@@ -626,4 +631,153 @@ async fn raising_a_line_counts_what_it_already_holds(pool: PgPool) {
         items[0]["quantity"], "100.00",
         "the refused change is not kept"
     );
+}
+
+/// A Teilmenge goes from the drug — deleted, or archived where lines billed before migration
+/// 0039 still name it, so they and their invoices keep it.
+#[sqlx::test]
+async fn a_teilmenge_is_deleted_or_kept_for_the_lines_that_billed_it(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let packagings = |drug_id: i64| {
+        let app = &app;
+        async move {
+            app.get(&format!("/api/drugs/{drug_id}/packagings"))
+                .await
+                .json()
+                .as_array()
+                .map(|rows| {
+                    rows.iter()
+                        .filter_map(|row| row["id"].as_i64())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        }
+    };
+
+    // Unused: gone.
+    let unused = common::seed_drug(&pool).await;
+    let deleted = app
+        .delete(&format!("/api/packagings/{}", unused.subset_packaging_id))
+        .await;
+    assert_eq!(deleted.status, StatusCode::NO_CONTENT);
+    assert_eq!(packagings(unused.drug_id).await, vec![unused.packaging_id]);
+    let left: i64 = sqlx::query_scalar("SELECT count(*) FROM drug_packaging WHERE id = $1")
+        .bind(unused.subset_packaging_id)
+        .fetch_one(&pool)
+        .await
+        .expect("count");
+    assert_eq!(left, 0);
+
+    // Named by a line in the old form: archived, off the drug, still the line's.
+    let billed = common::seed_drug(&pool).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let (treatment_id, record_id) =
+        common::seed_patient_treatment(&pool, appointment_id, patient_id).await;
+    sqlx::query(
+        "INSERT INTO treatment_item
+             (treatment_id, position, kind, drug_packaging_id, patient_treatment_id, per_visit,
+              name, quantity, unit, price_net, vat_percent)
+         VALUES ($1, 1, 'drug_packaging', $2, $3, false, 'Amoxicillin 100 · 10 ml', 3, 'ml',
+                 2.50, 19)",
+    )
+    .bind(treatment_id)
+    .bind(billed.subset_packaging_id)
+    .bind(record_id)
+    .execute(&pool)
+    .await
+    .expect("a line from before 0039");
+    let archived = app
+        .delete(&format!("/api/packagings/{}", billed.subset_packaging_id))
+        .await;
+    assert_eq!(archived.status, StatusCode::NO_CONTENT);
+    assert_eq!(packagings(billed.drug_id).await, vec![billed.packaging_id]);
+    let kept: bool = sqlx::query_scalar("SELECT archived FROM drug_packaging WHERE id = $1")
+        .bind(billed.subset_packaging_id)
+        .fetch_one(&pool)
+        .await
+        .expect("still there");
+    assert!(kept);
+    let items = app
+        .get(&format!("/api/treatments/{treatment_id}/items"))
+        .await
+        .json();
+    assert_eq!(items[0]["line_net"], "7.50");
+    // New lines no longer see it: whole bottles only.
+    let line = dispense(
+        &app,
+        treatment_id,
+        json!({ "kind": "drug_packaging", "drug_packaging_id": billed.packaging_id,
+                "quantity": "10" }),
+    )
+    .await;
+    assert_eq!(
+        refusal(&line),
+        json!([{ "field": "quantity", "message": "item.wholePacksOnly" }])
+    );
+
+    // A complete original is not deleted this way.
+    let original = app
+        .delete(&format!("/api/packagings/{}", billed.packaging_id))
+        .await;
+    assert_eq!(original.status, StatusCode::CONFLICT);
+}
+
+/// "Beliebig teilbar" and Teilmengen exclude each other: the flag waits until the Teilmengen
+/// are deleted, and while it is set none can be added — in the database too (migration 0041).
+#[sqlx::test]
+async fn beliebig_teilbar_and_teilmengen_exclude_each_other(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+
+    let refused = app
+        .patch(
+            &format!("/api/drugs/{}", drug.drug_id),
+            json!({ "freely_divisible": true }),
+        )
+        .await;
+    assert_eq!(
+        refusal(&refused),
+        json!([{ "field": "freely_divisible", "message": "drug.hasSubsets" }])
+    );
+
+    app.delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        .await;
+    set_freely_divisible(&app, drug.drug_id).await;
+
+    let subset = app
+        .post(
+            &format!("/api/drugs/{}/packagings", drug.drug_id),
+            json!({ "kind": "subset" }),
+        )
+        .await;
+    assert_eq!(
+        refusal(&subset),
+        json!([{ "field": "kind", "message": "packaging.freelyDivisible" }])
+    );
+    let by_hand = sqlx::query(
+        "INSERT INTO drug_packaging (drug_id, kind, unit, quantity, draft)
+         VALUES ($1, 'subset', 'ml', 10, false)",
+    )
+    .bind(drug.drug_id)
+    .execute(&pool)
+    .await;
+    assert!(by_hand.is_err(), "the database holds it too");
+
+    // The flag taken off, a Teilmenge can be added again.
+    let unset = app
+        .patch(
+            &format!("/api/drugs/{}", drug.drug_id),
+            json!({ "freely_divisible": false }),
+        )
+        .await;
+    assert_eq!(unset.status, StatusCode::OK);
+    let subset = app
+        .post(
+            &format!("/api/drugs/{}/packagings", drug.drug_id),
+            json!({ "kind": "subset" }),
+        )
+        .await;
+    assert_eq!(subset.status, StatusCode::OK);
 }

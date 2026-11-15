@@ -5487,8 +5487,12 @@ export const getDeletePackagingUrl = (id: number,) => {
 }
 
 /**
- * @summary Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
-"Mitbringen" refer to it.
+ * An incomplete packaging is refused while stock, lines, templates, Preisauskünfte or
+ * "Mitbringen" refer to it. A complete Teilmenge goes too — so a drug can be made "Beliebig
+ * teilbar" (migration 0041) — and where lines billed before migration 0039 still name it, it
+ * is archived instead: gone from the drug and its prices, kept for those lines and their
+ * invoices. An original is deleted only while incomplete.
+ * @summary Deletes an incomplete packaging, or a Teilmenge.
  */
 export const deletePackaging = async (id: number, options?: Parameters<typeof apiFetch>[1]): Promise<void> => {
 
@@ -5540,8 +5544,7 @@ const {mutation: mutationOptions, request: requestOptions} = options ?
     export type DeletePackagingMutationVariables = {id: number}
 
     /**
- * @summary Deletes an incomplete packaging. Refused while stock, lines, templates, Preisauskünfte or
-"Mitbringen" refer to it.
+ * @summary Deletes an incomplete packaging, or a Teilmenge.
  */
 export const useDeletePackaging = <TError = void,
     TContext = unknown>(options?: { mutation?:UseMutationOptions<Awaited<ReturnType<typeof deletePackaging>>, TError,DeletePackagingMutationVariables, TContext>, request?: SecondParameter<typeof apiFetch>}

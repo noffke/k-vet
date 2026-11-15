@@ -10,7 +10,10 @@ pack's unit (Tbl., ml): 12 tablets from a pack of 10, 150 ml from a 100 ml bottl
 pack price and the rest as a Teilmenge with Anbruchaufschlag, and the invoice prints the two as two rows
 (requirements/prices.md). The quantity starts at 1 where one unit can be dispensed, else at the smallest Teilmenge,
 else at one pack. A rest that is not a multiple of the drug's smallest Teilmenge is refused ("nur in Schritten von
-10 ml"); a drug without a Teilmenge goes in whole packs; a drug marked "Beliebig teilbar" takes any amount. This holds
+10 ml"); a drug without a Teilmenge goes in whole packs; a drug marked "Beliebig teilbar" takes any amount and has no
+Teilmengen — the mark is set once they are deleted, and none can be added while it is set. A Teilmenge is deleted
+from the drug's page (asked first); one that lines billed before migration 0039 still name is archived instead, so
+those lines and their invoices keep it. This holds
 wherever a drug quantity is typed: treatment lines, Behandlungsgruppen, Preisauskunft and Mitbringen. The field shows
 its steps beside it, and a treatment line shows how it is billed ("1 × 100 ml à 17,61 € + 50 ml Teilmenge à
 0,238 €/ml"), with the pack price and the Teilmenge price per unit editable. Lines billed before this (migration 0039)

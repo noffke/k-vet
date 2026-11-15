@@ -72,9 +72,11 @@ unit price, total and VAT (decided 2026-11-15; `money::dispense_rows`, `review.m
 * **Which quantities go through:** the rest has to be a multiple of the smallest Teilmenge ("nur in
   Schritten von 5 Tbl."); a drug without any Teilmenge goes in whole packs only.
 * **"Beliebig teilbar"** (`drug.freely_divisible`) is for injection liquids: any rest, to two
-  decimals. Without a Teilmenge of its own, such a drug takes its share of the whole pack priced as
-  a Teilmenge (`money::whole_pack_as_subset`) — the same 100 % and, if switched on, the same floor.
-  Without a listed price there is no such price, and it goes in whole packs only.
+  decimals, priced as its share of the whole pack priced as a Teilmenge
+  (`money::whole_pack_as_subset`) — the same 100 % and, if switched on, the same floor. Such a drug
+  has **no Teilmengen**: the mark waits until they are deleted, and while it is set none can be
+  added (migration 0041, held by the database). Without a listed price there is no such price, and
+  it goes in whole packs only.
 * **A new line starts at 1** base unit where 1 can be dispensed, otherwise at the smallest
   Teilmenge, otherwise at one pack.
 * **Everything is pinned** when the line is added — pack size, pack price, Teilmenge size and price,
