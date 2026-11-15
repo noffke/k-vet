@@ -131,9 +131,17 @@ is pure and unit-tested, including path-traversal refusal).
   stored as the net that comes closest — the nearest below when no net in cents gives it exactly.
 - `src/domain/stock.rs` — FEFO allocation and the append-only movement ledger. A dispense is a
   *draft* until the invoice is accepted, then *frozen*; corrections are compensating rows that
-  reference what they reverse. A movement with a reversal is never deleted. Line quantity counts
-  **packagings**; the deduction is `quantity × packaging.quantity` base units taken from the
-  drug's **original** packaging lots (`stock::stock_target`).
+  reference what they reverse. A movement with a reversal is never deleted. A drug line counts
+  **base units dispensed** from the drug's **original** packaging (migration 0039) and takes them
+  off that packaging's lots; a line billed before 0039 (`pack_size` NULL) still counts
+  packagings, `quantity × packaging.quantity` (`stock::Dispensed`, `stock::stock_target`).
+- `src/api/dispense.rs` + `money::dispense_rows` — how a drug line is billed: whole packs at the
+  pack price, the rest at the smallest Teilmenge's price pro rata, two invoice rows each with its
+  own VAT. The line pins pack size, Teilmenge size and price and `drug.freely_divisible`
+  ("Beliebig teilbar"); `dispense::check` refuses a rest off the Teilmenge's steps wherever a
+  quantity is typed (line, Behandlungsgruppe, Preisauskunft, Mitbringen), and each of those
+  reports the drug's `DispenseRule` so the page can say "in Schritten von 10 ml". The picker
+  offers a drug once, as its original packaging.
 - `src/api/invoices.rs` — lifecycle `created → accepted → submitted`, or `cancelled`. Updating a
   created invoice keeps its number; updating an accepted one cancels it and burns the number
   (`domain/invoice_number.rs` allocates from the configured pattern, counter scoped by the

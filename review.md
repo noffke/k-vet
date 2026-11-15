@@ -269,7 +269,7 @@ nach Rabatt tatsächlich überwiesen haben? Und ist dieser Betrag netto?
 
 Sie wählen das Medikament und tragen ein, **was Sie tatsächlich abgegeben haben** — in Tabletten
 oder ml. Das Programm rechnet daraus ganze Packungen zum Packungspreis und den Rest als Teilmenge
-mit Anbruchzuschlag (AMP-04). Auf der Rechnung stehen dafür **zwei Zeilen**, jede mit eigenem
+mit Anbruchaufschlag (AMP-04). Auf der Rechnung stehen dafür **zwei Zeilen**, jede mit eigenem
 Einzelpreis und Gesamtbetrag.
 
 Der Rest wird zum Preis der **kleinsten Teilmenge** abgerechnet, die am Medikament angelegt ist,

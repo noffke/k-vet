@@ -33,9 +33,11 @@ layouts are first-class — not one design squeezed onto a phone.
   delivery is booked with a USB barcode scanner, pack by pack: the EAN or PZN finds the drug, the
   Data Matrix brings batch and expiry, and every Wareneingang confirms the list price.
 - **Billing** — GOT 2022 positions with factors and Wegegeld (§ 10), drug prices from AMPreisV
-  § 3, § 4 and § 10, VAT summarised per rate, invoice numbers from an operator-defined pattern
-  with a counter that never goes backwards. A Wegegeld line fills in its kilometres — the
-  customer's last visit, else Google Maps' shortest route — and no invoice goes out without them.
+  § 3, § 4 and § 10 — the vet enters what was dispensed (12 Tbl., 2,7 ml) and k-vet bills whole
+  packs plus the rest as a Teilmenge, on two invoice rows — VAT summarised per rate, invoice
+  numbers from an operator-defined pattern with a counter that never goes backwards. A Wegegeld
+  line fills in its kilometres — the customer's last visit, else Google Maps' shortest route —
+  and no invoice goes out without them.
 - **Google Maps** (optional key) — a customer's address is checked as it is typed, with a
   misspelling offered corrected; the customer and the appointment open the drive there in
   Google Maps.

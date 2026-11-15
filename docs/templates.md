@@ -171,21 +171,24 @@ A patient group (`invoice.patient_groups[]`):
 | `service_date` | Treatment date, repeated per group. |
 | `items` | The group's lines, in the vet's order. |
 
-A line (`invoice.items[]`):
+A line (`invoice.items[]`) is one printed row. A drug position counts what was dispensed (12 Tbl.,
+150 ml) and prints as **two rows** when it is more than whole packs: the whole packs at the pack
+price, and the rest as a Teilmenge with its own unit price. Both rows carry the position's
+`position`, `name` and `patient`; a template that prints the rows as they come shows both.
 
 | Field | Notes |
 | --- | --- |
 | `position` | 1-based line number. |
 | `name` | Drug or service name as pinned when the line was added. |
 | `patient` | Animal name — only filled when the invoice covers more than one animal. |
-| `quantity` | Number of packagings or units, German decimals. |
-| `unit` | e.g. `ml`; empty for services. |
+| `quantity` | Number of units, German decimals: whole packs on a drug's pack row, base units (`50`) on its Teilmenge row. |
+| `unit` | e.g. `ml` on a Teilmenge row, `Originalpackung` on a pack row; empty for services. |
 | `factor` | GOT factor as a percentage (`150 %`); empty when none applies. |
 | `got_number` | GOT position number; empty for drugs and for self-defined services that name none. |
 | `km` | Kilometres on a travel-expense line; empty otherwise. |
 | `vat` | This line's VAT rate, e.g. `19 %`. |
-| `detail` | The small second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)` for a self-defined position charged analogously to that GOT number, `1 Stück`, or `1 Originalpackung, Zulassungsnr: 402485.00.00`. Empty when there is nothing to add. |
-| `price` | Unit price, gross, **with the GOT factor already applied** — so `price × quantity` reconciles with `total`. Not the bare catalogue fee; that is the net figure the vet edits. |
+| `detail` | The small second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)` for a self-defined position charged analogously to that GOT number, `1 Originalpackung à 100 ml, Zulassungsnr: 402485.00.00` on a drug's pack row, `Teilmenge 50 ml, mit Anbruchaufschlag` on its Teilmenge row. Empty when there is nothing to add. |
+| `price` | Unit price, gross, **with the GOT factor already applied** — so `price × quantity` reconciles with `total`. Not the bare catalogue fee; that is the net figure the vet edits. On a Teilmenge row the price of one ml or tablet, with up to four decimals (`0,238 €`). |
 | `total` | Line total, gross. |
 
 A VAT group (`invoice.vat_groups[]`) has `rate` (e.g. `19 %`), `net`, `vat` and `gross`. Sum the

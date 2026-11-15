@@ -36,6 +36,10 @@ Generally, all entities should have a created and updated timestamp.
     that line's animal's date of death to the appointment's day and archives the animal,
     unless a date of death is already entered. Pre-set (migration 0025) for every drug whose
     name contains "release" (pentobarbital), case-insensitive.
+  * Freely Divisible ("Beliebig teilbar") (bool) — any amount can be dispensed (2,7 ml from a
+    100 ml bottle), not only whole packs and multiples of the smallest Teilmenge. For injection
+    liquids. Without a Teilmenge of its own, the rest is priced as its share of the whole pack
+    priced as a Teilmenge (`prices.md`).
   * Relation: 1 Manufacturer
   * Relation: n Drug Packaging (exactly one of them has Kind = original)
   * Decision: the original packaging is modeled as a Drug Packaging (Kind = original), so invoice positions uniformly reference packagings and the subset price formula stays within one entity
@@ -180,9 +184,14 @@ Fields:
   * Relation: n Treatment Item (with explicit ordering)
   * Relation: n Invoice (at most one not Cancelled; cancelled invoices are retained for bookkeeping)
 * Treatment Item (Behandlungsposition) - either a Drug Packaging or a Service (XOR: see Modeling Conventions). This is the basis for invoice generation so all values must be copied so that later on changing a price, name, etc doesn't change existing invoices. Values are copied when the line is added to the treatment (pinned to the time of treatment), not at invoice generation
-  * in case of Drug Packaging:
-    * Quantity
+  * in case of Drug Packaging — always the drug's original packaging (migration 0039):
+    * Quantity — what was dispensed, in the pack's base unit (Tbl., ml)
     * Unit
+    * Pack Size, Teilmenge Size, Teilmenge Price Net, Freely Divisible (copied, like the price):
+      how the quantity is billed — whole packs at the pack price, the rest at the Teilmenge's
+      price pro rata — and in which steps it may be typed. No Teilmenge: whole packs only.
+      A line billed before migration 0039 has none of these; its quantity counts packagings of
+      the packaging it references, original or Teilmenge.
     * allow to override Name
     * Relation: n Drug Stock Movement (dispense; one per lot used)
     * Relation: 1 Patient (mandatory — which patient received the drug, dispensing documentation; CHECK-enforced per Modeling Conventions)
@@ -201,14 +210,14 @@ Fields:
       position list and on the invoice. Lines from before the flag (migration 0024) stay where
       they were entered.
   * Position (for ordering)
-  * Price (copied from the current sales price; allow to override)
+  * Price (copied from the current sales price; allow to override) — on a drug line, one pack
   * VAT Percent (copied)
 
 ### Preisauskunft (Price Quote)
 * Customer (optional while open; a quote with a customer is complete — one way)
 * Name (optional), Note (optional)
 * Address (street, postcode, city; optional) — a new caller's, for the Wegegeld, until they are a customer
-* Lines, ordered: a drug packaging or a service, quantity, factor (services), kilometres and travel multiplier (Wegegeld), and as quoted: name, net price, VAT
+* Lines, ordered: a drug (its original packaging, quantity in its unit) or a service, quantity, factor (services), kilometres and travel multiplier (Wegegeld), and as quoted: name, net price, VAT, and for a drug the pack size, unit and Teilmenge price
 * An open quote (no customer) is removed 28 days after its last change
 
 ### Invoice (Rechnung)
