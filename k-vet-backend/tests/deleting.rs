@@ -77,8 +77,10 @@ async fn a_complete_record_is_not_deleted(pool: PgPool) {
         assert_eq!(app.delete(&uri).await.status, StatusCode::CONFLICT, "{uri}");
         assert_eq!(app.get(&uri).await.status, StatusCode::OK, "{uri} stays");
     }
+    // A complete original packaging neither — the drug is archived instead. (A Teilmenge is the
+    // exception: it goes, or is archived for the lines that billed it — tests/dispensing.rs.)
     assert_eq!(
-        app.delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        app.delete(&format!("/api/packagings/{}", drug.packaging_id))
             .await
             .status,
         StatusCode::CONFLICT
@@ -87,7 +89,7 @@ async fn a_complete_record_is_not_deleted(pool: PgPool) {
         count(
             &pool,
             "SELECT count(*) FROM drug_packaging WHERE id = $1",
-            drug.subset_packaging_id
+            drug.packaging_id
         )
         .await,
         1,
