@@ -303,6 +303,27 @@ fn is_readable_file(path: &std::path::Path) -> bool {
         .is_ok_and(|metadata| metadata.is_file())
 }
 
+/// A list as a sentence names it: `Fiffi, Wuffi und Bello` — commas between, `word` before the
+/// last, no comma before it. The word is the template's: "und" in a German one, "and" in an
+/// English one, "oder" where it fits.
+pub fn join_and(items: &[String], word: &str) -> String {
+    match items {
+        [] => String::new(),
+        [only] => only.clone(),
+        [init @ .., last] => format!("{} {word} {last}", init.join(", ")),
+    }
+}
+
+/// The template filter around [`join_and`]: `{{ patients | join_and }}`, or
+/// `{{ patients | join_and("and") }}`. Anything list-like is taken, each item as its text.
+fn join_and_filter(
+    value: minijinja::Value,
+    word: Option<String>,
+) -> Result<String, minijinja::Error> {
+    let items: Vec<String> = value.try_iter()?.map(|item| item.to_string()).collect();
+    Ok(join_and(&items, word.as_deref().unwrap_or("und")))
+}
+
 /// Splits the template into subject and body and renders both with minijinja.
 fn render_template(template: &str, context: &InvoiceMail) -> AppResult<(String, String)> {
     let (subject_template, body_template) = template
@@ -310,6 +331,7 @@ fn render_template(template: &str, context: &InvoiceMail) -> AppResult<(String, 
         .ok_or_else(|| AppError::Internal("the email template has no body".to_owned()))?;
 
     let mut environment = minijinja::Environment::new();
+    environment.add_filter("join_and", join_and_filter);
     environment
         .add_template("subject", subject_template.trim())
         .map_err(|error| AppError::internal("parsing the email subject template", error))?;
@@ -422,8 +444,57 @@ mod tests {
             "body was: {body}"
         );
         assert!(body.contains("38,62 €"));
-        assert!(body.contains("Bello, Minka"), "patients are listed: {body}");
+        assert!(
+            body.contains("Bello und Minka"),
+            "patients are listed: {body}"
+        );
         assert!(body.contains("Tierärztin Dr. Musterfrau"));
+    }
+
+    #[test]
+    fn a_list_reads_as_a_sentence() {
+        let names = |names: &[&str]| {
+            names
+                .iter()
+                .map(|name| (*name).to_owned())
+                .collect::<Vec<_>>()
+        };
+        assert_eq!(join_and(&[], "und"), "");
+        assert_eq!(join_and(&names(&["Fiffi"]), "und"), "Fiffi");
+        assert_eq!(
+            join_and(&names(&["Fiffi", "Wuffi"]), "und"),
+            "Fiffi und Wuffi"
+        );
+        assert_eq!(
+            join_and(&names(&["Fiffi", "Wuffi", "Bello"]), "und"),
+            "Fiffi, Wuffi und Bello"
+        );
+        assert_eq!(
+            join_and(&names(&["Fiffi", "Wuffi", "Bello", "Minka"]), "und"),
+            "Fiffi, Wuffi, Bello und Minka"
+        );
+        assert_eq!(
+            join_and(&names(&["Fiffi", "Wuffi", "Bello"]), "and"),
+            "Fiffi, Wuffi and Bello"
+        );
+    }
+
+    /// The filter in a template: "und" unless the template names another word — also in the
+    /// subject line.
+    #[test]
+    fn templates_join_the_animals_with_their_own_word() {
+        let template = "Rechnung für {{ patients | join_and }}\n\
+                        Treated: {{ patients | join_and(\"and\") }}.";
+        let (subject, body) = render_template(template, &context()).expect("renders");
+        assert_eq!(subject, "Rechnung für Bello und Minka");
+        assert_eq!(body, "Treated: Bello and Minka.");
+
+        let three = InvoiceMail {
+            patients: vec!["Fiffi".to_owned(), "Wuffi".to_owned(), "Bello".to_owned()],
+            ..context()
+        };
+        let (subject, _) = render_template(template, &three).expect("renders");
+        assert_eq!(subject, "Rechnung für Fiffi, Wuffi und Bello");
     }
 
     // Building the transport spawns lettre's connection pool, so a runtime is required.

@@ -309,10 +309,24 @@ every client, and the invoice itself is the attached PDF (named `Rechnung-<numbe
 | `invoice_date` | `04.05.2026`. |
 | `invoice_total` | `38,62 €`. |
 | `practice_name` | From *Einstellungen*. |
-| `patients` | List of animal names — join them with the `join` filter, and guard with `{% if patients %}` (see the default template). |
+| `patients` | List of the visit's animal names, alphabetical — write them as a sentence with the `join_and` filter (below), and guard with `{% if patients %}` (see the default template). |
 
 Undefined variables render as empty rather than failing, so a typo shows up as a gap in the
 text — read the result before sending.
+
+### The `join_and` filter
+
+Writes a list the way a sentence names it: commas between, a word before the last one, no comma
+before that word. The word is "und" unless the template names another, so an English template
+says `and` and any template can say `oder`:
+
+| In the template | One animal | Two | Three |
+| --- | --- | --- | --- |
+| `{{ patients \| join_and }}` | Fiffi | Fiffi und Wuffi | Fiffi, Wuffi und Bello |
+| `{{ patients \| join_and("and") }}` | Fiffi | Fiffi and Wuffi | Fiffi, Wuffi and Bello |
+
+It works in the subject line too (`Rechnung für {{ patients | join_and }}`). Without an animal it
+writes nothing.
 
 ### Encoding and umlauts
 
