@@ -132,6 +132,9 @@ pub struct InvoiceLine {
     /// Gross unit price and gross line total — what a private customer expects to read.
     pub price: String,
     pub total: String,
+    /// A drug used outside its approval ("Umwidmung"): a Humanpräparat, or flagged so on the
+    /// drug or on this position. The default template writes "(Umwidmung)" after the name.
+    pub redesignation: bool,
 }
 
 #[derive(Debug, Serialize)]
@@ -591,6 +594,7 @@ mod tests {
             detail: "GOT-Nr. 1".to_owned(),
             price: "28,11 €".to_owned(),
             total: "28,11 €".to_owned(),
+            redesignation: false,
         };
         let medicine = InvoiceLine {
             position: 2,
@@ -605,6 +609,7 @@ mod tests {
             detail: "1 Originalpackung, Zulassungsnr: 402485.00.00".to_owned(),
             price: "0,50 €".to_owned(),
             total: "15,00 €".to_owned(),
+            redesignation: false,
         };
 
         let document = InvoiceDocument {
@@ -859,6 +864,7 @@ mod tests {
                         detail: String::new(),
                         price: "13,40 €".to_owned(),
                         total: "13,40 €".to_owned(),
+                        redesignation: false,
                     }],
                 }],
                 items: Vec::new(),
@@ -957,6 +963,7 @@ mod tests {
             detail: "GOT-Nr. 1".to_owned(),
             price: "13,40 €".to_owned(),
             total: "13,40 €".to_owned(),
+            redesignation: false,
         };
         document.invoice.patient_groups = (0..3)
             .map(|animal| PatientGroup {
@@ -1033,5 +1040,22 @@ mod tests {
                 together(&format!("Leistungsdatum: {}", group.service_date), first);
             }
         }
+    }
+
+    /// A drug used outside its approval says so after its name; everything else prints as named.
+    #[test]
+    fn a_redesignated_drug_says_so_after_its_name() {
+        let config = empty_config();
+        let mut document = minimal_document();
+        let mut drug = document.invoice.patient_groups[0].items[0].clone();
+        drug.name = "Carprofen 50".to_owned();
+        drug.redesignation = true;
+        document.invoice.patient_groups[0].items.push(drug);
+
+        let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
+        let text = page_texts(&paged).concat();
+        assert!(text.contains("Carprofen 50 (Umwidmung)"), "{text}");
+        assert!(text.contains("Beratung"), "{text}");
+        assert!(!text.contains("Beratung (Umwidmung)"), "{text}");
     }
 }

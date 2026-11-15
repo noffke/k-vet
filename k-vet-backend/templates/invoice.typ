@@ -184,7 +184,9 @@ Vielen Dank für Ihr Vertrauen!
     }
     for item in group.items {
       rows.push([
-        #item.name
+        // A drug used outside its approval says so (Humanpräparat, or "Umwidmung" on the drug
+        // or the position).
+        #item.name#if item.redesignation [ (Umwidmung)]
         #if item.detail != "" [\ #text(8pt, fill: muted)[#item.detail]]
         #if item.factor != "" and item.factor != "100 %" [
           \ #text(8pt, fill: muted)[Faktor: #item.factor]

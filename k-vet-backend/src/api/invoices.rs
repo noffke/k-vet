@@ -955,14 +955,16 @@ async fn build_document(
         .map(|patient| (patient.id, patient.name.clone().unwrap_or_default()))
         .collect();
 
-    // Packaging kind and marketing authorisation number for the grey sub-label; neither is
-    // pinned on the line, so they are read from the catalog at render time.
+    // Packaging kind and marketing authorisation number for the grey sub-label, and whether the
+    // drug is used outside its approval as a whole; none is pinned on the line, so they are read
+    // from the catalog at render time.
     let packaging_ids: Vec<i64> = items
         .iter()
         .filter_map(|item| item.drug_packaging_id)
         .collect();
     let packagings: Vec<PackagingDetail> = sqlx::query!(
-        r#"SELECT packaging.id, packaging.kind AS "kind: PackagingKind", drug.approval_number
+        r#"SELECT packaging.id, packaging.kind AS "kind: PackagingKind", drug.approval_number,
+                  drug.human_drug OR drug.redesignation AS "redesignated!"
            FROM drug_packaging packaging
            JOIN drug ON drug.id = packaging.drug_id
            WHERE packaging.id = ANY($1)"#,
@@ -975,6 +977,7 @@ async fn build_document(
         id: row.id,
         kind: row.kind,
         approval_number: row.approval_number,
+        redesignated: row.redesignated,
     })
     .collect();
 
@@ -1141,6 +1144,9 @@ struct PackagingDetail {
     id: i64,
     kind: PackagingKind,
     approval_number: Option<String>,
+    /// The drug is a Humanpräparat, or flagged "Umwidmung" as a whole: every line of it is used
+    /// outside its approval.
+    redesignated: bool,
 }
 
 /// `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333` — empty parts are
@@ -1187,6 +1193,12 @@ fn invoice_rows(
     patient: String,
     currency: &str,
 ) -> Vec<InvoiceLine> {
+    // "(Umwidmung)": a Humanpräparat or a drug flagged so as a whole, or this one position.
+    let redesignation = item.redesignation
+        || item
+            .drug_packaging_id
+            .and_then(|id| packagings.iter().find(|row| row.id == id))
+            .is_some_and(|packaging| packaging.redesignated);
     let row = |quantity: Decimal, unit: String, detail: String, price: String, total: Decimal| {
         InvoiceLine {
             position: item.position,
@@ -1203,6 +1215,7 @@ fn invoice_rows(
             // Exact by construction: VAT is rounded per row, so `net + vat` needs no further
             // rounding and the column sums to the VAT group's gross (`money::vat_summary`).
             total: money_de(total, currency),
+            redesignation,
         }
     };
     let Some(dispense) = &item.dispense else {
@@ -1849,6 +1862,7 @@ mod tests {
             id: 7,
             kind: PackagingKind::Original,
             approval_number: Some("402485.00.00".to_owned()),
+            redesignated: false,
         }];
         let rows = invoice_rows(&dispensed_line(), &packagings, String::new(), "EUR");
         let printed: Vec<(&str, &str, &str, &str, &str)> = rows
@@ -1921,5 +1935,40 @@ mod tests {
             2,
             "the pack row and the Teilmenge row"
         );
+    }
+
+    #[test]
+    fn a_drug_used_outside_its_approval_is_marked_on_every_row() {
+        let catalogue = |redesignated: bool| {
+            [PackagingDetail {
+                id: 7,
+                kind: PackagingKind::Original,
+                approval_number: None,
+                redesignated,
+            }]
+        };
+        let marks = |line: &treatment_items::TreatmentItem, packagings: &[PackagingDetail]| {
+            invoice_rows(line, packagings, String::new(), "EUR")
+                .iter()
+                .map(|row| row.redesignation)
+                .collect::<Vec<_>>()
+        };
+
+        // Neither the drug nor the position: plain.
+        assert_eq!(
+            marks(&dispensed_line(), &catalogue(false)),
+            vec![false, false]
+        );
+        // A Humanpräparat, or a drug flagged "Umwidmung": both rows of the line.
+        assert_eq!(marks(&dispensed_line(), &catalogue(true)), vec![true, true]);
+        // Only this position ticked.
+        let mut ticked = dispensed_line();
+        ticked.redesignation = true;
+        assert_eq!(marks(&ticked, &catalogue(false)), vec![true, true]);
+        // A service is never one, whatever a packaging of the same id would say.
+        let mut service = dispensed_line();
+        service.drug_packaging_id = None;
+        service.dispense = None;
+        assert_eq!(marks(&service, &catalogue(true)), vec![false]);
     }
 }
