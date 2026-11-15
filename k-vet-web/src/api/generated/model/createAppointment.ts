@@ -11,6 +11,15 @@ export interface CreateAppointment {
   starts_at?: string | null;
   /** @nullable */
   note?: string | null;
-  /** @nullable */
+  /**
+     * Left out with `patient_id` given, the animal's own customer.
+     * @nullable
+     */
   customer_id?: number | null;
+  /**
+     * The animal the appointment is for — made from that animal's page or its row on the
+     * customer's page. Only it goes on the treatment; without it, a customer's only animal does.
+     * @nullable
+     */
+  patient_id?: number | null;
 }

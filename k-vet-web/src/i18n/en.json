@@ -232,6 +232,7 @@
     "deleteConfirm": "Really delete this appointment? Its treatment and its positions go with it.",
     "duplicate": "Duplicate appointment",
     "new": "New appointment",
+    "newFor": "New appointment for {{name}}",
     "noPast": "No past appointments.",
     "noUpcoming": "No upcoming appointments.",
     "past": "Past",

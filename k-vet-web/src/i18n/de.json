@@ -232,6 +232,7 @@
     "deleteConfirm": "Diesen Termin wirklich löschen? Seine Behandlung und deren Positionen werden mitgelöscht.",
     "duplicate": "Termin duplizieren",
     "new": "Neuer Termin",
+    "newFor": "Neuer Termin für {{name}}",
     "noPast": "Keine vergangenen Termine.",
     "noUpcoming": "Keine anstehenden Termine.",
     "past": "Vergangen",

@@ -60,7 +60,8 @@ export const ListAppointmentsResponse = zod.array(ListAppointmentsResponseItem)
 export const CreateAppointmentBody = zod.object({
   "starts_at": zod.iso.datetime({"offset":true}).nullish(),
   "note": zod.string().nullish(),
-  "customer_id": zod.int().nullish()
+  "customer_id": zod.int().nullish().describe('Left out with `patient_id` given, the animal\'s own customer.'),
+  "patient_id": zod.int().nullish().describe('The animal the appointment is for — made from that animal\'s page or its row on the\ncustomer\'s page. Only it goes on the treatment; without it, a customer\'s only animal does.')
 })
 
 export const CreateAppointmentResponse = zod.object({

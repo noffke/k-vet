@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useParams } from '@tanstack/react-router'
-import { PawPrint, Upload } from 'lucide-react'
+import { PawPrint, Plus, Upload } from 'lucide-react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { apiFetch } from '@/api/fetcher'
@@ -34,6 +34,7 @@ import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
+import { useNewAppointment } from '../appointments/newAppointment'
 
 const SEXES = ['female', 'male', 'unknown'] as const
 
@@ -81,6 +82,7 @@ export function PatientDetailPage() {
   }
 
   // Where a deleted draft leaves to: back the way the vet came, else the customer.
+  const newAppointment = useNewAppointment()
   const leave = useGoBack(
     patient.data?.customer_id
       ? { to: '/customers/$id', params: { id: String(patient.data.customer_id) } }
@@ -344,7 +346,27 @@ export function PatientDetailPage() {
         from the calendar.
       */}
       <section className="mt-6">
-        <h2 className="text-base">{t('patients.treatments')}</h2>
+        <div className="flex items-center justify-between gap-3">
+          <h2 className="text-base">{t('patients.treatments')}</h2>
+          {/* The next visit, for this animal alone. Not for one that is incomplete, archived or
+              dead, nor without an owner: a visit is a customer's. */}
+          {record.customer_id && !record.draft && !record.archived && !record.date_of_death ? (
+            <Button
+              variant="accent"
+              size="small"
+              disabled={newAppointment.pending}
+              onClick={() =>
+                newAppointment.open({
+                  customerId: record.customer_id ?? undefined,
+                  patientId: record.id,
+                })
+              }
+            >
+              <Plus className="size-4" />
+              {t('appointments.new')}
+            </Button>
+          ) : null}
+        </div>
         <ul className="mt-2 flex flex-col gap-2">
           {(treatments.data ?? []).map((visit) => (
             <li key={visit.id}>

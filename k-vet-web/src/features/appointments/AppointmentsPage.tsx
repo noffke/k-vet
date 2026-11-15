@@ -1,14 +1,9 @@
 import * as Tabs from '@radix-ui/react-tabs'
-import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useSearch } from '@tanstack/react-router'
 import { Plus } from 'lucide-react'
 import { type ReactNode, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  getListAppointmentsQueryKey,
-  listAppointments,
-  useCreateAppointment,
-} from '@/api/generated/endpoints'
+import { getListAppointmentsQueryKey, listAppointments } from '@/api/generated/endpoints'
 import type { Appointment, ListAppointmentsWhen } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { LoadMore } from '@/components/LoadMore'
@@ -26,6 +21,7 @@ import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
 import { scheduleOf } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
+import { useNewAppointment } from './newAppointment'
 
 /** The day after `iso` (`yyyy-MM-dd`), as an ISO date. */
 function nextDay(iso: string): string {
@@ -46,21 +42,13 @@ export function AppointmentsPage() {
   const { t } = useTranslation()
   const { dateTime, time, locale } = useLocaleFormat()
   const navigate = useNavigate()
-  const client = useQueryClient()
   const tab: ListAppointmentsWhen = useSearch({ from: '/app/appointments' }).when ?? 'upcoming'
   const upcoming = tab === 'upcoming'
   const [search, setSearch] = useState('')
 
   const params = { q: search || undefined, when: tab }
   const appointments = usePagedList(getListAppointmentsQueryKey(params), listAppointments, params)
-  const createAppointment = useCreateAppointment({
-    mutation: {
-      onSuccess: async (appointment) => {
-        await client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() })
-        await navigate({ to: '/appointments/$id', params: { id: String(appointment.id) } })
-      },
-    },
-  })
+  const newAppointment = useNewAppointment()
 
   const today = todayIso()
   const tomorrow = nextDay(today)
@@ -130,12 +118,8 @@ export function AppointmentsPage() {
         actions={
           <Button
             variant="accent"
-            onClick={() =>
-              createAppointment.mutate({
-                data: { starts_at: null, note: null },
-              })
-            }
-            disabled={createAppointment.isPending}
+            onClick={() => newAppointment.open()}
+            disabled={newAppointment.pending}
           >
             <Plus className="size-4" />
             {t('appointments.new')}

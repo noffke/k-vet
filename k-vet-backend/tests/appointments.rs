@@ -708,3 +708,68 @@ async fn the_list_splits_upcoming_from_past(pool: PgPool) {
         [undated, next_week, tomorrow, today, yesterday, long_ago]
     );
 }
+
+/// From the customer's page or an animal's: the appointment is the customer's, and an animal
+/// named is the one on it — the only one, even when the customer has more. Without one, a
+/// customer's only animal comes along as before.
+#[sqlx::test]
+async fn an_appointment_is_made_for_a_customer_or_one_of_their_animals(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let bello = common::seed_patient(&pool, customer_id).await;
+    let minka = common::seed_patient(&pool, customer_id).await;
+    sqlx::query("UPDATE patient SET name = 'Minka' WHERE id = $1")
+        .bind(minka)
+        .execute(&pool)
+        .await
+        .expect("a second name");
+
+    // For Minka alone, the customer read from her.
+    let for_minka = app
+        .post("/api/appointments", json!({ "patient_id": minka }))
+        .await;
+    assert_eq!(for_minka.status, StatusCode::OK);
+    let for_minka = for_minka.json();
+    assert_eq!(for_minka["customer_id"], customer_id);
+    assert_eq!(for_minka["patient_names"], json!(["Minka"]));
+    assert_eq!(for_minka["draft"], true, "the time is still to be chosen");
+
+    // For the customer: two animals, so none is chosen for the vet.
+    let for_customer = app
+        .post("/api/appointments", json!({ "customer_id": customer_id }))
+        .await
+        .json();
+    assert_eq!(for_customer["patient_names"], json!([]));
+
+    // Another customer's animal is refused, and nothing is left behind.
+    let other_customer = common::seed_customer(&pool).await;
+    let before: i64 = sqlx::query_scalar("SELECT count(*) FROM appointment")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
+    let refused = app
+        .post(
+            "/api/appointments",
+            json!({ "customer_id": other_customer, "patient_id": bello }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        refused.json()["errors"][0]["message"],
+        "treatment.patientOtherCustomer"
+    );
+    let after: i64 = sqlx::query_scalar("SELECT count(*) FROM appointment")
+        .fetch_one(&pool)
+        .await
+        .expect("count");
+    assert_eq!(after, before);
+
+    // A customer with one animal: that animal, as before.
+    let single = common::seed_customer(&pool).await;
+    common::seed_patient(&pool, single).await;
+    let for_single = app
+        .post("/api/appointments", json!({ "customer_id": single }))
+        .await
+        .json();
+    assert_eq!(for_single["patient_names"], json!(["Bello"]));
+}

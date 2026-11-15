@@ -62,7 +62,11 @@ pub struct Appointment {
 pub struct CreateAppointment {
     pub starts_at: Option<DateTime<Utc>>,
     pub note: Option<String>,
+    /// Left out with `patient_id` given, the animal's own customer.
     pub customer_id: Option<i64>,
+    /// The animal the appointment is for — made from that animal's page or its row on the
+    /// customer's page. Only it goes on the treatment; without it, a customer's only animal does.
+    pub patient_id: Option<i64>,
 }
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
@@ -254,12 +258,24 @@ pub async fn create(
     // its treatment, in the same transaction: there is never an appointment without one.
     let draft = body.starts_at.is_none();
     let mut transaction = state.pool.begin().await?;
+    // For an animal, its customer is the appointment's — unless one is named, which the animal
+    // then has to belong to (`attach_patient` refuses it otherwise).
+    let customer_id = match (body.customer_id, body.patient_id) {
+        (Some(customer_id), _) => Some(customer_id),
+        (None, Some(patient_id)) => {
+            sqlx::query_scalar!("SELECT customer_id FROM patient WHERE id = $1", patient_id)
+                .fetch_optional(&mut *transaction)
+                .await?
+                .ok_or_else(|| AppError::field("patient_id", "record.notFound"))?
+        }
+        (None, None) => None,
+    };
     let id: i64 = sqlx::query_scalar!(
         "INSERT INTO appointment (starts_at, note, customer_id, draft)
          VALUES ($1, $2, $3, $4) RETURNING id",
         body.starts_at,
         body.note,
-        body.customer_id,
+        customer_id,
         draft,
     )
     .fetch_one(&mut *transaction)
@@ -267,12 +283,18 @@ pub async fn create(
     let treatment_id: i64 = sqlx::query_scalar!(
         "INSERT INTO treatment (appointment_id, customer_id) VALUES ($1, $2) RETURNING id",
         id,
-        body.customer_id,
+        customer_id,
     )
     .fetch_one(&mut *transaction)
     .await?;
-    if body.customer_id.is_some() {
-        treatments::attach_only_animal(&mut transaction, treatment_id).await?;
+    match body.patient_id {
+        Some(patient_id) => {
+            treatments::attach_patient(&mut transaction, treatment_id, patient_id).await?;
+        }
+        None if customer_id.is_some() => {
+            treatments::attach_only_animal(&mut transaction, treatment_id).await?;
+        }
+        None => {}
     }
     transaction.commit().await?;
 

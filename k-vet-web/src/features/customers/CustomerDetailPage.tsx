@@ -1,6 +1,6 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { Link, useNavigate, useParams } from '@tanstack/react-router'
-import { Plus, Trash2 } from 'lucide-react'
+import { CalendarPlus, Plus, Trash2 } from 'lucide-react'
 import { type FocusEvent, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -52,6 +52,7 @@ import { useOperatorConfig } from '@/lib/config'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
 import { useGoBack } from '@/lib/trail'
+import { useNewAppointment } from '../appointments/newAppointment'
 import { CustomerQuotes } from '../quote/CustomerQuotes'
 
 const SALUTATIONS: Salutation[] = ['frau', 'herr', 'familie']
@@ -97,6 +98,7 @@ export function CustomerDetailPage() {
   const archive = useArchiveCustomer()
   const unarchive = useUnarchiveCustomer()
   const createPatient = useCreatePatient()
+  const newAppointment = useNewAppointment()
   /**
    * Addresses typed but not yet stored. A `customer_email` row cannot exist empty — the column
    * is NOT NULL and the table has no draft flag — so a new address lives here until it has a
@@ -599,23 +601,38 @@ export function CustomerDetailPage() {
         </div>
         <ul className="mt-2 flex flex-col gap-2">
           {(patients.data ?? []).map((patient) => (
-            <li key={patient.id}>
+            <li key={patient.id} className="flex items-stretch gap-2">
               <button
                 type="button"
                 onClick={() =>
                   void navigate({ to: '/patients/$id', params: { id: String(patient.id) } })
                 }
-                className="w-full rounded-card border border-line bg-surface px-3 py-2 text-left hover:bg-cream-soft"
+                className="min-w-0 flex-1 rounded-card border border-line bg-surface px-3 py-2 text-left hover:bg-cream-soft"
               >
                 <span className="font-medium text-ink">{patient.name ?? t('patients.new')}</span>
                 <span className="ml-2 text-sm text-ink-soft">{patient.species ?? ''}</span>
               </button>
+              {/* A visit for this animal alone — beside the row, not inside its button. An
+                  incomplete animal cannot go on a visit yet. */}
+              {patient.draft || record.draft || record.archived ? null : (
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="self-center"
+                  aria-label={t('appointments.newFor', { name: patient.name ?? '' })}
+                  title={t('appointments.newFor', { name: patient.name ?? '' })}
+                  disabled={newAppointment.pending}
+                  onClick={() => newAppointment.open({ customerId, patientId: patient.id })}
+                >
+                  <CalendarPlus className="size-4" />
+                </Button>
+              )}
             </li>
           ))}
         </ul>
       </section>
 
-      <CustomerAppointments customerId={customerId} />
+      <CustomerAppointments customerId={customerId} canCreate={!record.draft && !record.archived} />
       <CustomerQuotes customerId={customerId} />
     </div>
   )
@@ -625,15 +642,35 @@ export function CustomerDetailPage() {
  * Every appointment of this customer, newest first (issues.md) — what the vet reads before a
  * visit, and the way into one from the customer rather than from the day list.
  */
-function CustomerAppointments({ customerId }: { customerId: number }) {
+function CustomerAppointments({
+  customerId,
+  canCreate,
+}: {
+  customerId: number
+  /** An incomplete or archived customer gets no new visit. */
+  canCreate: boolean
+}) {
   const { t } = useTranslation()
   const { dateTime } = useLocaleFormat()
   const params = { customer_id: customerId }
   const appointments = usePagedList(getListAppointmentsQueryKey(params), listAppointments, params)
+  const newAppointment = useNewAppointment()
 
   return (
     <section className="mt-6">
-      <h2 className="text-base">{t('appointments.title')}</h2>
+      <div className="flex items-center justify-between gap-3">
+        <h2 className="text-base">{t('appointments.title')}</h2>
+        {/* The customer's visit; their only animal comes along, with more the vet picks. */}
+        <Button
+          variant="accent"
+          size="small"
+          disabled={!canCreate || newAppointment.pending}
+          onClick={() => newAppointment.open({ customerId })}
+        >
+          <Plus className="size-4" />
+          {t('appointments.new')}
+        </Button>
+      </div>
       <ul className="mt-2 flex flex-col gap-2">
         {appointments.rows.map((appointment) => (
           <li key={appointment.id}>

@@ -152,6 +152,46 @@ test.describe('appointments', () => {
     await expect(page).toHaveURL(new RegExp(`/appointments/${appointmentId}$`))
   })
 
+  test('a new Termin starts from the customer, from an animal in their list, or from the animal', async ({
+    page,
+    request,
+  }) => {
+    const { customerId, lastName } = await seedCustomer(request)
+    const first = `Fiffi-${Date.now() % 1e6}`
+    const second = `Wuffi-${Date.now() % 1e6}`
+    const firstId = await seedPatient(request, customerId, first)
+    await seedPatient(request, customerId, second)
+    // The visit's animals show once it has its time.
+    const timed = async () => {
+      await expect(page).toHaveURL(/\/appointments\/\d+$/)
+      await page.getByLabel('Uhrzeit').fill('10:15')
+      await page.getByLabel('Uhrzeit').blur()
+      await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    }
+
+    await signIn(page)
+    // The customer's own visit: two animals, so none is chosen for the vet.
+    await page.goto(`/customers/${customerId}`)
+    await page.getByRole('button', { name: 'Neuer Termin', exact: true }).click()
+    await timed()
+    await expect(page.getByText(new RegExp(lastName)).first()).toBeVisible()
+    await expect(page.getByRole('tab')).toHaveCount(0)
+
+    // From the animal's row on the customer's page: that animal alone.
+    await page.goto(`/customers/${customerId}`)
+    await page.getByRole('button', { name: `Neuer Termin für ${second}` }).click()
+    await timed()
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(page.getByRole('tab', { name: new RegExp(second) })).toBeVisible()
+
+    // From the animal's own page: that animal alone too.
+    await page.goto(`/patients/${firstId}`)
+    await page.getByRole('button', { name: 'Neuer Termin', exact: true }).click()
+    await timed()
+    await expect(page.getByRole('tab')).toHaveCount(1)
+    await expect(page.getByRole('tab', { name: new RegExp(first) })).toBeVisible()
+  })
+
   test('a second animal is a second tab, and "+ Tier" goes once all are there', async ({
     page,
     request,

@@ -5928,7 +5928,16 @@
               "integer",
               "null"
             ],
-            "format": "int64"
+            "format": "int64",
+            "description": "Left out with `patient_id` given, the animal's own customer."
+          },
+          "patient_id": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int64",
+            "description": "The animal the appointment is for — made from that animal's page or its row on the\ncustomer's page. Only it goes on the treatment; without it, a customer's only animal does."
           }
         }
       },

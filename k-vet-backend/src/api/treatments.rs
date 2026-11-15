@@ -428,7 +428,7 @@ pub async fn has_content(connection: &mut PgConnection, treatment_id: i64) -> Ap
 /// job: `patient_treatment` carries the customer and composite foreign keys tie it to both the
 /// treatment's and the animal's. What is left here is turning the resulting constraint error
 /// into something the screen can say, and refusing a draft animal, which no key can express.
-async fn attach_patient(
+pub(crate) async fn attach_patient(
     transaction: &mut Transaction<'_, Postgres>,
     treatment_id: i64,
     patient_id: i64,
