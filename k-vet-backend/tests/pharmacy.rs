@@ -480,6 +480,31 @@ async fn a_drug_can_be_marked_as_a_euthanasia_preparation(pool: PgPool) {
     assert_eq!(unmarked["euthanasia"], false);
 }
 
+/// An antibiotic is marked on the drug's page — informational, it changes nothing else.
+#[sqlx::test]
+async fn a_drug_can_be_marked_as_an_antibiotic(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let (supplier, manufacturer) = address_book(&app).await;
+    let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
+
+    let drug = app.get(&format!("/api/drugs/{drug_id}")).await.json();
+    assert_eq!(drug["antibiotic"], false);
+    let marked = app
+        .patch(
+            &format!("/api/drugs/{drug_id}"),
+            json!({ "antibiotic": true }),
+        )
+        .await
+        .json();
+    assert_eq!(marked["antibiotic"], true);
+    assert_eq!(
+        marked["original_price_gross"], drug["original_price_gross"],
+        "the mark moves no price"
+    );
+    let reloaded = app.get(&format!("/api/drugs/{drug_id}")).await.json();
+    assert_eq!(reloaded["antibiotic"], true);
+}
+
 /// Marking a drug as a Humanpräparat switches it to § 3 Abs. 1 Satz 2 and reprices the catalogue.
 #[sqlx::test]
 async fn a_human_preparation_switches_the_ampreisv_rule(pool: PgPool) {

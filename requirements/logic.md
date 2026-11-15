@@ -39,7 +39,7 @@ an interruption mid-consultation, accepted deliberately: it lands at the moment 
 
 For batch traceability, a lot detail view must show all movements of the lot chronologically, each linking to the corresponding treatment/invoice/customer (dispenses) or showing the reason (corrections).
 
-Decision: in v1 the Narcotic (BTM) and Submission Receipt (Abgabebeleg) flags are informational only — no reminders, no receipt generation, no BTM ledger; the existing paper processes continue. Revisit after v1.
+Decision: in v1 the Narcotic (BTM), Submission Receipt (Abgabebeleg) and Antibiotic (Antibiotikum) flags are informational only — no reminders, no receipt generation, no BTM ledger; the existing paper processes continue. Revisit after v1.
 
 ## Services (Leistungen)
 For both self defined and GOT services we need normal CRUD functionality. Hidden GOT services should be hidden by default.

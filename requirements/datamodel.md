@@ -27,6 +27,7 @@ Generally, all entities should have a created and updated timestamp.
   * Submission Receipt (Abgabebeleg) (bool)
   * Narcotic (Betäubungsmittel, BTM) (bool)
   * Vaccine (Impfstoff) (bool)
+  * Antibiotic (Antibiotikum) (bool) — informational for now (migration 0040)
   * Refrigerate (Kühlware) (bool)
   * VAT Percent (selector)
   * Approval Number (Zulassungsnummer) (optional)

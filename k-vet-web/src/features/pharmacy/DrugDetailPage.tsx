@@ -36,6 +36,7 @@ const FLAGS = [
   'submission_receipt',
   'narcotic',
   'vaccine',
+  'antibiotic',
   'refrigerate',
   'redesignation',
   // Selects the AMPreisV rule: § 3 Abs. 1 Satz 2 instead of the veterinary bands.

@@ -22,6 +22,8 @@ export interface PatchDrug {
   /** @nullable */
   vaccine?: boolean | null;
   /** @nullable */
+  antibiotic?: boolean | null;
+  /** @nullable */
   refrigerate?: boolean | null;
   /** @nullable */
   redesignation?: boolean | null;

@@ -19,6 +19,8 @@ export interface Drug {
   submission_receipt: boolean;
   narcotic: boolean;
   vaccine: boolean;
+  /** An antibiotic. Informational, like the vaccine mark (migration 0040). */
+  antibiotic: boolean;
   refrigerate: boolean;
   redesignation: boolean;
   /**

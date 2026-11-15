@@ -385,6 +385,7 @@
     "euthanasiaHint": "When this drug is dispensed at an appointment, releasing the invoice enters the appointment’s day as the animal’s date of death and archives it. A date of death already entered stays.",
     "expiryShort": "Expires",
     "flags": {
+      "antibiotic": "Antibiotic",
       "euthanasia": "Euthanasia",
       "freelyDivisible": "Any quantity",
       "humanDrug": "Human preparation",

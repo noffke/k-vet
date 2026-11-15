@@ -385,6 +385,7 @@
     "euthanasiaHint": "Wird dieses Medikament bei einem Termin abgegeben, trägt die Freigabe der Rechnung den Tag des Termins als Todesdatum des Tiers ein und archiviert es. Ein schon eingetragenes Todesdatum bleibt.",
     "expiryShort": "Verfall",
     "flags": {
+      "antibiotic": "Antibiotikum",
       "euthanasia": "Euthanasie",
       "freelyDivisible": "Beliebig teilbar",
       "humanDrug": "Humanpräparat",

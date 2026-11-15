@@ -47,6 +47,8 @@ pub struct Drug {
     pub submission_receipt: bool,
     pub narcotic: bool,
     pub vaccine: bool,
+    /// An antibiotic. Informational, like the vaccine mark (migration 0040).
+    pub antibiotic: bool,
     pub refrigerate: bool,
     pub redesignation: bool,
     /// A medicine approved for humans, dispensed for use in an animal: priced by
@@ -113,6 +115,7 @@ pub struct PatchDrug {
     pub submission_receipt: Option<bool>,
     pub narcotic: Option<bool>,
     pub vaccine: Option<bool>,
+    pub antibiotic: Option<bool>,
     pub refrigerate: Option<bool>,
     pub redesignation: Option<bool>,
     pub human_drug: Option<bool>,
@@ -273,7 +276,8 @@ pub async fn patch(
                human_drug         = COALESCE($15, human_drug),
                draft              = $16,
                euthanasia         = COALESCE($17, euthanasia),
-               freely_divisible   = COALESCE($18, freely_divisible)
+               freely_divisible   = COALESCE($18, freely_divisible),
+               antibiotic         = COALESCE($19, antibiotic)
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -293,6 +297,7 @@ pub async fn patch(
         draft,
         body.euthanasia,
         body.freely_divisible,
+        body.antibiotic,
     )
     .execute(&mut *transaction)
     .await?;
@@ -610,7 +615,8 @@ pub async fn recompute_prices(
 pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
     let row = sqlx::query!(
         r#"SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,
-                  drug.narcotic, drug.vaccine, drug.refrigerate, drug.redesignation,
+                  drug.narcotic, drug.vaccine, drug.antibiotic, drug.refrigerate,
+                  drug.redesignation,
                   drug.human_drug, drug.euthanasia, drug.freely_divisible,
                   drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
@@ -649,6 +655,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         submission_receipt: row.submission_receipt,
         narcotic: row.narcotic,
         vaccine: row.vaccine,
+        antibiotic: row.antibiotic,
         refrigerate: row.refrigerate,
         redesignation: row.redesignation,
         human_drug: row.human_drug,

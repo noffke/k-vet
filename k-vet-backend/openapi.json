@@ -6657,6 +6657,7 @@
           "submission_receipt",
           "narcotic",
           "vaccine",
+          "antibiotic",
           "refrigerate",
           "redesignation",
           "human_drug",
@@ -6703,6 +6704,10 @@
           },
           "vaccine": {
             "type": "boolean"
+          },
+          "antibiotic": {
+            "type": "boolean",
+            "description": "An antibiotic. Informational, like the vaccine mark (migration 0040)."
           },
           "refrigerate": {
             "type": "boolean"
@@ -8168,6 +8173,12 @@
             ]
           },
           "vaccine": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "antibiotic": {
             "type": [
               "boolean",
               "null"
