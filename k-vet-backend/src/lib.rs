@@ -5,7 +5,7 @@
 
 use std::sync::{Arc, OnceLock};
 
-use axum::extract::State;
+use axum::extract::{DefaultBodyLimit, State};
 use axum::http::StatusCode;
 use axum::routing::get;
 use axum::{Router, middleware};
@@ -357,7 +357,11 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
         .fallback(static_assets::handler)
         // The frontend is served from disk now, so gzip the JS and CSS on the way out.
         .layer(CompressionLayer::new())
+        // One limit for every body, the configured `[storage] max_upload_mb`. axum's own default
+        // of 2 MB for an extracted body is switched off: it applies to multipart uploads too,
+        // and refused every photo from a phone's camera as a malformed request.
         .layer(RequestBodyLimitLayer::new(upload_limit))
+        .layer(DefaultBodyLimit::disable())
         .layer(session_layer)
         .layer(middleware::from_fn(metrics::track))
         .layer(TraceLayer::new_for_http())

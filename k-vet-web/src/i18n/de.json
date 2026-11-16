@@ -783,5 +783,11 @@
   },
   "drug": {
     "hasSubsets": "Erst die Teilmengen löschen – ein beliebig teilbares Medikament hat keine."
+  },
+  "upload": {
+    "done": "„{{name}}“ hochgeladen",
+    "failed": "„{{name}}“ konnte nicht hochgeladen werden. Bitte noch einmal versuchen.",
+    "pending": "„{{name}}“ wird hochgeladen …",
+    "tooLarge": "„{{name}}“ ist zu groß – höchstens {{mb}} MB."
   }
 }

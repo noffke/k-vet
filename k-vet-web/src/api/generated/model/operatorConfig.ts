@@ -32,4 +32,10 @@ export interface OperatorConfig {
      */
   maps_enabled: boolean;
   dav?: DavAccess | null;
+  /**
+     * The largest file an upload may be (`[storage] max_upload_mb`), so the page can refuse a
+     * bigger one before sending it and say how large a file may be.
+     * @minimum 0
+     */
+  max_upload_mb: number;
 }

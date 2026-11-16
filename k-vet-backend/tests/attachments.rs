@@ -192,3 +192,45 @@ async fn unknown_attachment_is_a_404(pool: PgPool) {
         StatusCode::NOT_FOUND
     );
 }
+
+/// A photo straight from a phone's camera is several megabytes. Uploads are bounded by
+/// `[storage] max_upload_mb` alone — axum's own 2 MB default for a multipart body refused
+/// them with a 400 "Error parsing `multipart/form-data` request".
+#[sqlx::test]
+async fn a_phone_photo_of_several_megabytes_is_accepted(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let photo = vec![0x5a_u8; 6 * 1024 * 1024];
+
+    let response = app
+        .post_multipart(
+            "/api/attachments",
+            "PXL_20261116.jpg",
+            "image/jpeg",
+            &photo,
+            &[],
+        )
+        .await;
+
+    assert_eq!(
+        response.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&response.body)
+    );
+    assert_eq!(response.json()["size_bytes"], 6 * 1024 * 1024);
+}
+
+/// Over the configured limit the upload is refused as too large — 413, which the page can name
+/// — and not as malformed.
+#[sqlx::test]
+async fn an_upload_over_the_limit_is_too_large(pool: PgPool) {
+    let app = TestApp::new(pool).await;
+    let limit = app.state.config.max_upload_bytes();
+    let too_big = vec![0x5a_u8; limit + 1024];
+
+    let response = app
+        .post_multipart("/api/attachments", "huge.jpg", "image/jpeg", &too_big, &[])
+        .await;
+
+    assert_eq!(response.status, StatusCode::PAYLOAD_TOO_LARGE);
+}

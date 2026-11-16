@@ -7607,7 +7607,8 @@
           "vat_rates",
           "default_country",
           "version",
-          "maps_enabled"
+          "maps_enabled",
+          "max_upload_mb"
         ],
         "properties": {
           "currency": {
@@ -7650,6 +7651,12 @@
                 "type": "null"
               }
             ]
+          },
+          "max_upload_mb": {
+            "type": "integer",
+            "format": "int64",
+            "description": "The largest file an upload may be (`[storage] max_upload_mb`), so the page can refuse a\nbigger one before sending it and say how large a file may be.",
+            "minimum": 0
           }
         }
       },

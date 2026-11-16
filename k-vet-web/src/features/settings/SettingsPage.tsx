@@ -2,9 +2,8 @@ import { useQueryClient } from '@tanstack/react-query'
 import { Trash2, Upload } from 'lucide-react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { apiFetch } from '@/api/fetcher'
 import { getGetSettingsQueryKey, useGetSettings, usePatchSettings } from '@/api/generated/endpoints'
-import type { Attachment, Settings } from '@/api/generated/model'
+import type { Settings } from '@/api/generated/model'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { PageHeader } from '@/components/PageHeader'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -12,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { TextAreaField, TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
+import { useUpload } from '@/lib/upload'
 
 /** Textarea text (one address per line) → the array the API stores. */
 const parseEmails = (value: string): string[] =>
@@ -43,6 +43,7 @@ export function SettingsPage() {
     onSaved: (updated) => client.setQueryData(getGetSettingsQueryKey(), updated),
   })
 
+  const upload = useUpload()
   if (settings.isPending) return <p className="text-sm text-ink-faint">{t('list.loading')}</p>
   if (!settings.data) return <p className="text-sm text-danger">{t('list.error')}</p>
   const record = settings.data
@@ -51,12 +52,8 @@ export function SettingsPage() {
     autoSave.fieldErrors[field] ? t(autoSave.fieldErrors[field] ?? '') : undefined
 
   const uploadLogo = async (file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    const attachment = await apiFetch<Attachment>('/api/attachments', {
-      method: 'POST',
-      body: form,
-    })
+    const attachment = await upload(file)
+    if (!attachment) return
     autoSave.set({ logo_attachment_id: attachment.id })
     await autoSave.flush()
   }
@@ -181,6 +178,8 @@ export function SettingsPage() {
             className="sr-only"
             onChange={(event) => {
               const file = event.target.files?.[0]
+              // Cleared, so the same file can be picked again after a failed upload.
+              event.target.value = ''
               if (file) void uploadLogo(file)
               event.target.value = ''
             }}

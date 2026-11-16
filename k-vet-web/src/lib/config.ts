@@ -20,6 +20,9 @@ const FALLBACK: OperatorConfig = {
   maps_enabled: false,
   // Nor is the phone calendar until the server says it is served.
   dav: null,
+  // The backend's default; a page that checks a file's size before sending it errs on the
+  // side the server takes anyway.
+  max_upload_mb: 25,
 }
 
 export function useOperatorConfig(): OperatorConfig {

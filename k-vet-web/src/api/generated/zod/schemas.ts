@@ -310,6 +310,10 @@ export const SessionInfoResponse = zod.object({
 })
 
 
+export const getConfigResponseMaxUploadMbMin = 0;
+
+
+
 export const GetConfigResponse = zod.object({
   "currency": zod.string().describe('ISO 4217, used for every amount the app formats.'),
   "vat_rates": zod.array(zod.string()).describe('The VAT rates a position may carry, in the order the operator listed them; the first\nis what a new record starts on. Scaled like the `vat_percent` columns, so a rate can\nbe compared with a stored one as the string it is on the wire.'),
@@ -322,7 +326,8 @@ export const GetConfigResponse = zod.object({
   "username": zod.string(),
   "calendar_name": zod.string(),
   "addressbook_name": zod.string()
-}).describe('The phone calendar is served (`[dav] enabled`): where to point the sync app, and as\nwhom.'),zod.null()]).optional()
+}).describe('The phone calendar is served (`[dav] enabled`): where to point the sync app, and as\nwhom.'),zod.null()]).optional(),
+  "max_upload_mb": zod.int().min(getConfigResponseMaxUploadMbMin).describe('The largest file an upload may be (`[storage] max_upload_mb`), so the page can refuse a\nbigger one before sending it and say how large a file may be.')
 })
 
 

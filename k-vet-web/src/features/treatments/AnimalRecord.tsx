@@ -2,7 +2,6 @@ import { useQueryClient } from '@tanstack/react-query'
 import { NotebookPen, Upload } from 'lucide-react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { apiFetch } from '@/api/fetcher'
 import {
   getDownloadAttachmentUrl,
   getGetPatientTreatmentQueryKey,
@@ -12,13 +11,14 @@ import {
   useListPatientTreatmentFiles,
   usePatchPatientTreatment,
 } from '@/api/generated/endpoints'
-import type { Attachment, PatientTreatment, TextBlock } from '@/api/generated/model'
+import type { PatientTreatment, TextBlock } from '@/api/generated/model'
 import { TextBlockPicker } from '@/components/TextBlockPicker'
 import { Button } from '@/components/ui/button'
 import { RichTextField, type RichTextHandle } from '@/components/ui/richtext'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import type { SaveStatus } from '@/lib/saveState'
+import { useUpload } from '@/lib/upload'
 import { cn } from '@/lib/utils'
 
 /** Which of the two texts the picker was opened for. */
@@ -77,6 +77,7 @@ export function AnimalRecord({
     onSaveState({ state: autoSave.state, error: autoSave.error })
   }, [autoSave.state, autoSave.error, onSaveState])
 
+  const uploadFile = useUpload()
   if (record.isPending) return <p className="mt-4 text-sm text-ink-faint">{t('list.loading')}</p>
   if (!record.data) return <p className="mt-4 text-sm text-danger">{t('error.notFound')}</p>
   const current = record.data
@@ -95,11 +96,11 @@ export function AnimalRecord({
   }
 
   const upload = async (file: File) => {
-    const form = new FormData()
-    form.append('file', file)
-    form.append('kind', 'treatment_file')
-    form.append('patient_treatment_id', String(recordId))
-    await apiFetch<Attachment>('/api/attachments', { method: 'POST', body: form })
+    const stored = await uploadFile(file, {
+      kind: 'treatment_file',
+      patient_treatment_id: String(recordId),
+    })
+    if (!stored) return
     await client.invalidateQueries({
       queryKey: getListPatientTreatmentFilesQueryKey(recordId),
     })
@@ -168,6 +169,8 @@ export function AnimalRecord({
           className="hidden"
           onChange={async (event) => {
             const file = event.target.files?.[0]
+            // Cleared, so the same file can be picked again after a failed upload.
+            event.target.value = ''
             if (file) await upload(file)
           }}
         />

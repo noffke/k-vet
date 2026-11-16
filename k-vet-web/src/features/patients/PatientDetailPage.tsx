@@ -3,7 +3,6 @@ import { Link, useParams } from '@tanstack/react-router'
 import { PawPrint, Plus, Upload } from 'lucide-react'
 import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import { apiFetch } from '@/api/fetcher'
 import {
   deletePatient,
   getAttachmentThumbnailUrl,
@@ -19,7 +18,7 @@ import {
   usePatchPatient,
   useUnarchivePatient,
 } from '@/api/generated/endpoints'
-import type { Attachment, Patient } from '@/api/generated/model'
+import type { Patient } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DateInput } from '@/components/DateInput'
@@ -34,6 +33,7 @@ import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
+import { useUpload } from '@/lib/upload'
 import { useNewAppointment } from '../appointments/newAppointment'
 
 const SEXES = ['female', 'male', 'unknown'] as const
@@ -73,13 +73,8 @@ export function PatientDetailPage() {
     onSaved: store,
   })
 
-  /** Uploads a file and returns its attachment metadata. */
-  const upload = async (file: File, extra: Record<string, string>) => {
-    const form = new FormData()
-    form.append('file', file)
-    for (const [key, value] of Object.entries(extra)) form.append(key, value)
-    return apiFetch<Attachment>('/api/attachments', { method: 'POST', body: form })
-  }
+  /** Uploads a file, saying how it went; `null` when it did not arrive. */
+  const upload = useUpload()
 
   // Where a deleted draft leaves to: back the way the vet came, else the customer.
   const newAppointment = useNewAppointment()
@@ -178,8 +173,11 @@ export function PatientDetailPage() {
           className="hidden"
           onChange={async (event) => {
             const file = event.target.files?.[0]
+            // Cleared, so the same photo can be picked again after a failed upload.
+            event.target.value = ''
             if (!file) return
             const attachment = await upload(file, { kind: 'referenced' })
+            if (!attachment) return
             autoSave.set({ photo_attachment_id: attachment.id })
             await autoSave.flush()
           }}
@@ -301,8 +299,13 @@ export function PatientDetailPage() {
             className="hidden"
             onChange={async (event) => {
               const file = event.target.files?.[0]
+              event.target.value = ''
               if (!file) return
-              await upload(file, { kind: 'patient_file', patient_id: String(patientId) })
+              const stored = await upload(file, {
+                kind: 'patient_file',
+                patient_id: String(patientId),
+              })
+              if (!stored) return
               await client.invalidateQueries({
                 queryKey: getListPatientFilesQueryKey(patientId),
               })

@@ -783,5 +783,11 @@
   },
   "drug": {
     "hasSubsets": "Delete the part packs first – a drug that takes any quantity has none."
+  },
+  "upload": {
+    "done": "“{{name}}” uploaded",
+    "failed": "“{{name}}” could not be uploaded. Please try again.",
+    "pending": "Uploading “{{name}}” …",
+    "tooLarge": "“{{name}}” is too large – {{mb}} MB at most."
   }
 }

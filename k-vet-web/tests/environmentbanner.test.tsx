@@ -16,6 +16,7 @@ const base: OperatorConfig = {
   version: '1.2.3',
   environment_label: null,
   maps_enabled: false,
+  max_upload_mb: 25,
 }
 
 describe('EnvironmentBanner', () => {

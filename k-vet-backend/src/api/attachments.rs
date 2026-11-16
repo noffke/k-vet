@@ -1,7 +1,7 @@
 //! Attachment upload and delivery (T018).
 
 use axum::body::Body;
-use axum::extract::multipart::Field;
+use axum::extract::multipart::{Field, MultipartError};
 use axum::extract::{Multipart, Path, State};
 use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
 use axum::response::{IntoResponse, Response};
@@ -50,8 +50,18 @@ impl ChunkSource for FieldSource<'_> {
         match self.field.chunk().await {
             Ok(Some(bytes)) => Ok(Some(bytes.to_vec())),
             Ok(None) => Ok(None),
-            Err(error) => Err(AppError::BadRequest(format!("upload failed: {error}"))),
+            Err(error) => Err(refused_upload(&error)),
         }
+    }
+}
+
+/// A multipart body that could not be read, with the status axum gives it: a body over the
+/// limit is 413 — what the page names as too large — and only a garbled one is 400.
+fn refused_upload(error: &MultipartError) -> AppError {
+    if error.status() == StatusCode::PAYLOAD_TOO_LARGE {
+        AppError::PayloadTooLarge
+    } else {
+        AppError::BadRequest(format!("malformed upload: {}", error.body_text()))
     }
 }
 
@@ -90,7 +100,7 @@ pub async fn upload(
     while let Some(field) = multipart
         .next_field()
         .await
-        .map_err(|error| AppError::BadRequest(format!("malformed upload: {error}")))?
+        .map_err(|error| refused_upload(&error))?
     {
         let name = field.name().unwrap_or_default().to_owned();
         match name.as_str() {
@@ -109,10 +119,7 @@ pub async fn upload(
                 stored = Some(state.files.store(source, max_bytes).await?);
             }
             other => {
-                let value = field
-                    .text()
-                    .await
-                    .map_err(|error| AppError::BadRequest(format!("malformed upload: {error}")))?;
+                let value = field.text().await.map_err(|error| refused_upload(&error))?;
                 apply_meta(&mut meta, other, &value)?;
             }
         }

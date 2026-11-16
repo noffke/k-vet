@@ -101,7 +101,7 @@ The remaining decisions:
 | | `log_level` | `info`; `debug` adds request and SQL detail. |
 | `[auth]` | `username`, `password_hash` | The single login. Generate the hash after the first build: `docker run --rm -i k-vet:1.0.0 --hash-password` (type the password, it prints an argon2id hash). Never store the plain password. |
 | `[database]` | `max_connections` | 5 is plenty for one user. |
-| `[storage]` | `max_upload_mb` | Larger uploads are rejected with 413. |
+| `[storage]` | `max_upload_mb` | The one limit on an upload (25 MB by default — a phone's photo is several); larger files are refused with 413 and the page says how large a file may be. A reverse proxy in front must allow at least as much (nginx: `client_max_body_size 25m;`, its default is 1 MB). |
 | `[mail]` | `smtp_*`, `from_*` | The practice's own mail server; `smtp_tls` is `starttls`, `tls` or `none`. |
 | `[invoice]` | `number_pattern` | e.g. `{year}-{counter:4}` → `2026-0042`. The counter's scope follows the date placeholders: with `{year}` it restarts yearly, with `{year}`+`{month}` monthly, without any date part it runs forever. It never decrements and a number is never reissued. |
 | | `typst_template` | Empty uses the compiled-in PDF template. To edit it, point at `/etc/k-vet/templates/invoice.typ` — the entrypoint seeds it on first start. See [templates.md](templates.md). |

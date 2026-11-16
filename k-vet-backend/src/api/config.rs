@@ -42,6 +42,9 @@ pub struct OperatorConfig {
     /// The phone calendar is served (`[dav] enabled`): where to point the sync app, and as
     /// whom.
     pub dav: Option<DavAccess>,
+    /// The largest file an upload may be (`[storage] max_upload_mb`), so the page can refuse a
+    /// bigger one before sending it and say how large a file may be.
+    pub max_upload_mb: u64,
 }
 
 /// What the sync app on the phone is set up with. The password is the k-vet login's.
@@ -95,6 +98,7 @@ pub async fn get_config(State(state): State<AppState>) -> AppResult<Json<Operato
             calendar_name: state.config.dav.calendar_name.clone(),
             addressbook_name: state.config.dav.addressbook_name.clone(),
         }),
+        max_upload_mb: state.config.storage.max_upload_mb,
     }))
 }
 

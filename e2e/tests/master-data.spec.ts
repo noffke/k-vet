@@ -247,6 +247,37 @@ test.describe('customers and patients', () => {
       .not.toContain(race)
   })
 
+  test("a phone's photo of an animal is uploaded, and one too large is refused with the limit", async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const name = `Foto-${Date.now() % 1e6}`
+    const patientId = await seedPatient(request, customerId, name)
+
+    await signIn(page)
+    await page.goto(`/patients/${patientId}`)
+    const photo = page.locator('input[type=file][accept="image/*"]')
+
+    // A camera photo is several megabytes — more than the 2 MB axum allowed a multipart body
+    // by default, which refused it as malformed and said nothing on the page.
+    await photo.setInputFiles({
+      name: 'PXL_20261116.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.alloc(6 * 1024 * 1024, 0x5a),
+    })
+    await expect(page.getByText('„PXL_20261116.jpg“ hochgeladen')).toBeVisible()
+    await expect(page.getByRole('img', { name })).toBeAttached()
+
+    // Over the configured limit (25 MB here): refused before it is sent, and said so.
+    await photo.setInputFiles({
+      name: 'riesig.jpg',
+      mimeType: 'image/jpeg',
+      buffer: Buffer.alloc(26 * 1024 * 1024, 0x5a),
+    })
+    await expect(page.getByText('„riesig.jpg“ ist zu groß – höchstens 25 MB.')).toBeVisible()
+  })
+
   test("a file uploaded on an animal can actually be opened", async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId, `Datei-${Date.now() % 1e6}`)
