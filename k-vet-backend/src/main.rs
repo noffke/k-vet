@@ -70,6 +70,15 @@ async fn run() -> Result<(), String> {
         folder = %config.invoice.templates_dir.display(),
         "invoice email templates are read from this folder"
     );
+    // The subject moved from a template's first line into config.toml. A file still opening
+    // with it is refused when a mail is due; said here first, so the upgrade can be finished.
+    for path in k_vet_backend::mail::files_beginning_with_subject(&config) {
+        tracing::warn!(
+            file = %path.display(),
+            "this email template still begins with its subject line — the subject is set in \
+             config.toml now; delete that line from the file, or mails with it are refused"
+        );
+    }
 
     // Checked before the database, so a fresh install reports its filesystem mistakes first.
     AttachmentStore::new(config.storage.attachments_dir.clone())

@@ -151,7 +151,8 @@ is pure and unit-tested, including path-traversal refusal).
   other line names an animal. The line keeps a `per_visit` snapshot that a CHECK ties to
   `patient_treatment_id IS NULL`, so it moves between animals but never to or from the visit.
 - `src/pdf/` (Typst) and `src/mail/` (minijinja + lettre) — see `docs/templates.md`. Only the
-  fonts embedded in the binary are available; an email template's first line is the subject.
+  fonts embedded in the binary are available; an email template's subject is configured beside
+  it in `config.toml` (`subject`, required), and the file is the body.
   Email templates are listed in `config.toml` (`[[invoice.email_templates]]`, name + file, the
   first the default) and live in the templates folder (`KVET_TEMPLATES_DIR`, the container's
   `/etc/k-vet/templates`); files are read when a mail is rendered, and a missing one is shown in

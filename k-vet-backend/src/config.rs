@@ -198,14 +198,23 @@ pub struct InvoiceConfig {
     pub templates_dir: PathBuf,
 }
 
-/// One invoice email template: what the vet sees, and its file in the templates folder.
+/// One invoice email template: what the vet sees, its subject, and the file in the templates
+/// folder that holds its text.
 #[derive(Debug, Clone, PartialEq, Eq, Deserialize)]
 #[serde(deny_unknown_fields)]
 pub struct EmailTemplateConfig {
     pub name: String,
     /// A file name, not a path: the templates live in one folder, which the container mounts.
     pub file: String,
+    /// The subject line, a minijinja template with the same variables as the text. Required —
+    /// read as optional only so that a configuration from before it was here is told what to
+    /// do (`validate_email_templates`) rather than given serde's "missing field".
+    #[serde(default)]
+    pub subject: Option<String>,
 }
+
+/// The subject of the template the container seeds — the first line its file used to carry.
+pub const DEFAULT_EMAIL_SUBJECT: &str = "Ihre Rechnung {{ invoice_number }} – {{ practice_name }}";
 
 /// Without a list, the one template the container seeds — which is what a configuration
 /// written before the list was used, too.
@@ -213,6 +222,7 @@ fn default_email_templates() -> Vec<EmailTemplateConfig> {
     vec![EmailTemplateConfig {
         name: "Standard".to_owned(),
         file: "invoice-email.txt".to_owned(),
+        subject: Some(DEFAULT_EMAIL_SUBJECT.to_owned()),
     }]
 }
 
@@ -464,8 +474,9 @@ impl Config {
     }
 
     /// The list must be usable as a list: something to choose, each choice named once, each
-    /// file in the templates folder. A file that is not there yet is not a mistake in the
-    /// configuration — it is a state of the folder, and the app shows it.
+    /// with a subject that parses, each file in the templates folder. A file that is not there
+    /// yet is not a mistake in the configuration — it is a state of the folder, and the app
+    /// shows it.
     fn validate_email_templates(&self) -> Result<(), ConfigError> {
         let templates = &self.invoice.email_templates;
         if templates.is_empty() {
@@ -491,6 +502,28 @@ impl Config {
                     "invoice.email_templates: `{}` must be a file name in the templates folder, \
                      not a path",
                     template.file
+                )));
+            }
+            // The subject was the file's first line until it moved here; a configuration from
+            // before says nothing about it, and is told how to move it.
+            let Some(subject) = template
+                .subject
+                .as_deref()
+                .filter(|subject| !subject.trim().is_empty())
+            else {
+                return Err(ConfigError::Invalid(format!(
+                    "invoice.email_templates: \"{name}\" has no subject. The subject is no longer \
+                     the first line of the template file: copy the first line of {file} into \
+                     subject = \"…\" next to name and file, then delete that line from the file",
+                    name = template.name,
+                    file = template.file,
+                )));
+            };
+            if let Err(error) = minijinja::Environment::new().template_from_str(subject) {
+                return Err(ConfigError::Invalid(format!(
+                    "invoice.email_templates: the subject of \"{}\" is not a valid template: \
+                     {error}",
+                    template.name
                 )));
             }
         }
@@ -740,9 +773,11 @@ mod tests {
             [[invoice.email_templates]]
             name = \"Standard\"
             file = \"invoice-email.txt\"
+            subject = \"Rechnung {{{{ invoice_number }}}}\"
             [[invoice.email_templates]]
             name = \"Kurz\"
             file = \"invoice-email-kurz.txt\"
+            subject = \"Rechnung {{{{ invoice_number }}}}\"
             "
         );
         let config = parse(&raw).expect("two templates");
@@ -763,6 +798,7 @@ mod tests {
             vec![EmailTemplateConfig {
                 name: "Standard".to_owned(),
                 file: "invoice-email.txt".to_owned(),
+                subject: Some(DEFAULT_EMAIL_SUBJECT.to_owned()),
             }]
         );
         assert_eq!(
@@ -785,6 +821,7 @@ mod tests {
                 [[invoice.email_templates]]
                 name = \"Standard\"
                 file = \"{file}\"
+                subject = \"Rechnung {{{{ invoice_number }}}}\"
                 "
             );
             let error = parse(&raw).expect_err("a path is refused");
@@ -795,6 +832,45 @@ mod tests {
         }
     }
 
+    /// The subject moved out of the file's first line into the configuration (2026-11-17). An
+    /// entry from before says nothing of it, and the start says where it went.
+    #[test]
+    fn an_email_template_needs_its_subject_here() {
+        for subject_line in ["", "subject = \"  \""] {
+            let raw = format!(
+                "{MINIMAL}
+                [[invoice.email_templates]]
+                name = \"Kurz\"
+                file = \"invoice-email-kurz.txt\"
+                {subject_line}
+                "
+            );
+            let error = parse(&raw).expect_err("a template without a subject is refused");
+            let message = error.to_string();
+            assert!(
+                message.contains("\"Kurz\" has no subject")
+                    && message.contains("copy the first line of invoice-email-kurz.txt"),
+                "{message}"
+            );
+        }
+
+        let broken = format!(
+            "{MINIMAL}
+            [[invoice.email_templates]]
+            name = \"Kurz\"
+            file = \"invoice-email-kurz.txt\"
+            subject = \"Rechnung {{{{ invoice_number\"
+            "
+        );
+        let error = parse(&broken).expect_err("a subject that does not parse is refused");
+        assert!(
+            error
+                .to_string()
+                .contains("the subject of \"Kurz\" is not a valid template"),
+            "{error}"
+        );
+    }
+
     #[test]
     fn email_templates_need_a_name_used_once() {
         let unnamed = format!(
@@ -802,6 +878,7 @@ mod tests {
             [[invoice.email_templates]]
             name = \" \"
             file = \"invoice-email.txt\"
+            subject = \"Rechnung {{{{ invoice_number }}}}\"
             "
         );
         assert!(parse(&unnamed).is_err());
@@ -810,9 +887,11 @@ mod tests {
             [[invoice.email_templates]]
             name = \"Standard\"
             file = \"invoice-email.txt\"
+            subject = \"Rechnung {{{{ invoice_number }}}}\"
             [[invoice.email_templates]]
             name = \"Standard\"
             file = \"invoice-email-kurz.txt\"
+            subject = \"Rechnung {{{{ invoice_number }}}}\"
             "
         );
         assert!(parse(&twice).is_err());

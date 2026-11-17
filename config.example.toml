@@ -188,30 +188,38 @@ typst_template = ""
 
 # de-DE: Die Vorlagen der Rechnungs-E-Mail, aus denen beim Freigeben und beim
 #        Versenden gewählt wird — in dieser Reihenfolge angeboten, die erste ist
-#        vorausgewählt. "name" ist, was in der Auswahl steht; "file" ist der Name
+#        vorausgewählt. "name" ist, was in der Auswahl steht; "subject" ist der
+#        Betreff (minijinja, dieselben Variablen wie der Text); "file" ist der Name
 #        einer Datei im Vorlagenordner (im Container /etc/k-vet/templates, sonst
-#        $KVET_TEMPLATES_DIR) — kein Pfad. Jede Datei: minijinja/Jinja, reiner Text,
-#        UTF-8; die erste Zeile ist der Betreff, dann eine Leerzeile, dann der Text.
-#        Fehlt eine Datei, startet k-vet trotzdem und zeigt die Vorlage als nicht
-#        verfügbar. Eine Datei wird bei jedem Versand gelesen; eine neue Vorlage hier
-#        einzutragen braucht dagegen einen Neustart. Ohne diese Liste gilt nur
-#        "Standard" mit invoice-email.txt.
+#        $KVET_TEMPLATES_DIR) — kein Pfad. Die Datei ist der Text der E-Mail,
+#        minijinja/Jinja, reiner Text, UTF-8, ab der ersten Zeile. (Früher war die
+#        erste Zeile der Datei der Betreff: diese Zeile hierher als "subject"
+#        übernehmen und aus der Datei löschen.) Fehlt eine Datei, startet k-vet
+#        trotzdem und zeigt die Vorlage als nicht verfügbar. Eine Datei wird bei
+#        jedem Versand gelesen; eine Vorlage oder ein Betreff hier braucht dagegen
+#        einen Neustart. Ohne diese Liste gilt nur "Standard" mit invoice-email.txt
+#        und dem Betreff unten.
 # en-US: The invoice email templates to choose from when releasing or sending —
 #        offered in this order, the first preselected. "name" is what the choice
-#        shows; "file" is the name of a file in the templates folder
+#        shows; "subject" is the subject line (minijinja, the same variables as the
+#        text); "file" is the name of a file in the templates folder
 #        (/etc/k-vet/templates in the container, else $KVET_TEMPLATES_DIR) — not a
-#        path. Each file: minijinja/Jinja, plain text, UTF-8; the first line is the
-#        subject, then a blank line, then the body. A missing file does not stop
-#        k-vet; the template shows as unavailable. A file is read on every send;
-#        listing a new template here, though, needs a restart. Without this list
-#        there is only "Standard" with invoice-email.txt.
+#        path. The file is the mail's text, minijinja/Jinja, plain text, UTF-8,
+#        from its first line. (The file's first line used to be the subject: move
+#        that line here as "subject" and delete it from the file.) A missing file
+#        does not stop k-vet; the template shows as unavailable. A file is read on
+#        every send; a template or subject here, though, needs a restart. Without
+#        this list there is only "Standard" with invoice-email.txt and the subject
+#        below.
 [[invoice.email_templates]]
 name = "Standard"
 file = "invoice-email.txt"
+subject = "Ihre Rechnung {{ invoice_number }} – {{ practice_name }}"
 
 # [[invoice.email_templates]]
 # name = "Kurz"
 # file = "invoice-email-kurz.txt"
+# subject = "Rechnung {{ invoice_number }}"
 
 [travel_expenses]
 # de-DE: Wegegeld nach GOT 2022 § 10: je Doppelkilometer 3,50 €, mindestens

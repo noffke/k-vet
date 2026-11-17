@@ -27,7 +27,7 @@ async fn the_templates_are_offered_in_order_with_their_files_checked(pool: PgPoo
     // Put in place, the missing file makes its template available — no restart.
     std::fs::write(
         app.templates.path().join("invoice-email-fehlt.txt"),
-        "Rechnung {{ invoice_number }}\n\nText.\n",
+        "Text.\n",
     )
     .expect("the missing file");
     let templates = app.get("/api/email-templates").await.json();

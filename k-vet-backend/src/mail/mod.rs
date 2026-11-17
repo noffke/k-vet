@@ -1,10 +1,11 @@
 //! Outbound invoice email: minijinja template, lettre transport (research R6, R17).
 //!
-//! The templates are plain-text UTF-8 files in the templates folder, listed with a name in the
-//! configuration (`[[invoice.email_templates]]`); the vet picks one when releasing or sending.
-//! The first line of a file is the subject template, then a blank line, then the body. A file
-//! is read when a mail is rendered, so an edit takes effect with the next mail and a missing one
-//! is a state the app shows rather than a reason not to start. Invoice emails are always German
+//! The templates are plain-text UTF-8 files in the templates folder, listed with a name and a
+//! subject in the configuration (`[[invoice.email_templates]]`); the vet picks one when
+//! releasing or sending. The file is the body, the subject is configured beside it — it used to
+//! be the file's first line, which was easy to mistake for the start of the text. A file is
+//! read when a mail is rendered, so an edit takes effect with the next mail and a missing one is
+//! a state the app shows rather than a reason not to start. Invoice emails are always German
 //! (FR-030).
 
 use lettre::message::header::ContentType;
@@ -120,6 +121,16 @@ pub enum TemplateProblem {
     Missing { name: String, path: PathBuf },
 }
 
+/// A configured template whose file is in place.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct ResolvedTemplate {
+    pub name: String,
+    /// The subject template from the configuration.
+    pub subject: String,
+    /// The file holding the body.
+    pub path: PathBuf,
+}
+
 /// A mail rendered for sending, with the name of the template it was written with — which the
 /// invoice records once the mail server took it.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -186,8 +197,8 @@ impl Mailer {
     }
 
     /// The template of that name — or, for a mail queued before templates could be chosen, the
-    /// first one — as its configured name and its file, which must be in place.
-    pub fn resolve(&self, name: Option<&str>) -> Result<(String, PathBuf), TemplateProblem> {
+    /// first one — with its configured name and subject and its file, which must be in place.
+    pub fn resolve(&self, name: Option<&str>) -> Result<ResolvedTemplate, TemplateProblem> {
         let template = match name {
             Some(name) => self
                 .templates
@@ -201,7 +212,12 @@ impl Mailer {
         };
         let path = self.templates_dir.join(&template.file);
         if is_readable_file(&path) {
-            Ok((template.name.clone(), path))
+            Ok(ResolvedTemplate {
+                name: template.name.clone(),
+                // Required by the configuration's validation; an empty one is refused below.
+                subject: template.subject.clone().unwrap_or_default(),
+                path,
+            })
         } else {
             Err(TemplateProblem::Missing {
                 name: template.name.clone(),
@@ -218,23 +234,34 @@ impl Mailer {
         context: &InvoiceMail,
         name: Option<&str>,
     ) -> Result<RenderedMail, MailFailure> {
-        let (template_name, path) = self
+        let template = self
             .resolve(name)
             .map_err(|problem| MailFailure::refused(problem.to_string()))?;
-        let template = std::fs::read_to_string(&path).map_err(|error| {
+        let path = &template.path;
+        let text = std::fs::read_to_string(path).map_err(|error| {
             MailFailure::refused(format!(
                 "the email template {} cannot be read: {error}",
                 path.display()
             ))
         })?;
-        let (subject, body) = render_template(&template, context).map_err(|error| {
-            MailFailure::refused(format!(
-                "the email template {} does not render: {error}",
+        // Left over from before the subject moved into the configuration: sent as it is, the
+        // customer would read the old subject line at the top of the mail.
+        if begins_with_subject(&text, &template.subject) {
+            return Err(MailFailure::refused(format!(
+                "the email template {} still begins with its subject line — the subject is set \
+                 in config.toml now (subject = \"…\"); delete that line from the file",
                 path.display()
-            ))
-        })?;
+            )));
+        }
+        let (subject, body) =
+            render_template(&template.subject, &text, context).map_err(|error| {
+                MailFailure::refused(format!(
+                    "the email template {} does not render: {error}",
+                    path.display()
+                ))
+            })?;
         Ok(RenderedMail {
-            template: template_name,
+            template: template.name,
             subject,
             body,
         })
@@ -324,12 +351,36 @@ fn join_and_filter(
     Ok(join_and(&items, word.as_deref().unwrap_or("und")))
 }
 
-/// Splits the template into subject and body and renders both with minijinja.
-fn render_template(template: &str, context: &InvoiceMail) -> AppResult<(String, String)> {
-    let (subject_template, body_template) = template
-        .split_once('\n')
-        .ok_or_else(|| AppError::Internal("the email template has no body".to_owned()))?;
+/// Whether a template file still opens with its subject line: the line that was the subject
+/// before the subject moved into `config.toml`, and an upgrade left behind.
+pub fn begins_with_subject(text: &str, subject: &str) -> bool {
+    let subject = subject.trim();
+    !subject.is_empty()
+        && text.lines().map(str::trim).find(|line| !line.is_empty()) == Some(subject)
+}
 
+/// The configured templates whose files still open with their subject line — said at start,
+/// so an upgrade that left one behind shows in the log before a mail is refused for it.
+pub fn files_beginning_with_subject(config: &Config) -> Vec<PathBuf> {
+    config
+        .invoice
+        .email_templates
+        .iter()
+        .filter_map(|template| {
+            let path = config.invoice.templates_dir.join(&template.file);
+            let text = std::fs::read_to_string(&path).ok()?;
+            begins_with_subject(&text, template.subject.as_deref().unwrap_or_default())
+                .then_some(path)
+        })
+        .collect()
+}
+
+/// Renders the configured subject and the file's body with minijinja.
+fn render_template(
+    subject_template: &str,
+    body_template: &str,
+    context: &InvoiceMail,
+) -> AppResult<(String, String)> {
     let mut environment = minijinja::Environment::new();
     environment.add_filter("join_and", join_and_filter);
     environment
@@ -349,11 +400,12 @@ fn render_template(template: &str, context: &InvoiceMail) -> AppResult<(String, 
         .map_err(|error| AppError::internal("rendering the email body", error))?;
 
     let subject = subject.trim().to_owned();
-    // A stray leading blank line in an operator's template would otherwise send a mail with no
-    // subject at all, which most clients file as spam and nobody notices until a customer asks.
+    // A subject made only of a value that is empty for this invoice would otherwise send a mail
+    // with no subject at all, which most clients file as spam and nobody notices until a
+    // customer asks.
     if subject.is_empty() {
         return Err(AppError::Internal(
-            "the email template's first line is the subject and must not be empty".to_owned(),
+            "the email subject (subject in config.toml) renders empty".to_owned(),
         ));
     }
 
@@ -432,9 +484,15 @@ mod tests {
     /// The template the container seeds as "Standard".
     const SEEDED_TEMPLATE: &str = include_str!("../../templates/invoice-email.txt");
 
+    /// The subject is configured, the file is the body — all of it, from its first line.
     #[test]
-    fn template_first_line_is_the_subject() {
-        let (subject, body) = render_template(SEEDED_TEMPLATE, &context()).expect("renders");
+    fn the_subject_is_configured_and_the_file_is_the_body() {
+        let (subject, body) = render_template(
+            crate::config::DEFAULT_EMAIL_SUBJECT,
+            SEEDED_TEMPLATE,
+            &context(),
+        )
+        .expect("renders");
         assert_eq!(
             subject,
             "Ihre Rechnung 2026-0042 – Tierärztin Dr. Musterfrau"
@@ -483,9 +541,10 @@ mod tests {
     /// subject line.
     #[test]
     fn templates_join_the_animals_with_their_own_word() {
-        let template = "Rechnung für {{ patients | join_and }}\n\
-                        Treated: {{ patients | join_and(\"and\") }}.";
-        let (subject, body) = render_template(template, &context()).expect("renders");
+        let subject_template = "Rechnung für {{ patients | join_and }}";
+        let body_template = "Treated: {{ patients | join_and(\"and\") }}.";
+        let (subject, body) =
+            render_template(subject_template, body_template, &context()).expect("renders");
         assert_eq!(subject, "Rechnung für Bello und Minka");
         assert_eq!(body, "Treated: Bello and Minka.");
 
@@ -493,37 +552,71 @@ mod tests {
             patients: vec!["Fiffi".to_owned(), "Wuffi".to_owned(), "Bello".to_owned()],
             ..context()
         };
-        let (subject, _) = render_template(template, &three).expect("renders");
+        let (subject, _) =
+            render_template(subject_template, body_template, &three).expect("renders");
         assert_eq!(subject, "Rechnung für Fiffi, Wuffi und Bello");
+    }
+
+    /// A configuration with a mail server and no template list: "Standard", the seeded file.
+    const MAIL_CONFIG: &str = r#"
+        [server]
+        [auth]
+        username = "tierarzt"
+        password_hash = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA"
+        [database]
+        url = "postgres://unused/unused"
+        [storage]
+        attachments_dir = "/tmp"
+        [mail]
+        smtp_host = "127.0.0.1"
+        smtp_tls = "none"
+        from_address = "praxis@example.com"
+        from_name = "Tierärztin Dr. Musterfrau"
+        [invoice]
+        number_pattern = "{year}-{counter:4}"
+        [travel_expenses]
+        rate_per_double_km = "3.50"
+        minimum = "13.00"
+        "#;
+
+    /// A file still opening with the line that was its subject — left behind when the subject
+    /// moved into the configuration — is refused rather than sent with that line on top, and
+    /// the start-up check names it. The seeded template no longer opens with one.
+    #[tokio::test]
+    async fn a_file_still_opening_with_its_subject_is_refused() {
+        let subject = crate::config::DEFAULT_EMAIL_SUBJECT;
+        assert!(!begins_with_subject(SEEDED_TEMPLATE, subject));
+
+        let folder = tempfile::TempDir::new().expect("templates folder");
+        let file = folder.path().join("invoice-email.txt");
+        std::fs::write(&file, format!("{subject}\n{SEEDED_TEMPLATE}")).expect("an old template");
+        let mut config = Config::parse(MAIL_CONFIG, "test.toml").expect("test config");
+        config.invoice.templates_dir = folder.path().to_path_buf();
+
+        assert_eq!(files_beginning_with_subject(&config), vec![file.clone()]);
+        let mailer = Mailer::from_config(&config).expect("mailer builds");
+        let failure = mailer
+            .render(&context(), None)
+            .expect_err("an old template is refused");
+        assert!(failure.refused);
+        assert!(
+            failure
+                .detail
+                .contains("still begins with its subject line"),
+            "{}",
+            failure.detail
+        );
+
+        // Without that line it goes through.
+        std::fs::write(&file, SEEDED_TEMPLATE).expect("the template as it is now");
+        assert!(files_beginning_with_subject(&config).is_empty());
+        assert!(mailer.render(&context(), None).is_ok());
     }
 
     // Building the transport spawns lettre's connection pool, so a runtime is required.
     #[tokio::test]
     async fn umlauts_survive_rendering_and_message_building() {
-        let config = Config::parse(
-            r#"
-            [server]
-            [auth]
-            username = "tierarzt"
-            password_hash = "$argon2id$v=19$m=19456,t=2,p=1$c2FsdA$aGFzaA"
-            [database]
-            url = "postgres://unused/unused"
-            [storage]
-            attachments_dir = "/tmp"
-            [mail]
-            smtp_host = "127.0.0.1"
-            smtp_tls = "none"
-            from_address = "praxis@example.com"
-            from_name = "Tierärztin Dr. Musterfrau"
-            [invoice]
-            number_pattern = "{year}-{counter:4}"
-            [travel_expenses]
-            rate_per_double_km = "3.50"
-            minimum = "13.00"
-            "#,
-            "test.toml",
-        )
-        .expect("test config");
+        let config = Config::parse(MAIL_CONFIG, "test.toml").expect("test config");
         let mut config = config;
         config.invoice.templates_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("templates");
         let mailer = Mailer::from_config(&config).expect("mailer builds");

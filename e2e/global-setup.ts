@@ -31,7 +31,7 @@ function writeConfig(): { configPath: string; attachmentsDir: string; templatesD
   copyFileSync(seededEmailTemplate, join(templatesDir, 'invoice-email.txt'))
   writeFileSync(
     join(templatesDir, 'invoice-email-kurz.txt'),
-    'Kurz: Rechnung {{ invoice_number }}\n\n{{ greeting }},\nanbei die Rechnung.\n',
+    '{{ greeting }},\nanbei die Rechnung.\n',
     'utf8',
   )
   const configPath = join(dir, 'config.toml')
@@ -69,14 +69,17 @@ vat_rates = ["19.000", "7.000"]
 [[invoice.email_templates]]
 name = "Standard"
 file = "invoice-email.txt"
+subject = "Ihre Rechnung {{ invoice_number }} – {{ practice_name }}"
 
 [[invoice.email_templates]]
 name = "Kurz"
 file = "invoice-email-kurz.txt"
+subject = "Kurz: Rechnung {{ invoice_number }}"
 
 [[invoice.email_templates]]
 name = "Fehlt"
 file = "invoice-email-fehlt.txt"
+subject = "Rechnung {{ invoice_number }}"
 
 [travel_expenses]
 rate_per_double_km = "3.50"

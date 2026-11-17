@@ -277,7 +277,7 @@ The template the container seeds as "Standard" is
 Each `[[invoice.email_templates]]` entry is a template the vet can choose when releasing an
 invoice or sending it again; the first listed is preselected, and a waiting mail reopens on its
 own. To add one, copy `invoice-email.txt` in the templates folder under a new name, change the
-text, list it with a name in `config.toml`, and restart.
+text, list it in `config.toml` with a `name`, its `file` and a `subject`, and restart.
 
 - **A missing file does not stop k-vet.** The template is still offered, disabled, with the file
   name that is missing; once the file is put in place it can be chosen — no restart.
@@ -289,22 +289,38 @@ text, list it with a name in `config.toml`, and restart.
   ("An … · Vorlage: Kurz"); a resend records its own.
 - **`file` is a file name**, not a path: every email template lives in the one folder.
 - Without any `[[invoice.email_templates]]` there is one template, "Standard", from
-  `invoice-email.txt`. The former single key `email_template` is still accepted so an older
+  `invoice-email.txt` with the subject `Ihre Rechnung {{ invoice_number }} – {{ practice_name }}`. The former single key `email_template` is still accepted so an older
   `config.toml` starts, but it is no longer read — the start-up log says so.
 
-### Structure: first line is the subject
+### Subject and text
+
+The subject is set in `config.toml`, beside the template's name and file; the file is the mail's
+text, all of it from its first line:
+
+```toml
+[[invoice.email_templates]]
+name = "Standard"
+file = "invoice-email.txt"
+subject = "Ihre Rechnung {{ invoice_number }} – {{ practice_name }}"
+```
 
 ```
-Ihre Rechnung {{ invoice_number }}
 {{ greeting }},
 
 vielen Dank für Ihren Besuch. Anbei erhalten Sie die Rechnung {{ invoice_number }} …
 ```
 
-The file is split at the **first newline**: line 1 is the subject template, everything after it
-(leading blank lines removed) is the body. Both are rendered with
-[minijinja](https://docs.rs/minijinja) — Jinja2 syntax: `{{ value }}`, `{% if %}`, `{% for %}`,
-filters like `join`.
+Both are rendered with [minijinja](https://docs.rs/minijinja) — Jinja2 syntax: `{{ value }}`,
+`{% if %}`, `{% for %}`, filters like `join` — with the same variables. A subject that does not
+parse stops the start; one that comes out empty for an invoice refuses that mail.
+
+> **Changed: the subject used to be the file's first line.** It was easy to take for the start of
+> the text — a `{{ greeting }}` written there became the subject. A `config.toml` from before has
+> no `subject`, and k-vet does not start until each template has one: copy the file's first line
+> into `subject = "…"`, then **delete that line from the file**. A file that still begins with its
+> subject is named in the start-up log, and a mail with it is refused rather than sent with the
+> old subject on top. In a container, the seeded `invoice-email.txt` from an earlier start is not
+> updated by the entrypoint — remove its first line the same way.
 
 The mail is plain text only. There is no HTML alternative, deliberately: it reads the same in
 every client, and the invoice itself is the attached PDF (named `Rechnung-<number>.pdf`).

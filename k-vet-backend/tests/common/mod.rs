@@ -543,12 +543,15 @@ pub fn test_config(attachments_dir: &str) -> Config {
         [[invoice.email_templates]]
         name = "Standard"
         file = "invoice-email.txt"
+        subject = "Ihre Rechnung {{{{ invoice_number }}}} – {{{{ practice_name }}}}"
         [[invoice.email_templates]]
         name = "Kurz"
         file = "invoice-email-kurz.txt"
+        subject = "{SHORT_TEMPLATE_SUBJECT} {{{{ invoice_number }}}}"
         [[invoice.email_templates]]
         name = "Fehlt"
         file = "invoice-email-fehlt.txt"
+        subject = "Rechnung {{{{ invoice_number }}}}"
         [travel_expenses]
         rate_per_double_km = "3.50"
         minimum = "13.00"
@@ -557,7 +560,8 @@ pub fn test_config(attachments_dir: &str) -> Config {
     Config::parse(&raw, "test.toml").expect("test config is valid")
 }
 
-/// The subject line of the "Kurz" template, so a test can tell which template a mail used.
+/// The subject of the "Kurz" template (configured in `test_config`), so a test can tell which
+/// template a mail used.
 pub const SHORT_TEMPLATE_SUBJECT: &str = "Kurz: Rechnung";
 
 /// A templates folder as the container seeds it, plus a second template of the test's own.
@@ -570,7 +574,7 @@ fn templates_folder() -> TempDir {
     .expect("the seeded template");
     std::fs::write(
         folder.path().join("invoice-email-kurz.txt"),
-        format!("{SHORT_TEMPLATE_SUBJECT} {{{{ invoice_number }}}}\n\n{{{{ greeting }}}},\nanbei die Rechnung.\n"),
+        "{{ greeting }},\nanbei die Rechnung.\n",
     )
     .expect("a second template");
     folder
