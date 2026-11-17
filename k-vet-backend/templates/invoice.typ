@@ -268,19 +268,24 @@ Vielen Dank für Ihr Vertrauen!
   #set par(leading: 0.65em, spacing: 0.65em)
   #set block(spacing: 0.65em)
   #for report in invoice.reports [
-    #block(sticky: true)[
+    // Each animal opens with its name on a band, set like the positions' table heading, so the
+    // animals and what was written for each stand apart. The texts are indented as the band's
+    // text is, the way the positions line up under theirs.
+    #block(sticky: true, width: 100%, fill: band, inset: (x: 4pt, y: 4pt))[
       #text(weight: "bold")[#report.patient]
       #if report.description != "" [ #text(fill: muted)[(#report.description)]]
     ]
     #v(1mm)
-    #if report.treatment_reason_blocks.len() > 0 [
-      #formatted([*Vorbericht und Untersuchung:*], report.treatment_reason_blocks)
-      // A blank line before what follows; the label leads the finding's first line, so a
-      // page break can come before it but never between the label and its text.
-      #if report.finding_blocks.len() > 0 [#blank-line] else [#v(1mm)]
-    ]
-    #if report.finding_blocks.len() > 0 [
-      #formatted([*Therapie und weiteres Vorgehen:*], report.finding_blocks)
+    #pad(x: 4pt)[
+      #if report.treatment_reason_blocks.len() > 0 [
+        #formatted([*Vorbericht und Untersuchung:*], report.treatment_reason_blocks)
+        // A blank line before what follows; the label leads the finding's first line, so a
+        // page break can come before it but never between the label and its text.
+        #if report.finding_blocks.len() > 0 [#blank-line] else [#v(1mm)]
+      ]
+      #if report.finding_blocks.len() > 0 [
+        #formatted([*Therapie und weiteres Vorgehen:*], report.finding_blocks)
+      ]
     ]
     #v(3mm)
   ]

@@ -157,6 +157,10 @@ both sides of it, measured in `context`), so the gap looks like one typed in the
 dropped where a page break falls there. The finding's label leads its first line, so the break
 never comes between the label and its text.
 
+Each animal of the report opens with its name on a band, filled like the positions' table
+heading (`band`), with the texts below indented to line up with it — so the animals and what was
+written for each stand apart.
+
 > **Changed with formatted text.** A template written before the reason and the finding could be
 > formatted keeps working: `treatment_reason` and `finding` are still strings, now the plain text
 > of the formatted ones. It prints them **without** the formatting. To print bold, italic,
