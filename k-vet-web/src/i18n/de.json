@@ -159,6 +159,7 @@
     "close": "Schließen",
     "closeDialog": "Dialog schließen",
     "confirm": "Bestätigen",
+    "createAndOpen": "Anlegen und öffnen",
     "decrease": "Verringern",
     "delete": "Löschen",
     "download": "Herunterladen",
@@ -208,6 +209,8 @@
     "addEmail": "E-Mail hinzufügen",
     "emails": "E-Mail-Adressen",
     "new": "Neuer Kunde",
+    "newEntry": "Neuer Kunde …",
+    "newEntryHint": "Wird für diesen Termin gleich eingetragen. Danach öffnet sich der neue Kunde für Anschrift und Tiere; „Zurück“ führt hierher zurück.",
     "patients": "Patienten",
     "removeEmail": "E-Mail-Adresse entfernen",
     "removeEmailConfirm": "„{{email}}“ wirklich aus den Kontaktdaten entfernen?",
@@ -460,7 +463,6 @@
     "title": "Behandlungsgruppen"
   },
   "masterData": {
-    "createAndOpen": "Anlegen und öffnen",
     "manufacturers": "Hersteller",
     "newEntryHint": "Wird hier gleich eingetragen. Danach öffnet sich der neue Eintrag für die Anschrift; „Zurück“ führt hierher zurück.",
     "newManufacturer": "Neuer Hersteller",

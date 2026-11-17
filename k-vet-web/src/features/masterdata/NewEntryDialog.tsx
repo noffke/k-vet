@@ -85,7 +85,7 @@ export function NewEntryDialog({ kind, open, onOpenChange, onCreated }: NewEntry
         <>
           <Button onClick={() => close(false)}>{t('action.cancel')}</Button>
           <Button variant="primary" type="submit" form={formId} disabled={busy || !name.trim()}>
-            {t('masterData.createAndOpen')}
+            {t('action.createAndOpen')}
           </Button>
         </>
       }

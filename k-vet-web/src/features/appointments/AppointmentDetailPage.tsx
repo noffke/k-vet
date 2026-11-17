@@ -35,6 +35,7 @@ import { Dialog } from '@/components/ui/dialog'
 import { TextAreaField } from '@/components/ui/field'
 import { PhoneCalendarNotice } from '@/features/appointments/PhoneCalendarNotice'
 import { RemindersCard } from '@/features/appointments/RemindersCard'
+import { NewCustomerDialog } from '@/features/customers/NewCustomerDialog'
 import { TreatmentSection } from '@/features/treatments/TreatmentSection'
 import { useAutoSave } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
@@ -71,6 +72,8 @@ export function AppointmentDetailPage() {
   const patchAppointment = usePatchAppointment()
   const [duplicateOpen, setDuplicateOpen] = useState(false)
   const [deleteOpen, setDeleteOpen] = useState(false)
+  // What was typed when "Neuer Kunde …" was chosen; the dialog is open while it is set.
+  const [newCustomerTerm, setNewCustomerTerm] = useState<string | null>(null)
   // The open animal's record auto-saves on its own; the header shows one state for both.
   const [recordSave, setRecordSave] = useState<SaveStatus>({ state: 'idle', error: null })
   const selectRecord = useCallback(
@@ -260,6 +263,19 @@ export function AppointmentDetailPage() {
             onClear={() => {
               autoSave.set({ customer_id: null })
               void autoSave.flush()
+            }}
+            onCreate={setNewCustomerTerm}
+          />
+          <NewCustomerDialog
+            open={newCustomerTerm !== null}
+            term={newCustomerTerm ?? ''}
+            onOpenChange={(open) => {
+              if (!open) setNewCustomerTerm(null)
+            }}
+            // Saved before the customer's page opens, so "Zurück" finds it chosen.
+            onCreated={async (customerId) => {
+              autoSave.set({ customer_id: customerId })
+              await autoSave.flush()
             }}
           />
           {/* Where the house call goes: the address, opening the drive there in Google Maps. */}

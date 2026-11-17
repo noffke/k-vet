@@ -1,5 +1,5 @@
 import { Command } from 'cmdk'
-import { UserRound, X } from 'lucide-react'
+import { Plus, UserRound, X } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useListCustomers } from '@/api/generated/endpoints'
@@ -18,6 +18,11 @@ interface CustomerPickerProps {
   onClear: () => void
   /** Once a treatment exists the answer is settled — changing it would move its animals. */
   locked?: boolean | undefined
+  /**
+   * Offers "Neuer Kunde …" at the foot of the list, called with what was typed — for a caller
+   * who is not a customer yet. Without it the picker only chooses.
+   */
+  onCreate?: ((term: string) => void) | undefined
 }
 
 /**
@@ -33,6 +38,7 @@ export function CustomerPicker({
   onPick,
   onClear,
   locked,
+  onCreate,
 }: CustomerPickerProps) {
   const { t } = useTranslation()
   const [term, setTerm] = useState('')
@@ -97,6 +103,10 @@ export function CustomerPicker({
         <Command.Empty className="px-2 py-3 text-sm text-ink-faint">
           {t('list.empty')}
         </Command.Empty>
+        {/* With "Neuer Kunde …" there is always an item, so cmdk's empty line never shows. */}
+        {onCreate && customers.isSuccess && options.length === 0 ? (
+          <p className="px-2 py-2 text-sm text-ink-faint">{t('list.empty')}</p>
+        ) : null}
         {options.map((customer) => (
           <Command.Item
             key={customer.id}
@@ -111,6 +121,22 @@ export function CustomerPicker({
             <span className="text-xs text-ink-faint">{customer.home_city ?? ''}</span>
           </Command.Item>
         ))}
+        {onCreate ? (
+          // Last, so Enter still takes the first match; held at the foot of the scrolling list
+          // so it is in reach without scrolling through every customer first.
+          <Command.Item
+            value="new-customer"
+            onSelect={() => {
+              const typed = term.trim()
+              setTerm('')
+              onCreate(typed)
+            }}
+            className="sticky bottom-0 mt-1 flex min-h-11 cursor-pointer sm:min-h-9 items-center gap-2 rounded-control border-t border-line bg-surface px-2 py-2 text-sm font-semibold text-rust data-[selected=true]:bg-cream-soft"
+          >
+            <Plus className="size-4" aria-hidden />
+            {t('customers.newEntry')}
+          </Command.Item>
+        ) : null}
       </Command.List>
     </Command>
   )

@@ -159,6 +159,7 @@
     "close": "Close",
     "closeDialog": "Close dialog",
     "confirm": "Confirm",
+    "createAndOpen": "Create and open",
     "decrease": "Decrease",
     "delete": "Delete",
     "download": "Download",
@@ -208,6 +209,8 @@
     "addEmail": "Add email",
     "emails": "Email addresses",
     "new": "New customer",
+    "newEntry": "New customer …",
+    "newEntryHint": "Set on this appointment right away. Then the new customer opens for the address and the animals; “Back” leads here again.",
     "patients": "Patients",
     "removeEmail": "Remove e-mail address",
     "removeEmailConfirm": "Really remove “{{email}}” from the contact details?",
@@ -460,7 +463,6 @@
     "title": "Treatment templates"
   },
   "masterData": {
-    "createAndOpen": "Create and open",
     "manufacturers": "Manufacturers",
     "newEntryHint": "It is entered here straight away. The new entry then opens for its address; “Back” returns here.",
     "newManufacturer": "New manufacturer",
