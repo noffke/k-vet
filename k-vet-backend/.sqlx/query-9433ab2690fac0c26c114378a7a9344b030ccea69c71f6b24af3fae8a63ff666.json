@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT practice_name, practice_street, practice_zip, practice_city, practice_country,\n                email, iban, bic, bank_name, ustid, logo_attachment_id, cc_emails, bcc_emails\n         FROM global_settings WHERE id",
+  "query": "SELECT practice_name, practice_street, practice_zip, practice_city, email, iban,\n                bic, bank_name, ustid, logo_attachment_id, account_holder\n         FROM global_settings LIMIT 1",
   "describe": {
     "columns": [
       {
@@ -49,17 +49,6 @@
       },
       {
         "ordinal": 4,
-        "name": "practice_country",
-        "type_info": "Text",
-        "origin": {
-          "Table": {
-            "table": "global_settings",
-            "name": "practice_country"
-          }
-        }
-      },
-      {
-        "ordinal": 5,
         "name": "email",
         "type_info": "Text",
         "origin": {
@@ -70,7 +59,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 5,
         "name": "iban",
         "type_info": "Text",
         "origin": {
@@ -81,7 +70,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 6,
         "name": "bic",
         "type_info": "Text",
         "origin": {
@@ -92,7 +81,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 7,
         "name": "bank_name",
         "type_info": "Text",
         "origin": {
@@ -103,7 +92,7 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 8,
         "name": "ustid",
         "type_info": "Text",
         "origin": {
@@ -114,7 +103,7 @@
         }
       },
       {
-        "ordinal": 10,
+        "ordinal": 9,
         "name": "logo_attachment_id",
         "type_info": "Int8",
         "origin": {
@@ -125,24 +114,13 @@
         }
       },
       {
-        "ordinal": 11,
-        "name": "cc_emails",
-        "type_info": "TextArray",
+        "ordinal": 10,
+        "name": "account_holder",
+        "type_info": "Text",
         "origin": {
           "Table": {
             "table": "global_settings",
-            "name": "cc_emails"
-          }
-        }
-      },
-      {
-        "ordinal": 12,
-        "name": "bcc_emails",
-        "type_info": "TextArray",
-        "origin": {
-          "Table": {
-            "table": "global_settings",
-            "name": "bcc_emails"
+            "name": "account_holder"
           }
         }
       }
@@ -155,16 +133,14 @@
       false,
       false,
       false,
-      true,
       false,
       false,
       false,
       false,
       false,
       true,
-      false,
       false
     ]
   },
-  "hash": "a36195570b26181199c50f399107b80e78cf914687253c5b1a4dcd293add5d27"
+  "hash": "9433ab2690fac0c26c114378a7a9344b030ccea69c71f6b24af3fae8a63ff666"
 }

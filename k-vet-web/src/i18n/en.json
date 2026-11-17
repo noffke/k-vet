@@ -518,7 +518,9 @@
     "phoneSyncPassword": "Password",
     "phoneSyncPasswordValue": "the k-vet password — enter it in the app again after changing it",
     "phoneSyncCalendar": "Calendar",
-    "phoneSyncAddressbook": "Address book"
+    "phoneSyncAddressbook": "Address book",
+    "accountHolder": "Account holder",
+    "accountHolderHint": "Named as the recipient in the invoice's bank details and in the GiroCode. Empty: the practice's name."
   },
   "error": {
     "generic": "Something went wrong.",

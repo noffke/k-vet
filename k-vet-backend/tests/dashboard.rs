@@ -289,6 +289,7 @@ async fn settings_start_empty_and_are_patched_field_by_field(pool: PgPool) {
     );
     let initial = initial.json();
     assert_eq!(initial["practice_name"], "");
+    assert_eq!(initial["account_holder"], "");
     assert_eq!(initial["cc_emails"], json!([]));
     assert!(initial["logo_attachment_id"].is_null());
 
@@ -314,6 +315,7 @@ async fn settings_start_empty_and_are_patched_field_by_field(pool: PgPool) {
                 "iban": "DE02120300000000202051",
                 "bic": "BYLADEM1001",
                 "bank_name": "Musterbank",
+                "account_holder": "  Dr. Käthe Musterfrau ",
             }),
         )
         .await
@@ -327,6 +329,8 @@ async fn settings_start_empty_and_are_patched_field_by_field(pool: PgPool) {
     assert_eq!(addressed["email"], "praxis@example.com");
     assert_eq!(addressed["bic"], "BYLADEM1001");
     assert_eq!(addressed["bank_name"], "Musterbank");
+    // The name on the account, which need not be the practice's.
+    assert_eq!(addressed["account_holder"], "Dr. Käthe Musterfrau");
 
     // A BIC that is not 8 or 11 characters would silently break the GiroCode.
     let rejected = app.patch("/api/settings", json!({ "bic": "NOPE" })).await;

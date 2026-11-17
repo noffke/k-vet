@@ -123,6 +123,16 @@ export function SettingsPage() {
       <section className="mt-4 rounded-card border border-line bg-surface p-4">
         <h2 className="eyebrow">{t('settings.banking')}</h2>
         <div className="mt-2 grid gap-3">
+          {/* The name on the account, which need not be the practice's: the invoice's bank
+              details and its GiroCode name it as the recipient. */}
+          <TextField
+            label={t('settings.accountHolder')}
+            hint={t('settings.accountHolderHint')}
+            defaultValue={record.account_holder}
+            error={errorFor('account_holder')}
+            onChange={(event) => autoSave.set({ account_holder: event.target.value })}
+            onBlur={() => void autoSave.flush()}
+          />
           <div className="grid gap-3 sm:grid-cols-2">
             <TextField
               label={t('settings.iban')}

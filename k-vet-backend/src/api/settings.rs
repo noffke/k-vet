@@ -27,6 +27,9 @@ pub struct Settings {
     /// Shown in the invoice footer. The sender address of outgoing mail is operator
     /// configuration and lives in `config.toml`.
     pub email: String,
+    /// The name on the bank account, as the invoice's bank details and its GiroCode give it;
+    /// empty means the practice name.
+    pub account_holder: String,
     pub iban: String,
     pub bic: String,
     pub bank_name: String,
@@ -47,6 +50,7 @@ pub struct PatchSettings {
     #[schema(value_type = Option<String>)]
     pub practice_country: Option<Option<String>>,
     pub email: Option<String>,
+    pub account_holder: Option<String>,
     pub iban: Option<String>,
     pub bic: Option<String>,
     pub bank_name: Option<String>,
@@ -123,7 +127,8 @@ pub async fn patch_settings(
              ustid            = COALESCE($11, ustid),
              logo_attachment_id = CASE WHEN $12 THEN $13 ELSE logo_attachment_id END,
              cc_emails        = COALESCE($14, cc_emails),
-             bcc_emails       = COALESCE($15, bcc_emails)
+             bcc_emails       = COALESCE($15, bcc_emails),
+             account_holder   = COALESCE($16, account_holder)
          WHERE id",
         body.practice_name,
         body.practice_street,
@@ -140,6 +145,7 @@ pub async fn patch_settings(
         body.logo_attachment_id.flatten(),
         cc_emails.as_deref(),
         bcc_emails.as_deref(),
+        body.account_holder.as_deref().map(str::trim),
     )
     .execute(&state.pool)
     .await?;
@@ -188,7 +194,8 @@ fn validate_all(field: &str, emails: Option<Vec<String>>) -> AppResult<Option<Ve
 async fn load(state: &AppState) -> AppResult<Settings> {
     let row = sqlx::query!(
         "SELECT practice_name, practice_street, practice_zip, practice_city, practice_country,
-                email, iban, bic, bank_name, ustid, logo_attachment_id, cc_emails, bcc_emails
+                email, account_holder, iban, bic, bank_name, ustid, logo_attachment_id,
+                cc_emails, bcc_emails
          FROM global_settings WHERE id",
     )
     .fetch_one(&state.pool)
@@ -201,6 +208,7 @@ async fn load(state: &AppState) -> AppResult<Settings> {
         practice_city: row.practice_city,
         practice_country: row.practice_country,
         email: row.email,
+        account_holder: row.account_holder,
         iban: row.iban,
         bic: row.bic,
         bank_name: row.bank_name,

@@ -79,6 +79,7 @@ faces stay available, so a template that prefers them only has to say so.
 | `email` | string | Practice address for the footer; empty when not set. |
 | `iban` | string | In groups of four as it should be printed (`DE02 1203 0000 0000 2020 51`), however it was typed. Empty when not set — guard before printing a payment block. |
 | `bic` | string | Empty when not set. |
+| `account_holder` | string | The name on the bank account (*Einstellungen → Bankverbindung → Kontoinhaber*), falling back to the practice name when that is empty — the same name the GiroCode carries as the recipient. Empty only when both are. |
 | `bank_name` | string | Empty when not set. |
 | `ustid` | string | VAT ID, empty when not set. |
 | `logo_present` | bool | `true` when `inputs.logo` holds an image. |

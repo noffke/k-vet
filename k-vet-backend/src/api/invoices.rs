@@ -915,7 +915,7 @@ async fn build_document(
 
     let settings = sqlx::query!(
         "SELECT practice_name, practice_street, practice_zip, practice_city, email, iban,
-                bic, bank_name, ustid, logo_attachment_id
+                bic, bank_name, ustid, logo_attachment_id, account_holder
          FROM global_settings LIMIT 1",
     )
     .fetch_one(&mut *connection)
@@ -1044,8 +1044,9 @@ async fn build_document(
     let total = money::total_gross(&groups);
     // No GiroCode is not an error: an empty IBAN or a non-euro currency is ordinary
     // configuration, and it should cost the invoice its QR code, not its render.
+    let holder = account_holder(&settings.account_holder, &settings.practice_name);
     let qr_payload = giro::epc_payload(
-        &settings.practice_name,
+        &holder,
         &settings.iban,
         &settings.bic,
         total,
@@ -1059,6 +1060,7 @@ async fn build_document(
             address: address_lines.join("\n"),
             address_line: address_lines.join(", "),
             email: settings.email,
+            account_holder: holder,
             // Grouped in fours for the reader; the GiroCode above took the raw value.
             iban: pdf::iban_de(&settings.iban),
             bic: settings.bic,
@@ -1186,6 +1188,17 @@ fn patient_description(
 }
 
 /// The grey second line under a billing position.
+/// Whom a transfer goes to: the account holder from Einstellungen, or — while that is empty, as
+/// on every installation from before migration 0042 — the practice's name.
+fn account_holder(account_holder: &str, practice_name: &str) -> String {
+    let holder = account_holder.trim();
+    if holder.is_empty() {
+        practice_name.trim().to_owned()
+    } else {
+        holder.to_owned()
+    }
+}
+
 /// The rows one line prints: one, or a dispensed drug's whole packs and its rest as a Teilmenge,
 /// each with its own unit price and total (requirements/prices.md).
 fn invoice_rows(
@@ -1971,5 +1984,17 @@ mod tests {
         service.drug_packaging_id = None;
         service.dispense = None;
         assert_eq!(marks(&service, &catalogue(true)), vec![false]);
+    }
+
+    #[test]
+    fn the_account_holder_falls_back_to_the_practice_name() {
+        assert_eq!(
+            account_holder("Dr. Käthe Musterfrau", "Tierarztpraxis am Park"),
+            "Dr. Käthe Musterfrau"
+        );
+        assert_eq!(
+            account_holder("  ", "Tierarztpraxis am Park"),
+            "Tierarztpraxis am Park"
+        );
     }
 }

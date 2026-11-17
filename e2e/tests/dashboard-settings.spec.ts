@@ -60,6 +60,8 @@ test.describe('dashboard and settings', () => {
     const practiceName = `Tierarztpraxis ${Date.now().toString().slice(-6)}`
     const practiceEmail = `praxis-${Date.now().toString().slice(-6)}@example.com`
     const bic = 'BYLADEM1001'
+    // The name on the account, which need not be the practice's.
+    const holder = `Dr. Käthe Musterfrau ${Date.now().toString().slice(-6)}`
 
     await signIn(page)
     await navigate(page, 'Einstellungen')
@@ -71,7 +73,8 @@ test.describe('dashboard and settings', () => {
     await page.getByLabel('E-Mail der Praxis').fill(practiceEmail)
     await page.getByLabel('IBAN').fill(iban)
     await page.getByLabel('BIC').fill(bic)
-    await page.getByLabel('BIC').blur()
+    await page.getByLabel('Kontoinhaber').fill(holder)
+    await page.getByLabel('Kontoinhaber').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     // The invoice is written after the change, so it must carry the new values.
@@ -85,6 +88,7 @@ test.describe('dashboard and settings', () => {
     expect(text).toContain(practiceName)
     expect(text).toContain(practiceEmail)
     expect(text).toContain(bic)
+    expect(text).toContain(`Kontoinhaber: ${holder}`)
     expect(text).toContain(invoice.invoiceNumber)
 
     // The due date carries the whole reason it exists: lexoffice should read it off the PDF

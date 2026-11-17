@@ -20,6 +20,8 @@ export interface PatchSettings {
   /** @nullable */
   email?: string | null;
   /** @nullable */
+  account_holder?: string | null;
+  /** @nullable */
   iban?: string | null;
   /** @nullable */
   bic?: string | null;

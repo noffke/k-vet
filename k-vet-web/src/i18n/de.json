@@ -518,7 +518,9 @@
     "phoneSyncPassword": "Passwort",
     "phoneSyncPasswordValue": "das k-vet-Passwort — nach einer Änderung auch in der App eintragen",
     "phoneSyncCalendar": "Kalender",
-    "phoneSyncAddressbook": "Adressbuch"
+    "phoneSyncAddressbook": "Adressbuch",
+    "accountHolder": "Kontoinhaber",
+    "accountHolderHint": "Steht als Empfänger in der Bankverbindung der Rechnung und im GiroCode. Leer: der Name der Praxis."
   },
   "error": {
     "generic": "Etwas ist schiefgelaufen.",

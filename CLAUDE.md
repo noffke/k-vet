@@ -296,7 +296,7 @@ registry. The Pi builds that tag once and `deploy/promote.sh` puts it on `k-vet@
 the identical image on `k-vet@prod`; `KVET_VERSION` in `/etc/k-vet/<instance>.env` is the only
 thing that decides what an instance runs. Migrations are forward-only, so rollback is a restore,
 not a restart — see [docs/releasing.md](docs/releasing.md). Practice name, structured
-address, e-mail, IBAN, BIC, bank name, VAT ID, logo and CC/BCC live in the database (settings page);
+address, e-mail, account holder, IBAN, BIC, bank name, VAT ID, logo and CC/BCC live in the database (settings page);
 mail server, invoice number pattern, currency, VAT choices, default country, payment term, `web_dir`,
 the PDF template path, the email template list and the Google Maps key are operator configuration in `config.toml` (`config.example.toml` is
 commented in both languages — keep it that way).

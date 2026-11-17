@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT practice_name, practice_street, practice_zip, practice_city, email, iban,\n                bic, bank_name, ustid, logo_attachment_id\n         FROM global_settings LIMIT 1",
+  "query": "SELECT practice_name, practice_street, practice_zip, practice_city, practice_country,\n                email, account_holder, iban, bic, bank_name, ustid, logo_attachment_id,\n                cc_emails, bcc_emails\n         FROM global_settings WHERE id",
   "describe": {
     "columns": [
       {
@@ -49,6 +49,17 @@
       },
       {
         "ordinal": 4,
+        "name": "practice_country",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "practice_country"
+          }
+        }
+      },
+      {
+        "ordinal": 5,
         "name": "email",
         "type_info": "Text",
         "origin": {
@@ -59,7 +70,18 @@
         }
       },
       {
-        "ordinal": 5,
+        "ordinal": 6,
+        "name": "account_holder",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "account_holder"
+          }
+        }
+      },
+      {
+        "ordinal": 7,
         "name": "iban",
         "type_info": "Text",
         "origin": {
@@ -70,7 +92,7 @@
         }
       },
       {
-        "ordinal": 6,
+        "ordinal": 8,
         "name": "bic",
         "type_info": "Text",
         "origin": {
@@ -81,7 +103,7 @@
         }
       },
       {
-        "ordinal": 7,
+        "ordinal": 9,
         "name": "bank_name",
         "type_info": "Text",
         "origin": {
@@ -92,7 +114,7 @@
         }
       },
       {
-        "ordinal": 8,
+        "ordinal": 10,
         "name": "ustid",
         "type_info": "Text",
         "origin": {
@@ -103,13 +125,35 @@
         }
       },
       {
-        "ordinal": 9,
+        "ordinal": 11,
         "name": "logo_attachment_id",
         "type_info": "Int8",
         "origin": {
           "Table": {
             "table": "global_settings",
             "name": "logo_attachment_id"
+          }
+        }
+      },
+      {
+        "ordinal": 12,
+        "name": "cc_emails",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "cc_emails"
+          }
+        }
+      },
+      {
+        "ordinal": 13,
+        "name": "bcc_emails",
+        "type_info": "TextArray",
+        "origin": {
+          "Table": {
+            "table": "global_settings",
+            "name": "bcc_emails"
           }
         }
       }
@@ -122,13 +166,17 @@
       false,
       false,
       false,
+      true,
       false,
       false,
       false,
       false,
       false,
-      true
+      false,
+      true,
+      false,
+      false
     ]
   },
-  "hash": "2b7c3c011ed41ab09ac622ff747281dac5952d415272ca03bb8ad033e2f2e1d0"
+  "hash": "e61ee65ad8ea3aea583f17c605f67442d6dffc088b31cf5b16573ea5c407eddc"
 }

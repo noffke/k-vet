@@ -45,6 +45,9 @@ pub struct PracticeBlock {
     /// The same address comma-joined, for the one-line footer and the sender line.
     pub address_line: String,
     pub email: String,
+    /// Whom a transfer goes to — the account holder from Einstellungen, else the practice's
+    /// name. The GiroCode names the same.
+    pub account_holder: String,
     pub iban: String,
     pub bic: String,
     pub bank_name: String,
@@ -652,6 +655,7 @@ mod tests {
                 address: "Musterweg 5\n12345 Musterstadt".to_owned(),
                 address_line: "Musterweg 5, 12345 Musterstadt".to_owned(),
                 email: "praxis@example.com".to_owned(),
+                account_holder: "Dr. Käthe Musterfrau".to_owned(),
                 iban: iban_de("DE02120300000000202051"),
                 bic: "BYLADEM1001".to_owned(),
                 bank_name: "Musterbank".to_owned(),
@@ -864,6 +868,7 @@ mod tests {
                 address: String::new(),
                 address_line: String::new(),
                 email: String::new(),
+                account_holder: String::new(),
                 iban: String::new(),
                 bic: String::new(),
                 bank_name: String::new(),
@@ -1114,5 +1119,21 @@ mod tests {
         document.practice.iban = String::new();
         let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
         assert!(!page_texts(&paged).concat().contains("Bankverbindung"));
+    }
+
+    /// The bank details name the account holder, not the practice — they need not be the same.
+    #[test]
+    fn the_bank_details_name_the_account_holder() {
+        let config = empty_config();
+        let mut document = minimal_document();
+        document.practice.iban = iban_de("DE02120300000000202051");
+        document.practice.account_holder = "Dr. Käthe Musterfrau".to_owned();
+
+        let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
+        let text = page_texts(&paged).concat();
+        assert!(
+            text.contains("Kontoinhaber: Dr. Käthe Musterfrau"),
+            "{text}"
+        );
     }
 }

@@ -292,7 +292,8 @@ Vielen Dank für Ihr Vertrauen!
     #set text(9.5pt)
     #set par(leading: 0.55em)
     #text(weight: "bold")[Bankverbindung] \
-    #if practice.name != "" [Empfänger: #practice.name \ ]
+    // The name on the account, which need not be the practice's (Einstellungen → Bankverbindung).
+    #if practice.account_holder != "" [Kontoinhaber: #practice.account_holder \ ]
     #text(12pt, weight: "bold")[IBAN #practice.iban] \
     #if bank != "" [#bank \ ]
     Betrag #invoice.total · Verwendungszweck: Rechnung #invoice.number

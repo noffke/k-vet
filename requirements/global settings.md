@@ -7,7 +7,7 @@ Single-row typed settings table (no key-value store), see Global Settings entity
   the parts separately, and the invoice footer needs a one-line form)
 * email address of the practice (printed in the invoice footer; the sender address of outgoing
   mail stays in the config file, it is infrastructure)
-* bank account of vet: IBAN, BIC and bank name (the BIC also feeds the GiroCode on the invoice)
+* bank account of vet: account holder (Kontoinhaber; empty means the practice name), IBAN, BIC and bank name — the holder and the BIC also feed the GiroCode on the invoice
 * german UStID
 * uploadable logo for vet practice (stored as an Attachment, referenced)
 * global CC/BCC for emails (business preference, e.g. bookkeeper's address)

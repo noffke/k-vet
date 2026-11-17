@@ -21,6 +21,11 @@ export interface Settings {
      * configuration and lives in `config.toml`.
      */
   email: string;
+  /**
+     * The name on the bank account, as the invoice's bank details and its GiroCode give it;
+     * empty means the practice name.
+     */
+  account_holder: string;
   iban: string;
   bic: string;
   bank_name: string;
