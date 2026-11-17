@@ -56,6 +56,15 @@
   }
 }
 
+// One empty line of the report's text, between an animal's two texts: exactly what a blank
+// paragraph the vet types takes — the empty line and the spacing on both sides of it, which
+// weak spacing replaces rather than adds to. Weak, too, so that at the top of a page it is
+// dropped and a text carried over never starts with a gap.
+#let blank-line = context {
+  let line = measure(par(sym.zws)).height
+  v(line + 2 * par.spacing, weak: true)
+}
+
 // The header band is `margin.top - header-ascent` tall, so a page with a letterhead needs a
 // deeper top margin than one without — at 15mm the logo was taller than the band it sat in and
 // ran off the top of the sheet, which is how it came to print cut in half (issues.md 9). A
@@ -266,7 +275,9 @@ Vielen Dank für Ihr Vertrauen!
     #v(1mm)
     #if report.treatment_reason_blocks.len() > 0 [
       #formatted([*Vorbericht und Untersuchung:*], report.treatment_reason_blocks)
-      #v(1mm)
+      // A blank line before what follows; the label leads the finding's first line, so a
+      // page break can come before it but never between the label and its text.
+      #if report.finding_blocks.len() > 0 [#blank-line] else [#v(1mm)]
     ]
     #if report.finding_blocks.len() > 0 [
       #formatted([*Therapie und weiteres Vorgehen:*], report.finding_blocks)

@@ -985,6 +985,76 @@ mod tests {
             .collect()
     }
 
+    /// The baseline of the first text run holding `needle`, in points from the top of its page.
+    fn baseline_of(paged: &PagedDocument, needle: &str) -> Option<f64> {
+        fn find(
+            frame: &typst::layout::Frame,
+            offset: typst::layout::Point,
+            needle: &str,
+        ) -> Option<f64> {
+            frame.items().find_map(|(position, item)| {
+                let at = offset + *position;
+                match item {
+                    typst::layout::FrameItem::Group(group) => find(&group.frame, at, needle),
+                    typst::layout::FrameItem::Text(text) if text.text.contains(needle) => {
+                        Some(at.y.to_pt())
+                    }
+                    _ => None,
+                }
+            })
+        }
+        paged
+            .pages()
+            .iter()
+            .find_map(|page| find(&page.frame, typst::layout::Point::zero(), needle))
+    }
+
+    /// Between an animal's two texts stands one empty line: exactly the room a blank paragraph
+    /// the vet types takes, no more and no less.
+    #[test]
+    fn the_reason_and_the_finding_are_one_blank_line_apart() {
+        let config = empty_config();
+        let paragraph = |text: &str| serde_json::json!({"type": "paragraph", "content": [{"type": "text", "text": text}]});
+        let reason = |content: serde_json::Value| -> RichText {
+            serde_json::from_value(serde_json::json!({"type": "doc", "content": content}))
+                .expect("a valid document")
+        };
+        let gap = |reason: RichText, finding: Option<RichText>| {
+            let mut document = minimal_document();
+            document.invoice.reports = vec![report("Bello", "", reason, finding)];
+            let paged = layout_invoice(&config, &document, None, None).expect("it lays out");
+            let first = baseline_of(&paged, "Erste").expect("the first text is printed");
+            let second = baseline_of(&paged, "Zweite").expect("the second text is printed");
+            second - first
+        };
+
+        let typed = gap(
+            reason(serde_json::json!([
+                paragraph("Erste Zeile"),
+                {"type": "paragraph"},
+                paragraph("Zweite Zeile")
+            ])),
+            None,
+        );
+        let adjacent = gap(
+            reason(serde_json::json!([
+                paragraph("Erste Zeile"),
+                paragraph("Zweite Zeile")
+            ])),
+            None,
+        );
+        let between = gap(plain("Erste Zeile"), Some(plain("Zweite Zeile")));
+
+        assert!(
+            (between - typed).abs() < 0.01,
+            "{between} pt between the texts, a typed blank line takes {typed} pt"
+        );
+        assert!(
+            between > adjacent * 1.5,
+            "{between} pt is no blank line beside {adjacent} pt"
+        );
+    }
+
     /// Three animals, `positions` lines dealt out among them, and a report per animal whose
     /// texts are long enough to cross a page — every name unique, so a page can be searched.
     fn long_invoice(positions: usize) -> InvoiceDocument {
@@ -1073,6 +1143,19 @@ mod tests {
             together("Bericht0", "Grund0");
             together("Bericht1", "Listenpunkt1");
             together("Bericht2", "Grund2");
+            // A blank line stands between an animal's two texts; a page break may take its
+            // place, but the finding's label still leads the finding's first line.
+            for animal in 0..3 {
+                let finding = format!("Befund{animal}");
+                let page = &pages[page_of(&finding)];
+                let before = page.find(&finding).map_or("", |at| &page[..at]);
+                assert!(
+                    before
+                        .trim_end()
+                        .ends_with("Therapie und weiteres Vorgehen:"),
+                    "the label of {finding} stands apart from it with {positions} positions"
+                );
+            }
             for group in &document.invoice.patient_groups {
                 let first = &group.items[0].name;
                 together(&format!("Tier: {}", group.patient), first);

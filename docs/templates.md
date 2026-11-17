@@ -151,6 +151,12 @@ paragraph (or stands on a line of its own above a leading list), lists become `l
 `enum(start: …)`. Place `span.text` as content, as above — never `eval` it: it is the vet's
 text, and evaluated it would act as Typst markup.
 
+Between an animal's two texts the default template leaves one empty line, `blank-line`: weak
+spacing as tall as a blank paragraph the vet types (`par(sym.zws)` and the paragraph spacing on
+both sides of it, measured in `context`), so the gap looks like one typed in the editor and is
+dropped where a page break falls there. The finding's label leads its first line, so the break
+never comes between the label and its text.
+
 > **Changed with formatted text.** A template written before the reason and the finding could be
 > formatted keeps working: `treatment_reason` and `finding` are still strings, now the plain text
 > of the formatted ones. It prints them **without** the formatting. To print bold, italic,
