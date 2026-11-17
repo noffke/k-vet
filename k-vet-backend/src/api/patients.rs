@@ -12,6 +12,7 @@ use utoipa::ToSchema;
 
 use crate::AppState;
 use crate::api::common::{ListQuery, double_option, ensure_deletable, in_use};
+use crate::api::treatments;
 use crate::domain::draft::{missing_fields, recompute_draft};
 use crate::domain::enums::InvoiceStatus;
 use crate::domain::rich_text::RichText;
@@ -311,6 +312,19 @@ pub async fn patch(
     )
     .execute(&mut *transaction)
     .await?;
+
+    // Just become an animal a visit can have — complete, alive, its customer's — it goes onto
+    // that customer's visits still waiting for one, when it is their only animal: entered on a
+    // new customer's page after their appointment was made, it is the animal that comes.
+    let customer_id = match body.customer_id {
+        Some(value) => value,
+        None => current.customer_id,
+    };
+    let became_eligible =
+        !draft && !archived && (current.draft || customer_id != current.customer_id);
+    if became_eligible && let Some(customer_id) = customer_id {
+        treatments::attach_only_animal_to_open_visits(&mut transaction, customer_id).await?;
+    }
 
     transaction.commit().await?;
     Ok(Json(load(&state.pool, id).await?))

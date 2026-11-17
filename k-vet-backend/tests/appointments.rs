@@ -443,6 +443,101 @@ async fn a_customers_only_animal_is_attached_and_stays(pool: PgPool) {
     assert_eq!(treatment["patients"].as_array().map(Vec::len), Some(1));
 }
 
+/// An animal entered after its visit was made — a customer made from the appointment, whose
+/// first animal is entered on their page — goes onto the visits still waiting for one as soon
+/// as it is complete, as if it had been there when the customer was picked. Where there are two
+/// or more animals the vet chooses.
+#[sqlx::test]
+async fn an_animal_completed_later_goes_onto_the_visits_waiting_for_one(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let animals_on = |treatment_id: serde_json::Value| {
+        let app = &app;
+        async move {
+            app.get(&format!("/api/treatments/{treatment_id}"))
+                .await
+                .json()["patients"]
+                .as_array()
+                .map(|patients| {
+                    patients
+                        .iter()
+                        .map(|patient| patient["patient_id"].clone())
+                        .collect::<Vec<_>>()
+                })
+                .unwrap_or_default()
+        }
+    };
+
+    // A visit parked for a customer without any animal yet.
+    let parked = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-04T09:30:00Z", "customer_id": customer_id }),
+        )
+        .await
+        .json();
+    assert!(animals_on(parked["treatment_id"].clone()).await.is_empty());
+
+    // Still a draft, the animal goes nowhere …
+    let bello = app
+        .post("/api/patients", json!({ "customer_id": customer_id }))
+        .await
+        .id();
+    app.patch(
+        &format!("/api/patients/{bello}"),
+        json!({ "name": "Bello", "species": "Hund" }),
+    )
+    .await;
+    assert!(animals_on(parked["treatment_id"].clone()).await.is_empty());
+
+    // … complete, it is on the parked visit.
+    let completed = app
+        .patch(&format!("/api/patients/{bello}"), json!({ "sex": "male" }))
+        .await;
+    assert_eq!(completed.status, StatusCode::OK);
+    assert_eq!(
+        animals_on(parked["treatment_id"].clone()).await,
+        vec![json!(bello)]
+    );
+
+    // A second animal is not added by itself: with two there is a choice.
+    let wuffi = app
+        .post("/api/patients", json!({ "customer_id": customer_id }))
+        .await
+        .id();
+    app.patch(
+        &format!("/api/patients/{wuffi}"),
+        json!({ "name": "Wuffi", "species": "Hund", "sex": "female" }),
+    )
+    .await;
+    assert_eq!(
+        animals_on(parked["treatment_id"].clone()).await,
+        vec![json!(bello)]
+    );
+
+    // Nor onto a visit of a customer who has animals to choose from already.
+    let family = common::seed_customer(&pool).await;
+    common::seed_patient(&pool, family).await;
+    common::seed_patient(&pool, family).await;
+    let waiting = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2026-05-05T09:30:00Z", "customer_id": family }),
+        )
+        .await
+        .json();
+    let third = app
+        .post("/api/patients", json!({ "customer_id": family }))
+        .await
+        .id();
+    app.patch(
+        &format!("/api/patients/{third}"),
+        json!({ "name": "Mieze", "species": "Katze", "sex": "female" }),
+    )
+    .await;
+    assert!(animals_on(waiting["treatment_id"].clone()).await.is_empty());
+}
+
 /// With two animals the vet chooses: none is attached, and either can come off again.
 #[sqlx::test]
 async fn with_two_animals_nothing_is_preselected(pool: PgPool) {

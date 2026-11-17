@@ -8,6 +8,7 @@ import {
   getAttachmentThumbnailUrl,
   getDownloadAttachmentUrl,
   getGetPatientQueryKey,
+  getListAppointmentsQueryKey,
   getListPatientFilesQueryKey,
   getListPatientsQueryKey,
   useArchivePatient,
@@ -32,6 +33,7 @@ import { CheckboxField, SelectField, TextAreaField, TextField } from '@/componen
 import { WarningBanner } from '@/components/WarningBanner'
 import { useAutoSave } from '@/lib/autosave'
 import { useLocaleFormat } from '@/lib/locale'
+import { invalidatePath } from '@/lib/query'
 import { useGoBack } from '@/lib/trail'
 import { useUpload } from '@/lib/upload'
 import { useNewAppointment } from '../appointments/newAppointment'
@@ -62,6 +64,12 @@ export function PatientDetailPage() {
   const store = (updated: Patient) => {
     client.setQueryData(getGetPatientQueryKey(patientId), updated)
     void client.invalidateQueries({ queryKey: getListPatientsQueryKey() })
+    // Once complete, a customer's only animal goes onto their visits still waiting for one (the
+    // server does it); the appointment the vet goes back to must not show the visit without it.
+    if (!updated.draft) {
+      void invalidatePath(client, '/api/treatments/')
+      void client.invalidateQueries({ queryKey: getListAppointmentsQueryKey() })
+    }
   }
 
   const autoSave = useAutoSave<Patient>({

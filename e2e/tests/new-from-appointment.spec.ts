@@ -65,10 +65,10 @@ test.describe('a new customer from the appointment', () => {
     await page.getByRole('link', { name: /^Zurück: \d{2}\.\d{2}\.\d{4}/ }).click()
     await expect(page).toHaveURL(new RegExp(`^${appointmentUrl}`))
 
-    // The appointment is theirs, and the animal made since is offered for the visit.
+    // The appointment is theirs, and the animal made since — their only one — is on the visit
+    // by itself, as if it had been there when the customer was picked.
     await expect(page.getByPlaceholder('Kunde suchen …')).toHaveCount(0)
     await expect(page.getByText(`Erika ${lastName}`).filter({ visible: true }).first()).toBeVisible()
-    await page.getByRole('option', { name: new RegExp(`^${animal}`) }).click()
     await expect(page.getByRole('tab', { name: new RegExp(animal) })).toBeVisible()
   })
 

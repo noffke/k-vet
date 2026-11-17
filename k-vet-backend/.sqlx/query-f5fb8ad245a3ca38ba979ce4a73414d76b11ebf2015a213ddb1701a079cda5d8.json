@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT treatment.id\n           FROM treatment\n          WHERE treatment.customer_id = $1\n            AND NOT EXISTS (SELECT 1 FROM patient_treatment WHERE treatment_id = treatment.id)\n            AND NOT EXISTS (SELECT 1 FROM invoice WHERE treatment_id = treatment.id)\n          ORDER BY treatment.id",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "treatment",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "f5fb8ad245a3ca38ba979ce4a73414d76b11ebf2015a213ddb1701a079cda5d8"
+}

@@ -402,6 +402,32 @@ pub async fn attach_only_animal(
     Ok(())
 }
 
+/// Puts a customer's only animal on each of their visits that has no animal yet and no invoice,
+/// once the animal becomes one a visit could have — completed, or moved to this customer —
+/// after the visit was made: a customer made from the appointment, say, whose first animal is
+/// entered on their page. It is the rule picking the customer applies (`attach_only_animal`);
+/// with two or more animals there is something to choose, and nothing happens.
+pub async fn attach_only_animal_to_open_visits(
+    transaction: &mut Transaction<'_, Postgres>,
+    customer_id: i64,
+) -> AppResult<()> {
+    let visits: Vec<i64> = sqlx::query_scalar!(
+        "SELECT treatment.id
+           FROM treatment
+          WHERE treatment.customer_id = $1
+            AND NOT EXISTS (SELECT 1 FROM patient_treatment WHERE treatment_id = treatment.id)
+            AND NOT EXISTS (SELECT 1 FROM invoice WHERE treatment_id = treatment.id)
+          ORDER BY treatment.id",
+        customer_id,
+    )
+    .fetch_all(&mut **transaction)
+    .await?;
+    for visit in visits {
+        attach_only_animal(transaction, visit).await?;
+    }
+    Ok(())
+}
+
 /// Whether anything has been entered on a treatment beyond the bare animals: a line, an
 /// invoice, a reason or finding, a file. Until then the visit can still move to another
 /// customer — its animals are only the default, and go with the change.

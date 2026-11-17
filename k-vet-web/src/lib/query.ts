@@ -20,3 +20,16 @@ export const queryClient = new QueryClient({
     mutations: { retry: false },
   },
 })
+
+/**
+ * Marks every cached query under a path stale — `/api/treatments/` for all treatments, whose
+ * keys carry the id inside the path, so a key prefix cannot reach them.
+ */
+export function invalidatePath(client: QueryClient, path: string) {
+  return client.invalidateQueries({
+    predicate: (query) => {
+      const [key] = query.queryKey
+      return typeof key === 'string' && key.startsWith(path)
+    },
+  })
+}
