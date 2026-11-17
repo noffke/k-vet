@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test'
+import { login } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 const stamp = () => Date.now().toString().slice(-6)
@@ -88,5 +89,56 @@ test.describe('a new customer from the appointment', () => {
     const found = await page.request.get(`/api/customers?q=${encodeURIComponent(lastName)}`)
     expect(await found.json()).toEqual([])
     await expect(page.getByPlaceholder('Kunde suchen …')).toBeVisible()
+  })
+})
+
+/**
+ * An animal the practice has not seen yet is made on the visit it came to: named, its Tierart
+ * and Geschlecht chosen, and on the visit at once — also for a customer just made, whose
+ * address is still to come, and who has no animal at all yet.
+ */
+test.describe('a new animal from the appointment', () => {
+  test('is made complete, goes onto the visit, and is the customer\'s', async ({
+    page,
+    request,
+  }) => {
+    const lastName = `Ohneadresse-${stamp()}`
+    const animal = `Neuling-${stamp()}`
+    await login(request)
+    const customer = (await (await request.post('/api/customers')).json()) as { id: number }
+    await request.patch(`/api/customers/${customer.id}`, {
+      data: { salutation: 'herr', first_name: 'Max', last_name: lastName },
+    })
+    const appointment = (await (
+      await request.post('/api/appointments', {
+        data: { starts_at: new Date().toISOString(), customer_id: customer.id },
+      })
+    ).json()) as { id: number }
+
+    await signIn(page)
+    await page.goto(`/appointments/${appointment.id}`)
+    // No animal yet, none to pick: the search offers only to make one.
+    const picker = page.getByPlaceholder('Patienten')
+    await picker.fill(animal)
+    await page.getByRole('option', { name: 'Neues Tier …' }).click()
+
+    const dialog = page.getByRole('dialog')
+    await expect(dialog.getByLabel('Name')).toHaveValue(animal)
+    const add = dialog.getByRole('button', { name: 'Hinzufügen' })
+    await expect(add).toBeDisabled()
+    await dialog.getByLabel('Tierart').fill('Hund')
+    await dialog.getByLabel('Geschlecht').selectOption({ label: 'männlich' })
+    await add.click()
+
+    // On the visit, its tab open; the customer's only animal, so it stays there.
+    await expect(dialog).toHaveCount(0)
+    await expect(page.getByRole('tab', { name: new RegExp(animal) })).toHaveAttribute(
+      'aria-selected',
+      'true',
+    )
+    await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+
+    await page.goto(`/customers/${customer.id}`)
+    await expect(page.getByRole('button', { name: new RegExp(`^${animal}`) }).filter({ visible: true })).toBeVisible()
   })
 })

@@ -73,13 +73,15 @@ test.describe('appointments', () => {
     await page.getByPlaceholder('Kunde suchen …').fill(lastName)
     await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
 
-    // Nothing to choose: the animal is there as the one tab, with nothing to add beside it and
-    // no way to take it off.
+    // Nothing to choose: the animal is there as the one tab, with no way to take it off.
     await expect(page.getByRole('tab', { name: new RegExp(animal) })).toBeVisible()
     await expect(page.getByRole('tab')).toHaveCount(1)
-    await expect(page.getByRole('button', { name: 'Tier', exact: true })).toHaveCount(0)
     await expect(page.getByPlaceholder('Patienten')).toHaveCount(0)
     await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+    // "+ Tier" is only for one the practice has not seen yet: no known animal is offered.
+    await page.getByRole('button', { name: 'Tier', exact: true }).click()
+    await expect(page.getByRole('option', { name: 'Neues Tier …' })).toBeVisible()
+    await expect(page.getByRole('option', { name: new RegExp(animal) })).toHaveCount(0)
   })
 
   test('the list goes on past its first page with "Mehr laden"', async ({ page, request }) => {
@@ -192,7 +194,7 @@ test.describe('appointments', () => {
     await expect(page.getByRole('tab', { name: new RegExp(first) })).toBeVisible()
   })
 
-  test('a second animal is a second tab, and "+ Tier" goes once all are there', async ({
+  test('a second animal is a second tab, and "+ Tier" stays for a new one once all are there', async ({
     page,
     request,
   }) => {
@@ -235,14 +237,19 @@ test.describe('appointments', () => {
       'aria-selected',
       'true',
     )
-    // Both are tabs: nothing left to add.
-    await expect(addAnimal).toHaveCount(0)
+    // Both are tabs: no known animal is left to add, only a new one.
+    await addAnimal.click()
+    await picker.fill('')
+    await expect(page.getByRole('option', { name: new RegExp(`^(${first}|${second})`) })).toHaveCount(0)
+    await expect(page.getByRole('option', { name: 'Neues Tier …' })).toBeVisible()
+    await addAnimal.click()
 
-    // Taking one off brings "+ Tier" back.
+    // Taking one off offers it again.
     await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Entfernen' }).click()
     await expect(page.getByRole('tab')).toHaveCount(1)
-    await expect(addAnimal).toBeVisible()
+    await addAnimal.click()
+    await expect(page.getByRole('option', { name: new RegExp(`^${second}`) })).toBeVisible()
   })
 
   test('a Termin is only deleted once, and never after it has been billed', async ({

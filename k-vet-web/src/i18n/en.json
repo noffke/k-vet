@@ -220,6 +220,9 @@
     "deceasedArchived": "Date of death set — the patient was archived.",
     "files": "Files",
     "new": "New patient",
+    "newEntry": "New animal …",
+    "newEntryHint": "Goes onto this visit right away. Name, species and sex are enough; everything else on the animal’s page.",
+    "newEntryTitle": "New animal",
     "photo": "Photo",
     "title": "Patients",
     "treatments": "Treatments"

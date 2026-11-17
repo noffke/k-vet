@@ -1,7 +1,7 @@
 import { useQueryClient } from '@tanstack/react-query'
 import { useNavigate } from '@tanstack/react-router'
 import { Command } from 'cmdk'
-import { CalendarPlus, PawPrint, Trash2 } from 'lucide-react'
+import { CalendarPlus, PawPrint, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toast } from 'sonner'
@@ -17,6 +17,7 @@ import {
 import type { Treatment, TreatmentPatient } from '@/api/generated/model'
 import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
+import { NewAnimalDialog } from '@/features/patients/NewAnimalDialog'
 import { unmarkCmdkInput } from '@/lib/cmdk'
 import { refusalKey } from '@/lib/refusal'
 import { cn } from '@/lib/utils'
@@ -36,8 +37,7 @@ function useAnimalsChanged(treatmentId: number) {
 /**
  * The animals this customer could bring — the same set the server counts: complete, not
  * archived, alive (archived ones never come back from the list). With exactly one, that animal
- * is on the treatment by itself and stays there; with more, the picker is only offered while
- * one is left to add.
+ * is on the treatment by itself and stays there.
  */
 export function useEligibleAnimals(treatment: Treatment) {
   const herd = useListPatients(
@@ -45,11 +45,9 @@ export function useEligibleAnimals(treatment: Treatment) {
     { query: { enabled: !treatment.frozen && treatment.customer_id != null } },
   )
   const eligible = (herd.data ?? []).filter((patient) => !patient.draft && !patient.date_of_death)
-  const attached = new Set(treatment.patients.map((patient) => patient.patient_id))
   return {
     pending: herd.isPending,
     onlyAnimal: eligible.length === 1 ? eligible[0]?.id : undefined,
-    leftToAdd: eligible.filter((patient) => !attached.has(patient.id)).length,
   }
 }
 
@@ -57,6 +55,10 @@ export function useEligibleAnimals(treatment: Treatment) {
  * The search for a further animal of this visit. All animals of a treatment belong to its
  * customer (FR-027), so the search is limited to that customer's animals and the rule cannot
  * be broken by accident. `onAttached` gets the new record's id, to open its tab.
+ *
+ * "Neues Tier …" at the foot makes one the practice has not seen yet, for this customer, and
+ * puts it on the visit straight away — which is why the picker is offered even when every
+ * known animal is already there, or the customer has none.
  */
 export function AnimalPicker({
   treatment,
@@ -69,6 +71,8 @@ export function AnimalPicker({
   const changed = useAnimalsChanged(treatment.id)
   const [term, setTerm] = useState('')
   const [debounced, setDebounced] = useState('')
+  // What was typed when "Neues Tier …" was chosen; the dialog is open while it is set.
+  const [newAnimalTerm, setNewAnimalTerm] = useState<string | null>(null)
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(term), SEARCH_DEBOUNCE_MS)
@@ -84,52 +88,99 @@ export function AnimalPicker({
   const options = (candidates.data ?? []).filter(
     (patient) => !patient.draft && !patient.date_of_death && !attached.has(patient.id),
   )
+  const customerId = treatment.customer_id
+
+  // The new record's tab opens, as for an animal picked from the list.
+  const opened = (updated: Treatment, patientId: number) => {
+    const record = updated.patients.find((entry) => entry.patient_id === patientId)
+    if (record) onAttached?.(record.id)
+  }
 
   return (
-    <Command
-      shouldFilter={false}
-      className="mt-3 rounded-card border border-line-strong bg-surface"
-    >
-      <Command.Input
-        ref={unmarkCmdkInput}
-        value={term}
-        onValueChange={setTerm}
-        placeholder={t('patients.title')}
-        className="w-full rounded-t-card border-b border-line bg-transparent px-3 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none"
-      />
-      <Command.List className="max-h-48 overflow-y-auto p-1">
-        <Command.Empty className="px-2 py-3 text-sm text-ink-faint">
-          {t('list.empty')}
-        </Command.Empty>
-        {options.map((patient) => (
-          <Command.Item
-            key={patient.id}
-            value={String(patient.id)}
-            onSelect={() => {
-              setTerm('')
-              addPatient.mutate(
-                { id: treatment.id, data: { patient_id: patient.id } },
-                {
-                  onSuccess: async (updated) => {
-                    await changed()
-                    const record = updated.patients.find((entry) => entry.patient_id === patient.id)
-                    if (record) onAttached?.(record.id)
+    <>
+      <Command
+        shouldFilter={false}
+        className="mt-3 rounded-card border border-line-strong bg-surface"
+      >
+        <Command.Input
+          ref={unmarkCmdkInput}
+          value={term}
+          onValueChange={setTerm}
+          placeholder={t('patients.title')}
+          className="w-full rounded-t-card border-b border-line bg-transparent px-3 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none"
+        />
+        <Command.List className="max-h-48 overflow-y-auto p-1">
+          <Command.Empty className="px-2 py-3 text-sm text-ink-faint">
+            {t('list.empty')}
+          </Command.Empty>
+          {options.map((patient) => (
+            <Command.Item
+              key={patient.id}
+              value={String(patient.id)}
+              onSelect={() => {
+                setTerm('')
+                addPatient.mutate(
+                  { id: treatment.id, data: { patient_id: patient.id } },
+                  {
+                    onSuccess: async (updated) => {
+                      await changed()
+                      opened(updated, patient.id)
+                    },
                   },
-                },
-              )
-            }}
-            className={cn(
-              'flex cursor-pointer items-center gap-2 rounded-control px-2 py-2 text-sm',
-              'data-[selected=true]:bg-cream-soft',
-            )}
-          >
-            <PawPrint className="size-4 shrink-0 text-rust" aria-hidden />
-            <span className="min-w-0 flex-1 truncate text-ink">{patient.name}</span>
-            <span className="shrink-0 text-xs text-ink-faint">{patient.customer_name ?? ''}</span>
-          </Command.Item>
-        ))}
-      </Command.List>
-    </Command>
+                )
+              }}
+              className={cn(
+                'flex cursor-pointer items-center gap-2 rounded-control px-2 py-2 text-sm',
+                'data-[selected=true]:bg-cream-soft',
+              )}
+            >
+              <PawPrint className="size-4 shrink-0 text-rust" aria-hidden />
+              <span className="min-w-0 flex-1 truncate text-ink">{patient.name}</span>
+              <span className="shrink-0 text-xs text-ink-faint">{patient.customer_name ?? ''}</span>
+            </Command.Item>
+          ))}
+          {customerId != null ? (
+            <>
+              {/* With "Neues Tier …" there is always an item, so cmdk's empty line never shows. */}
+              {candidates.isSuccess && options.length === 0 ? (
+                <p className="px-2 py-2 text-sm text-ink-faint">{t('list.empty')}</p>
+              ) : null}
+              {/* Last, so Enter still takes the first match; held at the foot of the list. */}
+              <Command.Item
+                value="new-animal"
+                onSelect={() => {
+                  const typed = term.trim()
+                  setTerm('')
+                  setNewAnimalTerm(typed)
+                }}
+                className="sticky bottom-0 mt-1 flex min-h-11 cursor-pointer items-center gap-2 rounded-control border-t border-line bg-surface px-2 py-2 text-sm font-semibold text-rust sm:min-h-9 data-[selected=true]:bg-cream-soft"
+              >
+                <Plus className="size-4" aria-hidden />
+                {t('patients.newEntry')}
+              </Command.Item>
+            </>
+          ) : null}
+        </Command.List>
+      </Command>
+      {customerId != null ? (
+        <NewAnimalDialog
+          open={newAnimalTerm !== null}
+          term={newAnimalTerm ?? ''}
+          customerId={customerId}
+          onOpenChange={(open) => {
+            if (!open) setNewAnimalTerm(null)
+          }}
+          onCreated={async (patientId) => {
+            const updated = await addPatient.mutateAsync({
+              id: treatment.id,
+              data: { patient_id: patientId },
+            })
+            await changed()
+            opened(updated, patientId)
+          }}
+        />
+      ) : null}
+    </>
   )
 }
 

@@ -57,7 +57,9 @@ function TreatmentBody({
   const active = patients.find((patient) => patient.id === activeRecordId) ?? patients[0]
   // The visit's own positions: the house-call fee, Wegegeld — independent of any one animal.
   const general = items.filter((item) => item.patient_treatment_id === null)
-  const canAdd = !treatment.frozen && !eligible.pending && eligible.leftToAdd > 0
+  // A known animal is added from the search, a new one is made there ("Neues Tier …"), so the
+  // search stays on offer while the visit can still change — not only while one is left to add.
+  const canAdd = !treatment.frozen && treatment.customer_id != null
 
   return (
     <section className="mt-6">
