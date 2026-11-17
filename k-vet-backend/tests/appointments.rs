@@ -773,3 +773,42 @@ async fn an_appointment_is_made_for_a_customer_or_one_of_their_animals(pool: PgP
         .json();
     assert_eq!(for_single["patient_names"], json!(["Bello"]));
 }
+
+/// The list says where each visit goes — the customer's home address — so the upcoming
+/// appointments can be driven to from the list; one without a customer has none.
+#[sqlx::test]
+async fn an_appointment_carries_the_address_it_goes_to(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let visit = app
+        .post(
+            "/api/appointments",
+            json!({ "customer_id": customer_id, "starts_at": "2099-05-04T09:30:00Z" }),
+        )
+        .await
+        .id();
+    let nobody = app
+        .post(
+            "/api/appointments",
+            json!({ "starts_at": "2099-05-04T11:00:00Z" }),
+        )
+        .await
+        .id();
+
+    let address = json!({
+        "street": "Musterweg 5", "zip": "12345", "city": "Musterstadt", "country": null
+    });
+    let detail = app.get(&format!("/api/appointments/{visit}")).await.json();
+    assert_eq!(detail["address"], address);
+
+    let list = app
+        .get(&format!(
+            "/api/appointments?when=upcoming&customer_id={customer_id}"
+        ))
+        .await
+        .json();
+    assert_eq!(list[0]["address"], address);
+
+    let without = app.get(&format!("/api/appointments/{nobody}")).await.json();
+    assert_eq!(without["address"], serde_json::Value::Null);
+}

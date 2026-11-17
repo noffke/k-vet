@@ -52,7 +52,7 @@ export interface DataListProps<T extends RowData> {
   /**
    * Per-row buttons and links. They sit in a trailing column on desktop and in a footer
    * strip on phones — never inside the card button, which may not nest interactive
-   * elements.
+   * elements. Return `null` for a row without any: its card then has no footer strip.
    */
   rowActions?: ((row: T) => ReactNode) | undefined
   /**
@@ -265,6 +265,8 @@ export function DataList<T extends RowData>({
       <ul className="flex flex-col gap-2 sm:hidden">
         {data.map((row, index) => {
           const subline = rowSubline?.(row) ?? null
+          // A row with nothing to offer gets no footer strip under its card.
+          const actions = rowActions?.(row) ?? null
           const heading = headingBefore(index)
           return (
             <li key={getRowId(row)}>
@@ -278,7 +280,7 @@ export function DataList<T extends RowData>({
                 className={cn(
                   'w-full rounded-card border border-line bg-surface px-3 py-3 text-left',
                   onRowClick && 'active:bg-cream-soft',
-                  rowActions && 'rounded-b-none border-b-0',
+                  actions && 'rounded-b-none border-b-0',
                 )}
               >
                 <span className="flex items-center justify-between gap-2">
@@ -309,9 +311,9 @@ export function DataList<T extends RowData>({
                   <span className="mt-1.5 block text-xs text-ink-faint">{subline}</span>
                 ) : null}
               </button>
-              {rowActions ? (
+              {actions ? (
                 <div className="flex flex-wrap gap-1 rounded-b-card border border-line bg-surface px-3 py-2">
-                  {rowActions(row)}
+                  {actions}
                 </div>
               ) : null}
             </li>

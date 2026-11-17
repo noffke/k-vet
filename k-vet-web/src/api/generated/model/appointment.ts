@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { VisitAddress } from './visitAddress';
 
 export interface Appointment {
   id: number;
@@ -28,6 +29,7 @@ export interface Appointment {
      * @nullable
      */
   customer_name?: string | null;
+  address?: VisitAddress | null;
   /**
      * The animals on its treatment, by name — what tells two appointments of one customer
      * apart in the list. A past visit keeps naming an animal that has since died.

@@ -160,3 +160,4 @@ export * from './treatmentItem';
 export * from './treatmentItemKind';
 export * from './treatmentItemWithKm';
 export * from './treatmentPatient';
+export * from './visitAddress';

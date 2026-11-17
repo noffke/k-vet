@@ -5621,6 +5621,17 @@
             ],
             "description": "For the header and the list, so the appointment says whose it is without a second\nrequest."
           },
+          "address": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/VisitAddress",
+                "description": "Where the visit goes: the customer's home address, as on the appointment's page and in\nthe phone calendar's LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer."
+              },
+              {
+                "type": "null"
+              }
+            ]
+          },
           "patient_names": {
             "type": "array",
             "items": {
@@ -10873,6 +10884,37 @@
                 "type": "null"
               }
             ]
+          }
+        }
+      },
+      "VisitAddress": {
+        "type": "object",
+        "description": "A customer's home address, its parts as the customer record holds them.",
+        "properties": {
+          "street": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "zip": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "city": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "country": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "ISO 3166-1 alpha-2; absent means `[invoice] default_country`."
           }
         }
       }

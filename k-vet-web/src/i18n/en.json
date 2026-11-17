@@ -609,6 +609,7 @@
   },
   "maps": {
     "open": "Open in Google Maps",
+    "route": "Directions",
     "routeTo": "Route to {{address}} in Google Maps"
   },
   "addressCheck": {

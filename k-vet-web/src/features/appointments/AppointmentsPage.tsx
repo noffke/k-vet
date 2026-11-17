@@ -7,6 +7,7 @@ import { getListAppointmentsQueryKey, listAppointments } from '@/api/generated/e
 import type { Appointment, ListAppointmentsWhen } from '@/api/generated/model'
 import { DataList, type DataListColumn } from '@/components/DataList'
 import { LoadMore } from '@/components/LoadMore'
+import { MapsLink } from '@/components/MapsLink'
 import { PageHeader } from '@/components/PageHeader'
 import {
   CalendarBadges,
@@ -16,8 +17,10 @@ import {
   RemindersBadge,
 } from '@/components/RecordBadges'
 import { Button } from '@/components/ui/button'
+import { useOperatorConfig } from '@/lib/config'
 import { formatDayHeading, todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
+import { addressLine, type MapsAddress } from '@/lib/maps'
 import { usePagedList } from '@/lib/paging'
 import { scheduleOf } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
@@ -49,6 +52,12 @@ export function AppointmentsPage() {
   const params = { q: search || undefined, when: tab }
   const appointments = usePagedList(getListAppointmentsQueryKey(params), listAppointments, params)
   const newAppointment = useNewAppointment()
+  const { default_country: defaultCountry } = useOperatorConfig()
+  /** Where an upcoming visit goes — the customer's home — or null without street and town. */
+  const destination = (row: Appointment): MapsAddress | null => {
+    if (!row.address || !addressLine(row.address)) return null
+    return { ...row.address, country: row.address.country ?? defaultCountry }
+  }
 
   const today = todayIso()
   const tomorrow = nextDay(today)
@@ -171,6 +180,19 @@ export function AppointmentsPage() {
             isLoading={appointments.isPending}
             error={appointments.isError ? t('list.error') : null}
             emptyMessage={t(upcoming ? 'appointments.noUpcoming' : 'appointments.noPast')}
+            // What is coming is driven to: the address under each visit, and the route to it in
+            // Google Maps — the Maps app on the phone. What was needs neither.
+            rowSubline={
+              upcoming ? (row) => (row.address ? addressLine(row.address) : null) : undefined
+            }
+            rowActions={
+              upcoming
+                ? (row) => {
+                    const address = destination(row)
+                    return address ? <MapsLink address={address}>{t('maps.route')}</MapsLink> : null
+                  }
+                : undefined
+            }
             rowBadge={(row) => (
               <span className="inline-flex flex-wrap items-center gap-1">
                 <IncompleteBadge missing={row.missing_fields} />

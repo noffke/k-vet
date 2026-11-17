@@ -41,6 +41,12 @@ export const ListAppointmentsResponseItem = zod.object({
   "note": zod.string().nullish(),
   "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "address": zod.union([zod.object({
+  "street": zod.string().nullish(),
+  "zip": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent means `[invoice] default_country`.')
+}).describe('Where the visit goes: the customer\'s home address, as on the appointment\'s page and in\nthe phone calendar\'s LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer.'),zod.null()]).optional(),
   "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
@@ -70,6 +76,12 @@ export const CreateAppointmentResponse = zod.object({
   "note": zod.string().nullish(),
   "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "address": zod.union([zod.object({
+  "street": zod.string().nullish(),
+  "zip": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent means `[invoice] default_country`.')
+}).describe('Where the visit goes: the customer\'s home address, as on the appointment\'s page and in\nthe phone calendar\'s LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer.'),zod.null()]).optional(),
   "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
@@ -95,6 +107,12 @@ export const GetAppointmentResponse = zod.object({
   "note": zod.string().nullish(),
   "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "address": zod.union([zod.object({
+  "street": zod.string().nullish(),
+  "zip": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent means `[invoice] default_country`.')
+}).describe('Where the visit goes: the customer\'s home address, as on the appointment\'s page and in\nthe phone calendar\'s LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer.'),zod.null()]).optional(),
   "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
@@ -134,6 +152,12 @@ export const PatchAppointmentResponse = zod.object({
   "note": zod.string().nullish(),
   "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "address": zod.union([zod.object({
+  "street": zod.string().nullish(),
+  "zip": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent means `[invoice] default_country`.')
+}).describe('Where the visit goes: the customer\'s home address, as on the appointment\'s page and in\nthe phone calendar\'s LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer.'),zod.null()]).optional(),
   "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
@@ -180,6 +204,12 @@ export const DuplicateAppointmentResponse = zod.object({
   "note": zod.string().nullish(),
   "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "address": zod.union([zod.object({
+  "street": zod.string().nullish(),
+  "zip": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent means `[invoice] default_country`.')
+}).describe('Where the visit goes: the customer\'s home address, as on the appointment\'s page and in\nthe phone calendar\'s LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer.'),zod.null()]).optional(),
   "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),
@@ -5040,6 +5070,12 @@ export const MoveAnimalToOwnAppointmentResponse = zod.object({
   "note": zod.string().nullish(),
   "customer_id": zod.int().nullish().describe('Whose visit this is. Chosen here and carried down to the treatment, which is what\nlimits the animals on offer to that customer\'s (FR-027). It can change until an animal\nis attached.'),
   "customer_name": zod.string().nullish().describe('For the header and the list, so the appointment says whose it is without a second\nrequest.'),
+  "address": zod.union([zod.object({
+  "street": zod.string().nullish(),
+  "zip": zod.string().nullish(),
+  "city": zod.string().nullish(),
+  "country": zod.string().nullish().describe('ISO 3166-1 alpha-2; absent means `[invoice] default_country`.')
+}).describe('Where the visit goes: the customer\'s home address, as on the appointment\'s page and in\nthe phone calendar\'s LOCATION — the upcoming list shows it with a route in Google Maps.\nAbsent without a customer.'),zod.null()]).optional(),
   "patient_names": zod.array(zod.string()).describe('The animals on its treatment, by name — what tells two appointments of one customer\napart in the list. A past visit keeps naming an animal that has since died.'),
   "draft": zod.boolean().describe('`true` while mandatory fields are missing — excluded from billing flows.'),
   "missing_fields": zod.array(zod.string()).describe('Mandatory fields still empty, for the "incomplete — missing: …" hint.'),

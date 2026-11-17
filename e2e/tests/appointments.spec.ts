@@ -7,7 +7,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
+import { expectNoSidewaysScroll, navigate, signIn } from './helpers'
 
 /**
  * Entering a Termin (issues.md): the date is offered, typed short, and — the part that used
@@ -334,6 +334,17 @@ test.describe('appointments', () => {
     await page.getByPlaceholder('Suchen …').fill(animal)
     await expect(page.getByText(animal, { exact: true }).filter({ visible: true })).toBeVisible()
     await expect(page.getByText(new RegExp(lastName)).filter({ visible: true }).first()).toBeVisible()
+
+    // Where it goes, and the drive there: the address under the visit, the route in Google Maps.
+    await expect(
+      page.getByText('Musterweg 5, 12345 Musterstadt', { exact: true }).filter({ visible: true }),
+    ).toBeVisible()
+    const route = page.getByRole('link', { name: 'Route', exact: true }).filter({ visible: true })
+    await expect(route).toHaveAttribute(
+      'href',
+      /^https:\/\/www\.google\.com\/maps\/dir\/\?api=1&destination=Musterweg%205%2C%2012345%20Musterstadt/,
+    )
+    await expectNoSidewaysScroll(page)
   })
 
   test('a date typed before the time survives and is expanded', async ({ page }) => {

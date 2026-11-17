@@ -31,6 +31,10 @@ pub struct Appointment {
     /// For the header and the list, so the appointment says whose it is without a second
     /// request.
     pub customer_name: Option<String>,
+    /// Where the visit goes: the customer's home address, as on the appointment's page and in
+    /// the phone calendar's LOCATION — the upcoming list shows it with a route in Google Maps.
+    /// Absent without a customer.
+    pub address: Option<VisitAddress>,
     /// The animals on its treatment, by name — what tells two appointments of one customer
     /// apart in the list. A past visit keeps naming an animal that has since died.
     pub patient_names: Vec<String>,
@@ -56,6 +60,16 @@ pub struct Appointment {
     pub calendar_hidden: bool,
     pub created_at: DateTime<Utc>,
     pub updated_at: DateTime<Utc>,
+}
+
+/// A customer's home address, its parts as the customer record holds them.
+#[derive(Debug, Serialize, ToSchema)]
+pub struct VisitAddress {
+    pub street: Option<String>,
+    pub zip: Option<String>,
+    pub city: Option<String>,
+    /// ISO 3166-1 alpha-2; absent means `[invoice] default_country`.
+    pub country: Option<String>,
 }
 
 #[derive(Debug, Default, Deserialize, ToSchema)]
@@ -88,6 +102,10 @@ struct Row {
     note: Option<String>,
     customer_id: Option<i64>,
     customer_name: Option<String>,
+    home_street: Option<String>,
+    home_zip: Option<String>,
+    home_city: Option<String>,
+    home_country: Option<String>,
     patient_names: Vec<String>,
     draft: bool,
     treatment_id: i64,
@@ -109,6 +127,12 @@ impl From<Row> for Appointment {
             note: row.note,
             customer_id: row.customer_id,
             customer_name: row.customer_name,
+            address: row.customer_id.map(|_| VisitAddress {
+                street: row.home_street,
+                zip: row.home_zip,
+                city: row.home_city,
+                country: row.home_country,
+            }),
             patient_names: row.patient_names,
             draft: row.draft,
             missing_fields: missing(row.starts_at.is_some()),
@@ -152,6 +176,8 @@ pub async fn list(
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,
                   appointment.customer_id,
                   concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
+                  customer.home_street AS "home_street?", customer.home_zip AS "home_zip?",
+                  customer.home_city AS "home_city?", customer.home_country AS "home_country?",
                   appointment.created_at, appointment.updated_at,
                   treatment.id AS treatment_id,
                   ARRAY(SELECT patient.name FROM patient_treatment
@@ -322,6 +348,8 @@ pub(crate) async fn load(pool: &sqlx::PgPool, id: i64) -> AppResult<Appointment>
         r#"SELECT appointment.id, appointment.starts_at, appointment.note, appointment.draft,
                   appointment.customer_id,
                   concat_ws(' ', customer.first_name, customer.last_name) AS customer_name,
+                  customer.home_street AS "home_street?", customer.home_zip AS "home_zip?",
+                  customer.home_city AS "home_city?", customer.home_country AS "home_country?",
                   appointment.created_at, appointment.updated_at,
                   treatment.id AS treatment_id,
                   ARRAY(SELECT patient.name FROM patient_treatment
