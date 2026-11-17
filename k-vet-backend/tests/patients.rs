@@ -37,6 +37,56 @@ async fn a_patient_completes_when_owner_name_sex_and_species_are_known(pool: PgP
     assert_eq!(complete["customer_name"], "Erika Mustermann");
 }
 
+/// The customer comes first (decided 2026-11-17): no animal is made for, or moved to, a
+/// customer still without an address — a new caller entered with only a name, say. Once the
+/// customer is complete, both go through.
+#[sqlx::test]
+async fn an_animal_waits_for_its_customer_to_be_complete(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let newcomer = app.post("/api/customers", json!({})).await.id();
+    app.patch(
+        &format!("/api/customers/{newcomer}"),
+        json!({ "salutation": "frau", "first_name": "Erika", "last_name": "Neu" }),
+    )
+    .await;
+
+    let refused = app
+        .post("/api/patients", json!({ "customer_id": newcomer }))
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(refused.error_fields(), vec!["customer_id".to_owned()]);
+
+    // Nor does an animal of another customer move over to them.
+    let known = common::seed_customer(&pool).await;
+    let bello = common::seed_patient(&pool, known).await;
+    let moved = app
+        .patch(
+            &format!("/api/patients/{bello}"),
+            json!({ "customer_id": newcomer }),
+        )
+        .await;
+    assert_eq!(moved.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(moved.error_fields(), vec!["customer_id".to_owned()]);
+
+    // With the address in, the customer is complete and takes animals.
+    app.patch(
+        &format!("/api/customers/{newcomer}"),
+        json!({ "home_street": "Musterweg 5", "home_zip": "12345", "home_city": "Musterstadt" }),
+    )
+    .await;
+    let created = app
+        .post("/api/patients", json!({ "customer_id": newcomer }))
+        .await;
+    assert_eq!(created.status, StatusCode::OK);
+    let moved = app
+        .patch(
+            &format!("/api/patients/{bello}"),
+            json!({ "customer_id": newcomer }),
+        )
+        .await;
+    assert_eq!(moved.status, StatusCode::OK);
+}
+
 #[sqlx::test]
 async fn an_unknown_sex_value_is_rejected(pool: PgPool) {
     let app = TestApp::new(pool.clone()).await;

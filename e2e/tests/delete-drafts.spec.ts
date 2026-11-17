@@ -55,7 +55,7 @@ test.describe('deleting incomplete records', () => {
     await expect(page).toHaveURL(new RegExp(`/pharmacy/${drugId}$`))
   })
 
-  test('a customer made by mistake is deleted; one with an animal stays and says why', async ({
+  test('a customer made by mistake is deleted; one on an appointment stays and says why', async ({
     page,
     request,
   }) => {
@@ -74,10 +74,13 @@ test.describe('deleting incomplete records', () => {
     await page.getByPlaceholder('Suchen …').fill(lastName)
     await expect(page.getByText(lastName).filter({ visible: true })).toHaveCount(0)
 
-    // Still incomplete, but an animal is on it: it stays, and the screen says so.
+    // Still incomplete, but an appointment is theirs — made from it, before the address was
+    // known (an animal waits for a complete customer): it stays, and the screen says so.
     await login(request)
     const customer = (await (await request.post('/api/customers')).json()) as { id: number }
-    await request.post('/api/patients', { data: { customer_id: customer.id } })
+    await request.post('/api/appointments', {
+      data: { starts_at: new Date().toISOString(), customer_id: customer.id },
+    })
     await page.goto(`/customers/${customer.id}`)
     await page.getByRole('button', { name: 'Löschen', exact: true }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click()

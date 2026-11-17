@@ -223,10 +223,14 @@ async fn a_draft_in_use_stays(pool: PgPool) {
         StatusCode::CONFLICT
     );
 
-    // A customer with an animal.
+    // A customer on an appointment — made from it, before the address is known. (An animal
+    // waits for a complete customer, so it can no longer be what holds a draft.)
     let customer_id = app.post("/api/customers", json!({})).await.id();
-    app.post("/api/patients", json!({ "customer_id": customer_id }))
-        .await;
+    app.post(
+        "/api/appointments",
+        json!({ "starts_at": "2026-05-04T09:30:00Z", "customer_id": customer_id }),
+    )
+    .await;
     assert_eq!(
         app.delete(&format!("/api/customers/{customer_id}"))
             .await

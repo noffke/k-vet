@@ -166,6 +166,9 @@ pub async fn create(
     State(state): State<AppState>,
     Json(body): Json<CreatePatient>,
 ) -> AppResult<Json<Patient>> {
+    if let Some(customer_id) = body.customer_id {
+        ensure_customer_complete(&mut *state.pool.acquire().await?, customer_id).await?;
+    }
     let id: i64 = sqlx::query_scalar!(
         "INSERT INTO patient (customer_id) VALUES ($1) RETURNING id",
         body.customer_id,
@@ -226,6 +229,12 @@ pub async fn patch(
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::NotFound)?;
+
+    if let Some(Some(customer_id)) = body.customer_id
+        && Some(customer_id) != current.customer_id
+    {
+        ensure_customer_complete(&mut transaction, customer_id).await?;
+    }
 
     if let Some(Some(sex)) = &body.sex
         && !["female", "male", "unknown"].contains(&sex.as_str())
@@ -328,6 +337,25 @@ pub async fn patch(
 
     transaction.commit().await?;
     Ok(Json(load(&state.pool, id).await?))
+}
+
+/// The customer comes first (decided 2026-11-17): an animal is only made for, or moved to, a
+/// customer who is complete — address and all — as the customer's page and the appointment's
+/// "Neues Tier …" only offer it then. A customer never becomes incomplete again, so an animal
+/// once there stays valid.
+async fn ensure_customer_complete(
+    connection: &mut sqlx::PgConnection,
+    customer_id: i64,
+) -> AppResult<()> {
+    let draft: Option<bool> =
+        sqlx::query_scalar!("SELECT draft FROM customer WHERE id = $1", customer_id)
+            .fetch_optional(&mut *connection)
+            .await?;
+    match draft {
+        None => Err(AppError::field("customer_id", "record.notFound")),
+        Some(true) => Err(AppError::field("customer_id", "patient.customerIncomplete")),
+        Some(false) => Ok(()),
+    }
 }
 
 fn blank_to_null(value: &Option<Option<String>>) -> Option<String> {

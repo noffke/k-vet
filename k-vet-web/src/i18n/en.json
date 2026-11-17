@@ -221,7 +221,9 @@
     "files": "Files",
     "new": "New patient",
     "newEntry": "New animal …",
+    "newEntryCompleteCustomer": "Enter the address",
     "newEntryHint": "Goes onto this visit right away. Name, species and sex are enough; everything else on the animal’s page.",
+    "newEntryNeedsCustomer": "A new animal can be added once the customer is complete.",
     "newEntryTitle": "New animal",
     "photo": "Photo",
     "title": "Patients",
@@ -575,6 +577,7 @@
     "travelWithoutKm": "A Wegegeld line has no kilometres yet"
   },
   "patient": {
+    "customerIncomplete": "Complete the customer first: without an address they cannot have an animal yet.",
     "sex": {
       "invalid": "Invalid sex"
     }

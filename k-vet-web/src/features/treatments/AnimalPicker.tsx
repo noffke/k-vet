@@ -1,5 +1,5 @@
 import { useQueryClient } from '@tanstack/react-query'
-import { useNavigate } from '@tanstack/react-router'
+import { Link, useNavigate } from '@tanstack/react-router'
 import { Command } from 'cmdk'
 import { CalendarPlus, PawPrint, Plus, Trash2 } from 'lucide-react'
 import { useEffect, useState } from 'react'
@@ -9,6 +9,7 @@ import {
   getGetTreatmentQueryKey,
   getListAppointmentsQueryKey,
   useAddTreatmentPatient,
+  useGetCustomer,
   useListPatients,
   useListPatientTreatmentFiles,
   useMoveAnimalToOwnAppointment,
@@ -58,7 +59,9 @@ export function useEligibleAnimals(treatment: Treatment) {
  *
  * "Neues Tier …" at the foot makes one the practice has not seen yet, for this customer, and
  * puts it on the visit straight away — which is why the picker is offered even when every
- * known animal is already there, or the customer has none.
+ * known animal is already there, or the customer has none. The customer comes first: one still
+ * without an address gets no animal (the server refuses it too), and the foot says where to
+ * complete them instead.
  */
 export function AnimalPicker({
   treatment,
@@ -89,6 +92,9 @@ export function AnimalPicker({
     (patient) => !patient.draft && !patient.date_of_death && !attached.has(patient.id),
   )
   const customerId = treatment.customer_id
+  // The appointment's page has the customer loaded already, for the address.
+  const customer = useGetCustomer(customerId ?? 0, { query: { enabled: customerId != null } })
+  const canCreate = customer.data?.draft === false
 
   // The new record's tab opens, as for an animal picked from the list.
   const opened = (updated: Treatment, patientId: number) => {
@@ -139,7 +145,7 @@ export function AnimalPicker({
               <span className="shrink-0 text-xs text-ink-faint">{patient.customer_name ?? ''}</span>
             </Command.Item>
           ))}
-          {customerId != null ? (
+          {canCreate ? (
             <>
               {/* With "Neues Tier …" there is always an item, so cmdk's empty line never shows. */}
               {candidates.isSuccess && options.length === 0 ? (
@@ -159,10 +165,21 @@ export function AnimalPicker({
                 {t('patients.newEntry')}
               </Command.Item>
             </>
+          ) : customer.data?.draft ? (
+            <p className="border-t border-line px-2 pt-2 pb-1 text-sm text-ink-soft">
+              {t('patients.newEntryNeedsCustomer')}{' '}
+              <Link
+                to="/customers/$id"
+                params={{ id: String(customer.data.id) }}
+                className="font-semibold text-rust underline-offset-2 hover:underline"
+              >
+                {t('patients.newEntryCompleteCustomer')}
+              </Link>
+            </p>
           ) : null}
         </Command.List>
       </Command>
-      {customerId != null ? (
+      {customerId != null && canCreate ? (
         <NewAnimalDialog
           open={newAnimalTerm !== null}
           term={newAnimalTerm ?? ''}

@@ -221,7 +221,9 @@
     "files": "Dateien",
     "new": "Neuer Patient",
     "newEntry": "Neues Tier …",
+    "newEntryCompleteCustomer": "Adresse eintragen",
     "newEntryHint": "Kommt gleich auf diesen Termin. Name, Tierart und Geschlecht genügen; alles Weitere auf der Seite des Tieres.",
+    "newEntryNeedsCustomer": "Ein neues Tier gibt es erst, wenn der Kunde vollständig ist.",
     "newEntryTitle": "Neues Tier",
     "photo": "Foto",
     "title": "Patienten",
@@ -575,6 +577,7 @@
     "travelWithoutKm": "Eine Wegegeld-Position hat noch keine Kilometer"
   },
   "patient": {
+    "customerIncomplete": "Erst den Kunden vervollständigen: Ohne Adresse bekommt er noch kein Tier.",
     "sex": {
       "invalid": "Ungültiges Geschlecht"
     }

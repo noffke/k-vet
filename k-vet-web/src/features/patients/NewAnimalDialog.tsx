@@ -20,10 +20,10 @@ interface NewAnimalDialogProps {
 }
 
 /**
- * An animal the practice has not seen yet, made on the appointment it came to. Name, Tierart
- * and Geschlecht are what make an animal complete, so they are asked here and the animal can
- * go onto the visit at once — also for a customer just made, whose address is still to come.
- * Everything else is entered on the animal's own page later. "Abbrechen" creates nothing.
+ * An animal the practice has not seen yet, made on the appointment it came to, for a customer
+ * who is complete. Name, Tierart and Geschlecht are what make an animal complete, so they are
+ * asked here and the animal can go onto the visit at once. Everything else is entered on the
+ * animal's own page later. "Abbrechen" creates nothing.
  */
 export function NewAnimalDialog({
   open,

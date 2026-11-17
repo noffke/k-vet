@@ -94,11 +94,11 @@ test.describe('a new customer from the appointment', () => {
 
 /**
  * An animal the practice has not seen yet is made on the visit it came to: named, its Tierart
- * and Geschlecht chosen, and on the visit at once — also for a customer just made, whose
- * address is still to come, and who has no animal at all yet.
+ * and Geschlecht chosen, and on the visit at once. The customer comes first — one just made,
+ * still without an address, is completed on their page before they get an animal.
  */
 test.describe('a new animal from the appointment', () => {
-  test('is made complete, goes onto the visit, and is the customer\'s', async ({
+  test('waits for a complete customer, then is made complete and goes onto the visit', async ({
     page,
     request,
   }) => {
@@ -117,10 +117,23 @@ test.describe('a new animal from the appointment', () => {
 
     await signIn(page)
     await page.goto(`/appointments/${appointment.id}`)
-    // No animal yet, none to pick: the search offers only to make one.
+    // No address yet: no new animal, and the search says where to complete the customer.
     const picker = page.getByPlaceholder('Patienten')
+    const newAnimal = page.getByRole('option', { name: 'Neues Tier …' })
+    await expect(page.getByText('Ein neues Tier gibt es erst, wenn der Kunde vollständig ist.')).toBeVisible()
+    await expect(newAnimal).toHaveCount(0)
+    await page.getByRole('link', { name: 'Adresse eintragen' }).click()
+    await expect(page).toHaveURL(new RegExp(`/customers/${customer.id}$`))
+    await page.getByLabel('Straße und Hausnummer').fill('Musterweg 5')
+    await page.getByLabel('PLZ').fill('12345')
+    await page.getByLabel('Ort').fill('Musterstadt')
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await page.getByRole('link', { name: /^Zurück: \d{2}\.\d{2}\.\d{4}/ }).click()
+    await expect(page).toHaveURL(new RegExp(`/appointments/${appointment.id}`))
+
+    // Complete, they get one; none to pick yet, so the search offers only to make it.
     await picker.fill(animal)
-    await page.getByRole('option', { name: 'Neues Tier …' }).click()
+    await newAnimal.click()
 
     const dialog = page.getByRole('dialog')
     await expect(dialog.getByLabel('Name')).toHaveValue(animal)
