@@ -305,7 +305,8 @@ reflected on the next generated invoice.
   refrigerated, and redesignation (Umwidmung). In this version these flags are informational
   only — no reminders, documents, or ledgers are generated from them. A drug MAY be marked
   "Ohne Bestand" (a consumable): billed in whole packs at a sales price the vet sets, outside
-  the AMPreisV, with no stock, lots, Teilmengen or stock corrections.
+  the AMPreisV, with no stock, lots, Teilmengen or stock corrections. A drug MAY have a
+  Mindestbestand in whole original packs; the dashboard MUST list the drugs below it.
 - **FR-013**: Each drug MUST have exactly one original packaging and any number of subset
   packagings, each with unit and quantity; only the original packaging has a supplier and
   stock — and none for a drug "Ohne Bestand", which has no subset packagings either.

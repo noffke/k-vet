@@ -86,6 +86,7 @@ export * from './loginRequest';
 export * from './lot';
 export * from './lotDetail';
 export * from './lotSelection';
+export * from './lowStock';
 export * from './mark';
 export * from './markType';
 export * from './moveDirection';

@@ -19,6 +19,7 @@ import type { Drug } from '@/api/generated/model'
 import { ArchiveButton } from '@/components/ArchiveButton'
 import { BackLink } from '@/components/BackLink'
 import { DeleteDraftButton } from '@/components/DeleteDraftButton'
+import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { ArchivedBadge, IncompleteBadge } from '@/components/RecordBadges'
 import { SaveIndicator } from '@/components/SaveIndicator'
@@ -29,6 +30,7 @@ import { DrugCodes } from '@/features/pharmacy/DrugCodes'
 import { PackagingEditor } from '@/features/pharmacy/PackagingEditor'
 import { StockPanel } from '@/features/pharmacy/StockPanel'
 import { useAutoSave } from '@/lib/autosave'
+import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
 
 /** The regulatory flags of a drug — informational in this version (FR-012). */
@@ -46,6 +48,7 @@ const FLAGS = [
 /** One drug: identity, VAT, flags, its packagings and its stock. */
 export function DrugDetailPage() {
   const { t } = useTranslation()
+  const { quantity } = useLocaleFormat()
   const { id } = useParams({ from: '/app/pharmacy/$id' })
   const drugId = Number(id)
   const client = useQueryClient()
@@ -93,11 +96,13 @@ export function DrugDetailPage() {
     ? null
     : Number(record.in_stock) > 0
       ? t('pharmacy.withoutStockNeedsNoStock')
-      : hasSubsets
-        ? t('pharmacy.withoutStockNeedsNoSubsets')
-        : record.freely_divisible
-          ? t('pharmacy.withoutStockNotDivisible')
-          : null
+      : record.min_stock_packs != null
+        ? t('pharmacy.withoutStockNeedsNoMinStock')
+        : hasSubsets
+          ? t('pharmacy.withoutStockNeedsNoSubsets')
+          : record.freely_divisible
+            ? t('pharmacy.withoutStockNotDivisible')
+            : null
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -195,6 +200,34 @@ export function DrugDetailPage() {
           label={t('pharmacy.approvalNumber')}
           defaultValue={record.approval_number ?? ''}
           onChange={(event) => autoSave.set({ approval_number: event.target.value || null })}
+          onBlur={() => void autoSave.flush()}
+        />
+        {/* Below it, the dashboard lists the drug to reorder. Whole original packs, so it
+            follows a changed pack size; none for a consumable "Ohne Bestand". */}
+        <NumberInput
+          label={t('pharmacy.minStock')}
+          value={record.min_stock_packs != null ? String(record.min_stock_packs) : null}
+          decimals={0}
+          step={1}
+          min={1}
+          unit={t('pharmacy.packs')}
+          disabled={record.without_stock}
+          hint={
+            record.without_stock
+              ? t('pharmacy.minStockWithoutStock')
+              : record.min_stock_packs != null && original?.quantity
+                ? t('pharmacy.minStockIs', {
+                    amount:
+                      `${quantity(Number(original.quantity) * record.min_stock_packs)} ${original.unit ?? ''}`.trim(),
+                  })
+                : t('pharmacy.minStockHint')
+          }
+          error={
+            autoSave.fieldErrors.min_stock_packs
+              ? t(autoSave.fieldErrors.min_stock_packs)
+              : undefined
+          }
+          onChange={(value) => autoSave.set({ min_stock_packs: value ? Number(value) : null })}
           onBlur={() => void autoSave.flush()}
         />
 

@@ -44,6 +44,12 @@ export interface Drug {
      * 0043). No lots, no Teilmengen, never "Beliebig teilbar".
      */
   without_stock: boolean;
+  /**
+     * Mindestbestand, in whole original packagings: below it the dashboard lists the drug to
+     * reorder (migration 0044). Never for a drug "Ohne Bestand".
+     * @nullable
+     */
+  min_stock_packs?: number | null;
   /** @nullable */
   vat_percent?: string | null;
   /** @nullable */

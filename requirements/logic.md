@@ -43,6 +43,8 @@ an interruption mid-consultation, accepted deliberately: it lands at the moment 
 
 For batch traceability, a lot detail view must show all movements of the lot chronologically, each linking to the corresponding treatment/invoice/customer (dispenses) or showing the reason (corrections).
 
+A drug may have a **Mindestbestand** (decided 2026-11-18, migration 0044): optional, in whole original packs — a positive multiple of the Originalpackung that follows a changed pack size. While its stock (the Bestand the Apotheke shows, expired lots included until corrected) is below it, the dashboard lists it under "Unter Mindestbestand", the furthest below first, each leading to the drug. A consumable "Ohne Bestand" has none.
+
 Consumables — syringes, needles, bandages — are drugs marked **"Ohne Bestand"** (decided 2026-11-18, migration 0043): they go on the invoice like any drug, but no stock is kept for them. No lot, no Wareneingang (a delivery scan says so and books nothing), no stock correction (the lot page offers none), no stock movement, never refused or marked as short (picker, Mitbringen, Packliste). They are billed in whole packs — no Teilmenge, never "Beliebig teilbar"; for a price per piece the pack is set up as 1 Stück — and the invoice calls their packs "Packungen", not "Originalpackungen". The flag waits for what it excludes: stock left on the shelf (correct it to 0 first) and Teilmengen; the database holds all of it. Not an Arzneimittel, a consumable is not priced by the AMPreisV: its sales price is the one the vet types (see prices.md). Turned off, it is a drug with stock again.
 
 Decision: in v1 the Narcotic (BTM), Submission Receipt (Abgabebeleg) and Antibiotic (Antibiotikum) flags are informational only — no reminders, no receipt generation, no BTM ledger; the existing paper processes continue. Revisit after v1.
@@ -178,6 +180,8 @@ There should be the option to bulk-download all PDFs not submitted for bookkeepi
 
 ## Dashboard
 On the dashboard, we should give the number of invoices not yet submitted to bookkeeping and allow to directly jump to the corresponding page.
+
+Drugs below their Mindestbestand are listed under "Unter Mindestbestand" (see the pharmacy section), each leading to the drug.
 
 First on the dashboard, always: **today's appointments** (2026-11-18), in time order, the ones already over included. Each opens its appointment and carries its chips as in Termine — so today's work not yet billed shows here, while "not billed" below counts from yesterday back — and the customer's address with a "Route" link that opens the drive there in Google Maps (the Maps app on the phone).
 

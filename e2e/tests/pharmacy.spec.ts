@@ -290,6 +290,29 @@ test.describe('pharmacy', () => {
     await expect(page.getByText('-100', { exact: false }).first()).toBeVisible()
   })
 
+  // What to reorder (issues.md): below its Mindestbestand, a drug is on the overview.
+  test('a drug below its minimum stock is listed on the overview', async ({ page, request }) => {
+    // One 100 ml bottle on the shelf.
+    const { drugId, drugName } = await seedDrug(request, { packages: 1 })
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}`)
+    const minimum = page.getByLabel('Mindestbestand')
+    await minimum.fill('2')
+    await minimum.blur()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    // Whole packs, and what they come to.
+    await expect(page.getByText('= 200 ml.', { exact: false })).toBeVisible()
+
+    await navigate(page, 'Übersicht')
+    const tile = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: /Unter Mindestbestand/ }) })
+    const row = tile.getByRole('link', { name: new RegExp(drugName) })
+    await expect(row).toContainText('Bestand 100 ml · mindestens 200 ml')
+    await row.click()
+    await expect(page).toHaveURL(new RegExp(`/pharmacy/${drugId}$`))
+  })
+
   test('a stocktake cannot count a lot below zero', async ({ page, request }) => {
     const { drugId, packagingId } = await seedDrug(request)
     await request.post(`/api/packagings/${packagingId}/stock-intakes`, {

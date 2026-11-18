@@ -44,6 +44,9 @@ pub struct Dashboard {
     pub stale_pdfs: AtRisk,
     /// The lots expiring soonest that still hold stock.
     pub expiring_lots: Vec<ExpiringLot>,
+    /// Drugs whose stock is below their Mindestbestand — all of them, the furthest below
+    /// first: each is to be reordered.
+    pub low_stock: Vec<LowStock>,
     /// Every invoice mail that failed on the way out — still being retried, or given up —
     /// oldest failure first, all of them: each needs a decision (retry, or remove and post).
     pub failed_mails: Vec<FailedMail>,
@@ -84,6 +87,22 @@ pub struct AtRiskEntry {
     /// that like one never queued at all. `None` where no mail is queued, and on the lists
     /// before release.
     pub email_queue: Option<mail_queue::QueuedEmail>,
+}
+
+/// A drug below its Mindestbestand (migration 0044).
+#[derive(Debug, Serialize, ToSchema)]
+pub struct LowStock {
+    pub drug_id: i64,
+    pub name: String,
+    pub unit: Option<String>,
+    /// What its lots hold together, in base units — the Apotheke's Bestand column, expired lots
+    /// included until they are corrected.
+    #[schema(value_type = String)]
+    pub in_stock: Decimal,
+    /// The Mindestbestand in original packagings, and the same in base units.
+    pub min_stock_packs: i32,
+    #[schema(value_type = String)]
+    pub min_stock: Decimal,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -152,8 +171,44 @@ pub async fn get_dashboard(State(state): State<AppState>) -> AppResult<Json<Dash
         unsent: unsent_invoices(&state.pool).await?,
         stale_pdfs: stale_pdfs(&state.pool).await?,
         expiring_lots,
+        low_stock: low_stock(&state.pool).await?,
         failed_mails: failed_mails(&state.pool).await?,
     }))
+}
+
+/// Drugs below their Mindestbestand, the furthest below first (by share of the minimum).
+async fn low_stock(pool: &PgPool) -> AppResult<Vec<LowStock>> {
+    let rows = sqlx::query!(
+        r#"WITH stock AS (
+               SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id
+           )
+           SELECT drug.id, COALESCE(drug.name, '') AS "name!", original.unit,
+                  drug.min_stock_packs AS "min_stock_packs!",
+                  (drug.min_stock_packs * original.quantity) AS "min_stock!",
+                  COALESCE(stock.remaining, 0) AS "in_stock!"
+           FROM drug
+           JOIN drug_packaging original
+                ON original.drug_id = drug.id AND original.kind = 'original'
+           LEFT JOIN stock ON stock.drug_id = drug.id
+           WHERE drug.min_stock_packs IS NOT NULL AND NOT drug.archived
+             AND original.quantity IS NOT NULL
+             AND COALESCE(stock.remaining, 0) < drug.min_stock_packs * original.quantity
+           ORDER BY COALESCE(stock.remaining, 0) / (drug.min_stock_packs * original.quantity),
+                    drug.name"#,
+    )
+    .fetch_all(pool)
+    .await?;
+    Ok(rows
+        .into_iter()
+        .map(|row| LowStock {
+            drug_id: row.id,
+            name: row.name,
+            unit: row.unit,
+            in_stock: row.in_stock,
+            min_stock_packs: row.min_stock_packs,
+            min_stock: row.min_stock,
+        })
+        .collect())
 }
 
 /// The failed invoice mails, each with its invoice's number, customer and animals.

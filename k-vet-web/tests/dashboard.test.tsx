@@ -46,6 +46,7 @@ function dashboard(changes: Partial<Dashboard> = {}): Dashboard {
     unsent: none,
     stale_pdfs: none,
     expiring_lots: [],
+    low_stock: [],
     failed_mails: [],
     ...changes,
   }
@@ -153,6 +154,28 @@ describe('DashboardPage', () => {
     expect(screen.getByText(/^E-Mail geplant: 02\.01\.2099/)).toBeInTheDocument()
     expect(screen.getByText('Keine E-Mail geplant')).toBeInTheDocument()
     expect(screen.queryByText(/nie beim Kunden angekommen/)).not.toBeInTheDocument()
+  })
+
+  // What to reorder (issues.md): a drug below its Mindestbestand, with its stock and the minimum.
+  it('lists the drugs below their minimum stock', () => {
+    show(
+      dashboard({
+        low_stock: [
+          {
+            drug_id: 4,
+            name: 'Carprofen 50',
+            unit: 'Tbl.',
+            in_stock: '20.00',
+            min_stock_packs: 2,
+            min_stock: '200.00',
+          },
+        ],
+      }),
+    )
+    expect(screen.getByRole('heading', { name: /Unter Mindestbestand/ })).toBeInTheDocument()
+    expect(screen.getByText('Carprofen 50')).toBeInTheDocument()
+    expect(screen.getByText('Bestand 20 Tbl. · mindestens 200 Tbl.')).toBeInTheDocument()
+    expect(screen.queryByText('Alles erledigt — nichts wartet.')).not.toBeInTheDocument()
   })
 
   it('says once that nothing is waiting', () => {

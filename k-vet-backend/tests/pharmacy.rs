@@ -609,3 +609,43 @@ async fn the_configured_floor_lifts_a_cheap_human_teilmenge(pool: PgPool) {
         );
     }
 }
+
+/// A Mindestbestand is a whole number of original packs (migration 0044): optional, cleared
+/// with `null`, never below one — and a consumable "Ohne Bestand" has none.
+#[sqlx::test]
+async fn a_drug_has_an_optional_minimum_stock_in_whole_packs(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let uri = format!("/api/drugs/{}", drug.drug_id);
+    let errors = |response: common::TestResponse| response.json()["errors"].clone();
+
+    let set = app.patch(&uri, json!({ "min_stock_packs": 3 })).await;
+    assert_eq!(set.status, StatusCode::OK);
+    assert_eq!(set.json()["min_stock_packs"], 3);
+    for bad in [0, -1] {
+        assert_eq!(
+            errors(app.patch(&uri, json!({ "min_stock_packs": bad })).await),
+            json!([{ "field": "min_stock_packs", "message": "value.mustBePositive" }])
+        );
+    }
+
+    // No stock kept, no minimum to fall below — either way round.
+    app.delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        .await;
+    assert_eq!(
+        errors(app.patch(&uri, json!({ "without_stock": true })).await),
+        json!([{ "field": "min_stock_packs", "message": "drug.minStockWithoutStock" }])
+    );
+    let cleared = app.patch(&uri, json!({ "min_stock_packs": null })).await;
+    assert_eq!(cleared.json()["min_stock_packs"], Value::Null);
+    assert_eq!(
+        app.patch(&uri, json!({ "without_stock": true }))
+            .await
+            .status,
+        StatusCode::OK
+    );
+    assert_eq!(
+        errors(app.patch(&uri, json!({ "min_stock_packs": 2 })).await),
+        json!([{ "field": "min_stock_packs", "message": "drug.minStockWithoutStock" }])
+    );
+}

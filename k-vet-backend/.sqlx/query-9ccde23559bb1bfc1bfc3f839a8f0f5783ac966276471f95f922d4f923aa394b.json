@@ -1,0 +1,71 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "WITH stock AS (\n               SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id\n           )\n           SELECT drug.id, COALESCE(drug.name, '') AS \"name!\", original.unit,\n                  drug.min_stock_packs AS \"min_stock_packs!\",\n                  (drug.min_stock_packs * original.quantity) AS \"min_stock!\",\n                  COALESCE(stock.remaining, 0) AS \"in_stock!\"\n           FROM drug\n           JOIN drug_packaging original\n                ON original.drug_id = drug.id AND original.kind = 'original'\n           LEFT JOIN stock ON stock.drug_id = drug.id\n           WHERE drug.min_stock_packs IS NOT NULL AND NOT drug.archived\n             AND original.quantity IS NOT NULL\n             AND COALESCE(stock.remaining, 0) < drug.min_stock_packs * original.quantity\n           ORDER BY COALESCE(stock.remaining, 0) / (drug.min_stock_packs * original.quantity),\n                    drug.name",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "id"
+          }
+        }
+      },
+      {
+        "ordinal": 1,
+        "name": "name!",
+        "type_info": "Text",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 2,
+        "name": "unit",
+        "type_info": "Text",
+        "origin": {
+          "Table": {
+            "table": "drug_packaging",
+            "name": "unit"
+          }
+        }
+      },
+      {
+        "ordinal": 3,
+        "name": "min_stock_packs!",
+        "type_info": "Int4",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "min_stock_packs"
+          }
+        }
+      },
+      {
+        "ordinal": 4,
+        "name": "min_stock!",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      },
+      {
+        "ordinal": 5,
+        "name": "in_stock!",
+        "type_info": "Numeric",
+        "origin": "Expression"
+      }
+    ],
+    "parameters": {
+      "Left": []
+    },
+    "nullable": [
+      false,
+      null,
+      true,
+      true,
+      null,
+      null
+    ]
+  },
+  "hash": "9ccde23559bb1bfc1bfc3f839a8f0f5783ac966276471f95f922d4f923aa394b"
+}

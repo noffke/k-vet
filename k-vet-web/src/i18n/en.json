@@ -417,6 +417,10 @@
     "intakeResult": "Adds {{quantity}} {{unit}} initial stock.",
     "listPriceForReference": "Purchase price, for reference only.",
     "lots": "Lots",
+    "minStock": "Minimum stock",
+    "minStockHint": "In whole original packs. Below it, the drug is listed on the overview. Empty: no minimum.",
+    "minStockIs": "= {{amount}}. Below it, the drug is listed on the overview.",
+    "minStockWithoutStock": "A consumable without stock has no minimum stock.",
     "movements": "Movements",
     "newDrug": "New drug",
     "newManufacturerOption": "New manufacturer …",
@@ -426,6 +430,7 @@
     "packageCount": "{{count}} packages of {{size}}",
     "packageCountOnly": "{{count}} packages",
     "packagings": "Packagings",
+    "packs": "packs",
     "priceByHand": "Sales price by hand — consumables are not priced by the AMPreisV.",
     "priceOverride": "Price overridden manually",
     "remaining": "Remaining",
@@ -441,6 +446,7 @@
     "title": "Pharmacy",
     "withoutStock": "No stock kept",
     "withoutStockHint": "Consumables such as syringes, needles or bandages: billed without lots or stock, in whole packs — for a price per piece, set the pack up as 1 piece. Not priced by the AMPreisV: enter the sales price by hand.",
+    "withoutStockNeedsNoMinStock": "Clear the minimum stock first — a consumable has none.",
     "withoutStockNeedsNoStock": "Correct the remaining stock to 0 first — a consumable keeps none.",
     "withoutStockNeedsNoSubsets": "Delete the subsets first — a consumable has none.",
     "withoutStockNotDivisible": "Not together with “freely divisible” — a consumable goes in whole packs."
@@ -495,6 +501,8 @@
     "expiringLotsHint": "the next five with remaining stock",
     "failedMails": "Failed invoice mail",
     "failedMailsHint": "Invoices whose mail the mail server did not take — try again, or remove it and send the invoice by post.",
+    "lowStock": "Below minimum stock",
+    "lowStockRow": "Stock {{stock}} · at least {{min}}",
     "noAppointmentsToday": "No appointments today",
     "noMailQueued": "No mail scheduled",
     "pendingInvoices": "Invoices for bookkeeping",
@@ -813,6 +821,7 @@
   "drug": {
     "hasStock": "Correct the remaining stock to 0 first — a consumable keeps none.",
     "hasSubsets": "Delete the part packs first – a drug that takes any quantity has none.",
+    "minStockWithoutStock": "A consumable without stock has no minimum stock.",
     "withoutStockHasSubsets": "Delete the subsets first — a consumable has none.",
     "withoutStockNotDivisible": "“No stock kept” and “freely divisible” do not go together."
   },

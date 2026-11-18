@@ -4,6 +4,7 @@ import {
   CircleCheck,
   FileWarning,
   MailWarning,
+  PackageMinus,
   ReceiptText,
   Stamp,
 } from 'lucide-react'
@@ -33,6 +34,7 @@ export function DashboardPage() {
   const data = dashboard.data
   const pendingCount = data?.pending_invoice_count ?? 0
   const lots = data?.expiring_lots ?? []
+  const lowStock = data?.low_stock ?? []
   const nothing =
     data !== undefined &&
     data.failed_mails.length === 0 &&
@@ -41,7 +43,8 @@ export function DashboardPage() {
     data.unreleased.count === 0 &&
     data.unsent.count === 0 &&
     pendingCount === 0 &&
-    lots.length === 0
+    lots.length === 0 &&
+    lowStock.length === 0
 
   return (
     <div className="mx-auto max-w-5xl">
@@ -122,6 +125,37 @@ export function DashboardPage() {
             </Link>
           ) : null}
 
+          {/* What to reorder: drugs below their Mindestbestand, the furthest below first. */}
+          {lowStock.length > 0 ? (
+            <section className="rounded-card border border-line bg-surface p-4">
+              <h2 className="eyebrow flex items-center gap-1.5">
+                <PackageMinus className="size-3.5" />
+                {t('dashboard.lowStock')}
+                <span className="numeric ml-auto rounded-full bg-rust-soft px-2 py-0.5 text-xs font-bold text-rust">
+                  {lowStock.length}
+                </span>
+              </h2>
+              <ul className="mt-1 flex flex-col divide-y divide-line">
+                {lowStock.map((drug) => (
+                  <li key={drug.drug_id}>
+                    <Link
+                      to="/pharmacy/$id"
+                      params={{ id: String(drug.drug_id) }}
+                      className="block py-2 hover:text-rust"
+                    >
+                      <span className="block truncate text-sm text-ink">{drug.name}</span>
+                      <span className="numeric block text-xs text-ink-faint">
+                        {t('dashboard.lowStockRow', {
+                          stock: `${quantity(drug.in_stock)} ${drug.unit ?? ''}`.trim(),
+                          min: `${quantity(drug.min_stock)} ${drug.unit ?? ''}`.trim(),
+                        })}
+                      </span>
+                    </Link>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          ) : null}
           {lots.length > 0 ? (
             <section className="rounded-card border border-line bg-surface p-4 sm:col-span-2">
               <h2 className="eyebrow flex items-center gap-1.5">

@@ -949,6 +949,14 @@ export const GetDashboardResponse = zod.object({
   "remaining": zod.string().describe('Remaining base units, from the `lot_remaining` view.'),
   "unit": zod.string().nullish()
 })).describe('The lots expiring soonest that still hold stock.'),
+  "low_stock": zod.array(zod.object({
+  "drug_id": zod.int(),
+  "name": zod.string(),
+  "unit": zod.string().nullish(),
+  "in_stock": zod.string().describe('What its lots hold together, in base units — the Apotheke\'s Bestand column, expired lots\nincluded until they are corrected.'),
+  "min_stock_packs": zod.int().describe('The Mindestbestand in original packagings, and the same in base units.'),
+  "min_stock": zod.string()
+}).describe('A drug below its Mindestbestand (migration 0044).')).describe('Drugs whose stock is below their Mindestbestand — all of them, the furthest below\nfirst: each is to be reordered.'),
   "failed_mails": zod.array(zod.object({
   "mail": zod.object({
   "id": zod.int(),
@@ -1001,6 +1009,7 @@ export const ListDrugsResponseItem = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1035,6 +1044,7 @@ export const CreateDrugResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1072,6 +1082,7 @@ export const GetDrugResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1118,7 +1129,8 @@ export const PatchDrugBody = zod.object({
   "human_drug": zod.boolean().nullish(),
   "euthanasia": zod.boolean().nullish(),
   "freely_divisible": zod.boolean().nullish(),
-  "without_stock": zod.boolean().nullish()
+  "without_stock": zod.boolean().nullish(),
+  "min_stock_packs": zod.int().nullish().describe('`null` clears the Mindestbestand.')
 })
 
 export const PatchDrugResponse = zod.object({
@@ -1136,6 +1148,7 @@ export const PatchDrugResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1173,6 +1186,7 @@ export const ArchiveDrugResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1214,6 +1228,7 @@ export const AddDrugCodeResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1302,6 +1317,7 @@ export const UnarchiveDrugResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -3112,6 +3128,7 @@ export const ReadScanResponse = zod.object({
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
   "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
+  "min_stock_packs": zod.int().nullish().describe('Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug "Ohne Bestand".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),

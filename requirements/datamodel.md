@@ -44,6 +44,8 @@ Generally, all entities should have a created and updated timestamp.
   * Without Stock ("Ohne Bestand") (bool) — a consumable (syringe, bandage): billed in whole
     packs at the sales price the vet types, outside the AMPreisV; no lots, no stock movements,
     no Teilmengen, never Freely Divisible. Set only while no lot holds stock (migration 0043).
+  * Minimum Stock ("Mindestbestand") (int, optional) — in whole original packs; below it the
+    dashboard lists the drug to reorder. None for a drug Without Stock (migration 0044).
   * Relation: 1 Manufacturer
   * Relation: n Drug Packaging (exactly one of them has Kind = original)
   * Decision: the original packaging is modeled as a Drug Packaging (Kind = original), so invoice positions uniformly reference packagings and the subset price formula stays within one entity

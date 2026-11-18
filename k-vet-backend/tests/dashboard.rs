@@ -429,3 +429,62 @@ async fn the_practice_logo_is_referenced_and_can_be_removed_again(pool: PgPool) 
         .await;
     assert_eq!(missing.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
+
+/// A drug below its Mindestbestand is on the dashboard, to be reordered (migration 0044); at or
+/// above it — after a delivery, say — it is not. The minimum is in packs, so it follows a
+/// changed pack size.
+#[sqlx::test]
+async fn drugs_below_their_minimum_stock_are_listed(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    // One 100 ml bottle on the shelf.
+    common::seed_lot(&pool, drug.packaging_id, 1, Decimal::from(100), None).await;
+    let drug_uri = format!("/api/drugs/{}", drug.drug_id);
+    let low = || {
+        let app = &app;
+        async move {
+            app.get("/api/dashboard").await.json()["low_stock"]
+                .as_array()
+                .cloned()
+                .unwrap_or_default()
+        }
+    };
+
+    assert!(low().await.is_empty(), "no minimum, nothing to reorder");
+
+    app.patch(&drug_uri, json!({ "min_stock_packs": 2 })).await;
+    let listed = low().await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0]["drug_id"], drug.drug_id);
+    assert_eq!(listed[0]["name"], "Amoxicillin 100");
+    assert_eq!(listed[0]["in_stock"], "100.00");
+    assert_eq!(listed[0]["min_stock_packs"], 2);
+    assert_eq!(listed[0]["min_stock"], "200.00");
+    assert_eq!(listed[0]["unit"], "ml");
+
+    // At the minimum is enough.
+    app.patch(&drug_uri, json!({ "min_stock_packs": 1 })).await;
+    assert!(low().await.is_empty());
+
+    // Below again, until a delivery brings it up.
+    app.patch(&drug_uri, json!({ "min_stock_packs": 3 })).await;
+    assert_eq!(low().await.len(), 1);
+    let intake = app
+        .post(
+            &format!("/api/packagings/{}/stock-intakes", drug.packaging_id),
+            json!({ "packages_received": 2, "batch_number": "CH-NACH" }),
+        )
+        .await;
+    assert_eq!(intake.status, StatusCode::OK);
+    assert!(low().await.is_empty(), "300 ml is three bottles");
+
+    // Bigger bottles: three of them are more than the shelf holds.
+    app.patch(
+        &format!("/api/packagings/{}", drug.packaging_id),
+        json!({ "quantity": "200" }),
+    )
+    .await;
+    let listed = low().await;
+    assert_eq!(listed.len(), 1);
+    assert_eq!(listed[0]["min_stock"], "600.00");
+}

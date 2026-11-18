@@ -205,6 +205,9 @@ fn constraint_field_message(constraint: &str) -> Option<(&'static str, &'static 
         "drug_packaging_no_subset_without_stock" => ("kind", "packaging.withoutStock"),
         "drug_stock_lot_tracked" => ("packages_received", "lot.drugWithoutStock"),
         "drug_stock_movement_tracked" => ("quantity", "lot.drugWithoutStock"),
+        // The Mindestbestand (migration 0044): whole packs, and none without stock.
+        "drug_min_stock_positive" => ("min_stock_packs", "value.mustBePositive"),
+        "drug_min_stock_needs_stock" => ("min_stock_packs", "drug.minStockWithoutStock"),
         "service_complete" => ("draft", "record.incomplete"),
         "service_got_shape" => ("got_number", "service.gotFieldsRequired"),
         "service_factor_positive" => ("factor", "value.mustBePositive"),

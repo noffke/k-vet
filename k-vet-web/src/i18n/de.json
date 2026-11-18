@@ -417,6 +417,10 @@
     "intakeResult": "Ergibt {{quantity}} {{unit}} Anfangsbestand.",
     "listPriceForReference": "Einkaufspreis, nur zur Information.",
     "lots": "Chargen",
+    "minStock": "Mindestbestand",
+    "minStockHint": "In ganzen Originalpackungen. Darunter erscheint das Medikament auf der Übersicht. Leer: kein Mindestbestand.",
+    "minStockIs": "= {{amount}}. Darunter erscheint das Medikament auf der Übersicht.",
+    "minStockWithoutStock": "Verbrauchsmaterial ohne Bestand hat keinen Mindestbestand.",
     "movements": "Bewegungen",
     "newDrug": "Neues Medikament",
     "newManufacturerOption": "Neuer Hersteller …",
@@ -426,6 +430,7 @@
     "packageCount": "{{count}} Packungen à {{size}}",
     "packageCountOnly": "{{count}} Packungen",
     "packagings": "Packungen",
+    "packs": "Packungen",
     "priceByHand": "Verkaufspreis von Hand – Verbrauchsmaterial fällt nicht unter die AMPreisV.",
     "priceOverride": "Preis manuell überschrieben",
     "remaining": "Restbestand",
@@ -441,6 +446,7 @@
     "title": "Apotheke",
     "withoutStock": "Ohne Bestand",
     "withoutStockHint": "Verbrauchsmaterial wie Spritzen, Kanülen oder Verbände: kommt auf die Rechnung, ohne Chargen und ohne Bestand, in ganzen Packungen — für einen Stückpreis die Packung als 1 Stück anlegen. Nicht nach AMPreisV: den Verkaufspreis von Hand eintragen.",
+    "withoutStockNeedsNoMinStock": "Erst den Mindestbestand leeren – Verbrauchsmaterial ohne Bestand hat keinen.",
     "withoutStockNeedsNoStock": "Erst den Restbestand auf 0 korrigieren – Verbrauchsmaterial ohne Bestand hat keinen.",
     "withoutStockNeedsNoSubsets": "Erst die Teilmengen löschen – Verbrauchsmaterial ohne Bestand hat keine.",
     "withoutStockNotDivisible": "Nicht zusammen mit „Beliebig teilbar“ – Verbrauchsmaterial geht in ganzen Packungen."
@@ -495,6 +501,8 @@
     "expiringLotsHint": "die fünf nächsten mit Restbestand",
     "failedMails": "E-Mail-Versand fehlgeschlagen",
     "failedMailsHint": "Rechnungen, deren E-Mail der Mailserver nicht angenommen hat — erneut versuchen, oder entfernen und per Post schicken.",
+    "lowStock": "Unter Mindestbestand",
+    "lowStockRow": "Bestand {{stock}} · mindestens {{min}}",
     "noAppointmentsToday": "Heute keine Termine",
     "noMailQueued": "Keine E-Mail geplant",
     "pendingInvoices": "Rechnungen für die Buchhaltung",
@@ -813,6 +821,7 @@
   "drug": {
     "hasStock": "Erst den Restbestand auf 0 korrigieren – Verbrauchsmaterial ohne Bestand hat keinen.",
     "hasSubsets": "Erst die Teilmengen löschen – ein beliebig teilbares Medikament hat keine.",
+    "minStockWithoutStock": "Verbrauchsmaterial ohne Bestand hat keinen Mindestbestand.",
     "withoutStockHasSubsets": "Erst die Teilmengen löschen – Verbrauchsmaterial ohne Bestand hat keine.",
     "withoutStockNotDivisible": "„Ohne Bestand“ und „Beliebig teilbar“ gehen nicht zusammen."
   },

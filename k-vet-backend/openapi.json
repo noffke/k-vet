@@ -6520,6 +6520,7 @@
           "unsent",
           "stale_pdfs",
           "expiring_lots",
+          "low_stock",
           "failed_mails"
         ],
         "properties": {
@@ -6550,6 +6551,13 @@
               "$ref": "#/components/schemas/ExpiringLot"
             },
             "description": "The lots expiring soonest that still hold stock."
+          },
+          "low_stock": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/LowStock"
+            },
+            "description": "Drugs whose stock is below their Mindestbestand — all of them, the furthest below\nfirst: each is to be reordered."
           },
           "failed_mails": {
             "type": "array",
@@ -6763,6 +6771,14 @@
           "without_stock": {
             "type": "boolean",
             "description": "\"Ohne Bestand\": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never \"Beliebig teilbar\"."
+          },
+          "min_stock_packs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "Mindestbestand, in whole original packagings: below it the dashboard lists the drug to\nreorder (migration 0044). Never for a drug \"Ohne Bestand\"."
           },
           "vat_percent": {
             "type": [
@@ -7477,6 +7493,44 @@
             "format": "int64"
           },
           "quantity": {
+            "type": "string"
+          }
+        }
+      },
+      "LowStock": {
+        "type": "object",
+        "description": "A drug below its Mindestbestand (migration 0044).",
+        "required": [
+          "drug_id",
+          "name",
+          "in_stock",
+          "min_stock_packs",
+          "min_stock"
+        ],
+        "properties": {
+          "drug_id": {
+            "type": "integer",
+            "format": "int64"
+          },
+          "name": {
+            "type": "string"
+          },
+          "unit": {
+            "type": [
+              "string",
+              "null"
+            ]
+          },
+          "in_stock": {
+            "type": "string",
+            "description": "What its lots hold together, in base units — the Apotheke's Bestand column, expired lots\nincluded until they are corrected."
+          },
+          "min_stock_packs": {
+            "type": "integer",
+            "format": "int32",
+            "description": "The Mindestbestand in original packagings, and the same in base units."
+          },
+          "min_stock": {
             "type": "string"
           }
         }
@@ -8273,6 +8327,14 @@
               "boolean",
               "null"
             ]
+          },
+          "min_stock_packs": {
+            "type": [
+              "integer",
+              "null"
+            ],
+            "format": "int32",
+            "description": "`null` clears the Mindestbestand."
           }
         }
       },

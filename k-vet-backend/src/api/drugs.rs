@@ -64,6 +64,9 @@ pub struct Drug {
     /// whole packs, at the sales price the vet types; not priced by the AMPreisV (migration
     /// 0043). No lots, no Teilmengen, never "Beliebig teilbar".
     pub without_stock: bool,
+    /// Mindestbestand, in whole original packagings: below it the dashboard lists the drug to
+    /// reorder (migration 0044). Never for a drug "Ohne Bestand".
+    pub min_stock_packs: Option<i32>,
     pub vat_percent: Option<Decimal>,
     pub approval_number: Option<String>,
     pub archived: bool,
@@ -127,6 +130,10 @@ pub struct PatchDrug {
     pub euthanasia: Option<bool>,
     pub freely_divisible: Option<bool>,
     pub without_stock: Option<bool>,
+    /// `null` clears the Mindestbestand.
+    #[serde(default, deserialize_with = "double_option")]
+    #[schema(value_type = Option<i32>)]
+    pub min_stock_packs: Option<Option<i32>>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -284,7 +291,8 @@ pub async fn patch(
                euthanasia         = COALESCE($17, euthanasia),
                freely_divisible   = COALESCE($18, freely_divisible),
                antibiotic         = COALESCE($19, antibiotic),
-               without_stock      = COALESCE($20, without_stock)
+               without_stock      = COALESCE($20, without_stock),
+               min_stock_packs    = CASE WHEN $21 THEN $22 ELSE min_stock_packs END
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -306,6 +314,8 @@ pub async fn patch(
         body.freely_divisible,
         body.antibiotic,
         body.without_stock,
+        body.min_stock_packs.is_some(),
+        body.min_stock_packs.flatten(),
     )
     .execute(&mut *transaction)
     .await?;
@@ -632,7 +642,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
                   drug.narcotic, drug.vaccine, drug.antibiotic, drug.refrigerate,
                   drug.redesignation,
                   drug.human_drug, drug.euthanasia, drug.freely_divisible, drug.without_stock,
-                  drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
+                  drug.min_stock_packs, drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
                   (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining
@@ -676,6 +686,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         euthanasia: row.euthanasia,
         freely_divisible: row.freely_divisible,
         without_stock: row.without_stock,
+        min_stock_packs: row.min_stock_packs,
         vat_percent: row.vat_percent,
         approval_number: row.approval_number,
         archived: row.archived,

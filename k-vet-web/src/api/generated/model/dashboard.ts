@@ -8,6 +8,7 @@
 import type { AtRisk } from './atRisk';
 import type { ExpiringLot } from './expiringLot';
 import type { FailedMail } from './failedMail';
+import type { LowStock } from './lowStock';
 
 export interface Dashboard {
   /** Sent invoices not yet handed over to bookkeeping. */
@@ -29,6 +30,11 @@ export interface Dashboard {
   stale_pdfs: AtRisk;
   /** The lots expiring soonest that still hold stock. */
   expiring_lots: ExpiringLot[];
+  /**
+     * Drugs whose stock is below their Mindestbestand — all of them, the furthest below
+     * first: each is to be reordered.
+     */
+  low_stock: LowStock[];
   /**
      * Every invoice mail that failed on the way out — still being retried, or given up —
      * oldest failure first, all of them: each needs a decision (retry, or remove and post).
