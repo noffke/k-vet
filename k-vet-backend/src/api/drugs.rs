@@ -60,6 +60,10 @@ pub struct Drug {
     /// "Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not
     /// only whole packs and multiples of the smallest Teilmenge. For injection liquids.
     pub freely_divisible: bool,
+    /// "Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in
+    /// whole packs, at the sales price the vet types; not priced by the AMPreisV (migration
+    /// 0043). No lots, no Teilmengen, never "Beliebig teilbar".
+    pub without_stock: bool,
     pub vat_percent: Option<Decimal>,
     pub approval_number: Option<String>,
     pub archived: bool,
@@ -93,7 +97,8 @@ pub struct Packaging {
     pub sales_price_gross: Option<Decimal>,
     /// `true` while the vet's manual price wins over the computed one.
     pub price_overridden: bool,
-    /// What AMPreisV would charge, net — shown next to an overridden price.
+    /// What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug
+    /// "Ohne Bestand", which the AMPreisV does not price.
     pub computed_price_net: Option<Decimal>,
     pub supplier_id: Option<i64>,
     pub supplier_name: Option<String>,
@@ -121,6 +126,7 @@ pub struct PatchDrug {
     pub human_drug: Option<bool>,
     pub euthanasia: Option<bool>,
     pub freely_divisible: Option<bool>,
+    pub without_stock: Option<bool>,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -277,7 +283,8 @@ pub async fn patch(
                draft              = $16,
                euthanasia         = COALESCE($17, euthanasia),
                freely_divisible   = COALESCE($18, freely_divisible),
-               antibiotic         = COALESCE($19, antibiotic)
+               antibiotic         = COALESCE($19, antibiotic),
+               without_stock      = COALESCE($20, without_stock)
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -298,11 +305,13 @@ pub async fn patch(
         body.euthanasia,
         body.freely_divisible,
         body.antibiotic,
+        body.without_stock,
     )
     .execute(&mut *transaction)
     .await?;
 
-    // A changed VAT rate moves every computed price of this drug.
+    // A changed VAT rate moves every computed price of this drug; "Ohne Bestand" turned off
+    // brings the AMPreisV back for a price the vet did not type.
     recompute_prices(&mut transaction, id, &state.config.pharmacy).await?;
     transaction.commit().await?;
     Ok(Json(load(&state.pool, id).await?))
@@ -543,12 +552,17 @@ pub async fn recompute_prices(
     pharmacy: &PharmacyConfig,
 ) -> AppResult<()> {
     let drug = sqlx::query!(
-        "SELECT vat_percent, human_drug FROM drug WHERE id = $1",
+        "SELECT vat_percent, human_drug, without_stock FROM drug WHERE id = $1",
         drug_id
     )
     .fetch_optional(&mut *connection)
     .await?
     .ok_or(AppError::NotFound)?;
+    // A consumable is not an Arzneimittel: the AMPreisV does not price it, and its sales price
+    // is only ever the one the vet types (decided 2026-11-18).
+    if drug.without_stock {
+        return Ok(());
+    }
     let vat = drug.vat_percent.unwrap_or(Decimal::ZERO);
     let policy = pricing_policy(drug.human_drug, pharmacy);
 
@@ -617,7 +631,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         r#"SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,
                   drug.narcotic, drug.vaccine, drug.antibiotic, drug.refrigerate,
                   drug.redesignation,
-                  drug.human_drug, drug.euthanasia, drug.freely_divisible,
+                  drug.human_drug, drug.euthanasia, drug.freely_divisible, drug.without_stock,
                   drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
@@ -661,6 +675,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         human_drug: row.human_drug,
         euthanasia: row.euthanasia,
         freely_divisible: row.freely_divisible,
+        without_stock: row.without_stock,
         vat_percent: row.vat_percent,
         approval_number: row.approval_number,
         archived: row.archived,
@@ -704,7 +719,8 @@ pub async fn load_packagings(
                   packaging.unit, packaging.quantity, packaging.list_price_net,
                   packaging.sales_price_net, packaging.price_overridden,
                   packaging.supplier_id, packaging.archived, packaging.draft,
-                  supplier.name AS "supplier_name?", drug.vat_percent, drug.human_drug
+                  supplier.name AS "supplier_name?", drug.vat_percent, drug.human_drug,
+                  drug.without_stock
            FROM drug_packaging packaging
            JOIN drug ON drug.id = packaging.drug_id
            LEFT JOIN supplier ON supplier.id = packaging.supplier_id
@@ -729,6 +745,8 @@ pub async fn load_packagings(
             let vat = row.vat_percent.unwrap_or(Decimal::ZERO);
             let policy = pricing_policy(row.human_drug, pharmacy);
             let computed = match row.kind {
+                // Not an Arzneimittel: there is no AMPreisV price to show beside the vet's.
+                _ if row.without_stock => None,
                 PackagingKind::Original => row
                     .list_price_net
                     .map(|list_price| money::drug_price_original(list_price, vat, policy).net),

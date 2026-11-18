@@ -71,11 +71,18 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
             <Package className="size-4" />
             {t('pharmacy.original')}
           </Button>
-          {/* A drug that is "beliebig teilbar" takes any amount and has no Teilmengen. */}
+          {/* A drug that is "beliebig teilbar" takes any amount and has no Teilmengen; nor
+              does a consumable "Ohne Bestand", billed in whole packs. */}
           <Button
             size="small"
-            disabled={!hasOriginal || drug.freely_divisible}
-            title={drug.freely_divisible ? t('packaging.freelyDivisible') : undefined}
+            disabled={!hasOriginal || drug.freely_divisible || drug.without_stock}
+            title={
+              drug.freely_divisible
+                ? t('packaging.freelyDivisible')
+                : drug.without_stock
+                  ? t('packaging.withoutStock')
+                  : undefined
+            }
             onClick={() => createPackaging.mutate({ id: drug.id, data: { kind: 'subset' } })}
           >
             <Boxes className="size-4" />
@@ -180,7 +187,13 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   unit={currencySymbol}
                   money
                   disabled={!isOriginal}
-                  hint={isOriginal ? t('field.listPriceHint') : t('pharmacy.subsetPriceDerived')}
+                  hint={
+                    drug.without_stock
+                      ? t('pharmacy.listPriceForReference')
+                      : isOriginal
+                        ? t('field.listPriceHint')
+                        : t('pharmacy.subsetPriceDerived')
+                  }
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
                 />
                 {/* The vet edits the net price the AMPreisV computes; the gross it comes to is
@@ -229,7 +242,10 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                 ) : null}
 
                 <p className="self-end text-xs text-ink-faint sm:col-span-2">
-                  {packaging.price_overridden ? (
+                  {drug.without_stock ? (
+                    // No AMPreisV figure to set it against: a consumable's price is the vet's.
+                    <span>{t('pharmacy.priceByHand')}</span>
+                  ) : packaging.price_overridden ? (
                     <span className="flex flex-wrap items-center gap-2">
                       <span className="font-medium text-rust">{t('pharmacy.priceOverride')}</span>
                       <span className="numeric">

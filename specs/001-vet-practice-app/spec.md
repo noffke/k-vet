@@ -302,10 +302,12 @@ reflected on the next generated invoice.
 - **FR-012**: The system MUST manage drugs with manufacturer, VAT rate, optional approval
   number, and the flags submission receipt (Abgabebeleg), narcotic (BTM), vaccine,
   refrigerated, and redesignation (Umwidmung). In this version these flags are informational
-  only — no reminders, documents, or ledgers are generated from them.
+  only — no reminders, documents, or ledgers are generated from them. A drug MAY be marked
+  "Ohne Bestand" (a consumable): billed in whole packs at a sales price the vet sets, outside
+  the AMPreisV, with no stock, lots, Teilmengen or stock corrections.
 - **FR-013**: Each drug MUST have exactly one original packaging and any number of subset
   packagings, each with unit and quantity; only the original packaging has a supplier and
-  stock.
+  stock — and none for a drug "Ohne Bestand", which has no subset packagings either.
 - **FR-014**: After VAT selection and list-price entry, the system MUST compute the sales **net**
   price per the statutory drug pricing rules (AMPreisV, veterinarian part), including the subset
   surcharge for subset packagings; the computed price MUST be manually overridable. The gross is

@@ -33,4 +33,6 @@ export interface PatchDrug {
   euthanasia?: boolean | null;
   /** @nullable */
   freely_divisible?: boolean | null;
+  /** @nullable */
+  without_stock?: boolean | null;
 }

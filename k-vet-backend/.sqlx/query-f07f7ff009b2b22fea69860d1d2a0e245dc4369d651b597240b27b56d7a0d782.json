@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT packaging.id, packaging.kind AS \"kind: PackagingKind\", drug.approval_number,\n                  drug.human_drug OR drug.redesignation AS \"redesignated!\"\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           WHERE packaging.id = ANY($1)",
+  "query": "SELECT packaging.id, packaging.kind AS \"kind: PackagingKind\", drug.approval_number,\n                  drug.human_drug OR drug.redesignation AS \"redesignated!\", drug.without_stock\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           WHERE packaging.id = ANY($1)",
   "describe": {
     "columns": [
       {
@@ -51,6 +51,17 @@
         "name": "redesignated!",
         "type_info": "Bool",
         "origin": "Expression"
+      },
+      {
+        "ordinal": 4,
+        "name": "without_stock",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "without_stock"
+          }
+        }
       }
     ],
     "parameters": {
@@ -62,8 +73,9 @@
       false,
       false,
       true,
-      null
+      null,
+      false
     ]
   },
-  "hash": "808f20a557a05af928ad4d0b1ad27ee496db4211ca51d14c4b89afb92a4f1ef1"
+  "hash": "f07f7ff009b2b22fea69860d1d2a0e245dc4369d651b597240b27b56d7a0d782"
 }

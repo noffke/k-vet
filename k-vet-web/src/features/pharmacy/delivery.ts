@@ -109,6 +109,10 @@ export function deliveryReducer(state: Delivery, event: DeliveryEvent): Delivery
           const packages = String(Number(current.intake.packages ?? '0') + 1)
           return { ...quiet, current: { ...current, intake: { ...current.intake, packages } } }
         }
+        // A consumable "Ohne Bestand" keeps no stock: its delivery is not booked.
+        if (drug.without_stock) {
+          return { ...notice('delivery.withoutStock', { name: drug.name ?? '' }), unknown: null }
+        }
         const original = result.original
         if (!original || original.draft || drug.draft) {
           return { ...notice('delivery.notStockable', { name: drug.name ?? '' }), unknown: null }

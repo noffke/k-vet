@@ -161,6 +161,8 @@ pub struct StockTarget {
     pub packaging_id: i64,
     /// Base units (e.g. ml) consumed per one unit of the billed packaging.
     pub base_units: Decimal,
+    /// `false` for a drug "Ohne Bestand" (migration 0043): nothing is taken off a shelf.
+    pub tracked: bool,
 }
 
 /// Resolves the stock target for a billed packaging. `None` when the drug has no original
@@ -170,8 +172,10 @@ where
     E: PgExecutor<'e>,
 {
     let row = sqlx::query!(
-        r#"SELECT original.id AS "original_id?", billed.quantity AS "billed_quantity?"
+        r#"SELECT original.id AS "original_id?", billed.quantity AS "billed_quantity?",
+                  NOT drug.without_stock AS "tracked!"
            FROM drug_packaging billed
+           JOIN drug ON drug.id = billed.drug_id
            LEFT JOIN drug_packaging original
                   ON original.drug_id = billed.drug_id AND original.kind = 'original'
            WHERE billed.id = $1"#,
@@ -184,6 +188,7 @@ where
         Some(StockTarget {
             packaging_id: row.original_id?,
             base_units: row.billed_quantity.unwrap_or(Decimal::ONE),
+            tracked: row.tracked,
         })
     }))
 }
@@ -233,6 +238,12 @@ pub async fn rewrite_draft_dispenses(
         );
         return Ok(Vec::new());
     };
+    // A consumable "Ohne Bestand" is billed and nothing more: no lot, no movement, and never
+    // refused for want of stock. Whatever the line held from before the flag goes back first.
+    if !target.tracked {
+        remove_draft_dispenses(&mut *connection, treatment_item_id).await?;
+        return Ok(Vec::new());
+    }
     let needed = dispensed.base_units(&target);
     // What the line holds now goes back on the shelf first: raising 10 ml to the whole 100 ml
     // bottle must count the 10 ml the line already took. Every caller is inside a transaction,

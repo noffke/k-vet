@@ -343,6 +343,42 @@ test.describe('pharmacy', () => {
     await expect(page.getByRole('heading', { name: /Bestand/ })).toContainText('120')
   })
 
+  // Consumables (issues.md): syringes, needles, bandages go on the invoice without any stock
+  // kept — no lot, no Wareneingang, never refused as short.
+  test('a consumable "Ohne Bestand" goes on an appointment without any lot', async ({
+    page,
+    request,
+  }) => {
+    const { drugId, drugName, subsetPackagingId } = await seedDrug(request, { packages: 0 })
+    // A consumable has no Teilmenge; the seeded one goes first.
+    await request.delete(`/api/packagings/${subsetPackagingId}`)
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId)
+    const { treatmentId } = await seedTreatment(request, patientId)
+
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}`)
+    await page.getByLabel('Ohne Bestand (Verbrauchsmaterial)').check()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    // No stock to show, and nothing to book in.
+    await expect(page.getByRole('heading', { name: /Bestand\s*Ohne Bestand/ })).toBeVisible()
+    await expect(page.getByRole('button', { name: 'Wareneingang' })).toHaveCount(0)
+    // Its price is the vet's, not the AMPreisV's.
+    await expect(page.getByText('Verkaufspreis von Hand').first()).toBeVisible()
+
+    await page.goto(`/treatments/${treatmentId}`)
+    const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
+    await picker.fill(drugName)
+    const pack = page.getByRole('option', { name: new RegExp(drugName) }).first()
+    await expect(pack).toContainText('Ohne Bestand')
+    await expect(pack.getByLabel('Nicht genug Bestand')).toHaveCount(0)
+    await pack.click()
+    await expect(page.getByText(`„${drugName}“ hinzugefügt`)).toBeVisible()
+    // A whole pack, and no lot to name.
+    await expect(page.getByLabel('Menge').first()).toHaveValue('100')
+    await expect(page.getByText(/^Chargen:/)).toHaveCount(0)
+  })
+
   test('a drug the shelf cannot cover is marked in the picker and refused with a reason', async ({
     page,
     request,

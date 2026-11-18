@@ -42,15 +42,19 @@ export function LotDetailPage() {
             : `${t('pharmacy.lots')} ${record.id}`
         }
         actions={
-          <Button
-            variant="accent"
-            onClick={() =>
-              void navigate({ to: '/lots/$id/correction', params: { id: String(lotId) } })
-            }
-          >
-            <SlidersHorizontal className="size-4" />
-            {t('pharmacy.correction')}
-          </Button>
+          // A lot of a consumable "Ohne Bestand" — left from before the flag — is history only:
+          // no stock is kept for the drug, so there is nothing to correct (migration 0043).
+          record.drug_without_stock ? null : (
+            <Button
+              variant="accent"
+              onClick={() =>
+                void navigate({ to: '/lots/$id/correction', params: { id: String(lotId) } })
+              }
+            >
+              <SlidersHorizontal className="size-4" />
+              {t('pharmacy.correction')}
+            </Button>
+          )
         }
       />
 

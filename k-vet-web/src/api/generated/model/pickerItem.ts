@@ -31,9 +31,14 @@ export type PickerItem = {
   in_stock: string;
   /**
      * What the drug starts at (`rule.preset`) is more than the lots hold together: picking
-     * it is refused (`item.stockShort`).
+     * it is refused (`item.stockShort`). Never for a drug "Ohne Bestand".
      */
   stock_short: boolean;
+  /**
+     * "Ohne Bestand" (migration 0043): a consumable whose stock is not kept — shown as
+     * such rather than as a stock of 0, and never short.
+     */
+  without_stock: boolean;
   /** How it can be dispensed: whole packs, the Teilmenge's steps, or any amount. */
   rule: DispenseRule;
   uses: number;

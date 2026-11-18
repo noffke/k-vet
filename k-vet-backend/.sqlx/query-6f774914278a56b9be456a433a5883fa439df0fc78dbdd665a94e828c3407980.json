@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT vat_percent, human_drug FROM drug WHERE id = $1",
+  "query": "SELECT vat_percent, human_drug, without_stock FROM drug WHERE id = $1",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,17 @@
             "name": "human_drug"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "without_stock",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "without_stock"
+          }
+        }
       }
     ],
     "parameters": {
@@ -33,8 +44,9 @@
     },
     "nullable": [
       true,
+      false,
       false
     ]
   },
-  "hash": "c3dddd9e4136518be7825bfd4ed3760a79ba26c58d112fd70a14de4ebad08687"
+  "hash": "6f774914278a56b9be456a433a5883fa439df0fc78dbdd665a94e828c3407980"
 }

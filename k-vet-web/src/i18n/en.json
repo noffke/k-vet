@@ -402,23 +402,28 @@
       "redesignation": "Redesignation",
       "refrigerate": "Refrigerate",
       "submissionReceipt": "Submission receipt",
-      "vaccine": "Vaccine"
+      "vaccine": "Vaccine",
+      "withoutStock": "No stock kept (consumable)"
     },
     "flagsLegend": "Flags",
     "freelyDivisibleHint": "E.g. injection liquids: any quantity can be billed, such as 2.7 ml from a 100 ml bottle. Without it, what is left after whole packs goes only in steps of the smallest part pack.",
     "freelyDivisibleNeedsNoSubsets": "Delete the part packs below first: a drug that takes any quantity has none – every amount is priced pro rata with the part-pack surcharge.",
+    "freelyDivisibleNotWithoutStock": "Not for a consumable without stock — it goes in whole packs.",
     "initialStock": "Initial stock",
     "intake": "Stock intake",
     "intakeResult": "Adds {{quantity}} {{unit}} initial stock.",
+    "listPriceForReference": "Purchase price, for reference only.",
     "lots": "Lots",
     "movements": "Movements",
     "newDrug": "New drug",
     "newManufacturerOption": "New manufacturer …",
     "newSupplierOption": "New supplier …",
+    "noCorrectionWithoutStock": "No stock kept — a consumable has no stock correction.",
     "original": "Original packaging",
     "packageCount": "{{count}} packages of {{size}}",
     "packageCountOnly": "{{count}} packages",
     "packagings": "Packagings",
+    "priceByHand": "Sales price by hand — consumables are not priced by the AMPreisV.",
     "priceOverride": "Price overridden manually",
     "remaining": "Remaining",
     "removeCode": "Remove code {{code}}",
@@ -430,7 +435,12 @@
     "stock": "Stock",
     "subset": "Subset",
     "subsetPriceDerived": "Derived from the original packaging",
-    "title": "Pharmacy"
+    "title": "Pharmacy",
+    "withoutStock": "No stock kept",
+    "withoutStockHint": "Consumables such as syringes, needles or bandages: billed without lots or stock, in whole packs — for a price per piece, set the pack up as 1 piece. Not priced by the AMPreisV: enter the sales price by hand.",
+    "withoutStockNeedsNoStock": "Correct the remaining stock to 0 first — a consumable keeps none.",
+    "withoutStockNeedsNoSubsets": "Delete the subsets first — a consumable has none.",
+    "withoutStockNotDivisible": "Not together with “freely divisible” — a consumable goes in whole packs."
   },
   "pdfStale": {
     "title": "PDF out of date",
@@ -552,13 +562,15 @@
     "deleteSubsetConfirm": "Delete the part pack {{size}}? Positions already billed keep it.",
     "freelyDivisible": "A drug that takes any quantity has no part packs.",
     "originalAlreadyExists": "This drug already has an original packaging",
-    "supplierOnOriginalOnly": "Only original packagings have a supplier"
+    "supplierOnOriginalOnly": "Only original packagings have a supplier",
+    "withoutStock": "A consumable without stock has no subsets."
   },
   "service": {
     "gotFieldsRequired": "GOT number and factor are required",
     "travelIsPerVisit": "Wegegeld is always per visit"
   },
   "lot": {
+    "drugWithoutStock": "No lots and no stock movements are booked for a consumable without stock.",
     "noOriginalPackaging": "This drug has no original packaging",
     "notForThisPackaging": "This lot does not belong to this packaging",
     "originalPackagingOnly": "Stock exists for original packagings only"
@@ -780,7 +792,8 @@
     "undoRefused": "Something was dispensed from it or corrected — the booking stays. A stock correction puts it right.",
     "undoTitle": "Take the booking back?",
     "unknown": "Unknown code {{code}}",
-    "unknownHint": "Add it to an existing drug, or create a new one; “Back” returns here from there."
+    "unknownHint": "Add it to an existing drug, or create a new one; “Back” returns here from there.",
+    "withoutStock": "“{{name}}” is a consumable without stock — not booked."
   },
   "dispense": {
     "anyQuantity": "any quantity",
@@ -793,7 +806,10 @@
     "subsetPrice": "Part pack per {{unit}} (gross)"
   },
   "drug": {
-    "hasSubsets": "Delete the part packs first – a drug that takes any quantity has none."
+    "hasStock": "Correct the remaining stock to 0 first — a consumable keeps none.",
+    "hasSubsets": "Delete the part packs first – a drug that takes any quantity has none.",
+    "withoutStockHasSubsets": "Delete the subsets first — a consumable has none.",
+    "withoutStockNotDivisible": "“No stock kept” and “freely divisible” do not go together."
   },
   "upload": {
     "done": "“{{name}}” uploaded",

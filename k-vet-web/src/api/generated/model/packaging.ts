@@ -33,7 +33,8 @@ export interface Packaging {
   /** `true` while the vet's manual price wins over the computed one. */
   price_overridden: boolean;
   /**
-     * What AMPreisV would charge, net — shown next to an overridden price.
+     * What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug
+     * "Ohne Bestand", which the AMPreisV does not price.
      * @nullable
      */
   computed_price_net?: string | null;

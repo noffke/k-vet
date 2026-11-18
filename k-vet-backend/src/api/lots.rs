@@ -24,6 +24,9 @@ pub struct Lot {
     pub packaging_id: i64,
     pub drug_id: i64,
     pub drug_name: Option<String>,
+    /// The drug is "Ohne Bestand" now (migration 0043): a lot left from before the flag stays
+    /// readable as history, and takes no correction.
+    pub drug_without_stock: bool,
     pub unit: Option<String>,
     pub arrival_date: NaiveDate,
     pub packages_received: i32,
@@ -331,6 +334,22 @@ pub async fn create_correction(
         .await?
         .ok_or(AppError::NotFound)?;
 
+    // A consumable "Ohne Bestand" keeps no stock, so there is nothing to correct — also on a
+    // lot left from before the flag (the database refuses the movement too).
+    let without_stock: bool = sqlx::query_scalar!(
+        "SELECT drug.without_stock
+         FROM drug_stock_lot lot
+         JOIN drug_packaging packaging ON packaging.id = lot.packaging_id
+         JOIN drug ON drug.id = packaging.drug_id
+         WHERE lot.id = $1",
+        id,
+    )
+    .fetch_one(&mut *transaction)
+    .await?;
+    if without_stock {
+        return Err(AppError::field("new_remaining", "lot.drugWithoutStock"));
+    }
+
     let remaining: Option<Decimal> =
         sqlx::query_scalar!("SELECT remaining FROM lot_remaining WHERE lot_id = $1", id)
             .fetch_one(&mut *transaction)
@@ -386,7 +405,7 @@ async fn load_lot(pool: &sqlx::PgPool, id: i64) -> AppResult<Lot> {
         r#"SELECT lot.id, lot.packaging_id, lot.arrival_date, lot.packages_received,
                   lot.initial_quantity, lot.batch_number, lot.expiration_date, lot.created_at,
                   packaging.drug_id, packaging.unit, packaging.quantity AS "packaging_quantity?",
-                  drug.name AS "drug_name?",
+                  drug.name AS "drug_name?", drug.without_stock,
                   remaining.remaining AS "remaining?"
            FROM drug_stock_lot lot
            JOIN drug_packaging packaging ON packaging.id = lot.packaging_id
@@ -404,6 +423,7 @@ async fn load_lot(pool: &sqlx::PgPool, id: i64) -> AppResult<Lot> {
         packaging_id: row.packaging_id,
         drug_id: row.drug_id,
         drug_name: row.drug_name,
+        drug_without_stock: row.without_stock,
         unit: row.unit,
         arrival_date: row.arrival_date,
         packages_received: row.packages_received,

@@ -92,7 +92,11 @@ export function PharmacyPage() {
       header: t('pharmacy.stock'),
       numeric: true,
       // The unit belongs to the packaging, not the drug — but a bare "100" says nothing.
-      cell: (row) => `${quantity(row.in_stock)} ${row.unit ?? ''}`.trim(),
+      // A consumable keeps no stock: "Ohne Bestand", not a misleading 0.
+      cell: (row) =>
+        row.without_stock
+          ? t('pharmacy.withoutStock')
+          : `${quantity(row.in_stock)} ${row.unit ?? ''}`.trim(),
     },
   ]
 

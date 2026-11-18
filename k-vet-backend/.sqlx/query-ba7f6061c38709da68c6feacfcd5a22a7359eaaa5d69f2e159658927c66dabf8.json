@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT drug.without_stock\n         FROM drug_stock_lot lot\n         JOIN drug_packaging packaging ON packaging.id = lot.packaging_id\n         JOIN drug ON drug.id = packaging.drug_id\n         WHERE lot.id = $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "without_stock",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "without_stock"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "ba7f6061c38709da68c6feacfcd5a22a7359eaaa5d69f2e159658927c66dabf8"
+}

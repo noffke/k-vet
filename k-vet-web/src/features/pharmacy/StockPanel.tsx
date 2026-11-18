@@ -31,9 +31,17 @@ export function StockPanel({ drug, original }: StockPanelProps) {
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h2 className="text-base">
           {t('pharmacy.stock')}
-          <span className="numeric ml-2 text-sm font-normal text-ink-soft">
-            {formatQuantity(drug.in_stock)} {original?.unit ?? ''}
-          </span>
+          {/* A consumable "Ohne Bestand" has no stock to show, and takes no Wareneingang; a lot
+              from before the flag stays listed among the empty ones, as history. */}
+          {drug.without_stock ? (
+            <span className="ml-2 text-sm font-normal text-ink-soft">
+              {t('pharmacy.withoutStock')}
+            </span>
+          ) : (
+            <span className="numeric ml-2 text-sm font-normal text-ink-soft">
+              {formatQuantity(drug.in_stock)} {original?.unit ?? ''}
+            </span>
+          )}
         </h2>
         <div className="flex items-center gap-3">
           <CheckboxField
@@ -41,18 +49,20 @@ export function StockPanel({ drug, original }: StockPanelProps) {
             checked={showEmpty}
             onChange={(event) => setShowEmpty(event.target.checked)}
           />
-          <Button
-            variant="accent"
-            size="small"
-            disabled={!original || original.draft}
-            title={original ? undefined : t('pharmacy.original')}
-            onClick={() =>
-              void navigate({ to: '/pharmacy/$id/intake', params: { id: String(drug.id) } })
-            }
-          >
-            <PackagePlus className="size-4" />
-            {t('pharmacy.intake')}
-          </Button>
+          {drug.without_stock ? null : (
+            <Button
+              variant="accent"
+              size="small"
+              disabled={!original || original.draft}
+              title={original ? undefined : t('pharmacy.original')}
+              onClick={() =>
+                void navigate({ to: '/pharmacy/$id/intake', params: { id: String(drug.id) } })
+              }
+            >
+              <PackagePlus className="size-4" />
+              {t('pharmacy.intake')}
+            </Button>
+          )}
         </div>
       </div>
 

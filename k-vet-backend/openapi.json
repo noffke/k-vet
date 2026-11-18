@@ -6687,6 +6687,7 @@
           "human_drug",
           "euthanasia",
           "freely_divisible",
+          "without_stock",
           "archived",
           "draft",
           "missing_fields",
@@ -6750,6 +6751,10 @@
           "freely_divisible": {
             "type": "boolean",
             "description": "\"Beliebig teilbar\": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids."
+          },
+          "without_stock": {
+            "type": "boolean",
+            "description": "\"Ohne Bestand\": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never \"Beliebig teilbar\"."
           },
           "vat_percent": {
             "type": [
@@ -7353,6 +7358,7 @@
           "id",
           "packaging_id",
           "drug_id",
+          "drug_without_stock",
           "arrival_date",
           "packages_received",
           "initial_quantity",
@@ -7377,6 +7383,10 @@
               "string",
               "null"
             ]
+          },
+          "drug_without_stock": {
+            "type": "boolean",
+            "description": "The drug is \"Ohne Bestand\" now (migration 0043): a lot left from before the flag stays\nreadable as history, and takes no correction."
           },
           "unit": {
             "type": [
@@ -7739,7 +7749,7 @@
               "string",
               "null"
             ],
-            "description": "What AMPreisV would charge, net — shown next to an overridden price."
+            "description": "What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug\n\"Ohne Bestand\", which the AMPreisV does not price."
           },
           "supplier_id": {
             "type": [
@@ -7849,7 +7859,8 @@
           "name",
           "quantity",
           "in_stock",
-          "short"
+          "short",
+          "without_stock"
         ],
         "properties": {
           "drug_packaging_id": {
@@ -7886,7 +7897,11 @@
           },
           "short": {
             "type": "boolean",
-            "description": "The day needs more of the drug than its lots hold."
+            "description": "The day needs more of the drug than its lots hold. Never for a drug \"Ohne Bestand\"."
+          },
+          "without_stock": {
+            "type": "boolean",
+            "description": "\"Ohne Bestand\" (migration 0043): its stock is not kept, so there is none to show."
           }
         }
       },
@@ -8240,6 +8255,12 @@
             ]
           },
           "freely_divisible": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "without_stock": {
             "type": [
               "boolean",
               "null"
@@ -9132,6 +9153,7 @@
               "vat_percent",
               "in_stock",
               "stock_short",
+              "without_stock",
               "rule",
               "uses",
               "kind"
@@ -9179,7 +9201,11 @@
               },
               "stock_short": {
                 "type": "boolean",
-                "description": "What the drug starts at (`rule.preset`) is more than the lots hold together: picking\nit is refused (`item.stockShort`)."
+                "description": "What the drug starts at (`rule.preset`) is more than the lots hold together: picking\nit is refused (`item.stockShort`). Never for a drug \"Ohne Bestand\"."
+              },
+              "without_stock": {
+                "type": "boolean",
+                "description": "\"Ohne Bestand\" (migration 0043): a consumable whose stock is not kept — shown as\nsuch rather than as a stock of 0, and never short."
               },
               "rule": {
                 "$ref": "#/components/schemas/DispenseRule",
@@ -9922,7 +9948,8 @@
           "quantity",
           "packed",
           "position",
-          "stock_short"
+          "stock_short",
+          "without_stock"
         ],
         "properties": {
           "id": {
@@ -9997,7 +10024,11 @@
           },
           "stock_short": {
             "type": "boolean",
-            "description": "The drug's lots together hold less than this reminder needs."
+            "description": "The drug's lots together hold less than this reminder needs. Never for a drug \"Ohne\nBestand\", whose stock is not kept."
+          },
+          "without_stock": {
+            "type": "boolean",
+            "description": "\"Ohne Bestand\" (migration 0043): a consumable, nothing to check on the shelf."
           }
         }
       },

@@ -248,7 +248,8 @@ export const ListRemindersResponseItem = zod.object({
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
   "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
-  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs. Never for a drug "Ohne\nBestand", whose stock is not kept.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf.')
 })
 export const ListRemindersResponse = zod.array(ListRemindersResponseItem)
 
@@ -281,7 +282,8 @@ export const CreateReminderResponse = zod.object({
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
   "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
-  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs. Never for a drug "Ohne\nBestand", whose stock is not kept.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf.')
 })
 
 
@@ -998,6 +1000,7 @@ export const ListDrugsResponseItem = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1031,6 +1034,7 @@ export const CreateDrugResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1067,6 +1071,7 @@ export const GetDrugResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1112,7 +1117,8 @@ export const PatchDrugBody = zod.object({
   "redesignation": zod.boolean().nullish(),
   "human_drug": zod.boolean().nullish(),
   "euthanasia": zod.boolean().nullish(),
-  "freely_divisible": zod.boolean().nullish()
+  "freely_divisible": zod.boolean().nullish(),
+  "without_stock": zod.boolean().nullish()
 })
 
 export const PatchDrugResponse = zod.object({
@@ -1129,6 +1135,7 @@ export const PatchDrugResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1165,6 +1172,7 @@ export const ArchiveDrugResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1205,6 +1213,7 @@ export const AddDrugCodeResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1237,7 +1246,7 @@ export const ListPackagingsResponseItem = zod.object({
   "sales_price_net": zod.string().nullish().describe('Sales price **without** VAT — the figure AMPreisV computes and the vet edits.'),
   "sales_price_gross": zod.string().nullish().describe('Derived from `sales_price_net`; what the customer pays.'),
   "price_overridden": zod.boolean().describe('`true` while the vet\'s manual price wins over the computed one.'),
-  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price.'),
+  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug\n"Ohne Bestand", which the AMPreisV does not price.'),
   "supplier_id": zod.int().nullish(),
   "supplier_name": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1265,7 +1274,7 @@ export const CreatePackagingResponse = zod.object({
   "sales_price_net": zod.string().nullish().describe('Sales price **without** VAT — the figure AMPreisV computes and the vet edits.'),
   "sales_price_gross": zod.string().nullish().describe('Derived from `sales_price_net`; what the customer pays.'),
   "price_overridden": zod.boolean().describe('`true` while the vet\'s manual price wins over the computed one.'),
-  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price.'),
+  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug\n"Ohne Bestand", which the AMPreisV does not price.'),
   "supplier_id": zod.int().nullish(),
   "supplier_name": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1292,6 +1301,7 @@ export const UnarchiveDrugResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -1677,6 +1687,7 @@ export const ListLotsResponseItem = zod.object({
   "packaging_id": zod.int(),
   "drug_id": zod.int(),
   "drug_name": zod.string().nullish(),
+  "drug_without_stock": zod.boolean().describe('The drug is "Ohne Bestand" now (migration 0043): a lot left from before the flag stays\nreadable as history, and takes no correction.'),
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
@@ -1699,6 +1710,7 @@ export const GetLotResponse = zod.object({
   "packaging_id": zod.int(),
   "drug_id": zod.int(),
   "drug_name": zod.string().nullish(),
+  "drug_without_stock": zod.boolean().describe('The drug is "Ohne Bestand" now (migration 0043): a lot left from before the flag stays\nreadable as history, and takes no correction.'),
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
@@ -1755,6 +1767,7 @@ export const CreateCorrectionResponse = zod.object({
   "packaging_id": zod.int(),
   "drug_id": zod.int(),
   "drug_name": zod.string().nullish(),
+  "drug_without_stock": zod.boolean().describe('The drug is "Ohne Bestand" now (migration 0043): a lot left from before the flag stays\nreadable as history, and takes no correction.'),
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
@@ -1995,7 +2008,7 @@ export const PatchPackagingResponse = zod.object({
   "sales_price_net": zod.string().nullish().describe('Sales price **without** VAT — the figure AMPreisV computes and the vet edits.'),
   "sales_price_gross": zod.string().nullish().describe('Derived from `sales_price_net`; what the customer pays.'),
   "price_overridden": zod.boolean().describe('`true` while the vet\'s manual price wins over the computed one.'),
-  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price.'),
+  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug\n"Ohne Bestand", which the AMPreisV does not price.'),
   "supplier_id": zod.int().nullish(),
   "supplier_name": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -2021,6 +2034,7 @@ export const CreateStockIntakeResponse = zod.object({
   "packaging_id": zod.int(),
   "drug_id": zod.int(),
   "drug_name": zod.string().nullish(),
+  "drug_without_stock": zod.boolean().describe('The drug is "Ohne Bestand" now (migration 0043): a lot left from before the flag stays\nreadable as history, and takes no correction.'),
   "unit": zod.string().nullish(),
   "arrival_date": zod.iso.date(),
   "packages_received": zod.int(),
@@ -2052,7 +2066,8 @@ export const GetPackingListResponse = zod.object({
   "size": zod.string().nullish().describe('The original pack\'s size in its unit.'),
   "quantity": zod.string().describe('Base units, summed over the day\'s appointments.'),
   "in_stock": zod.string().describe('What the drug\'s lots hold together, in base units.'),
-  "short": zod.boolean().describe('The day needs more of the drug than its lots hold.')
+  "short": zod.boolean().describe('The day needs more of the drug than its lots hold. Never for a drug "Ohne Bestand".'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): its stock is not kept, so there is none to show.')
 }).describe('One packaging\'s total for the day, and whether the shelf covers the drug.')),
   "appointments": zod.array(zod.object({
   "appointment_id": zod.int(),
@@ -2078,7 +2093,8 @@ export const GetPackingListResponse = zod.object({
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
   "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
-  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs. Never for a drug "Ohne\nBestand", whose stock is not kept.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf.')
 }))
 }).describe('An appointment of the day with what to bring to it.'))
 })
@@ -2657,7 +2673,8 @@ export const PickerItemsResponseItem = zod.union([zod.object({
   "price_gross": zod.string(),
   "vat_percent": zod.string(),
   "in_stock": zod.string().describe('Derived stock over all lots, in base units — a shortfall is visible before picking.'),
-  "stock_short": zod.boolean().describe('What the drug starts at (`rule.preset`) is more than the lots hold together: picking\nit is refused (`item.stockShort`).'),
+  "stock_short": zod.boolean().describe('What the drug starts at (`rule.preset`) is more than the lots hold together: picking\nit is refused (`item.stockShort`). Never for a drug "Ohne Bestand".'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): a consumable whose stock is not kept — shown as\nsuch rather than as a stock of 0, and never short.'),
   "rule": zod.object({
   "pack_size": zod.string().describe('Base units in one original pack: 10 (Tbl.), 100 (ml).'),
   "step": zod.string().nullish().describe('The smallest Teilmenge: a rest after whole packs goes in multiples of it. Absent, and not\n`freely_divisible`: whole packs only.'),
@@ -3029,7 +3046,8 @@ export const PatchReminderResponse = zod.object({
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
   "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
-  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs. Never for a drug "Ohne\nBestand", whose stock is not kept.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf.')
 })
 
 
@@ -3064,7 +3082,8 @@ export const TakeReminderResponse = zod.object({
   "packed": zod.boolean().describe('Ticked off on the Packliste.'),
   "position": zod.int(),
   "taken_item_id": zod.int().nullish().describe('The position it became; absent while it is a reminder.'),
-  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs.')
+  "stock_short": zod.boolean().describe('The drug\'s lots together hold less than this reminder needs. Never for a drug "Ohne\nBestand", whose stock is not kept.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf.')
 })
 
 
@@ -3091,6 +3110,7 @@ export const ReadScanResponse = zod.object({
   "human_drug": zod.boolean().describe('A medicine approved for humans, dispensed for use in an animal: priced by\n§ 3 Abs. 1 Satz 2 AMPreisV rather than by the veterinary bands.'),
   "euthanasia": zod.boolean().describe('A euthanasia preparation: releasing an invoice with it on a line sets the date of death\nof that line\'s animal to the appointment\'s day (and archives it), unless one is entered.'),
   "freely_divisible": zod.boolean().describe('"Beliebig teilbar": any quantity can be dispensed — 2,7 ml from a 100 ml bottle — not\nonly whole packs and multiples of the smallest Teilmenge. For injection liquids.'),
+  "without_stock": zod.boolean().describe('"Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never "Beliebig teilbar".'),
   "vat_percent": zod.string().nullish(),
   "approval_number": zod.string().nullish(),
   "archived": zod.boolean(),
@@ -3117,7 +3137,7 @@ export const ReadScanResponse = zod.object({
   "sales_price_net": zod.string().nullish().describe('Sales price **without** VAT — the figure AMPreisV computes and the vet edits.'),
   "sales_price_gross": zod.string().nullish().describe('Derived from `sales_price_net`; what the customer pays.'),
   "price_overridden": zod.boolean().describe('`true` while the vet\'s manual price wins over the computed one.'),
-  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price.'),
+  "computed_price_net": zod.string().nullish().describe('What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug\n"Ohne Bestand", which the AMPreisV does not price.'),
   "supplier_id": zod.int().nullish(),
   "supplier_name": zod.string().nullish(),
   "archived": zod.boolean(),

@@ -198,6 +198,13 @@ fn constraint_field_message(constraint: &str) -> Option<(&'static str, &'static 
         // The triggers that keep "Beliebig teilbar" and Teilmengen apart (migration 0041).
         "drug_packaging_no_subset_when_freely_divisible" => ("kind", "packaging.freelyDivisible"),
         "drug_freely_divisible_without_subsets" => ("freely_divisible", "drug.hasSubsets"),
+        // "Ohne Bestand" (migration 0043): no stock, no Teilmenge, not "Beliebig teilbar".
+        "drug_without_stock_not_divisible" => ("without_stock", "drug.withoutStockNotDivisible"),
+        "drug_without_stock_has_stock" => ("without_stock", "drug.hasStock"),
+        "drug_without_stock_without_subsets" => ("without_stock", "drug.withoutStockHasSubsets"),
+        "drug_packaging_no_subset_without_stock" => ("kind", "packaging.withoutStock"),
+        "drug_stock_lot_tracked" => ("packages_received", "lot.drugWithoutStock"),
+        "drug_stock_movement_tracked" => ("quantity", "lot.drugWithoutStock"),
         "service_complete" => ("draft", "record.incomplete"),
         "service_got_shape" => ("got_number", "service.gotFieldsRequired"),
         "service_factor_positive" => ("factor", "value.mustBePositive"),

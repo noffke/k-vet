@@ -51,8 +51,11 @@ pub enum PickerItem {
         /// Derived stock over all lots, in base units — a shortfall is visible before picking.
         in_stock: Decimal,
         /// What the drug starts at (`rule.preset`) is more than the lots hold together: picking
-        /// it is refused (`item.stockShort`).
+        /// it is refused (`item.stockShort`). Never for a drug "Ohne Bestand".
         stock_short: bool,
+        /// "Ohne Bestand" (migration 0043): a consumable whose stock is not kept — shown as
+        /// such rather than as a stock of 0, and never short.
+        without_stock: bool,
         /// How it can be dispensed: whole packs, the Teilmenge's steps, or any amount.
         rule: DispenseRule,
         uses: i64,
@@ -112,6 +115,7 @@ pub async fn items(
                   rule.subset_price_net   AS subset_price_net,
                   drug.freely_divisible   AS freely_divisible,
                   drug.human_drug         AS human_drug,
+                  drug.without_stock      AS without_stock,
                   NULL::text              AS got_number,
                   NULL::numeric           AS factor,
                   false                   AS travel_expenses,
@@ -154,6 +158,7 @@ pub async fn items(
                   NULL::numeric     AS subset_price_net,
                   false             AS freely_divisible,
                   false             AS human_drug,
+                  false             AS without_stock,
                   service.got_number AS got_number,
                   service.factor    AS factor,
                   service.travel_expenses AS travel_expenses,
@@ -211,6 +216,7 @@ pub async fn items(
                     )?;
                     let rule = DispenseRule::from(&pricing);
                     let in_stock = row.in_stock.unwrap_or_default();
+                    let without_stock = row.without_stock.unwrap_or(false);
                     Some(PickerItem::DrugPackaging {
                         id: row.id?,
                         drug_id: row.reference_id?,
@@ -221,7 +227,8 @@ pub async fn items(
                         price_gross,
                         vat_percent,
                         in_stock,
-                        stock_short: in_stock < rule.preset,
+                        stock_short: !without_stock && in_stock < rule.preset,
+                        without_stock,
                         rule,
                         uses,
                     })

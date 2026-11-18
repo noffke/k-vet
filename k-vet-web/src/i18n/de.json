@@ -402,23 +402,28 @@
       "redesignation": "Umwidmung",
       "refrigerate": "Kühlpflichtig",
       "submissionReceipt": "Abgabebeleg",
-      "vaccine": "Impfstoff"
+      "vaccine": "Impfstoff",
+      "withoutStock": "Ohne Bestand (Verbrauchsmaterial)"
     },
     "flagsLegend": "Kennzeichen",
     "freelyDivisibleHint": "Z. B. Injektionslösungen: jede Menge abrechenbar, etwa 2,7 ml aus einer 100-ml-Flasche. Ohne diesen Haken geht der Rest nach ganzen Packungen nur in Schritten der kleinsten Teilmenge.",
     "freelyDivisibleNeedsNoSubsets": "Erst die Teilmengen unten löschen: ein beliebig teilbares Medikament hat keine – jede Menge wird anteilig mit Anbruchaufschlag berechnet.",
+    "freelyDivisibleNotWithoutStock": "Nicht bei Verbrauchsmaterial ohne Bestand – es geht in ganzen Packungen.",
     "initialStock": "Anfangsbestand",
     "intake": "Wareneingang",
     "intakeResult": "Ergibt {{quantity}} {{unit}} Anfangsbestand.",
+    "listPriceForReference": "Einkaufspreis, nur zur Information.",
     "lots": "Chargen",
     "movements": "Bewegungen",
     "newDrug": "Neues Medikament",
     "newManufacturerOption": "Neuer Hersteller …",
     "newSupplierOption": "Neuer Lieferant …",
+    "noCorrectionWithoutStock": "Ohne Bestand – für Verbrauchsmaterial gibt es keine Bestandskorrektur.",
     "original": "Originalpackung",
     "packageCount": "{{count}} Packungen à {{size}}",
     "packageCountOnly": "{{count}} Packungen",
     "packagings": "Packungen",
+    "priceByHand": "Verkaufspreis von Hand – Verbrauchsmaterial fällt nicht unter die AMPreisV.",
     "priceOverride": "Preis manuell überschrieben",
     "remaining": "Restbestand",
     "removeCode": "Code {{code}} entfernen",
@@ -430,7 +435,12 @@
     "stock": "Bestand",
     "subset": "Teilmenge",
     "subsetPriceDerived": "Wird aus der Originalpackung berechnet",
-    "title": "Apotheke"
+    "title": "Apotheke",
+    "withoutStock": "Ohne Bestand",
+    "withoutStockHint": "Verbrauchsmaterial wie Spritzen, Kanülen oder Verbände: kommt auf die Rechnung, ohne Chargen und ohne Bestand, in ganzen Packungen — für einen Stückpreis die Packung als 1 Stück anlegen. Nicht nach AMPreisV: den Verkaufspreis von Hand eintragen.",
+    "withoutStockNeedsNoStock": "Erst den Restbestand auf 0 korrigieren – Verbrauchsmaterial ohne Bestand hat keinen.",
+    "withoutStockNeedsNoSubsets": "Erst die Teilmengen löschen – Verbrauchsmaterial ohne Bestand hat keine.",
+    "withoutStockNotDivisible": "Nicht zusammen mit „Beliebig teilbar“ – Verbrauchsmaterial geht in ganzen Packungen."
   },
   "pdfStale": {
     "title": "PDF veraltet",
@@ -552,13 +562,15 @@
     "deleteSubsetConfirm": "Teilmenge {{size}} löschen? Bereits abgerechnete Positionen behalten sie.",
     "freelyDivisible": "Ein beliebig teilbares Medikament hat keine Teilmengen.",
     "originalAlreadyExists": "Es gibt bereits eine Originalpackung",
-    "supplierOnOriginalOnly": "Nur Originalpackungen haben einen Lieferanten"
+    "supplierOnOriginalOnly": "Nur Originalpackungen haben einen Lieferanten",
+    "withoutStock": "Verbrauchsmaterial ohne Bestand hat keine Teilmengen."
   },
   "service": {
     "gotFieldsRequired": "GOT-Nummer und Faktor sind erforderlich",
     "travelIsPerVisit": "Wegegeld gilt immer pro Termin"
   },
   "lot": {
+    "drugWithoutStock": "Für Verbrauchsmaterial ohne Bestand werden keine Chargen und keine Bestandsbewegungen gebucht.",
     "noOriginalPackaging": "Zu diesem Medikament gibt es keine Originalpackung",
     "notForThisPackaging": "Diese Charge gehört nicht zu dieser Packung",
     "originalPackagingOnly": "Bestand gibt es nur für Originalpackungen"
@@ -780,7 +792,8 @@
     "undoRefused": "Davon wurde schon abgegeben oder korrigiert — die Einbuchung bleibt. Eine Korrektur am Bestand stellt es richtig.",
     "undoTitle": "Einbuchung zurücknehmen?",
     "unknown": "Unbekannter Code {{code}}",
-    "unknownHint": "Zu einem vorhandenen Medikament hinzufügen, oder ein neues anlegen; „Zurück“ führt von dort hierher zurück."
+    "unknownHint": "Zu einem vorhandenen Medikament hinzufügen, oder ein neues anlegen; „Zurück“ führt von dort hierher zurück.",
+    "withoutStock": "„{{name}}“ ist Verbrauchsmaterial ohne Bestand – wird nicht eingebucht."
   },
   "dispense": {
     "anyQuantity": "beliebige Menge",
@@ -793,7 +806,10 @@
     "subsetPrice": "Teilmenge je {{unit}} (brutto)"
   },
   "drug": {
-    "hasSubsets": "Erst die Teilmengen löschen – ein beliebig teilbares Medikament hat keine."
+    "hasStock": "Erst den Restbestand auf 0 korrigieren – Verbrauchsmaterial ohne Bestand hat keinen.",
+    "hasSubsets": "Erst die Teilmengen löschen – ein beliebig teilbares Medikament hat keine.",
+    "withoutStockHasSubsets": "Erst die Teilmengen löschen – Verbrauchsmaterial ohne Bestand hat keine.",
+    "withoutStockNotDivisible": "„Ohne Bestand“ und „Beliebig teilbar“ gehen nicht zusammen."
   },
   "upload": {
     "done": "„{{name}}“ hochgeladen",

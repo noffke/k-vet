@@ -182,7 +182,12 @@ export function ItemPicker({
               )}
               <span className="min-w-0 flex-1 truncate text-ink">{label(item)}</span>
               {item.kind === 'drug_packaging' ? (
-                item.stock_short ? (
+                item.without_stock ? (
+                  // A consumable: no stock kept, so none to show and nothing to fall short of.
+                  <span className="shrink-0 text-xs text-ink-faint">
+                    {t('pharmacy.withoutStock')}
+                  </span>
+                ) : item.stock_short ? (
                   // Still pickable: the refusal then says what to do about it.
                   <span
                     className="numeric flex shrink-0 items-center gap-1 text-xs font-semibold text-danger"

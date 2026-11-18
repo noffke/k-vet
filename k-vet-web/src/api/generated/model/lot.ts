@@ -12,6 +12,11 @@ export interface Lot {
   drug_id: number;
   /** @nullable */
   drug_name?: string | null;
+  /**
+     * The drug is "Ohne Bestand" now (migration 0043): a lot left from before the flag stays
+     * readable as history, and takes no correction.
+     */
+  drug_without_stock: boolean;
   /** @nullable */
   unit?: string | null;
   arrival_date: string;

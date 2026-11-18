@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT original.id AS \"original_id?\", billed.quantity AS \"billed_quantity?\"\n           FROM drug_packaging billed\n           LEFT JOIN drug_packaging original\n                  ON original.drug_id = billed.drug_id AND original.kind = 'original'\n           WHERE billed.id = $1",
+  "query": "SELECT original.id AS \"original_id?\", billed.quantity AS \"billed_quantity?\",\n                  NOT drug.without_stock AS \"tracked!\"\n           FROM drug_packaging billed\n           JOIN drug ON drug.id = billed.drug_id\n           LEFT JOIN drug_packaging original\n                  ON original.drug_id = billed.drug_id AND original.kind = 'original'\n           WHERE billed.id = $1",
   "describe": {
     "columns": [
       {
@@ -24,6 +24,12 @@
             "name": "quantity"
           }
         }
+      },
+      {
+        "ordinal": 2,
+        "name": "tracked!",
+        "type_info": "Bool",
+        "origin": "Expression"
       }
     ],
     "parameters": {
@@ -33,8 +39,9 @@
     },
     "nullable": [
       true,
-      true
+      true,
+      null
     ]
   },
-  "hash": "2473a10ffc8d773e9df5f6d6a3d4bfcb1db30db79d5edb693e1d319b19e22b37"
+  "hash": "89b2406215e503b8d76646f56ea48cb9d9d573e7ab9891410f0d6d8393e556fb"
 }

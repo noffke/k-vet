@@ -97,6 +97,15 @@ default and exceeds the statutory maximum**: § 10 Abs. 1 permits *höchstens* t
 the vet, not a default of this application. It never bites on veterinary medicines, whose bands stay
 below 100 %.
 
+## Consumables are not priced by the AMPreisV
+
+A drug marked "Ohne Bestand" — syringes, needles, bandages (logic.md) — is not an Arzneimittel,
+so the AMPreisV does not apply to it (decided 2026-11-18). Its sales price is the one the vet
+types; nothing computes it, and a changed list price moves nothing — the list price stays on
+record for reference only. It is billed in whole packs, without the Teilmenge mark-up: no
+Teilmenge, never "Beliebig teilbar". Turned back into a drug, the AMPreisV applies again to a
+price the vet did not type.
+
 ## Net is the stored unit
 
 Prices are stored and edited **net**; the gross is derived. This follows the law rather than

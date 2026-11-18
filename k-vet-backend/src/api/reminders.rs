@@ -46,8 +46,11 @@ pub struct Reminder {
     pub position: i32,
     /// The position it became; absent while it is a reminder.
     pub taken_item_id: Option<i64>,
-    /// The drug's lots together hold less than this reminder needs.
+    /// The drug's lots together hold less than this reminder needs. Never for a drug "Ohne
+    /// Bestand", whose stock is not kept.
     pub stock_short: bool,
+    /// "Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf.
+    pub without_stock: bool,
 }
 
 #[derive(Debug, Deserialize, ToSchema)]
@@ -85,8 +88,10 @@ pub struct PackingTotal {
     pub quantity: Decimal,
     /// What the drug's lots hold together, in base units.
     pub in_stock: Decimal,
-    /// The day needs more of the drug than its lots hold.
+    /// The day needs more of the drug than its lots hold. Never for a drug "Ohne Bestand".
     pub short: bool,
+    /// "Ohne Bestand" (migration 0043): its stock is not kept, so there is none to show.
+    pub without_stock: bool,
 }
 
 /// An appointment of the day with what to bring to it.
@@ -138,8 +143,9 @@ async fn load(
                   packaging.unit, packaging.quantity AS size,
                   reminder.quantity, reminder.note, reminder.packed, reminder.position,
                   reminder.taken_item_id,
-                  (rule.original_id IS NOT NULL
+                  (rule.original_id IS NOT NULL AND NOT drug.without_stock
                    AND COALESCE(stock.remaining, 0) < reminder.quantity) AS "stock_short!",
+                  drug.without_stock,
                   rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,
                   rule.subset_price_net, rule.freely_divisible AS "freely_divisible?",
                   rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?"
@@ -194,6 +200,7 @@ async fn load(
             position: row.position,
             taken_item_id: row.taken_item_id,
             stock_short: row.stock_short,
+            without_stock: row.without_stock,
         })
         .collect())
 }
@@ -526,8 +533,9 @@ pub async fn packing_list(
                   packaging.unit, packaging.quantity AS size,
                   SUM(day.quantity) AS "quantity!",
                   COALESCE(MAX(stock.remaining), 0) AS "in_stock!",
-                  (bool_or(original.id IS NOT NULL)
-                   AND COALESCE(MAX(stock.remaining), 0) < MAX(need.base)) AS "short!"
+                  (bool_or(original.id IS NOT NULL) AND NOT bool_or(drug.without_stock)
+                   AND COALESCE(MAX(stock.remaining), 0) < MAX(need.base)) AS "short!",
+                  bool_or(drug.without_stock) AS "without_stock!"
            FROM day
            JOIN drug ON drug.id = day.drug_id
            JOIN drug_packaging packaging ON packaging.id = day.drug_packaging_id
@@ -553,6 +561,7 @@ pub async fn packing_list(
         quantity: row.quantity,
         in_stock: row.in_stock,
         short: row.short,
+        without_stock: row.without_stock,
     })
     .collect();
 

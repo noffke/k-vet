@@ -87,6 +87,17 @@ export function DrugDetailPage() {
   const record = drug.data
   const original = (packagings.data ?? []).find((packaging) => packaging.kind === 'original')
   const hasSubsets = (packagings.data ?? []).some((packaging) => packaging.kind === 'subset')
+  // "Ohne Bestand" waits for what it excludes (migration 0043): stock left on the shelf, a
+  // Teilmenge, "Beliebig teilbar". The first in the way is said under the box.
+  const withoutStockBlocked = record.without_stock
+    ? null
+    : Number(record.in_stock) > 0
+      ? t('pharmacy.withoutStockNeedsNoStock')
+      : hasSubsets
+        ? t('pharmacy.withoutStockNeedsNoSubsets')
+        : record.freely_divisible
+          ? t('pharmacy.withoutStockNotDivisible')
+          : null
 
   return (
     <div className="mx-auto max-w-3xl">
@@ -221,20 +232,44 @@ export function DrugDetailPage() {
             <CheckboxField
               label={t('pharmacy.flags.freelyDivisible')}
               defaultChecked={record.freely_divisible}
-              disabled={hasSubsets && !record.freely_divisible}
+              disabled={(hasSubsets || record.without_stock) && !record.freely_divisible}
               onChange={(event) => {
                 autoSave.set({ freely_divisible: event.target.checked })
                 void autoSave.flush()
               }}
             />
             <p className="text-xs text-ink-faint">
-              {hasSubsets && !record.freely_divisible
-                ? t('pharmacy.freelyDivisibleNeedsNoSubsets')
-                : t('pharmacy.freelyDivisibleHint')}
+              {record.without_stock && !record.freely_divisible
+                ? t('pharmacy.freelyDivisibleNotWithoutStock')
+                : hasSubsets && !record.freely_divisible
+                  ? t('pharmacy.freelyDivisibleNeedsNoSubsets')
+                  : t('pharmacy.freelyDivisibleHint')}
             </p>
             {autoSave.fieldErrors.freely_divisible ? (
               <p className="text-xs text-danger" role="alert">
                 {t(autoSave.fieldErrors.freely_divisible)}
+              </p>
+            ) : null}
+          </div>
+          {/* A consumable — syringe, needle, bandage: on the invoice without any stock kept,
+              in whole packs, at the price the vet types; not an Arzneimittel, so not priced by
+              the AMPreisV (migration 0043). */}
+          <div className="mt-2 flex flex-col gap-1">
+            <CheckboxField
+              label={t('pharmacy.flags.withoutStock')}
+              defaultChecked={record.without_stock}
+              disabled={withoutStockBlocked !== null}
+              onChange={(event) => {
+                autoSave.set({ without_stock: event.target.checked })
+                void autoSave.flush()
+              }}
+            />
+            <p className="text-xs text-ink-faint">
+              {withoutStockBlocked ?? t('pharmacy.withoutStockHint')}
+            </p>
+            {autoSave.fieldErrors.without_stock ? (
+              <p className="text-xs text-danger" role="alert">
+                {t(autoSave.fieldErrors.without_stock)}
               </p>
             ) : null}
           </div>

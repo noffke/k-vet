@@ -964,7 +964,7 @@ async fn build_document(
         .collect();
     let packagings: Vec<PackagingDetail> = sqlx::query!(
         r#"SELECT packaging.id, packaging.kind AS "kind: PackagingKind", drug.approval_number,
-                  drug.human_drug OR drug.redesignation AS "redesignated!"
+                  drug.human_drug OR drug.redesignation AS "redesignated!", drug.without_stock
            FROM drug_packaging packaging
            JOIN drug ON drug.id = packaging.drug_id
            WHERE packaging.id = ANY($1)"#,
@@ -978,6 +978,7 @@ async fn build_document(
         kind: row.kind,
         approval_number: row.approval_number,
         redesignated: row.redesignated,
+        consumable: row.without_stock,
     })
     .collect();
 
@@ -1150,6 +1151,9 @@ struct PackagingDetail {
     /// The drug is a Humanpräparat, or flagged "Umwidmung" as a whole: every line of it is used
     /// outside its approval.
     redesignated: bool,
+    /// A consumable "Ohne Bestand" — not an Arzneimittel, so its packs are "Packungen", not
+    /// "Originalpackungen" (migration 0043).
+    consumable: bool,
 }
 
 /// `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333` — empty parts are
@@ -1244,10 +1248,15 @@ fn invoice_rows(
     let unit = item.unit.clone().unwrap_or_default();
     let mut rows = Vec::with_capacity(2);
     if let Some(packs) = &dispense.packs {
-        let label = if packs.quantity == Decimal::ONE {
-            "Originalpackung"
-        } else {
-            "Originalpackungen"
+        let consumable = item
+            .drug_packaging_id
+            .and_then(|id| packagings.iter().find(|row| row.id == id))
+            .is_some_and(|packaging| packaging.consumable);
+        let label = match (consumable, packs.quantity == Decimal::ONE) {
+            (true, true) => "Packung",
+            (true, false) => "Packungen",
+            (false, true) => "Originalpackung",
+            (false, false) => "Originalpackungen",
         };
         let mut detail = format!(
             "{} {label} à {} {unit}",
@@ -1307,7 +1316,12 @@ fn line_detail(item: &treatment_items::TreatmentItem, packagings: &[PackagingDet
     };
     match packaging.kind {
         PackagingKind::Original => {
-            let label = format!("{} Originalpackung", number_de(item.quantity));
+            let pack = if packaging.consumable {
+                "Packung"
+            } else {
+                "Originalpackung"
+            };
+            let label = format!("{} {pack}", number_de(item.quantity));
             match packaging.approval_number.as_deref().map(str::trim) {
                 Some(approval) if !approval.is_empty() => {
                     format!("{label}, Zulassungsnr: {approval}")
@@ -1877,6 +1891,7 @@ mod tests {
             kind: PackagingKind::Original,
             approval_number: Some("402485.00.00".to_owned()),
             redesignated: false,
+            consumable: false,
         }];
         let rows = invoice_rows(&dispensed_line(), &packagings, String::new(), "EUR");
         let printed: Vec<(&str, &str, &str, &str, &str)> = rows
@@ -1927,6 +1942,34 @@ mod tests {
         assert_eq!(rows[0].detail, "2 Originalpackungen à 100 ml");
     }
 
+    /// A consumable "Ohne Bestand" is no Arzneimittel: its packs are "Packungen".
+    #[test]
+    fn a_consumable_prints_packs_not_original_packs() {
+        let consumable = [PackagingDetail {
+            id: 7,
+            kind: PackagingKind::Original,
+            approval_number: None,
+            redesignated: false,
+            consumable: true,
+        }];
+        let mut line = dispensed_line();
+        if let Some(dispense) = line.dispense.as_mut() {
+            dispense.remainder = None;
+        }
+        let rows = invoice_rows(&line, &consumable, String::new(), "EUR");
+        assert_eq!(rows[0].detail, "1 Packung à 100 ml");
+
+        if let Some(packs) = line
+            .dispense
+            .as_mut()
+            .and_then(|dispense| dispense.packs.as_mut())
+        {
+            packs.quantity = Decimal::from(3);
+        }
+        let rows = invoice_rows(&line, &consumable, String::new(), "EUR");
+        assert_eq!(rows[0].detail, "3 Packungen à 100 ml");
+    }
+
     #[test]
     fn both_rows_of_a_dispensed_line_go_to_its_animal() {
         let packagings = [];
@@ -1959,6 +2002,7 @@ mod tests {
                 kind: PackagingKind::Original,
                 approval_number: None,
                 redesignated,
+                consumable: false,
             }]
         };
         let marks = |line: &treatment_items::TreatmentItem, packagings: &[PackagingDetail]| {

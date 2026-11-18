@@ -38,6 +38,12 @@ export interface Drug {
      * only whole packs and multiples of the smallest Teilmenge. For injection liquids.
      */
   freely_divisible: boolean;
+  /**
+     * "Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in
+     * whole packs, at the sales price the vet types; not priced by the AMPreisV (migration
+     * 0043). No lots, no Teilmengen, never "Beliebig teilbar".
+     */
+  without_stock: boolean;
   /** @nullable */
   vat_percent?: string | null;
   /** @nullable */

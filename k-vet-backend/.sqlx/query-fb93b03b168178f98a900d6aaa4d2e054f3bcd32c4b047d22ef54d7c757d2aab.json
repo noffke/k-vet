@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent, drug.human_drug\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n             -- A Teilmenge deleted while billed lines still name it is kept for them only.\n             AND NOT (packaging.kind = 'subset' AND packaging.archived)\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
+  "query": "SELECT packaging.id, packaging.drug_id, packaging.kind AS \"kind: PackagingKind\",\n                  packaging.unit, packaging.quantity, packaging.list_price_net,\n                  packaging.sales_price_net, packaging.price_overridden,\n                  packaging.supplier_id, packaging.archived, packaging.draft,\n                  supplier.name AS \"supplier_name?\", drug.vat_percent, drug.human_drug,\n                  drug.without_stock\n           FROM drug_packaging packaging\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN supplier ON supplier.id = packaging.supplier_id\n           WHERE packaging.drug_id = $1\n             -- A Teilmenge deleted while billed lines still name it is kept for them only.\n             AND NOT (packaging.kind = 'subset' AND packaging.archived)\n           ORDER BY packaging.kind, packaging.quantity NULLS LAST, packaging.id",
   "describe": {
     "columns": [
       {
@@ -166,6 +166,17 @@
             "name": "human_drug"
           }
         }
+      },
+      {
+        "ordinal": 14,
+        "name": "without_stock",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug",
+            "name": "without_stock"
+          }
+        }
       }
     ],
     "parameters": {
@@ -187,8 +198,9 @@
       false,
       true,
       true,
+      false,
       false
     ]
   },
-  "hash": "f6cfad2ada363d7f48d223feab62cbaa06920f9f8838faca6f7b56f48c9ac307"
+  "hash": "fb93b03b168178f98a900d6aaa4d2e054f3bcd32c4b047d22ef54d7c757d2aab"
 }

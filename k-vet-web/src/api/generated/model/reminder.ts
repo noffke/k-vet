@@ -34,6 +34,11 @@ export interface Reminder {
      * @nullable
      */
   taken_item_id?: number | null;
-  /** The drug's lots together hold less than this reminder needs. */
+  /**
+     * The drug's lots together hold less than this reminder needs. Never for a drug "Ohne
+     * Bestand", whose stock is not kept.
+     */
   stock_short: boolean;
+  /** "Ohne Bestand" (migration 0043): a consumable, nothing to check on the shelf. */
+  without_stock: boolean;
 }

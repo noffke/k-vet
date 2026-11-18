@@ -689,3 +689,324 @@ async fn a_dispense_beyond_the_stock_is_marked_and_refused_with_its_reason(pool:
     // Nothing moved: the line keeps its bottle, the lot stays empty.
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
+
+// ---------------------------------------------------------------------------------------------
+// "Ohne Bestand": consumables billed without any stock kept (migration 0043, 2026-11-18).
+// ---------------------------------------------------------------------------------------------
+
+async fn movement_count(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM drug_stock_movement")
+        .fetch_one(pool)
+        .await
+        .expect("count movements")
+}
+
+/// The seeded drug as a consumable: its Teilmenge deleted, the flag set.
+async fn consumable(app: &TestApp, drug: &common::SeededDrug) {
+    let deleted = app
+        .delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        .await;
+    assert!(deleted.status.is_success(), "the Teilmenge goes first");
+    let marked = app
+        .patch(
+            &format!("/api/drugs/{}", drug.drug_id),
+            json!({ "without_stock": true }),
+        )
+        .await;
+    assert_eq!(
+        marked.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&marked.body)
+    );
+    assert_eq!(marked.json()["without_stock"], true);
+}
+
+/// A consumable goes on the invoice without any lot: picked, raised, released and cancelled,
+/// and not one stock movement is written. It goes in whole packs only.
+#[sqlx::test]
+async fn a_consumable_is_billed_without_any_stock(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    consumable(&app, &drug).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+
+    // Offered as such, never short.
+    let picker = app.get("/api/picker/items?q=Amoxicillin").await.json();
+    let item = picker
+        .as_array()
+        .and_then(|items| {
+            items
+                .iter()
+                .find(|item| item["kind"] == "drug_packaging" && item["id"] == drug.packaging_id)
+        })
+        .cloned()
+        .expect("the consumable is offered");
+    assert_eq!(item["without_stock"], true);
+    assert_eq!(item["stock_short"], false);
+
+    let line = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/items"),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "100" }),
+        )
+        .await;
+    assert_eq!(
+        line.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&line.body)
+    );
+    let line_id = line.id();
+    let raised = app
+        .patch(
+            &format!("/api/treatment-items/{line_id}"),
+            json!({ "quantity": "300" }),
+        )
+        .await;
+    assert_eq!(raised.status, StatusCode::OK);
+    // No Teilmenge: a rest of a pack does not go through.
+    let rest = app
+        .patch(
+            &format!("/api/treatment-items/{line_id}"),
+            json!({ "quantity": "150" }),
+        )
+        .await;
+    assert_eq!(rest.status, StatusCode::UNPROCESSABLE_ENTITY);
+
+    let invoice_id = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({}),
+        )
+        .await
+        .id();
+    let accepted = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/accept"),
+            json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+        )
+        .await;
+    assert_eq!(accepted.status, StatusCode::OK);
+    let cancelled = app
+        .post_empty(&format!("/api/invoices/{invoice_id}/cancel"))
+        .await;
+    assert!(cancelled.status.is_success());
+    assert_eq!(movement_count(&pool).await, 0, "nothing taken off a shelf");
+}
+
+/// The flag waits for what it excludes — stock on the shelf, a Teilmenge — and while it is set
+/// nothing brings stock back: no Wareneingang, no correction, no Teilmenge, no "Beliebig
+/// teilbar". A lot from before stays readable, and says so.
+#[sqlx::test]
+async fn a_consumable_takes_no_stock_teilmenge_or_division(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+    let flag = |value: bool| json!({ "without_stock": value });
+    let drug_uri = format!("/api/drugs/{}", drug.drug_id);
+
+    let with_stock = app.patch(&drug_uri, flag(true)).await;
+    assert_eq!(with_stock.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(
+        with_stock.json()["errors"],
+        json!([{ "field": "without_stock", "message": "drug.hasStock" }])
+    );
+    let emptied = app
+        .post(
+            &format!("/api/lots/{lot}/corrections"),
+            json!({ "new_remaining": "0", "reason": "Inventur" }),
+        )
+        .await;
+    assert_eq!(emptied.status, StatusCode::OK);
+
+    let with_subset = app.patch(&drug_uri, flag(true)).await;
+    assert_eq!(
+        with_subset.json()["errors"],
+        json!([{ "field": "without_stock", "message": "drug.withoutStockHasSubsets" }])
+    );
+    consumable(&app, &drug).await;
+
+    // The lot from before is history: it says so, and takes no correction.
+    let before = movement_count(&pool).await;
+    let detail = app.get(&format!("/api/lots/{lot}")).await.json();
+    assert_eq!(detail["drug_without_stock"], true);
+    let corrected = app
+        .post(
+            &format!("/api/lots/{lot}/corrections"),
+            json!({ "new_remaining": "5", "reason": "Fund" }),
+        )
+        .await;
+    assert_eq!(
+        corrected.json()["errors"],
+        json!([{ "field": "new_remaining", "message": "lot.drugWithoutStock" }])
+    );
+    // Nor does the database take one written past the API.
+    let written = sqlx::query(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason)
+         VALUES ($1, 'correction', 5, 'roh')",
+    )
+    .bind(lot)
+    .execute(&pool)
+    .await;
+    assert!(written.is_err(), "the trigger refuses it");
+    assert_eq!(movement_count(&pool).await, before);
+
+    let intake = app
+        .post(
+            &format!("/api/packagings/{}/stock-intakes", drug.packaging_id),
+            json!({ "packages_received": 1, "batch_number": "CH-1" }),
+        )
+        .await;
+    assert_eq!(
+        intake.json()["errors"],
+        json!([{ "field": "packages_received", "message": "lot.drugWithoutStock" }])
+    );
+    let subset = app
+        .post(
+            &format!("/api/drugs/{}/packagings", drug.drug_id),
+            json!({ "kind": "subset" }),
+        )
+        .await;
+    assert_eq!(
+        subset.json()["errors"],
+        json!([{ "field": "kind", "message": "packaging.withoutStock" }])
+    );
+    let divisible = app
+        .patch(&drug_uri, json!({ "freely_divisible": true }))
+        .await;
+    assert_eq!(
+        divisible.json()["errors"],
+        json!([{ "field": "without_stock", "message": "drug.withoutStockNotDivisible" }])
+    );
+
+    // Turned off, it is a drug with stock again.
+    assert_eq!(
+        app.patch(&drug_uri, flag(false)).await.status,
+        StatusCode::OK
+    );
+    let intake = app
+        .post(
+            &format!("/api/packagings/{}/stock-intakes", drug.packaging_id),
+            json!({ "packages_received": 1, "batch_number": "CH-2" }),
+        )
+        .await;
+    assert_eq!(intake.status, StatusCode::OK);
+}
+
+/// A consumable is no Arzneimittel: the AMPreisV does not price it. Its sales price is the one
+/// the vet types, and a changed list price moves nothing; turned off, the AMPreisV is back.
+#[sqlx::test]
+async fn a_consumable_is_priced_by_the_vet_not_the_ampreisv(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    consumable(&app, &drug).await;
+    let packaging_uri = format!("/api/packagings/{}", drug.packaging_id);
+    let original = |packagings: Value| {
+        packagings
+            .as_array()
+            .and_then(|all| all.iter().find(|row| row["kind"] == "original").cloned())
+            .expect("the original")
+    };
+    let packagings_uri = format!("/api/drugs/{}/packagings", drug.drug_id);
+
+    let shown = original(app.get(&packagings_uri).await.json());
+    assert!(shown["computed_price_net"].is_null(), "no AMPreisV figure");
+
+    app.patch(&packaging_uri, json!({ "list_price_net": "20.00" }))
+        .await;
+    let after_list = original(app.get(&packagings_uri).await.json());
+    assert_eq!(
+        after_list["sales_price_net"], "12.50",
+        "the list price moves nothing"
+    );
+
+    app.patch(&packaging_uri, json!({ "sales_price_net": "3.00" }))
+        .await;
+    let typed = original(app.get(&packagings_uri).await.json());
+    assert_eq!(typed["sales_price_net"], "3.00");
+
+    // Back to a drug: the AMPreisV figure is shown again, beside the price the vet typed.
+    app.patch(
+        &format!("/api/drugs/{}", drug.drug_id),
+        json!({ "without_stock": false }),
+    )
+    .await;
+    let drug_again = original(app.get(&packagings_uri).await.json());
+    assert!(!drug_again["computed_price_net"].is_null());
+    assert_eq!(drug_again["sales_price_net"], "3.00");
+    assert_eq!(drug_again["price_overridden"], true);
+}
+
+/// Mitbringen and the Packliste never call a consumable short: there is no stock to be short of.
+#[sqlx::test]
+async fn a_consumable_to_bring_is_never_short(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    consumable(&app, &drug).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+
+    let reminder = app
+        .post(
+            &format!("/api/appointments/{appointment_id}/reminders"),
+            json!({ "drug_packaging_id": drug.packaging_id, "quantity": "200" }),
+        )
+        .await
+        .json();
+    assert_eq!(reminder["stock_short"], false);
+    assert_eq!(reminder["without_stock"], true);
+
+    let today = chrono::Local::now().date_naive();
+    let packing = app
+        .get(&format!("/api/packing-list?date={today}"))
+        .await
+        .json();
+    let total = &packing["totals"][0];
+    assert_eq!(total["short"], false);
+    assert_eq!(total["without_stock"], true);
+}
+
+/// An invoice billed before the flag is still cancelled whole: its dispense goes back to the
+/// lot it came from — the ledger staying true, not stock being kept.
+#[sqlx::test]
+async fn an_invoice_from_before_the_flag_is_still_reversed(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+    let appointment_id = common::seed_appointment(&pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(&pool, appointment_id, patient_id).await;
+    app.post(
+        &format!("/api/treatments/{treatment_id}/items"),
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id, "quantity": "100" }),
+    )
+    .await;
+    let invoice_id = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({}),
+        )
+        .await
+        .id();
+    app.post(
+        &format!("/api/invoices/{invoice_id}/accept"),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+    )
+    .await;
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
+    consumable(&app, &drug).await;
+
+    let cancelled = app
+        .post_empty(&format!("/api/invoices/{invoice_id}/cancel"))
+        .await;
+    assert!(
+        cancelled.status.is_success(),
+        "{}",
+        String::from_utf8_lossy(&cancelled.body)
+    );
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("100"));
+}

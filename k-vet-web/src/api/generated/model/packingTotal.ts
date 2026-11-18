@@ -24,6 +24,8 @@ export interface PackingTotal {
   quantity: string;
   /** What the drug's lots hold together, in base units. */
   in_stock: string;
-  /** The day needs more of the drug than its lots hold. */
+  /** The day needs more of the drug than its lots hold. Never for a drug "Ohne Bestand". */
   short: boolean;
+  /** "Ohne Bestand" (migration 0043): its stock is not kept, so there is none to show. */
+  without_stock: boolean;
 }
