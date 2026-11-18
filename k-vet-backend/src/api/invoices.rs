@@ -1151,7 +1151,7 @@ struct PackagingDetail {
     /// The drug is a Humanpräparat, or flagged "Umwidmung" as a whole: every line of it is used
     /// outside its approval.
     redesignated: bool,
-    /// A consumable "Ohne Bestand" — not an Arzneimittel, so its packs are "Packungen", not
+    /// A consumable "Ohne Bestand" — not an Arzneimittel, so it is counted in "Stück", not
     /// "Originalpackungen" (migration 0043).
     consumable: bool,
 }
@@ -1252,17 +1252,22 @@ fn invoice_rows(
             .drug_packaging_id
             .and_then(|id| packagings.iter().find(|row| row.id == id))
             .is_some_and(|packaging| packaging.consumable);
+        // A consumable is counted in pieces, not packs: "3 Stück" for a syringe set up as one,
+        // "2 Stück à 5 m" for a roll of bandage — never "Originalpackung", which is a drug's.
         let label = match (consumable, packs.quantity == Decimal::ONE) {
-            (true, true) => "Packung",
-            (true, false) => "Packungen",
+            (true, _) => "Stück",
             (false, true) => "Originalpackung",
             (false, false) => "Originalpackungen",
         };
-        let mut detail = format!(
-            "{} {label} à {} {unit}",
-            number_de(packs.quantity),
-            number_de(dispense.rule.pack_size)
-        );
+        let mut detail = if consumable && dispense.rule.pack_size == Decimal::ONE {
+            format!("{} {label}", number_de(packs.quantity))
+        } else {
+            format!(
+                "{} {label} à {} {unit}",
+                number_de(packs.quantity),
+                number_de(dispense.rule.pack_size)
+            )
+        };
         if let Some(approval) = item
             .drug_packaging_id
             .and_then(|id| packagings.iter().find(|row| row.id == id))
@@ -1317,7 +1322,7 @@ fn line_detail(item: &treatment_items::TreatmentItem, packagings: &[PackagingDet
     match packaging.kind {
         PackagingKind::Original => {
             let pack = if packaging.consumable {
-                "Packung"
+                "Stück"
             } else {
                 "Originalpackung"
             };
@@ -1942,9 +1947,10 @@ mod tests {
         assert_eq!(rows[0].detail, "2 Originalpackungen à 100 ml");
     }
 
-    /// A consumable "Ohne Bestand" is no Arzneimittel: its packs are "Packungen".
+    /// A consumable "Ohne Bestand" is no Arzneimittel: it is counted in "Stück" — just the
+    /// number for one set up as a single piece, with its content for a larger pack.
     #[test]
-    fn a_consumable_prints_packs_not_original_packs() {
+    fn a_consumable_is_counted_in_pieces() {
         let consumable = [PackagingDetail {
             id: 7,
             kind: PackagingKind::Original,
@@ -1952,22 +1958,25 @@ mod tests {
             redesignated: false,
             consumable: true,
         }];
-        let mut line = dispensed_line();
-        if let Some(dispense) = line.dispense.as_mut() {
-            dispense.remainder = None;
-        }
-        let rows = invoice_rows(&line, &consumable, String::new(), "EUR");
-        assert_eq!(rows[0].detail, "1 Packung à 100 ml");
-
-        if let Some(packs) = line
-            .dispense
-            .as_mut()
-            .and_then(|dispense| dispense.packs.as_mut())
-        {
-            packs.quantity = Decimal::from(3);
-        }
-        let rows = invoice_rows(&line, &consumable, String::new(), "EUR");
-        assert_eq!(rows[0].detail, "3 Packungen à 100 ml");
+        let detail = |pack_size: i64, packs: i64| {
+            let mut line = dispensed_line();
+            if let Some(dispense) = line.dispense.as_mut() {
+                dispense.remainder = None;
+                dispense.rule.pack_size = Decimal::from(pack_size);
+                if let Some(part) = dispense.packs.as_mut() {
+                    part.quantity = Decimal::from(packs);
+                }
+            }
+            line.unit = Some(if pack_size == 1 { "Stück" } else { "m" }.to_owned());
+            invoice_rows(&line, &consumable, String::new(), "EUR")[0]
+                .detail
+                .clone()
+        };
+        // A syringe, set up as one piece: three of them.
+        assert_eq!(detail(1, 3), "3 Stück");
+        assert_eq!(detail(1, 1), "1 Stück");
+        // A roll of bandage of 5 m: two rolls.
+        assert_eq!(detail(5, 2), "2 Stück à 5 m");
     }
 
     #[test]
