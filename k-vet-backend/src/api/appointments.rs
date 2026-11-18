@@ -207,7 +207,8 @@ pub async fn list(
              AND ($5::text IS NULL
                   OR ($5 = 'upcoming'
                       AND (appointment.starts_at IS NULL OR appointment.starts_at >= $6))
-                  OR ($5 = 'past' AND appointment.starts_at < $6))
+                  OR ($5 = 'past' AND appointment.starts_at < $6)
+                  OR ($5 = 'today' AND appointment.starts_at >= $6 AND appointment.starts_at < $7))
              AND ($1::text IS NULL
                   OR appointment.note ILIKE '%' || $1 || '%'
                   OR concat_ws(' ', customer.first_name, customer.last_name) ILIKE '%' || $1 || '%'
@@ -218,8 +219,8 @@ pub async fn list(
            -- What is coming reads forwards, the undated drafts first; everything else
            -- backwards from the newest.
            ORDER BY
-             CASE WHEN $5 = 'upcoming' THEN appointment.starts_at END ASC NULLS FIRST,
-             CASE WHEN $5 IS DISTINCT FROM 'upcoming' THEN appointment.starts_at END
+             CASE WHEN $5 IN ('upcoming', 'today') THEN appointment.starts_at END ASC NULLS FIRST,
+             CASE WHEN $5 IS NULL OR $5 = 'past' THEN appointment.starts_at END
                DESC NULLS FIRST,
              appointment.id DESC
            LIMIT $2 OFFSET $3"#,
@@ -230,8 +231,10 @@ pub async fn list(
         filter.when.map(|when| match when {
             AppointmentWhen::Upcoming => "upcoming",
             AppointmentWhen::Past => "past",
+            AppointmentWhen::Today => "today",
         }),
         start_of_today(),
+        start_of_tomorrow(),
     )
     .fetch_all(&state.pool)
     .await?;
@@ -244,7 +247,8 @@ pub async fn list(
 pub struct AppointmentFilter {
     /// Only this customer's appointments — the customer page lists them.
     pub customer_id: Option<i64>,
-    /// Today and later (with the undated drafts first), or before today; absent, all of them.
+    /// Today and later (with the undated drafts first), today alone, or before today; absent,
+    /// all of them.
     #[param(inline)]
     pub when: Option<AppointmentWhen>,
 }
@@ -257,11 +261,24 @@ pub enum AppointmentWhen {
     Upcoming,
     /// Before today, latest first — what was.
     Past,
+    /// Today alone, earliest first — the dashboard's day (undated drafts are not on it).
+    Today,
 }
 
 /// Midnight of the server's today: where "Anstehend" begins and "Vergangen" ends.
 fn start_of_today() -> DateTime<Utc> {
-    let midnight = Local::now().date_naive().and_time(NaiveTime::MIN);
+    start_of(Local::now().date_naive())
+}
+
+/// Midnight of tomorrow, where "today" ends — computed in local time, so a day of 23 or 25
+/// hours (the clocks changing) is still one day.
+fn start_of_tomorrow() -> DateTime<Utc> {
+    let today = Local::now().date_naive();
+    start_of(today.succ_opt().unwrap_or(today))
+}
+
+fn start_of(date: chrono::NaiveDate) -> DateTime<Utc> {
+    let midnight = date.and_time(NaiveTime::MIN);
     Local
         .from_local_datetime(&midnight)
         .earliest()

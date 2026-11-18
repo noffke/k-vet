@@ -20,6 +20,18 @@ export function addressLine(address: MapsAddress): string | null {
   return `${street}, ${place}`
 }
 
+/**
+ * Where a visit goes — the customer's home — or null without street and town. The country
+ * falls back to the practice's default, as the customer record does.
+ */
+export function visitDestination(
+  address: MapsAddress | null | undefined,
+  defaultCountry: string,
+): MapsAddress | null {
+  if (!address || !addressLine(address)) return null
+  return { ...address, country: address.country ?? defaultCountry }
+}
+
 /** The country's name in `locale`, which Google reads more surely than a two-letter code. */
 function countryName(code: string, locale: string): string {
   try {

@@ -20,7 +20,7 @@ import { Button } from '@/components/ui/button'
 import { useOperatorConfig } from '@/lib/config'
 import { formatDayHeading, todayIso } from '@/lib/format'
 import { useLocaleFormat } from '@/lib/locale'
-import { addressLine, type MapsAddress } from '@/lib/maps'
+import { addressLine, type MapsAddress, visitDestination } from '@/lib/maps'
 import { usePagedList } from '@/lib/paging'
 import { scheduleOf } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
@@ -54,10 +54,8 @@ export function AppointmentsPage() {
   const newAppointment = useNewAppointment()
   const { default_country: defaultCountry } = useOperatorConfig()
   /** Where an upcoming visit goes — the customer's home — or null without street and town. */
-  const destination = (row: Appointment): MapsAddress | null => {
-    if (!row.address || !addressLine(row.address)) return null
-    return { ...row.address, country: row.address.country ?? defaultCountry }
-  }
+  const destination = (row: Appointment): MapsAddress | null =>
+    visitDestination(row.address, defaultCountry)
 
   const today = todayIso()
   const tomorrow = nextDay(today)

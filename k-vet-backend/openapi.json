@@ -98,14 +98,15 @@
           {
             "name": "when",
             "in": "query",
-            "description": "Today and later (with the undated drafts first), or before today; absent, all of them.",
+            "description": "Today and later (with the undated drafts first), today alone, or before today; absent,\nall of them.",
             "required": false,
             "schema": {
               "type": "string",
               "description": "Which side of today an appointment list shows.",
               "enum": [
                 "upcoming",
-                "past"
+                "past",
+                "today"
               ]
             }
           }

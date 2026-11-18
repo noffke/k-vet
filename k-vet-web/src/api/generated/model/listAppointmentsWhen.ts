@@ -12,4 +12,5 @@ export type ListAppointmentsWhen = typeof ListAppointmentsWhen[keyof typeof List
 export const ListAppointmentsWhen = {
   upcoming: 'upcoming',
   past: 'past',
+  today: 'today',
 } as const;

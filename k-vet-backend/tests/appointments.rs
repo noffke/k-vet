@@ -802,6 +802,13 @@ async fn the_list_splits_upcoming_from_past(pool: PgPool) {
         ids("/api/appointments").await,
         [undated, next_week, tomorrow, today, yesterday, long_ago]
     );
+    // Today alone — the dashboard's day: no undated draft, nothing from either side of it.
+    let early = create(Some(today_noon - chrono::TimeDelta::hours(3)), "Früh").await;
+    assert_eq!(
+        ids("/api/appointments?when=today").await,
+        [early, today],
+        "earliest first"
+    );
 }
 
 /// From the customer's page or an animal's: the appointment is the customer's, and an animal

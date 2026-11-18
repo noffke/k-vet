@@ -179,6 +179,8 @@ There should be the option to bulk-download all PDFs not submitted for bookkeepi
 ## Dashboard
 On the dashboard, we should give the number of invoices not yet submitted to bookkeeping and allow to directly jump to the corresponding page.
 
+First on the dashboard, always: **today's appointments** (2026-11-18), in time order, the ones already over included. Each opens its appointment and carries its chips as in Termine — so today's work not yet billed shows here, while "not billed" below counts from yesterday back — and the customer's address with a "Route" link that opens the drive there in Google Maps (the Maps app on the phone).
+
 There are two ways the practice loses money, and the dashboard tracks both — as three lists,
 because each has its own remedy. Each shows the oldest few cases with the customer, the animals,
 the date and the amount, links each row to the treatment it is settled on, and says how many

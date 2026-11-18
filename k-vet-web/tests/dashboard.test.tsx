@@ -1,7 +1,13 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import type { AtRisk, AtRiskEntry, Dashboard, QueuedEmail } from '@/api/generated/model'
+import type {
+  Appointment,
+  AtRisk,
+  AtRiskEntry,
+  Dashboard,
+  QueuedEmail,
+} from '@/api/generated/model'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import i18n from '@/lib/i18n'
 
@@ -10,8 +16,11 @@ const answer: { data: Dashboard | undefined; isPending: boolean } = {
   isPending: true,
 }
 
+const today: { data: Appointment[] } = { data: [] }
+
 vi.mock('@/api/generated/endpoints', () => ({
   useGetDashboard: () => ({ ...answer, isError: false }),
+  useListAppointments: () => ({ data: today.data, isSuccess: true }),
   // The operator's currency: absent, money is formatted with the German defaults.
   useGetConfig: () => ({ data: undefined }),
 }))
@@ -149,12 +158,50 @@ describe('DashboardPage', () => {
   it('says once that nothing is waiting', () => {
     show(dashboard())
     expect(screen.getByText('Alles erledigt — nichts wartet.')).toBeInTheDocument()
-    expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
+    // Only the day's appointments, which are always there.
+    expect(
+      screen.queryAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(['Heute'])
   })
 
   it('shows neither sections nor "all done" while it loads', () => {
     show(undefined)
     expect(screen.queryByText('Alles erledigt — nichts wartet.')).not.toBeInTheDocument()
-    expect(screen.queryAllByRole('heading', { level: 2 })).toHaveLength(0)
+    expect(
+      screen.queryAllByRole('heading', { level: 2 }).map((heading) => heading.textContent),
+    ).toEqual(['Heute'])
+  })
+
+  // Today's appointments, each a link to it, with the chips Termine shows.
+  it("lists today's appointments, or says there are none", () => {
+    today.data = []
+    show(dashboard())
+    expect(screen.getByText('Heute keine Termine')).toBeInTheDocument()
+    today.data = [
+      {
+        id: 3,
+        starts_at: '2026-11-18T08:30:00Z',
+        note: null,
+        draft: false,
+        missing_fields: [],
+        customer_id: 1,
+        customer_name: 'Erika Mustermann',
+        address: { street: 'Musterweg 5', zip: '12345', city: 'Musterstadt', country: 'DE' },
+        patient_names: ['Bello'],
+        treatment_id: 3,
+        unbilled: true,
+        pdf_stale: false,
+        reminder_count: 0,
+        from_phone: false,
+        calendar_hidden: false,
+        created_at: '2026-11-18T07:00:00Z',
+        updated_at: '2026-11-18T07:00:00Z',
+      } as Appointment,
+    ]
+    show(dashboard())
+    expect(screen.getByText('Erika Mustermann')).toBeInTheDocument()
+    expect(screen.getByText('Musterweg 5, 12345 Musterstadt')).toBeInTheDocument()
+    expect(screen.getByText('Nicht abgerechnet')).toBeInTheDocument()
+    today.data = []
   })
 })

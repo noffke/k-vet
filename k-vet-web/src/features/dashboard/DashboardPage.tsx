@@ -12,6 +12,7 @@ import { useGetDashboard } from '@/api/generated/endpoints'
 import type { AtRisk, QueuedEmail } from '@/api/generated/model'
 import { PageHeader } from '@/components/PageHeader'
 import { FailedMailsCard } from '@/features/dashboard/FailedMailsCard'
+import { TodayCard } from '@/features/dashboard/TodayCard'
 import { useLocaleFormat } from '@/lib/locale'
 import { isAhead } from '@/lib/schedule'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,11 @@ export function DashboardPage() {
   return (
     <div className="mx-auto max-w-5xl">
       <PageHeader eyebrow={t('app.practice')} title={t('dashboard.title')} />
+
+      {/* The day ahead first: where to go, and what of it is still to bill. */}
+      <div className="mt-5">
+        <TodayCard />
+      </div>
 
       {dashboard.isError ? (
         <p className="mt-5 text-sm text-danger" role="alert">
