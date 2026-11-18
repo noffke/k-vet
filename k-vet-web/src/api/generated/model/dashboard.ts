@@ -17,8 +17,9 @@ export interface Dashboard {
   /** Invoices written but never released. */
   unreleased: AtRisk;
   /**
-     * Invoices released but never sent to the customer — including the ones whose email
-     * failed on the way out, which is the case nothing used to show.
+     * Invoices released and not yet sent to the customer: a mail waiting for its time or for
+     * the queue's next run, one that failed on the way out, or none at all. Each entry says
+     * which through its `email_queue`; the failed ones come first.
      */
   unsent: AtRisk;
   /**

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
 import type { ReactNode } from 'react'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import type { AtRisk, Dashboard } from '@/api/generated/model'
+import type { AtRisk, AtRiskEntry, Dashboard, QueuedEmail } from '@/api/generated/model'
 import { DashboardPage } from '@/features/dashboard/DashboardPage'
 import i18n from '@/lib/i18n'
 
@@ -42,6 +42,31 @@ function dashboard(changes: Partial<Dashboard> = {}): Dashboard {
   }
 }
 
+function released(customer: string, email_queue: QueuedEmail | null): AtRiskEntry {
+  return {
+    treatment_id: customer.length,
+    invoice_number: `2026-${customer.length}`,
+    date: '2026-10-20',
+    customer_name: customer,
+    patients: ['Bello'],
+    total_gross: '28.11',
+    email_queue,
+  }
+}
+
+function mail(changes: Partial<QueuedEmail>): QueuedEmail {
+  return {
+    id: 1,
+    invoice_id: 1,
+    recipients: ['kundin@example.com'],
+    queued_at: '2026-10-20T08:00:00Z',
+    send_after: '2026-10-20T08:00:00Z',
+    attempts: 0,
+    refused: false,
+    ...changes,
+  }
+}
+
 function show(data: Dashboard | undefined) {
   answer.data = data
   answer.isPending = data === undefined
@@ -70,7 +95,7 @@ describe('DashboardPage', () => {
               customer_name: 'Erika Mustermann',
               patients: ['Bello'],
               total_gross: '28.11',
-              mail_scheduled_for: null,
+              email_queue: null,
             },
           ],
         },
@@ -89,6 +114,36 @@ describe('DashboardPage', () => {
     }
     expect(screen.queryByText(/Rechnungen für die Buchhaltung/)).not.toBeInTheDocument()
     expect(screen.queryByText('Alles erledigt — nichts wartet.')).not.toBeInTheDocument()
+  })
+
+  // "freigegeben, aber nie beim Kunden angekommen" was untrue of a mail scheduled for later
+  // (issues.md): each row says where its mail is instead, and a failed one says why.
+  it('tells a scheduled, a failed and an unqueued mail apart, without the old explanation', () => {
+    show(
+      dashboard({
+        unsent: {
+          count: 3,
+          entries: [
+            released(
+              'Gerda Gescheitert',
+              mail({
+                last_error: 'permanent error (550): no such user',
+                refused: true,
+                gave_up_at: '2026-10-20T08:05:00Z',
+              }),
+            ),
+            released('Paula Plan', mail({ send_after: '2099-01-02T07:00:00Z' })),
+            released('Otto Ohnemail', null),
+          ],
+        },
+      }),
+    )
+    expect(
+      screen.getByText('E-Mail-Versand abgebrochen: permanent error (550): no such user'),
+    ).toBeInTheDocument()
+    expect(screen.getByText(/^E-Mail geplant: 02\.01\.2099/)).toBeInTheDocument()
+    expect(screen.getByText('Keine E-Mail geplant')).toBeInTheDocument()
+    expect(screen.queryByText(/nie beim Kunden angekommen/)).not.toBeInTheDocument()
   })
 
   it('says once that nothing is waiting', () => {

@@ -847,7 +847,20 @@ export const GetDashboardResponse = zod.object({
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
   "total_gross": zod.string(),
-  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
+  "email_queue": zod.union([zod.object({
+  "id": zod.int(),
+  "invoice_id": zod.int(),
+  "recipients": zod.array(zod.string()),
+  "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
+  "attempts": zod.int(),
+  "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
+  "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
+  "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
+  "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
+  "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
+}).describe('A released invoice\'s mail as the queue holds it: when it goes out, or how it failed.\nWithout it, a mail scheduled on purpose looked just like one that never arrived, and\nthat like one never queued at all. `None` where no mail is queued, and on the lists\nbefore release.'),zod.null()]).optional()
 }))
 }).describe('Treatments that were worked and billed to nobody.'),
   "unreleased": zod.object({
@@ -859,7 +872,20 @@ export const GetDashboardResponse = zod.object({
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
   "total_gross": zod.string(),
-  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
+  "email_queue": zod.union([zod.object({
+  "id": zod.int(),
+  "invoice_id": zod.int(),
+  "recipients": zod.array(zod.string()),
+  "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
+  "attempts": zod.int(),
+  "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
+  "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
+  "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
+  "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
+  "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
+}).describe('A released invoice\'s mail as the queue holds it: when it goes out, or how it failed.\nWithout it, a mail scheduled on purpose looked just like one that never arrived, and\nthat like one never queued at all. `None` where no mail is queued, and on the lists\nbefore release.'),zod.null()]).optional()
 }))
 }).describe('Invoices written but never released.'),
   "unsent": zod.object({
@@ -871,9 +897,22 @@ export const GetDashboardResponse = zod.object({
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
   "total_gross": zod.string(),
-  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
+  "email_queue": zod.union([zod.object({
+  "id": zod.int(),
+  "invoice_id": zod.int(),
+  "recipients": zod.array(zod.string()),
+  "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
+  "attempts": zod.int(),
+  "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
+  "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
+  "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
+  "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
+  "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
+}).describe('A released invoice\'s mail as the queue holds it: when it goes out, or how it failed.\nWithout it, a mail scheduled on purpose looked just like one that never arrived, and\nthat like one never queued at all. `None` where no mail is queued, and on the lists\nbefore release.'),zod.null()]).optional()
 }))
-}).describe('Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show.'),
+}).describe('Invoices released and not yet sent to the customer: a mail waiting for its time or for\nthe queue\'s next run, one that failed on the way out, or none at all. Each entry says\nwhich through its `email_queue`; the failed ones come first.'),
   "stale_pdfs": zod.object({
   "count": zod.int(),
   "entries": zod.array(zod.object({
@@ -883,7 +922,20 @@ export const GetDashboardResponse = zod.object({
   "customer_name": zod.string(),
   "patients": zod.array(zod.string()),
   "total_gross": zod.string(),
-  "mail_scheduled_for": zod.iso.datetime({"offset":true}).nullish().describe('When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one.')
+  "email_queue": zod.union([zod.object({
+  "id": zod.int(),
+  "invoice_id": zod.int(),
+  "recipients": zod.array(zod.string()),
+  "queued_at": zod.iso.datetime({"offset":true}),
+  "send_after": zod.iso.datetime({"offset":true}).describe('Not sent before this: now for "send now", a chosen hour for "send later".'),
+  "template": zod.string().nullish().describe('The email template it goes out with, by name; empty for a mail queued before templates\ncould be chosen, which goes out with the first.'),
+  "attempts": zod.int(),
+  "last_attempt_at": zod.iso.datetime({"offset":true}).nullish(),
+  "last_error": zod.string().nullish().describe('The transport\'s own words for the last failure: the host it could not reach, or the\nmail server\'s reply ("permanent error (550): no such user"). Empty while nothing failed.'),
+  "refused": zod.boolean().describe('The last failure was final — the mail server refused for good, or the mail could not be\nbuilt — so it is not retried.'),
+  "retry_until": zod.iso.datetime({"offset":true}).nullish().describe('Until when a failing mail is retried; empty while nothing failed.'),
+  "gave_up_at": zod.iso.datetime({"offset":true}).nullish().describe('No more attempts: refused, or still failing [`RETRY_HOURS`] after the first failure.')
+}).describe('A released invoice\'s mail as the queue holds it: when it goes out, or how it failed.\nWithout it, a mail scheduled on purpose looked just like one that never arrived, and\nthat like one never queued at all. `None` where no mail is queued, and on the lists\nbefore release.'),zod.null()]).optional()
 }))
 }).describe('Invoices not yet at the customer whose PDF no longer shows the treatment — positions\nchanged since it was made. All of them, oldest first: each needs its invoice updated.'),
   "expiring_lots": zod.array(zod.object({

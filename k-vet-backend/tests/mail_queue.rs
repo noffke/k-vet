@@ -347,7 +347,7 @@ async fn a_planned_mail_is_never_sent_for_a_cancelled_invoice(pool: PgPool) {
         .as_array()
         .into_iter()
         .flatten()
-        .filter(|entry| !entry["mail_scheduled_for"].is_null())
+        .filter(|entry| !entry["email_queue"].is_null())
         .count();
     assert_eq!(planned, 0);
 }
@@ -380,7 +380,11 @@ async fn a_mail_scheduled_for_later_waits_for_its_time(pool: PgPool) {
                 .find(|entry| entry["invoice_number"] == scheduled["invoice_number"])
         })
         .expect("still not at the customer");
-    assert!(!entry["mail_scheduled_for"].is_null());
+    assert_eq!(
+        entry["email_queue"]["send_after"],
+        scheduled["email_queue"]["send_after"]
+    );
+    assert!(entry["email_queue"]["last_error"].is_null());
 
     sqlx::query("UPDATE mail_queue SET send_after = now() - interval '1 minute'")
         .execute(&pool)
@@ -388,6 +392,43 @@ async fn a_mail_scheduled_for_later_waits_for_its_time(pool: PgPool) {
         .expect("the time has come");
     assert_eq!(run(&app).await.sent, 1);
     assert_eq!(mail.delivered(), ["kundin@example.com"]);
+}
+
+/// "Nicht versendet" says what became of each mail, and a failed one comes first — before an
+/// invoice released earlier whose mail is only waiting for its time.
+#[sqlx::test]
+async fn the_unsent_list_puts_a_failed_mail_first_with_its_error(pool: PgPool) {
+    let mail = MailServer::start();
+    mail.refuse_recipient("weg@example.com");
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
+    let waiting = released_at(&app, &pool, &["kundin@example.com"], tomorrow).await;
+    let failed = released_invoice(&app, &pool, &["weg@example.com"]).await;
+    assert_eq!(run(&app).await.gave_up, 1);
+
+    let dashboard = app.get("/api/dashboard").await.json();
+    let entries = dashboard["unsent"]["entries"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(entries.len(), 2);
+    assert_eq!(
+        entries[0]["invoice_number"],
+        invoice(&app, failed).await["invoice_number"]
+    );
+    assert!(
+        entries[0]["email_queue"]["last_error"]
+            .as_str()
+            .is_some_and(|error| error.contains("550")),
+        "the failure says why: {}",
+        entries[0]["email_queue"]
+    );
+    assert_eq!(
+        entries[1]["invoice_number"],
+        invoice(&app, waiting).await["invoice_number"]
+    );
+    assert!(entries[1]["email_queue"]["last_error"].is_null());
+    assert!(!entries[1]["email_queue"]["send_after"].is_null());
 }
 
 /// "Gleich versenden" is now: sending again with now turns a scheduled mail into one for the

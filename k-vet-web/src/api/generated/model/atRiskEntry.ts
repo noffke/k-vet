@@ -5,6 +5,7 @@
  * Veterinary practice management — single user, self-hosted.
  * OpenAPI spec version: 0.1.0
  */
+import type { QueuedEmail } from './queuedEmail';
 
 export interface AtRiskEntry {
   /** Every case is resolved on the treatment page, so that is where a row leads. */
@@ -22,10 +23,5 @@ export interface AtRiskEntry {
   customer_name: string;
   patients: string[];
   total_gross: string;
-  /**
-     * When its mail is scheduled to go out, for a released invoice waiting on purpose — which
-     * would otherwise look just like a forgotten one.
-     * @nullable
-     */
-  mail_scheduled_for?: string | null;
+  email_queue?: QueuedEmail | null;
 }

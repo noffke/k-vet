@@ -9,10 +9,12 @@ import {
 } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useGetDashboard } from '@/api/generated/endpoints'
-import type { AtRisk } from '@/api/generated/model'
+import type { AtRisk, QueuedEmail } from '@/api/generated/model'
 import { PageHeader } from '@/components/PageHeader'
 import { FailedMailsCard } from '@/features/dashboard/FailedMailsCard'
 import { useLocaleFormat } from '@/lib/locale'
+import { isAhead } from '@/lib/schedule'
+import { cn } from '@/lib/utils'
 
 /**
  * Landing page: what quietly piles up (FR-036). Three of the widgets track money that has not
@@ -61,7 +63,9 @@ export function DashboardPage() {
       ) : null}
 
       {data && !nothing ? (
-        <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        // One explicit column on a phone (`minmax(0, 1fr)`): an implicit one grows to its
+        // widest card, and a long line in one pushed the whole page sideways.
+        <div className="mt-5 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {/* First: an invoice mail that failed needs a decision, and nothing else would say so. */}
           <FailedMailsCard mails={data.failed_mails} />
           {/* Then an invoice whose PDF no longer shows what it bills: it must be updated before
@@ -85,11 +89,13 @@ export function DashboardPage() {
             hint={t('dashboard.unreleasedHint')}
             data={data.unreleased}
           />
+          {/* No explanation here: "never reached the customer" was untrue of a mail merely
+              scheduled for later. Each row says where its mail is instead. */}
           <AtRiskCard
             icon={<MailWarning className="size-3.5" />}
             title={t('dashboard.unsent')}
-            hint={t('dashboard.unsentHint')}
             data={data.unsent}
+            mailState
           />
 
           {pendingCount > 0 ? (
@@ -159,14 +165,17 @@ function AtRiskCard({
   title,
   hint,
   data,
+  mailState = false,
 }: {
   icon: React.ReactNode
   title: string
-  hint: string
+  hint?: string
   data: AtRisk
+  /** Released invoices: each row says where its mail is, and a failed one stands out. */
+  mailState?: boolean
 }) {
   const { t } = useTranslation()
-  const { date, dateTime, money } = useLocaleFormat()
+  const { date, money } = useLocaleFormat()
   const entries = data.entries
   const count = data.count
   if (count === 0) return null
@@ -181,10 +190,18 @@ function AtRiskCard({
         </span>
       </h2>
 
-      <p className="mt-1 text-xs text-ink-faint">{hint}</p>
+      {hint ? <p className="mt-1 text-xs text-ink-faint">{hint}</p> : null}
       <ul className="mt-1 flex flex-col divide-y divide-line">
         {entries.map((entry) => (
-          <li key={`${entry.treatment_id}-${entry.invoice_number ?? ''}`}>
+          <li
+            key={`${entry.treatment_id}-${entry.invoice_number ?? ''}`}
+            // A mail that really failed is set apart from those merely waiting.
+            className={cn(
+              mailState &&
+                entry.email_queue?.last_error &&
+                '-mx-2 rounded-control bg-blush/40 px-2',
+            )}
+          >
             <Link
               to="/treatments/$id"
               params={{ id: String(entry.treatment_id) }}
@@ -196,12 +213,7 @@ function AtRiskCard({
                   {entry.patients.join(', ')}
                   {entry.date ? ` · ${date(entry.date)}` : ''}
                 </span>
-                {/* Waiting on purpose — "Später versenden" — rather than forgotten. */}
-                {entry.mail_scheduled_for ? (
-                  <span className="block truncate text-xs text-ink-soft">
-                    {t('invoices.mailScheduled', { time: dateTime(entry.mail_scheduled_for) })}
-                  </span>
-                ) : null}
+                {mailState ? <MailState mail={entry.email_queue} /> : null}
               </span>
               <span className="numeric shrink-0 text-sm font-semibold text-ink-soft">
                 {money(entry.total_gross)}
@@ -216,5 +228,39 @@ function AtRiskCard({
         </p>
       ) : null}
     </section>
+  )
+}
+
+/**
+ * Where a released invoice's mail is: scheduled for later ("Später versenden"), about to go
+ * with the queue's next run, failed — still being retried or given up, with the error — or not
+ * queued at all. The same states the appointment's invoice panel tells apart.
+ */
+function MailState({ mail }: { mail: QueuedEmail | null | undefined }) {
+  const { t } = useTranslation()
+  const { dateTime } = useLocaleFormat()
+  if (!mail) {
+    return <span className="block text-xs text-ink-soft">{t('dashboard.noMailQueued')}</span>
+  }
+  if (!mail.last_error) {
+    // Wrapped rather than cut: where the mail is, is the point of the line.
+    return (
+      <span className="block text-xs text-ink-soft">
+        {isAhead(mail.send_after)
+          ? t('invoices.mailScheduled', { time: dateTime(mail.send_after) })
+          : t('invoices.queued')}
+      </span>
+    )
+  }
+  const stopped = mail.refused || mail.gave_up_at
+  return (
+    <span className="block text-xs font-semibold break-words text-danger">
+      {stopped
+        ? t('invoices.queueStopped', { error: mail.last_error })
+        : t('invoices.queueFailing', {
+            error: mail.last_error,
+            time: mail.retry_until ? dateTime(mail.retry_until) : '',
+          })}
+    </span>
   )
 }

@@ -446,7 +446,9 @@ reflected on the next generated invoice.
   that carry positions and have no live invoice (counting visits before today only, so work in
   hand is not reported as work lost), invoices still Created, and invoices still Accepted. Each
   MUST show the oldest few cases with customer, animals, date and amount, link every row to the
-  treatment it is settled on, and state how many more there are.
+  treatment it is settled on, and state how many more there are. An Accepted invoice's row MUST
+  also say where its mail is — scheduled (when), about to go, failed (highlighted, with the
+  error, listed first) or not queued.
 - **FR-036b**: The same two cases MUST be marked on the records themselves: appointments and
   treatments carrying unbilled positions, and released invoices that have not been sent.
 - **FR-037**: A settings page MUST let the vet edit practice name and address, IBAN, UStID,

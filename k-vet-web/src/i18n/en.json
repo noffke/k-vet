@@ -476,23 +476,23 @@
     "title": "Master data"
   },
   "dashboard": {
+    "allDone": "All done — nothing is waiting.",
     "andMore": "and {{count}} more",
     "expiringLots": "Lots expiring soon",
     "expiringLotsHint": "the next five with remaining stock",
     "failedMails": "Failed invoice mail",
     "failedMailsHint": "Invoices whose mail the mail server did not take — try again, or remove it and send the invoice by post.",
+    "noMailQueued": "No mail scheduled",
     "pendingInvoices": "Invoices for bookkeeping",
     "pendingInvoicesHint": "accepted, not yet submitted",
+    "stalePdfs": "PDF out of date",
+    "stalePdfsHint": "positions changed since the PDF was made — update the invoice",
     "title": "Dashboard",
     "unbilled": "Not billed",
     "unbilledHint": "treatments with positions and no invoice",
     "unreleased": "Not released",
     "unreleasedHint": "invoices nobody has released yet",
-    "unsent": "Not sent",
-    "unsentHint": "released, but never reached the customer",
-    "stalePdfs": "PDF out of date",
-    "stalePdfsHint": "positions changed since the PDF was made — update the invoice",
-    "allDone": "All done — nothing is waiting."
+    "unsent": "Not sent"
   },
   "settings": {
     "bankName": "Bank",

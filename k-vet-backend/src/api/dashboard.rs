@@ -11,7 +11,7 @@
 use axum::extract::State;
 use axum::routing::get;
 use axum::{Json, Router};
-use chrono::{DateTime, NaiveDate, Utc};
+use chrono::NaiveDate;
 use rust_decimal::Decimal;
 use serde::Serialize;
 use sqlx::PgPool;
@@ -35,8 +35,9 @@ pub struct Dashboard {
     pub unbilled: AtRisk,
     /// Invoices written but never released.
     pub unreleased: AtRisk,
-    /// Invoices released but never sent to the customer — including the ones whose email
-    /// failed on the way out, which is the case nothing used to show.
+    /// Invoices released and not yet sent to the customer: a mail waiting for its time or for
+    /// the queue's next run, one that failed on the way out, or none at all. Each entry says
+    /// which through its `email_queue`; the failed ones come first.
     pub unsent: AtRisk,
     /// Invoices not yet at the customer whose PDF no longer shows the treatment — positions
     /// changed since it was made. All of them, oldest first: each needs its invoice updated.
@@ -78,9 +79,11 @@ pub struct AtRiskEntry {
     pub patients: Vec<String>,
     #[schema(value_type = String)]
     pub total_gross: Decimal,
-    /// When its mail is scheduled to go out, for a released invoice waiting on purpose — which
-    /// would otherwise look just like a forgotten one.
-    pub mail_scheduled_for: Option<DateTime<Utc>>,
+    /// A released invoice's mail as the queue holds it: when it goes out, or how it failed.
+    /// Without it, a mail scheduled on purpose looked just like one that never arrived, and
+    /// that like one never queued at all. `None` where no mail is queued, and on the lists
+    /// before release.
+    pub email_queue: Option<mail_queue::QueuedEmail>,
 }
 
 #[derive(Debug, Serialize, ToSchema)]
@@ -146,7 +149,7 @@ pub async fn get_dashboard(State(state): State<AppState>) -> AppResult<Json<Dash
         pending_invoice_count,
         unbilled: unbilled_treatments(&state.pool).await?,
         unreleased: invoices_at_risk(&state.pool, InvoiceStatus::Created).await?,
-        unsent: invoices_at_risk(&state.pool, InvoiceStatus::Accepted).await?,
+        unsent: unsent_invoices(&state.pool).await?,
         stale_pdfs: stale_pdfs(&state.pool).await?,
         expiring_lots,
         failed_mails: failed_mails(&state.pool).await?,
@@ -219,7 +222,7 @@ async fn unbilled_treatments(pool: &PgPool) -> AppResult<AtRisk> {
             customer_name: parties.customer_name,
             patients: parties.patients,
             total_gross: treatment_items::treatment_total_gross(&mut connection, row.id).await?,
-            mail_scheduled_for: None,
+            email_queue: None,
         });
     }
 
@@ -274,6 +277,35 @@ async fn invoices_at_risk(pool: &PgPool, status: InvoiceStatus) -> AppResult<AtR
     Ok(AtRisk { count, entries })
 }
 
+/// Released invoices not yet sent. The ones whose mail failed come first, so a real failure is
+/// never below the cut behind invoices that are only waiting for their time; then oldest first.
+async fn unsent_invoices(pool: &PgPool) -> AppResult<AtRisk> {
+    let count = sqlx::query_scalar!(r#"SELECT count(*) FROM invoice WHERE status = 'accepted'"#,)
+        .fetch_one(pool)
+        .await?
+        .unwrap_or(0);
+
+    let ids = sqlx::query_scalar!(
+        r#"SELECT id FROM invoice
+           WHERE status = 'accepted'
+           ORDER BY EXISTS (SELECT 1 FROM mail_queue
+                            WHERE mail_queue.invoice_id = invoice.id
+                              AND mail_queue.last_error IS NOT NULL) DESC,
+                    invoice_date, id
+           LIMIT $1"#,
+        AT_RISK_ROWS,
+    )
+    .fetch_all(pool)
+    .await?;
+
+    let mut entries = Vec::with_capacity(ids.len());
+    for id in ids {
+        entries.push(at_risk_entry(invoices::load(pool, id).await?));
+    }
+
+    Ok(AtRisk { count, entries })
+}
+
 fn at_risk_entry(invoice: invoices::Invoice) -> AtRiskEntry {
     AtRiskEntry {
         treatment_id: invoice.treatment_id,
@@ -282,12 +314,9 @@ fn at_risk_entry(invoice: invoices::Invoice) -> AtRiskEntry {
         customer_name: invoice.customer_name,
         patients: invoice.patients,
         total_gross: invoice.total_gross,
-        // Only a mail still ahead and untroubled counts as "scheduled"; a failing one is on
-        // the failed-mail card instead.
-        mail_scheduled_for: invoice
-            .email_queue
-            .filter(|mail| mail.last_error.is_none() && mail.send_after > Utc::now())
-            .map(|mail| mail.send_after),
+        // The page tells waiting, scheduled and failed apart from it, as the appointment does;
+        // a failed one is also on the failed-mail card, where it is retried or removed.
+        email_queue: invoice.email_queue,
     }
 }
 

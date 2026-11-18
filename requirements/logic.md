@@ -185,7 +185,7 @@ more there are:
   today count: a treatment being written up during the visit has positions and no invoice by
   definition, and a dashboard that shouts about the work in hand teaches the vet to ignore it.
 * **not released** — invoices in Created.
-* **not sent** — invoices in Accepted, including the ones whose email failed on the way out.
+* **not sent** — invoices in Accepted. Each row says where its mail is: scheduled (with the time it goes out), about to go with the queue's next run, failed (highlighted, with the mail server's error — first in the list), or none queued. No blanket explanation: "released, but never reached the customer" was untrue of a mail merely scheduled for later (2026-11-18).
 
 Above them, every invoice not yet at the customer (Created or Accepted) whose PDF is out of date — all of them, since
 each has to be updated before it goes out. Above that, every invoice mail that failed — still being retried or given up — with the mail

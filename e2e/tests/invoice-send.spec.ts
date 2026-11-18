@@ -1,5 +1,5 @@
 import { expect, test } from '@playwright/test'
-import { seedAcceptedInvoice, seedFailedMail } from '../fixtures/seed'
+import { clearPendingInvoices, seedAcceptedInvoice, seedFailedMail } from '../fixtures/seed'
 import { signIn } from './helpers'
 
 /**
@@ -51,6 +51,8 @@ test.describe('sending an invoice', () => {
     page,
     request,
   }) => {
+    // A known slate, so both are among the few "Nicht versendet" lists.
+    await clearPendingInvoices(request)
     const retried = await seedAcceptedInvoice(request)
     const removed = await seedAcceptedInvoice(request)
     await seedFailedMail(retried.invoiceId, `alt-${retried.invoiceId}@example.com`)
@@ -58,6 +60,16 @@ test.describe('sending an invoice', () => {
 
     await signIn(page)
     await page.goto('/')
+    // "Nicht versendet" sets a failed mail apart, with the reason — and no longer claims of
+    // every released invoice that it never reached the customer.
+    const unsent = page
+      .locator('section')
+      .filter({ has: page.getByRole('heading', { name: /Nicht versendet/ }) })
+    await expect(unsent.locator(`a[href="/treatments/${retried.treatmentId}"]`)).toContainText(
+      'E-Mail-Versand abgebrochen: permanent error (550)',
+    )
+    await expect(unsent).not.toContainText('nie beim Kunden angekommen')
+
     const card = page.locator('section').filter({ hasText: 'E-Mail-Versand fehlgeschlagen' })
     const row = (invoiceNumber: string) =>
       card.getByRole('listitem').filter({ hasText: invoiceNumber })

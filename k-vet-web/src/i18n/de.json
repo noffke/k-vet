@@ -476,23 +476,23 @@
     "title": "Stammdaten"
   },
   "dashboard": {
+    "allDone": "Alles erledigt — nichts wartet.",
     "andMore": "und {{count}} weitere",
     "expiringLots": "Chargen mit nahem Verfall",
     "expiringLotsHint": "die fünf nächsten mit Restbestand",
     "failedMails": "E-Mail-Versand fehlgeschlagen",
     "failedMailsHint": "Rechnungen, deren E-Mail der Mailserver nicht angenommen hat — erneut versuchen, oder entfernen und per Post schicken.",
+    "noMailQueued": "Keine E-Mail geplant",
     "pendingInvoices": "Rechnungen für die Buchhaltung",
     "pendingInvoicesHint": "freigegeben, noch nicht übergeben",
+    "stalePdfs": "PDF veraltet",
+    "stalePdfsHint": "Positionen geändert, seit das PDF erstellt wurde — Rechnung aktualisieren",
     "title": "Übersicht",
     "unbilled": "Nicht abgerechnet",
     "unbilledHint": "Behandlungen mit Positionen und ohne Rechnung",
     "unreleased": "Nicht freigegeben",
     "unreleasedHint": "Rechnungen, die noch niemand freigegeben hat",
-    "unsent": "Nicht versendet",
-    "unsentHint": "freigegeben, aber nie beim Kunden angekommen",
-    "stalePdfs": "PDF veraltet",
-    "stalePdfsHint": "Positionen geändert, seit das PDF erstellt wurde — Rechnung aktualisieren",
-    "allDone": "Alles erledigt — nichts wartet."
+    "unsent": "Nicht versendet"
   },
   "settings": {
     "bankName": "Bank",

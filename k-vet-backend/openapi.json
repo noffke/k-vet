@@ -5754,13 +5754,16 @@
           "total_gross": {
             "type": "string"
           },
-          "mail_scheduled_for": {
-            "type": [
-              "string",
-              "null"
-            ],
-            "format": "date-time",
-            "description": "When its mail is scheduled to go out, for a released invoice waiting on purpose — which\nwould otherwise look just like a forgotten one."
+          "email_queue": {
+            "oneOf": [
+              {
+                "$ref": "#/components/schemas/QueuedEmail",
+                "description": "A released invoice's mail as the queue holds it: when it goes out, or how it failed.\nWithout it, a mail scheduled on purpose looked just like one that never arrived, and\nthat like one never queued at all. `None` where no mail is queued, and on the lists\nbefore release."
+              },
+              {
+                "type": "null"
+              }
+            ]
           }
         }
       },
@@ -6527,7 +6530,7 @@
           },
           "unsent": {
             "$ref": "#/components/schemas/AtRisk",
-            "description": "Invoices released but never sent to the customer — including the ones whose email\nfailed on the way out, which is the case nothing used to show."
+            "description": "Invoices released and not yet sent to the customer: a mail waiting for its time or for\nthe queue's next run, one that failed on the way out, or none at all. Each entry says\nwhich through its `email_queue`; the failed ones come first."
           },
           "stale_pdfs": {
             "$ref": "#/components/schemas/AtRisk",

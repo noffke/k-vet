@@ -1,0 +1,28 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "SELECT id FROM invoice\n           WHERE status = 'accepted'\n           ORDER BY EXISTS (SELECT 1 FROM mail_queue\n                            WHERE mail_queue.invoice_id = invoice.id\n                              AND mail_queue.last_error IS NOT NULL) DESC,\n                    invoice_date, id\n           LIMIT $1",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Int8",
+        "origin": {
+          "Table": {
+            "table": "invoice",
+            "name": "id"
+          }
+        }
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": [
+      false
+    ]
+  },
+  "hash": "91361699bcb5139e4afcd5b35a132763d895cded06159a73fb7e57446463e44a"
+}
