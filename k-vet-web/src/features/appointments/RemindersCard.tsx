@@ -199,7 +199,9 @@ function ReminderRow({
 
       {taken ? null : (
         <>
-          <div className="mt-2 grid gap-2 sm:grid-cols-[8rem_1fr]">
+          {/* The quantity takes up to 16rem, more only when its −/+ buttons and a long unit
+              need it (the field's own minimum), and the note the rest. */}
+          <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(min-content,16rem)_1fr]">
             <NumberInput
               label={t('field.quantity')}
               value={reminder.quantity}

@@ -1,7 +1,7 @@
 import { expect, test } from '@playwright/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
+import { expectInside, navigate, signIn } from './helpers'
 
 /**
  * "Mitbringen" (migration 0035): a customer phones for more of a regular medication; it goes on
@@ -55,5 +55,27 @@ test.describe('Mitbringen', () => {
     await expect(page.getByText(`„${drugName}“ als Position übernommen`)).toBeVisible()
     await expect(card.getByText('Übernommen', { exact: true })).toBeVisible()
     await expect(page.getByRole('tabpanel').getByLabel('Name')).toHaveValue(new RegExp(drugName))
+  })
+
+  // The Mitbringen row gave its quantity a narrow column: the −/+ buttons took the room, the
+  // value vanished and a long unit ran out of the field to the left (the vet's screenshot).
+  test('the quantity shows its value with the unit inside the field, however long the unit', async ({
+    page,
+    request,
+  }) => {
+    const { customerId } = await seedCustomer(request)
+    const patientId = await seedPatient(request, customerId, `Tab-${Date.now() % 1e6}`)
+    const { appointmentId } = await seedTreatment(request, patientId)
+    const { drugName } = await seedDrug(request, { unit: 'Tablette' })
+
+    await signIn(page)
+    await page.goto(`/appointments/${appointmentId}`)
+    await page.getByPlaceholder('Medikament suchen …').fill(drugName)
+    await page.getByRole('option', { name: new RegExp(drugName) }).first().click()
+    const card = page.locator('section').filter({ hasText: 'Mitbringen' }).first()
+    const row = card.getByRole('listitem').filter({ has: page.getByLabel('Notiz') })
+    const quantity = row.getByLabel('Menge')
+    await expect(quantity).toHaveValue('10')
+    await expectInside(row.getByText('Tablette', { exact: true }), quantity)
   })
 })

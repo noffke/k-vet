@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { expect, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '@playwright/test'
 import { E2E_PASSWORD, E2E_USERNAME } from '../fixtures/credentials'
 
 const run = promisify(execFile)
@@ -130,4 +130,17 @@ export async function signIn(page: Page): Promise<void> {
   await page.getByRole('button', { name: 'Anmelden' }).click()
   await page.getByRole('heading', { name: 'Übersicht' }).waitFor()
   await expectNoSidewaysScroll(page)
+}
+
+/**
+ * Asserts that `inner` lies within `outer` from left to right — a unit inside its field, say,
+ * rather than spilling out of it because a narrow column squeezed the field.
+ */
+export async function expectInside(inner: Locator, outer: Locator): Promise<void> {
+  const [box, frame] = await Promise.all([inner.boundingBox(), outer.boundingBox()])
+  expect(box, 'the inner element is laid out').not.toBeNull()
+  expect(frame, 'the outer element is laid out').not.toBeNull()
+  if (!box || !frame) return
+  expect(box.x, 'starts inside').toBeGreaterThanOrEqual(frame.x - 0.5)
+  expect(box.x + box.width, 'ends inside').toBeLessThanOrEqual(frame.x + frame.width + 0.5)
 }

@@ -150,7 +150,13 @@ export function NumberInput({
               ),
           )}
         >
-          <div className={cn('relative', boxed && 'min-w-0 flex-1')}>
+          <div
+            className={cn('relative', boxed && 'min-w-0 flex-1')}
+            // With a unit beside the value, never narrower than a few digits and the unit: in a
+            // tight column the −/+ buttons took the room, the value vanished and the unit ran
+            // out of the box to the left (seen in the Mitbringen list, "Tablette").
+            style={unit ? { minWidth: `calc(1.5rem + ${unit.length + 4}ch)` } : undefined}
+          >
             <input
               id={id}
               // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.

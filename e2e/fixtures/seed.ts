@@ -133,8 +133,9 @@ export interface SeededDrug {
 /** A complete drug with an original and a subset packaging, priced per AMPreisV. */
 export async function seedDrug(
   request: APIRequestContext,
-  options: { packages?: number } = {},
+  options: { packages?: number; unit?: string } = {},
 ): Promise<SeededDrug> {
+  const unit = options.unit ?? 'ml'
   await login(request)
 
   const supplier = await post<{ id: number }>(request, '/api/suppliers')
@@ -154,7 +155,7 @@ export async function seedDrug(
     kind: 'original',
   })
   await patch(request, `/api/packagings/${original.id}`, {
-    unit: 'ml',
+    unit,
     quantity: '100',
     list_price_net: '10.00',
     supplier_id: supplier.id,
@@ -163,7 +164,7 @@ export async function seedDrug(
   const subset = await post<{ id: number }>(request, `/api/drugs/${drug.id}/packagings`, {
     kind: 'subset',
   })
-  await patch(request, `/api/packagings/${subset.id}`, { unit: 'ml', quantity: '10' })
+  await patch(request, `/api/packagings/${subset.id}`, { unit, quantity: '10' })
 
   // Stock to dispense from. A dispense the lots cannot cover is refused now (FR-018,
   // issues.md 8) rather than booked against a lot that has nothing, so a drug the specs
