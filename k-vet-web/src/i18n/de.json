@@ -383,13 +383,16 @@
     "approvalNumber": "Zulassungsnummer",
     "arrivalShort": "Eingang",
     "batchShort": "Ch.-B.",
+    "change": "Änderung",
+    "changeHint": "Was dazukommt oder wegfällt, z. B. −1 Flasche: − und + gehen um eine Packung.",
     "codeOfOther": "Dieser Code gehört schon zu „{{name}}“.",
     "codeTaken": "Dieser Code gehört schon zu einem anderen Medikament.",
     "codes": "Codes (EAN, PZN)",
     "codesHint": "Daran erkennt der Scanner das Medikament beim Wareneingang. Ein Code wird gescannt oder eingetippt; von einem Data-Matrix-Code bleibt nur die Produktnummer, Charge und Verfall gehören zur Lieferung.",
     "computedPerAmpreisv": "Berechnet nach AMPreisV",
     "correction": "Korrektur",
-    "correctionHint": "Tatsächlichen Bestand eintragen — die Differenz wird gebucht.",
+    "correctionHint": "Gezählten Restbestand eintragen — oder nur die Änderung, z. B. eine zerbrochene Flasche. Gebucht wird die Differenz.",
+    "currentStock": "Aktueller Bestand: {{stock}}",
     "drugs": "Medikamente",
     "euthanasiaHint": "Wird dieses Medikament bei einem Termin abgegeben, trägt die Freigabe der Rechnung den Tag des Termins als Todesdatum des Tiers ein und archiviert es. Ein schon eingetragenes Todesdatum bleibt.",
     "expiryShort": "Verfall",
@@ -816,5 +819,8 @@
     "failed": "„{{name}}“ konnte nicht hochgeladen werden. Bitte noch einmal versuchen.",
     "pending": "„{{name}}“ wird hochgeladen …",
     "tooLarge": "„{{name}}“ ist zu groß – höchstens {{mb}} MB."
+  },
+  "correction": {
+    "countOrChange": "Entweder den gezählten Restbestand oder die Änderung eintragen."
   }
 }

@@ -76,7 +76,7 @@ Resource-specific additions:
 | `POST /api/packagings/{id}/stock-intakes` | record intake → creates lot (snapshot initial quantity) |
 | `GET /api/lots?packaging_id=&drug_id=` | lots with derived remaining stock |
 | `GET /api/lots/{id}` | lot detail: chronological movements, each linking dispense → treatment/invoice/customer or correction reason |
-| `POST /api/lots/{id}/corrections` | correction movement `{quantity (default: remaining), reason}` |
+| `POST /api/lots/{id}/corrections` | correction movement `{new_remaining \| delta, reason}` — the counted stock or a signed change, exactly one |
 | `GET /api/stock/correction-reasons` | distinct previous reasons, alphabetical (editable-select source) |
 
 ## Appointments & treatments

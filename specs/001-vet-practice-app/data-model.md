@@ -232,9 +232,9 @@ Semantics (application layer, tested against the real DB):
   updated or deleted.
 - **Stock is always derived**: per lot `initial_quantity + SUM(quantity)`; per drug the sum
   over the lots of its original packaging. A `lot_remaining` SQL view backs lists, FEFO
-  suggestions, and the dashboard expiry widget. When total stock is insufficient, the
-  user-confirmed shortfall dispense is booked against the FEFO-suggested (or user-chosen)
-  lot, whose derived remaining may go negative until a correction reconciles it.
+  suggestions, and the dashboard expiry widget. A lot's derived remaining never goes below
+  zero (migration 0020): a dispense the lots cannot cover is refused, and the vet records a
+  correction — a count or a change — against what is on the shelf.
 
 ## Services & templates
 

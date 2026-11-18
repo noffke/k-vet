@@ -264,6 +264,32 @@ test.describe('pharmacy', () => {
     await expect(page.getByText('-12', { exact: false }).first()).toBeVisible()
   })
 
+  // A correction by a change (issues.md): a broken bottle is one press of −, not a recount.
+  test('a correction can be a change: one press of − is one pack off', async ({
+    page,
+    request,
+  }) => {
+    const { drugId, packagingId } = await seedDrug(request, { packages: 0 })
+    await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
+      data: { packages_received: 2, batch_number: 'CH-BRUCH' },
+    })
+    await signIn(page)
+    await page.goto(`/pharmacy/${drugId}`)
+    await page.getByText('CH-BRUCH').filter({ visible: true }).first().click()
+    await page.getByRole('button', { name: 'Korrektur' }).click()
+    await expect(page.getByText('Aktueller Bestand: 200 ml')).toBeVisible()
+
+    // One bottle broke: one press, and the count follows.
+    await page.getByRole('button', { name: 'Verringern' }).click()
+    await expect(page.getByLabel('Änderung')).toHaveValue('-100')
+    await expect(page.getByLabel('Restbestand').last()).toHaveValue('100')
+    await page.getByLabel('Grund').fill('Verlust')
+    await page.getByRole('button', { name: 'Bestätigen' }).click()
+
+    await expect(page.getByText('Verlust').filter({ visible: true }).first()).toBeVisible()
+    await expect(page.getByText('-100', { exact: false }).first()).toBeVisible()
+  })
+
   test('a stocktake cannot count a lot below zero', async ({ page, request }) => {
     const { drugId, packagingId } = await seedDrug(request)
     await request.post(`/api/packagings/${packagingId}/stock-intakes`, {

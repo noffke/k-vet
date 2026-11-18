@@ -383,13 +383,16 @@
     "approvalNumber": "Approval number",
     "arrivalShort": "In",
     "batchShort": "Batch",
+    "change": "Change",
+    "changeHint": "What is added or lost, e.g. −1 bottle: − and + step by one pack.",
     "codeOfOther": "This code already belongs to “{{name}}”.",
     "codeTaken": "This code already belongs to another drug.",
     "codes": "Codes (EAN, PZN)",
     "codesHint": "How the scanner recognises the drug at the stock intake. A code is scanned or typed; of a Data Matrix only the product number is kept, batch and expiry belong to the delivery.",
     "computedPerAmpreisv": "Computed per AMPreisV",
     "correction": "Correction",
-    "correctionHint": "Enter the counted stock — the difference is booked.",
+    "correctionHint": "Enter the counted stock — or just the change, a broken bottle say. The difference is booked.",
+    "currentStock": "Current stock: {{stock}}",
     "drugs": "Drugs",
     "euthanasiaHint": "When this drug is dispensed at an appointment, releasing the invoice enters the appointment’s day as the animal’s date of death and archives it. A date of death already entered stays.",
     "expiryShort": "Expires",
@@ -816,5 +819,8 @@
     "failed": "“{{name}}” could not be uploaded. Please try again.",
     "pending": "Uploading “{{name}}” …",
     "tooLarge": "“{{name}}” is too large – {{mb}} MB at most."
+  },
+  "correction": {
+    "countOrChange": "Enter either the counted remaining stock or the change."
   }
 }

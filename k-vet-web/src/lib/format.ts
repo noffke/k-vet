@@ -144,6 +144,8 @@ export function parseNumber(input: string, locale: Locale): number | null {
     .replaceAll(' ', '')
     .replaceAll(' ', '')
     .replaceAll(' ', '')
+    // The typographic minus, which some keyboards and copied text give, is a minus too.
+    .replaceAll('\u2212', '-')
   if (decimal !== '.') normalized = normalized.replaceAll(decimal, '.')
   // A stray separator of the *other* locale is a typo, not a group separator.
   if (!/^[+-]?\d*\.?\d*$/.test(normalized)) return null

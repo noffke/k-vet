@@ -32,6 +32,7 @@ A wholesaler's box is booked on "Lieferung einbuchen" (from the Apotheke), pack 
 
 For a drug stock lot, we need the option to do a correction movement. The default quantity should be the remainder of the stock of the lot. The reason should be an editable
 select that gives previous reasons (alphabetically sorted) with the option to clear and add a new reason.
+A correction is entered either as the counted remainder or as the change itself (decided 2026-11-18): a broken bottle is −1 pack — one press of "−" on "Änderung" steps one pack, any amount can be typed, positive too. The two fields follow each other; the one typed last is booked as such. "Ablauf" and "Verlust" are always among the reasons offered.
 
 Decision (revised): a lot's remaining stock must never go below zero, and no movement may take it there — neither a correction nor a dispense. Earlier this held only for what was
 counted: a dispense that exceeded the books was recorded in full and the lot's derived stock went negative, on the grounds that the physical shelf is the truth. In practice a negative

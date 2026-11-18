@@ -94,13 +94,22 @@ pub struct CreateIntake {
     pub list_price_net: Option<Decimal>,
 }
 
-/// A stocktake: the vet states what is physically there, the server books the difference.
+/// A correction of a lot's stock, in one of two ways — exactly one of them:
+/// a stocktake, where the vet states what is physically there and the server books the
+/// difference; or a change, where she states the difference itself — one broken bottle is
+/// −50 ml, a pack found again +50 ml — without counting the rest (issues.md, 2026-11-18).
 #[derive(Debug, Deserialize, ToSchema)]
 pub struct CreateCorrection {
     /// The counted remaining quantity. Defaults in the UI to the derived value.
-    pub new_remaining: Decimal,
+    pub new_remaining: Option<Decimal>,
+    /// The change, signed, in the lot's base units.
+    pub delta: Option<Decimal>,
     pub reason: Option<String>,
 }
+
+/// What the vet always finds among the reasons, beside the ones she used before: the two a
+/// change is usually for.
+const STANDARD_REASONS: [&str; 2] = ["Ablauf", "Verlust"];
 
 #[utoipa::path(
     post,
@@ -311,7 +320,7 @@ pub async fn detail(
     request_body = CreateCorrection,
     responses(
         (status = 200, body = LotDetail),
-        (status = 422, description = "The correction would not change anything, or is below zero")
+        (status = 422, description = "Neither or both of count and change, no change at all, below zero, or a drug \"Ohne Bestand\"")
     )
 )]
 pub async fn create_correction(
@@ -319,15 +328,25 @@ pub async fn create_correction(
     Path(id): Path<i64>,
     Json(body): Json<CreateCorrection>,
 ) -> AppResult<Json<LotDetail>> {
+    // A count, or a change: exactly one. Each is refused on its own field.
+    let (field, counted, change) = match (body.new_remaining, body.delta) {
+        (Some(counted), None) => ("new_remaining", Some(counted), None),
+        (None, Some(change)) => ("delta", None, Some(change)),
+        _ => return Err(AppError::field("delta", "correction.countOrChange")),
+    };
     // A count of what is physically there cannot be negative (FR-018, issues.md 8). Caught
     // here rather than left to the trigger, so it reads as the field error it is.
-    if body.new_remaining.is_sign_negative() {
+    if counted.is_some_and(|counted| counted.is_sign_negative()) {
         return Err(AppError::field("new_remaining", "value.mustNotBeNegative"));
+    }
+    if change.is_some_and(|change| change.is_zero()) {
+        return Err(AppError::field("delta", "value.mustNotBeZero"));
     }
 
     // One transaction, and the lot locked: the stocktake is a read of the current stock
     // followed by a write of the difference, and a dispense landing in between would otherwise
-    // be silently undone by the delta computed before it.
+    // be silently undone by the delta computed before it. A change is booked as stated, so it
+    // stays a change even then; the lock keeps its check against zero true.
     let mut transaction = state.pool.begin().await?;
     sqlx::query_scalar!("SELECT id FROM drug_stock_lot WHERE id = $1 FOR UPDATE", id)
         .fetch_optional(&mut *transaction)
@@ -347,7 +366,7 @@ pub async fn create_correction(
     .fetch_one(&mut *transaction)
     .await?;
     if without_stock {
-        return Err(AppError::field("new_remaining", "lot.drugWithoutStock"));
+        return Err(AppError::field(field, "lot.drugWithoutStock"));
     }
 
     let remaining: Option<Decimal> =
@@ -356,10 +375,21 @@ pub async fn create_correction(
             .await?;
     let remaining = remaining.unwrap_or_default();
 
-    // The vet states the counted stock; the ledger records the difference.
-    let delta = body.new_remaining - remaining;
+    // The ledger records a difference either way: the one stated, or the count's against the
+    // books.
+    let delta = match (counted, change) {
+        (_, Some(change)) => {
+            // Said on the field typed into, rather than by the trigger, which names the count.
+            if remaining + change < Decimal::ZERO {
+                return Err(AppError::field("delta", "movement.wouldGoNegative"));
+            }
+            change
+        }
+        (Some(counted), None) => counted - remaining,
+        (None, None) => return Err(AppError::field("delta", "correction.countOrChange")),
+    };
     if delta.is_zero() {
-        return Err(AppError::field("new_remaining", "value.mustNotBeZero"));
+        return Err(AppError::field(field, "value.mustNotBeZero"));
     }
 
     let reason = body
@@ -389,15 +419,20 @@ pub async fn create_correction(
     responses((status = 200, description = "Previously used reasons, alphabetical", body = Vec<String>))
 )]
 pub async fn correction_reasons(State(state): State<AppState>) -> AppResult<Json<Vec<String>>> {
-    // An editable select: the reasons the practice already used, plus free text (FR-016).
-    let reasons = sqlx::query_scalar!(
+    // An editable select: the reasons the practice already used, plus free text (FR-016) —
+    // and always "Ablauf" and "Verlust", what a change is usually for.
+    let used = sqlx::query_scalar!(
         "SELECT DISTINCT reason FROM drug_stock_movement
-         WHERE kind = 'correction' AND reason IS NOT NULL AND reason <> ''
-         ORDER BY reason",
+         WHERE kind = 'correction' AND reason IS NOT NULL AND reason <> ''",
     )
     .fetch_all(&state.pool)
     .await?;
-    Ok(Json(reasons.into_iter().flatten().collect()))
+    let reasons: std::collections::BTreeSet<String> = used
+        .into_iter()
+        .flatten()
+        .chain(STANDARD_REASONS.iter().map(|reason| (*reason).to_owned()))
+        .collect();
+    Ok(Json(reasons.into_iter().collect()))
 }
 
 async fn load_lot(pool: &sqlx::PgPool, id: i64) -> AppResult<Lot> {

@@ -90,6 +90,9 @@ describe('parsing numbers', () => {
     expect(parseNumber('1,5', 'de-DE')).toBe(1.5)
     expect(parseNumber('1.234,56', 'de-DE')).toBe(1234.56)
     expect(parseNumber('-2,5', 'de-DE')).toBe(-2.5)
+    // The typographic minus some keyboards give (a stock correction of "−1").
+    expect(parseNumber('\u22121', 'de-DE')).toBe(-1)
+    expect(parseNumber('\u221250,5', 'de-DE')).toBe(-50.5)
   })
 
   it('accepts the US decimal point and group separator', () => {

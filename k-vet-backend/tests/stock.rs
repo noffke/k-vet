@@ -300,7 +300,69 @@ async fn previously_used_reasons_are_offered_alphabetically(pool: PgPool) {
     }
 
     let reasons: Vec<String> = app.get("/api/stock/correction-reasons").await.parse();
-    assert_eq!(reasons, vec!["Bruch", "Verfall"], "distinct and sorted");
+    // "Ablauf" and "Verlust" are always offered, beside the ones used before.
+    assert_eq!(
+        reasons,
+        vec!["Ablauf", "Bruch", "Verfall", "Verlust"],
+        "distinct and sorted"
+    );
+}
+
+/// A correction by a change rather than a count (issues.md, 2026-11-18): one broken bottle is
+/// −50 ml, without counting the rest; a pack found again is +50 ml. It is booked as stated.
+#[sqlx::test]
+async fn a_correction_can_be_a_change_instead_of_a_count(pool: PgPool) {
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 2, dec("100"), None).await;
+    let correct = |body: Value| {
+        let app = &app;
+        async move {
+            app.post(&format!("/api/lots/{lot}/corrections"), body)
+                .await
+        }
+    };
+    let errors = |response: common::TestResponse| response.json()["errors"].clone();
+
+    let broken = correct(json!({ "delta": "-100", "reason": "Verlust" })).await;
+    assert_eq!(broken.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("100"));
+    let detail = broken.json();
+    let last = detail["movements"]
+        .as_array()
+        .and_then(|movements| movements.last())
+        .cloned()
+        .expect("the change is in the history");
+    assert_eq!(last["quantity"], "-100.00");
+    assert_eq!(last["reason"], "Verlust");
+
+    let found = correct(json!({ "delta": "50", "reason": "Fund" })).await;
+    assert_eq!(found.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("150"));
+
+    // Nothing at all, below zero, or count and change at once are refused — on the field.
+    assert_eq!(
+        errors(correct(json!({ "delta": "0" })).await),
+        json!([{ "field": "delta", "message": "value.mustNotBeZero" }])
+    );
+    assert_eq!(
+        errors(correct(json!({ "delta": "-151" })).await),
+        json!([{ "field": "delta", "message": "movement.wouldGoNegative" }])
+    );
+    assert_eq!(
+        errors(correct(json!({ "delta": "-1", "new_remaining": "10" })).await),
+        json!([{ "field": "delta", "message": "correction.countOrChange" }])
+    );
+    assert_eq!(
+        errors(correct(json!({ "reason": "Inventur" })).await),
+        json!([{ "field": "delta", "message": "correction.countOrChange" }])
+    );
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("150"));
+
+    // The whole lot can go: down to exactly zero.
+    let gone = correct(json!({ "delta": "-150", "reason": "Ablauf" })).await;
+    assert_eq!(gone.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
 
 #[sqlx::test]

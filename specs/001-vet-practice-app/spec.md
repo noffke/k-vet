@@ -111,8 +111,9 @@ and read the lot's movement history.
    and expiration date, **Then** a lot is created whose initial quantity is the number of
    packages times the packaging quantity at that time.
 3. **Given** a lot with remaining stock, **When** the vet records a correction, **Then** the
-   quantity defaults to the lot's remaining stock and the reason can be picked from previously
-   used reasons (alphabetical) or entered as new text.
+   quantity defaults to the lot's remaining stock — or she enters the change instead (one
+   broken bottle: −1 pack) — and the reason can be picked from previously used reasons
+   (alphabetical) or entered as new text.
 4. **Given** a batch number, **When** the vet opens the lot detail, **Then** all movements are
    listed chronologically, each linking to the treatment/invoice/customer that received a
    dispense or showing the correction reason.
@@ -328,9 +329,11 @@ reflected on the next generated invoice.
   arrival date (default today), packages received, optional batch number and expiration date;
   the lot's initial quantity is snapshotted as packages received × packaging quantity at that
   time.
-- **FR-016**: The system MUST support correction movements per lot; the quantity defaults to
-  the lot's remaining stock and the reason is chosen from previously used reasons (sorted
-  alphabetically) or entered as new text.
+- **FR-016**: The system MUST support correction movements per lot, entered either as the
+  counted remaining stock (defaulting to the lot's remaining stock) or as a signed change
+  (−1 bottle, stepping one pack per press); the one entered last is booked. The reason is
+  chosen from previously used reasons (sorted alphabetically, "Ablauf" and "Verlust" always
+  among them) or entered as new text. A drug "Ohne Bestand" has no corrections.
 - **FR-017**: A lot detail view MUST show all movements chronologically, each linking to the
   treatment/invoice/customer that received a dispense, or showing the correction reason.
 - **FR-018**: Remaining stock MUST always be derived from initial quantity plus the sum of

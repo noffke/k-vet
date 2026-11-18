@@ -1758,9 +1758,10 @@ export const CreateCorrectionParams = zod.object({
 })
 
 export const CreateCorrectionBody = zod.object({
-  "new_remaining": zod.string().describe('The counted remaining quantity. Defaults in the UI to the derived value.'),
+  "new_remaining": zod.string().nullish().describe('The counted remaining quantity. Defaults in the UI to the derived value.'),
+  "delta": zod.string().nullish().describe('The change, signed, in the lot\'s base units.'),
   "reason": zod.string().nullish()
-}).describe('A stocktake: the vet states what is physically there, the server books the difference.')
+}).describe('A correction of a lot\'s stock, in one of two ways — exactly one of them:\na stocktake, where the vet states what is physically there and the server books the\ndifference; or a change, where she states the difference itself — one broken bottle is\n−50 ml, a pack found again +50 ml — without counting the rest (issues.md, 2026-11-18).')
 
 export const CreateCorrectionResponse = zod.object({
   "id": zod.int(),

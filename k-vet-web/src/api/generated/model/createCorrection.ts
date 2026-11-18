@@ -7,11 +7,22 @@
  */
 
 /**
- * A stocktake: the vet states what is physically there, the server books the difference.
+ * A correction of a lot's stock, in one of two ways — exactly one of them:
+ * a stocktake, where the vet states what is physically there and the server books the
+ * difference; or a change, where she states the difference itself — one broken bottle is
+ * −50 ml, a pack found again +50 ml — without counting the rest (issues.md, 2026-11-18).
  */
 export interface CreateCorrection {
-  /** The counted remaining quantity. Defaults in the UI to the derived value. */
-  new_remaining: string;
+  /**
+     * The counted remaining quantity. Defaults in the UI to the derived value.
+     * @nullable
+     */
+  new_remaining?: string | null;
+  /**
+     * The change, signed, in the lot's base units.
+     * @nullable
+     */
+  delta?: string | null;
   /** @nullable */
   reason?: string | null;
 }

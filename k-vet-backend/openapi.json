@@ -1961,7 +1961,7 @@
             }
           },
           "422": {
-            "description": "The correction would not change anything, or is below zero"
+            "description": "Neither or both of count and change, no change at all, below zero, or a drug \"Ohne Bestand\""
           }
         }
       }
@@ -5958,14 +5958,21 @@
       },
       "CreateCorrection": {
         "type": "object",
-        "description": "A stocktake: the vet states what is physically there, the server books the difference.",
-        "required": [
-          "new_remaining"
-        ],
+        "description": "A correction of a lot's stock, in one of two ways — exactly one of them:\na stocktake, where the vet states what is physically there and the server books the\ndifference; or a change, where she states the difference itself — one broken bottle is\n−50 ml, a pack found again +50 ml — without counting the rest (issues.md, 2026-11-18).",
         "properties": {
           "new_remaining": {
-            "type": "string",
+            "type": [
+              "string",
+              "null"
+            ],
             "description": "The counted remaining quantity. Defaults in the UI to the derived value."
+          },
+          "delta": {
+            "type": [
+              "string",
+              "null"
+            ],
+            "description": "The change, signed, in the lot's base units."
           },
           "reason": {
             "type": [

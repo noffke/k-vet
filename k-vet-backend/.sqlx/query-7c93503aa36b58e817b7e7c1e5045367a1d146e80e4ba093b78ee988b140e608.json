@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "SELECT DISTINCT reason FROM drug_stock_movement\n         WHERE kind = 'correction' AND reason IS NOT NULL AND reason <> ''\n         ORDER BY reason",
+  "query": "SELECT DISTINCT reason FROM drug_stock_movement\n         WHERE kind = 'correction' AND reason IS NOT NULL AND reason <> ''",
   "describe": {
     "columns": [
       {
@@ -22,5 +22,5 @@
       true
     ]
   },
-  "hash": "198e0e7a33b2093704ad078197b0ac54c78df29df7893e1a5a8a5afb7658ff89"
+  "hash": "7c93503aa36b58e817b7e7c1e5045367a1d146e80e4ba093b78ee988b140e608"
 }

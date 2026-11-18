@@ -17,10 +17,18 @@ import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
 import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
+import { toWire } from '@/lib/format'
+import { useLocaleFormat } from '@/lib/locale'
 import { useGoBack } from '@/lib/trail'
 
+/** What the vet typed last, which is what is booked: a count, or a change. */
+type Entry = { kind: 'count' | 'change'; value: string | null }
+
 /**
- * A stocktake on one Charge: what is actually on the shelf, and why it differs.
+ * A correction on one Charge, two ways: a stocktake — what is actually on the shelf — or a
+ * change — one broken bottle off, a pack found again on (issues.md, 2026-11-18). The two
+ * fields follow each other; the one typed in last is what is booked, so a count stays a count
+ * and a change a change even if a dispense lands meanwhile.
  *
  * The difference is booked as a movement of its own rather than by overwriting the stock —
  * the ledger is append-only, so a miscount stays visible as a correction (FR-016).
@@ -31,12 +39,30 @@ export function StockCorrectionPage() {
   const lotId = Number(id)
   const client = useQueryClient()
 
+  const { quantity } = useLocaleFormat()
   const lot = useGetLot(lotId)
   const reasons = useListCorrectionReasons()
   // The page opens on the derived stock, so the vet corrects a number rather than typing one.
-  const [newRemaining, setNewRemaining] = useState<string | null>(null)
+  const [entry, setEntry] = useState<Entry | null>(null)
   const [reason, setReason] = useState('')
-  const counted = newRemaining ?? lot.data?.remaining ?? null
+  const remaining = lot.data?.remaining ?? null
+  // Each field shows what the other one means: count = stock + change.
+  const counted =
+    entry === null
+      ? remaining
+      : entry.kind === 'count'
+        ? entry.value
+        : entry.value === null || remaining === null
+          ? null
+          : toWire(Number(remaining) + Number(entry.value))
+  const change =
+    entry === null
+      ? null
+      : entry.kind === 'change'
+        ? entry.value
+        : entry.value === null || remaining === null
+          ? null
+          : toWire(Number(entry.value) - Number(remaining))
 
   // Back where the vet came from — the appointment with its animal's tab — on success and on
   // cancel alike, rather than piling another entry onto the history.
@@ -58,14 +84,16 @@ export function StockCorrectionPage() {
   if (!lot.data) return <p className="text-sm text-danger">{t('error.notFound')}</p>
   const record = lot.data
 
-  // The server names the field and the reason; show that rather than assuming which it was.
+  // The server names the field and the reason; show that under the field it belongs to,
+  // rather than assuming which it was.
   const failure: unknown = correct.error
-  const correctionError = correct.isError
-    ? t(
-        (failure instanceof ApiError ? failure.errorFor('new_remaining') : undefined) ??
-          'error.generic',
-      )
-    : undefined
+  const errorOn = (field: 'new_remaining' | 'delta') =>
+    failure instanceof ApiError ? failure.errorFor(field) : undefined
+  const countError = errorOn('new_remaining')
+  const changeError = errorOn('delta')
+  const generic = correct.isError && !countError && !changeError
+  // One −/+ press is one pack: a broken bottle is one press, not its millilitres typed.
+  const packSize = record.packaging_quantity ? Number(record.packaging_quantity) : undefined
 
   return (
     <div className="mx-auto max-w-2xl">
@@ -89,9 +117,12 @@ export function StockCorrectionPage() {
         <p className="mt-3 text-sm text-ink-soft">{t('pharmacy.noCorrectionWithoutStock')}</p>
       ) : (
         <>
-          {/* The field opens on the derived stock, so what stands there is what the app thinks
-          is on the shelf — no need to print it a second time. */}
           <p className="mt-3 text-sm text-ink-soft">{t('pharmacy.correctionHint')}</p>
+          <p className="mt-1 text-sm text-ink">
+            {t('pharmacy.currentStock', {
+              stock: `${quantity(record.remaining)} ${record.unit ?? ''}`.trim(),
+            })}
+          </p>
 
           <section className="mt-5 grid gap-4 rounded-card border border-line bg-surface p-4 sm:grid-cols-2">
             <NumberInput
@@ -102,14 +133,24 @@ export function StockCorrectionPage() {
               min={0}
               // Every failure used to read "must not be 0", whatever it actually was — including
               // the refusal of a negative count, which then looked like the wrong complaint.
-              error={correctionError}
-              onChange={setNewRemaining}
+              error={countError ? t(countError) : undefined}
+              onChange={(value) => setEntry({ kind: 'count', value })}
+            />
+            <NumberInput
+              label={t('pharmacy.change')}
+              value={change}
+              unit={record.unit ?? undefined}
+              step={packSize}
+              hint={t('pharmacy.changeHint')}
+              error={changeError ? t(changeError) : generic ? t('error.generic') : undefined}
+              onChange={(value) => setEntry({ kind: 'change', value })}
             />
             {/* An editable select: previous reasons, alphabetical, or new free text. */}
             <TextField
               label={t('field.reason')}
               list="correction-reasons"
               value={reason}
+              wrapperClassName="sm:col-span-2"
               onChange={(event) => setReason(event.target.value)}
             />
             <datalist id="correction-reasons">
@@ -123,12 +164,16 @@ export function StockCorrectionPage() {
             <Button onClick={() => void back()}>{t('action.cancel')}</Button>
             <Button
               variant="primary"
-              disabled={counted === null || correct.isPending}
+              disabled={entry === null || entry.value === null || correct.isPending}
               onClick={() =>
-                counted !== null &&
+                entry !== null &&
+                entry.value !== null &&
                 correct.mutate({
                   id: lotId,
-                  data: { new_remaining: counted, reason: reason || null },
+                  data:
+                    entry.kind === 'change'
+                      ? { delta: entry.value, reason: reason || null }
+                      : { new_remaining: entry.value, reason: reason || null },
                 })
               }
             >
