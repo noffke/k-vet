@@ -140,14 +140,10 @@ export function QuotePage() {
       const { fields, lines } = dirty.current
       if (!fields && !lines) return
       let target = quoteId.current
-      if (target === undefined) {
-        if (!hasContent(current)) return
-        const created = await createQuote({ customer_id: null })
-        target = created.id
-        quoteId.current = target
-        setLoadedFor(target)
-        void navigate({ to: '/quote', search: { id: target }, replace: true })
-      }
+      if (target === undefined && !hasContent(current)) return
+      // Taken before anything is awaited: what is edited while this save is under way — a
+      // position picked while the record is still being created — is the next save's, not
+      // marked as written by this one.
       dirty.current = { fields: false, lines: false }
       const data: PatchQuote =
         current.customerId !== null
@@ -164,11 +160,22 @@ export function QuotePage() {
       if (lines) data.lines = toLineInputs(current.lines)
       setSaveState('saving')
       try {
+        if (target === undefined) {
+          const created = await createQuote({ customer_id: null })
+          target = created.id
+          quoteId.current = target
+          setLoadedFor(target)
+          void navigate({ to: '/quote', search: { id: target }, replace: true })
+        }
         const saved = await patchQuote(target, data)
         client.setQueryData(getGetQuoteQueryKey(target), saved)
         setSaveError(null)
         setSaveState('saved')
       } catch (error) {
+        // Not written, so still to be written by the next save; and a failed create no longer
+        // leaves the chain rejected, which stopped every later save.
+        dirty.current.fields ||= fields
+        dirty.current.lines ||= lines
         setSaveError(error)
         setSaveState('error')
       }
