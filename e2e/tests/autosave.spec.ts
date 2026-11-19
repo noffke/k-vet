@@ -9,9 +9,7 @@ import { navigate, signIn } from './helpers'
 test.describe('auto-save', () => {
   test('a customer field survives a reload without any save action', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     const warning = page.getByLabel('Warnhinweis')
     await warning.fill('Hund beißt bei der Blutabnahme')
 
@@ -45,9 +43,7 @@ test.describe('auto-save', () => {
   test('an invalid value is not stored and the last valid one stays', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     await login(request)
-    await signIn(page)
-
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     const phone = page.getByLabel('Telefon')
     await phone.fill('keine Nummer')
     await phone.blur()

@@ -40,8 +40,7 @@ test.describe('a new manufacturer or supplier from the drug', () => {
   test('a supplier is made from the original packaging', async ({ page, request }) => {
     const { drugId, drugName } = await seedDrug(request)
     const supplier = `Lieferant-${stamp()}`
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
 
     await page.getByLabel('Lieferant').selectOption({ label: 'Neuer Lieferant …' })
     const dialog = page.getByRole('dialog')
@@ -75,8 +74,7 @@ test.describe('a new manufacturer or supplier from the drug', () => {
   test('cancelling makes nothing and leaves the choice as it was', async ({ page, request }) => {
     const { drugId } = await seedDrug(request)
     const typed = `Abgebrochen-${stamp()}`
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     // Read the choice once the manufacturers are in: until then the select shows "—".
     await expect(page.getByLabel('Hersteller').locator('option:checked')).toHaveText('Pharma AG')
     const before = await page.getByLabel('Hersteller').inputValue()

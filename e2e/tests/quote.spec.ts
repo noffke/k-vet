@@ -115,8 +115,7 @@ test.describe('Preisauskunft', () => {
     await request.patch(`/api/services/${serviceId}`, { data: { net_price: '25.00' } })
     const { treatmentId } = await seedTreatment(request, await seedPatient(request, customerId))
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByRole('button', { name: 'Aus Preisauskunft übernehmen' }).click()
     const dialog = page.getByRole('dialog', { name: 'Preisauskunft übernehmen' })
     await dialog.getByRole('button', { name: new RegExp(title) }).click()

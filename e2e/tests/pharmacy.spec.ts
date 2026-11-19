@@ -60,8 +60,7 @@ test.describe('pharmacy', () => {
     const drug = await seedDrug(request)
 
     // The mark is set on the drug's page, and says what it does.
-    await signIn(page)
-    await page.goto(`/pharmacy/${drug.drugId}`)
+    await signIn(page, `/pharmacy/${drug.drugId}`)
     await page.getByLabel('Euthanasie').check()
     await expect(page.getByText(/trägt die Freigabe der Rechnung den Tag des Termins/)).toBeVisible()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
@@ -119,8 +118,7 @@ test.describe('pharmacy', () => {
 
   test('a Teilmenge starts on the original packaging unit', async ({ page, request }) => {
     const drug = await seedDrug(request)
-    await signIn(page)
-    await page.goto(`/pharmacy/${drug.drugId}`)
+    await signIn(page, `/pharmacy/${drug.drugId}`)
     const units = page.getByLabel('Einheit')
     await units.first().waitFor()
     // The seeded drug has its original and a 10 ml Teilmenge already: the new row is one more.
@@ -143,8 +141,7 @@ test.describe('pharmacy', () => {
 
   test('a delivery becomes a lot whose stock is derived', async ({ page, request }) => {
     const { drugId } = await seedDrug(request)
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
 
     await page.getByRole('button', { name: 'Wareneingang' }).click()
     await page.getByLabel('Anzahl Packungen').fill('2')
@@ -165,8 +162,7 @@ test.describe('pharmacy', () => {
     request,
   }) => {
     const { drugId, packagingId } = await seedDrug(request, { packages: 0 })
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
 
     await page.getByRole('button', { name: 'Wareneingang' }).click()
     await page.getByLabel('Anzahl Packungen').fill('1')
@@ -193,8 +189,7 @@ test.describe('pharmacy', () => {
     request,
   }) => {
     const { drugId, packagingId } = await seedDrug(request, { packages: 0 })
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}/intake`)
+    await signIn(page, `/pharmacy/${drugId}/intake`)
 
     await expect(page.getByText('Listenpreis bisher 10,00 € netto — stimmt er noch?')).toBeVisible()
     await page.getByRole('button', { name: 'Hat sich geändert' }).click()
@@ -227,8 +222,7 @@ test.describe('pharmacy', () => {
   }) => {
     const { drugId, drugName } = await seedDrug(request, { packages: 0 })
     const pzn = uniquePzn()
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}/intake`)
+    await signIn(page, `/pharmacy/${drugId}/intake`)
 
     const scan = page.getByLabel('Packung scannen')
     await scan.fill(ifaMatrix(pzn, 'CH-SCAN-1', '290800'))
@@ -251,8 +245,7 @@ test.describe('pharmacy', () => {
     await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
       data: { packages_received: 1, batch_number: 'CH-INVENTUR' },
     })
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     await page.getByText('CH-INVENTUR').filter({ visible: true }).first().click()
 
     await page.getByRole('button', { name: 'Korrektur' }).click()
@@ -277,8 +270,7 @@ test.describe('pharmacy', () => {
     await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
       data: { packages_received: 2, batch_number: 'CH-BRUCH' },
     })
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     await page.getByText('CH-BRUCH').filter({ visible: true }).first().click()
     await page.getByRole('button', { name: 'Korrektur' }).click()
     await expect(page.getByText('Aktueller Bestand: 200 ml')).toBeVisible()
@@ -298,8 +290,7 @@ test.describe('pharmacy', () => {
   test('a drug below its minimum stock is listed on the overview', async ({ page, request }) => {
     // One 100 ml bottle on the shelf.
     const { drugId, drugName } = await seedDrug(request, { packages: 1 })
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     const minimum = page.getByLabel('Mindestbestand')
     await minimum.fill('2')
     await minimum.blur()
@@ -322,8 +313,7 @@ test.describe('pharmacy', () => {
     await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
       data: { packages_received: 1, batch_number: `CH-MINUS-${Date.now() % 1e6}` },
     })
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     await page.getByText('CH-MINUS-', { exact: false }).filter({ visible: true }).first().click()
     await page.getByRole('button', { name: 'Korrektur' }).click()
     await expect(page).toHaveURL(/\/lots\/\d+\/correction$/)
@@ -366,8 +356,7 @@ test.describe('pharmacy', () => {
     const patientId = await seedPatient(request, customerId)
     const { treatmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
 
     // 30 ml: 20 from CH-A, 10 from CH-B.
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
@@ -409,8 +398,7 @@ test.describe('pharmacy', () => {
     const patientId = await seedPatient(request, customerId)
     const { treatmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     await page.getByLabel('Ohne Bestand (Verbrauchsmaterial)').check()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
     // No stock to show, and nothing to book in.
@@ -445,8 +433,7 @@ test.describe('pharmacy', () => {
       'Der Bestand des Medikaments reicht für diese Menge nicht aus (alle Chargen zusammen). ' +
       'Bitte zuerst den Wareneingang oder eine Inventur erfassen.'
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     const short = 'Nicht genug Bestand'
 
@@ -507,8 +494,7 @@ test.describe('pharmacy', () => {
       data: { recipient_emails: [], send_at: new Date().toISOString(), template: 'Standard' },
     })
 
-    await signIn(page)
-    await page.goto(`/lots/${lotId}`)
+    await signIn(page, `/lots/${lotId}`)
 
     // SC-004: batch number → who received it, in one view.
     await expect(page.getByRole('link', { name: 'Rex' })).toBeVisible()

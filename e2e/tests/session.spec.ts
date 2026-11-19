@@ -1,5 +1,5 @@
 import { expect, test } from '../fixtures/test'
-import { navigate, signIn } from './helpers'
+import { navigate, signIn, signInThroughForm } from './helpers'
 
 /**
  * A session that runs out while the tab sits open.
@@ -25,8 +25,9 @@ test.describe('an expired session', () => {
       page.getByRole('status').filter({ hasText: 'Ihre Sitzung ist abgelaufen' }).first(),
     ).toBeVisible()
 
-    // And signing in again lands on a working app, not on the stale screen.
-    await signIn(page)
+    // And signing in again — through the form, the one spec that uses it — lands on a working
+    // app, not on the stale screen.
+    await signInThroughForm(page)
     await navigate(page, 'Kunden')
     await expect(page.getByPlaceholder('Suchen …').first()).toBeVisible()
   })

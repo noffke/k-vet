@@ -10,8 +10,7 @@ import { signIn } from './helpers'
 test.describe('sending an invoice', () => {
   test('names each address by type and queues the mail', async ({ page, request }) => {
     const invoice = await seedAcceptedInvoice(request)
-    await signIn(page)
-    await page.goto(`/treatments/${invoice.treatmentId}/invoice/send`)
+    await signIn(page, `/treatments/${invoice.treatmentId}/invoice/send`)
     await expect(page.getByText('erika@example.com').first()).toContainText('privat')
 
     // Sending again opens on "Später" like releasing does; this one is meant to go now.
@@ -33,8 +32,7 @@ test.describe('sending an invoice', () => {
   }) => {
     const invoice = await seedAcceptedInvoice(request)
     const address = `neu-${invoice.invoiceId}@example.com`
-    await signIn(page)
-    await page.goto(`/treatments/${invoice.treatmentId}/invoice/send`)
+    await signIn(page, `/treatments/${invoice.treatmentId}/invoice/send`)
 
     // The same page as releasing: one more address, and the question whether to keep it.
     await page.getByLabel('Gleich versenden').check()
@@ -58,8 +56,7 @@ test.describe('sending an invoice', () => {
     await seedFailedMail(retried.invoiceId, `alt-${retried.invoiceId}@example.com`)
     await seedFailedMail(removed.invoiceId, `weg-${removed.invoiceId}@example.com`)
 
-    await signIn(page)
-    await page.goto('/')
+    await signIn(page, '/')
     // "Nicht versendet" sets a failed mail apart, with the reason — and no longer claims of
     // every released invoice that it never reached the customer.
     const unsent = page

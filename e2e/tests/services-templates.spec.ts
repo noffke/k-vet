@@ -239,8 +239,7 @@ test.describe('treatment lines', () => {
     const { treatmentId } = await seedTreatment(request, patientId)
     const drug = await seedDrug(request)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
@@ -303,8 +302,7 @@ test.describe('treatment lines', () => {
     const patientId = await seedPatient(request, customerId)
     const { treatmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
     await page.getByRole('option', { name: /Beratung/ }).first().click()
 
@@ -322,8 +320,7 @@ test.describe('treatment lines', () => {
     const { treatmentId } = await seedTreatment(request, patientId)
     const { serviceName } = await seedService(request)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
 
@@ -350,8 +347,7 @@ test.describe('treatment lines', () => {
     })
     expect(intake.status()).toBe(200)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 

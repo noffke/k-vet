@@ -19,8 +19,7 @@ test.describe('Mitbringen', () => {
     const { appointmentId } = await seedTreatment(request, patientId)
     const { drugName } = await seedDrug(request)
 
-    await signIn(page)
-    await page.goto(`/appointments/${appointmentId}`)
+    await signIn(page, `/appointments/${appointmentId}`)
     await page.getByPlaceholder('Medikament suchen …').fill(drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
     const card = page.locator('section').filter({ hasText: 'Mitbringen' }).first()
@@ -68,8 +67,7 @@ test.describe('Mitbringen', () => {
     const { appointmentId } = await seedTreatment(request, patientId)
     const { drugName } = await seedDrug(request, { unit: 'Tablette' })
 
-    await signIn(page)
-    await page.goto(`/appointments/${appointmentId}`)
+    await signIn(page, `/appointments/${appointmentId}`)
     await page.getByPlaceholder('Medikament suchen …').fill(drugName)
     await page.getByRole('option', { name: new RegExp(drugName) }).first().click()
     const card = page.locator('section').filter({ hasText: 'Mitbringen' }).first()

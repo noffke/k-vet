@@ -15,8 +15,7 @@ test.describe('customer addresses', () => {
     request,
   }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     const street = page.getByLabel('Straße und Hausnummer')
 
     // Opening a customer asks nothing.
@@ -62,9 +61,7 @@ test.describe('customer addresses', () => {
   test('open the drive there in Google Maps', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const { treatmentId } = await seedTreatment(request, await seedPatient(request, customerId))
-    await signIn(page)
-
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     const fromCustomer = page.getByRole('link', { name: 'In Google Maps öffnen' })
     await expect(fromCustomer).toHaveAttribute('href', new RegExp(drive))
     await expect(fromCustomer).toHaveAttribute('target', '_blank')

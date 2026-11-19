@@ -25,8 +25,7 @@ test.describe('choosing the email template', () => {
     })
     await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}/invoice/accept`)
+    await signIn(page, `/treatments/${treatmentId}/invoice/accept`)
     await expect(page.getByLabel('Standard', { exact: true })).toBeChecked()
     // Listed in config.toml, but its file is not in the folder: not choosable, and says why.
     await expect(page.getByLabel(/^Fehlt/)).toBeDisabled()
@@ -49,8 +48,7 @@ test.describe('choosing the email template', () => {
     const invoice = await seedAcceptedInvoice(request)
     await markEmailed(invoice.invoiceId, 'erika@example.com', 'Kurz')
 
-    await signIn(page)
-    await page.goto(`/treatments/${invoice.treatmentId}`)
+    await signIn(page, `/treatments/${invoice.treatmentId}`)
     await expect(page.getByText('An erika@example.com · Vorlage: Kurz')).toBeVisible()
   })
 })

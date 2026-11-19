@@ -42,8 +42,7 @@ test.describe('patient treatments', () => {
       data: { patient_id: helene },
     })
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     const panel = page.getByRole('tabpanel')
     const picker = panel.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
 
@@ -109,8 +108,7 @@ test.describe('patient treatments', () => {
     const { treatmentId } = await seedTreatment(request, calm)
     await request.post(`/api/treatments/${treatmentId}/patients`, { data: { patient_id: biter } })
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
 
     // Anton's tab is open: no banner — but Bruno's tab carries the mark.
     await expect(page.getByRole('tab', { name: /Anton/ })).toHaveAttribute('aria-selected', 'true')
@@ -128,8 +126,7 @@ test.describe('patient treatments', () => {
     const { treatmentId } = await seedTreatment(request, first)
     await request.post(`/api/treatments/${treatmentId}/patients`, { data: { patient_id: second } })
 
-    await signIn(page)
-    await page.goto(`/patients/${second}`)
+    await signIn(page, `/patients/${second}`)
     await page.getByRole('link', { name: /\d{2}\.\d{2}\.\d{4}/ }).first().click()
 
     // Fritz's tab, not the first one.
@@ -176,8 +173,7 @@ test.describe('patient treatments', () => {
       data: { kind: 'service', service_id: serviceId, quantity: '1' },
     })
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     // The button is disabled until the lines are on screen: the open tab's and the visit's.
     await expect(page.getByLabel('Name')).toHaveCount(2)
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
@@ -237,8 +233,7 @@ test.describe('patient treatments', () => {
 
   test('an animal comes off with its positions', async ({ page, request }) => {
     const { appointmentId, treatmentId, lines } = await twoAnimalsWithLines(request)
-    await signIn(page)
-    await page.goto(`/appointments/${appointmentId}`)
+    await signIn(page, `/appointments/${appointmentId}`)
 
     await page.getByRole('tab', { name: 'Helene' }).click()
     await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
@@ -257,8 +252,7 @@ test.describe('patient treatments', () => {
 
   test('an animal moves to its own appointment, with its positions', async ({ page, request }) => {
     const { appointmentId, treatmentId, serviceName, lines } = await twoAnimalsWithLines(request)
-    await signIn(page)
-    await page.goto(`/appointments/${appointmentId}`)
+    await signIn(page, `/appointments/${appointmentId}`)
 
     await page.getByRole('tab', { name: 'Helene' }).click()
     await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
@@ -285,8 +279,7 @@ test.describe('patient treatments', () => {
     const drug = await seedDrug(request)
     const { treatmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
     await expect(page.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))

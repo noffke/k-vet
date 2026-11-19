@@ -19,8 +19,7 @@ test.describe('formatted text', () => {
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
     const visit = `/appointments/${treatment.appointment_id}?tier=${treatment.patients[0].id}`
 
-    await signIn(page)
-    await page.goto(visit)
+    await signIn(page, visit)
 
     // The toolbar is what the phone has instead of shortcuts.
     const reason = page.getByLabel('Vorbericht und Untersuchung')
@@ -108,8 +107,7 @@ test.describe('formatted text', () => {
     const { treatmentId } = await seedTreatment(request, patientId)
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
 
-    await signIn(page)
-    await page.goto(`/appointments/${treatment.appointment_id}?tier=${treatment.patients[0].id}`)
+    await signIn(page, `/appointments/${treatment.appointment_id}?tier=${treatment.patients[0].id}`)
     await page.getByRole('button', { name: 'Textbaustein einfügen' }).last().click()
     await page.getByPlaceholder('Name oder Inhalt suchen …').fill(blockName)
     // The picker previews the words, not the markup.

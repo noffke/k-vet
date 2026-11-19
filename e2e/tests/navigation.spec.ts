@@ -14,8 +14,7 @@ test.describe('navigation', () => {
     const patientId = await seedPatient(request, customerId, name)
     const { appointmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     await page.getByRole('button', { name: new RegExp(`^${name}`) }).click()
     await expect(page).toHaveURL(new RegExp(`/patients/${patientId}$`))
 
@@ -35,8 +34,7 @@ test.describe('navigation', () => {
     const patientId = await seedPatient(request, customerId)
     const { appointmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/appointments/${appointmentId}`)
+    await signIn(page, `/appointments/${appointmentId}`)
     await page.getByRole('link', { name: 'Zurück: Termine' }).click()
     await expect(page).toHaveURL(/\/appointments$/)
   })

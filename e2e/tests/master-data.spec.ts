@@ -37,8 +37,7 @@ test.describe('customers and patients', () => {
 
   test('a further address is opened as a row and saves itself', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     await expect(page.getByLabel('E-Mail')).toHaveCount(1)
 
     // The button opens a row to type in; it does not store anything by itself.
@@ -62,8 +61,7 @@ test.describe('customers and patients', () => {
 
   test('removing a stored address is confirmed first', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
 
     // The bin sits beside the address's own fields, so the click alone must not remove it.
     const row = page.getByRole('listitem').filter({ has: page.getByLabel('Art') }).first()
@@ -85,8 +83,7 @@ test.describe('customers and patients', () => {
 
   test('an invalid email address is rejected with a field message', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
 
     await page.getByRole('button', { name: 'E-Mail hinzufügen' }).click()
     await page.getByLabel('E-Mail').last().fill('erika(at)example.com')
@@ -99,8 +96,7 @@ test.describe('customers and patients', () => {
 
   test('a stored address and its type are edited in place', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
 
     // The row is a form like any other on this page, not a line of text with a bin next to it.
     const address = page.getByLabel('E-Mail').first()
@@ -128,8 +124,7 @@ test.describe('customers and patients', () => {
 
   test('a phone number is redisplayed in the national format', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
 
     await page.getByLabel('Telefon').fill('0171 / 123 45 67')
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
@@ -143,8 +138,7 @@ test.describe('customers and patients', () => {
     request,
   }) => {
     const { customerId, lastName } = await seedCustomer(request)
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
 
     await page.getByLabel('Warnhinweis').fill('Hund beißt bei der Blutabnahme')
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
@@ -166,8 +160,7 @@ test.describe('customers and patients', () => {
   test('a weight is stored to one decimal and survives a reload', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId)
-    await signIn(page)
-    await page.goto(`/patients/${patientId}`)
+    await signIn(page, `/patients/${patientId}`)
 
     const weight = page.getByLabel('Gewicht')
     // The input rounds to one decimal as she types, so a second one never reaches the wire:
@@ -194,8 +187,7 @@ test.describe('customers and patients', () => {
   test('a detail page can be left the way it was entered', async ({ page, request }) => {
     const { customerId, lastName } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId, 'Rufus')
-    await signIn(page)
-    await page.goto(`/patients/${patientId}`)
+    await signIn(page, `/patients/${patientId}`)
 
     // An animal is reached through its customer, so that is where "back" goes — there is no
     // patient list any more (issues.md 9).
@@ -257,8 +249,7 @@ test.describe('customers and patients', () => {
     const name = `Foto-${Date.now() % 1e6}`
     const patientId = await seedPatient(request, customerId, name)
 
-    await signIn(page)
-    await page.goto(`/patients/${patientId}`)
+    await signIn(page, `/patients/${patientId}`)
     const photo = page.locator('input[type=file][accept="image/*"]')
 
     // A camera photo is several megabytes — more than the 2 MB axum allowed a multipart body
@@ -284,8 +275,7 @@ test.describe('customers and patients', () => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId, `Datei-${Date.now() % 1e6}`)
 
-    await signIn(page)
-    await page.goto(`/patients/${patientId}`)
+    await signIn(page, `/patients/${patientId}`)
 
     // The files section has its own hidden input; the photo picker above it has another, so
     // take the one inside this section rather than the first on the page.

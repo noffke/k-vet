@@ -12,8 +12,7 @@ test('numbers, money and dates follow the active locale', async ({ page, request
   const german = germanDate()
   const american = americanDate()
 
-  await signIn(page)
-  await page.goto('/invoices')
+  await signIn(page, '/invoices')
 
   const row = page
     .getByText(invoice.invoiceNumber)

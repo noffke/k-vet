@@ -34,8 +34,7 @@ test.describe('sending an invoice later', () => {
 
     const day = germanDate(1)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}/invoice/accept`)
+    await signIn(page, `/treatments/${treatmentId}/invoice/accept`)
     // "Später" unless the vet says otherwise, offering tomorrow at eight.
     await expect(page.getByLabel('Später versenden')).toBeChecked()
     await expect(page.getByLabel('Datum', { exact: true })).toHaveValue(day)
@@ -90,8 +89,7 @@ test.describe('sending an invoice later', () => {
     ).json()) as { id: number; invoice_number: string }
     const day = germanDate(1)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}/invoice/accept`)
+    await signIn(page, `/treatments/${treatmentId}/invoice/accept`)
     await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()
     const planned = page.getByText(`E-Mail an erika@example.com geplant für ${day}, 08:00.`)
     await expect(planned).toBeVisible()
@@ -133,8 +131,7 @@ test.describe('sending an invoice later', () => {
     })
     await request.post(`/api/treatments/${treatmentId}/invoice`, { data: {} })
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}/invoice/accept`)
+    await signIn(page, `/treatments/${treatmentId}/invoice/accept`)
     await page.getByLabel('Später versenden').check()
     await page.getByLabel('Datum', { exact: true }).fill('01.01.2020')
     await page.getByLabel('Datum', { exact: true }).blur()

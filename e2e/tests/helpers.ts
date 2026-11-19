@@ -122,8 +122,27 @@ export async function navigate(page: Page, label: string): Promise<void> {
   await expectNoSidewaysScroll(page)
 }
 
+/**
+ * Signs in and opens `path`, else the Übersicht. The login goes through the API — the page's
+ * requests share its cookies — so a test that wants another page does not load the app twice
+ * and the dashboard in between. The form itself is `signInThroughForm`.
+ */
+export async function signIn(page: Page, path?: string): Promise<void> {
+  const response = await page.request.post('/api/auth/login', {
+    data: { username: E2E_USERNAME, password: E2E_PASSWORD },
+  })
+  expect(response.ok(), 'the test login is accepted').toBe(true)
+  if (path !== undefined) {
+    await page.goto(path)
+    return
+  }
+  await page.goto('/')
+  await page.getByRole('heading', { name: 'Übersicht' }).waitFor()
+  await expectNoSidewaysScroll(page)
+}
+
 /** Signs in through the real login form and waits for the app shell. */
-export async function signIn(page: Page): Promise<void> {
+export async function signInThroughForm(page: Page): Promise<void> {
   await page.goto('/login')
   await page.getByLabel('Benutzername').fill(E2E_USERNAME)
   await page.getByLabel('Passwort').fill(E2E_PASSWORD)

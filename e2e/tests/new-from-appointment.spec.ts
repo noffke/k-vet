@@ -115,8 +115,7 @@ test.describe('a new animal from the appointment', () => {
       })
     ).json()) as { id: number }
 
-    await signIn(page)
-    await page.goto(`/appointments/${appointment.id}`)
+    await signIn(page, `/appointments/${appointment.id}`)
     // No address yet: no new animal, and the search says where to complete the customer.
     const picker = page.getByPlaceholder('Patienten')
     const newAnimal = page.getByRole('option', { name: 'Neues Tier …' })

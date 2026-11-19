@@ -38,8 +38,7 @@ test.describe('deleting incomplete records', () => {
     request,
   }) => {
     const { drugId } = await seedDrug(request)
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
 
     await expect(page.getByRole('button', { name: 'Archivieren' })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Löschen', exact: true })).toHaveCount(0)

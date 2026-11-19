@@ -11,8 +11,7 @@ import { signIn } from './helpers'
 test.describe('codes on the drug', () => {
   test('a code is added by scanning, shown as a PZN, and removed', async ({ page, request }) => {
     const { drugId } = await seedDrug(request)
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
 
     const pzn = uniquePzn()
     const scan = page.getByLabel('Code hinzufügen')

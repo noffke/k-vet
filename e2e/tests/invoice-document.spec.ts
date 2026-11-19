@@ -28,8 +28,7 @@ test.describe('the invoice document', () => {
     const { treatmentId } = await seedTreatment(request, patientId)
     const { serviceName } = await seedService(request)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
@@ -72,8 +71,7 @@ test.describe('the invoice document', () => {
     // 23.62 net at the 1.5-fold rate: 35.43 net → 42.16 gross per unit at 19 %.
     const { serviceName } = await seedService(request)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
 
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(serviceName)

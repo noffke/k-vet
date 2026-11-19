@@ -288,6 +288,10 @@ overflow sheet).
 - `tests/helpers.ts::navigate()` clicks the right chrome for the viewport and asserts the page
   does not scroll sideways; horizontal overflow on a phone also shrinks Chrome's page scale and
   makes fixed-tab-bar clicks miss, so keep that assertion.
+- `signIn(page, path?)` logs in through the API (the page's requests share its cookies) and
+  opens `path`, else the Übersicht — pass the page a test starts on rather than `signIn` then
+  `goto`, which loaded the app twice. The login form itself is `signInThroughForm`, used by
+  `session.spec.ts`.
 - The GOT 2022 catalogue (1006 positions, surgical ones hidden) is imported by migration `0008`
   and corrected by `0021`, so every test database has it — pick fixtures that cannot collide
   with it. `scripts/extract-got.py` checks the catalogue against the published schedule and

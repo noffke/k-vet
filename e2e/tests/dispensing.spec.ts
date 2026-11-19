@@ -20,8 +20,7 @@ test.describe('dispensing a drug', () => {
     const patientId = await seedPatient(request, customerId)
     const { treatmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/treatments/${treatmentId}`)
+    await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
     // Only the bottle is offered, not its Teilmenge.
     await expect(page.getByRole('option', { name: new RegExp(drugName) })).toHaveCount(1)
@@ -63,8 +62,7 @@ test.describe('dispensing a drug', () => {
     const patientId = await seedPatient(request, customerId)
     const { treatmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/pharmacy/${drugId}`)
+    await signIn(page, `/pharmacy/${drugId}`)
     // It has its 10 ml Teilmenge: the mark waits until that is deleted (asked first).
     const flag = page.getByLabel('Beliebig teilbar')
     await expect(flag).toBeDisabled()

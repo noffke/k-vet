@@ -147,8 +147,7 @@ test.describe('appointments', () => {
     const patientId = await seedPatient(request, customerId, name)
     const { appointmentId } = await seedTreatment(request, patientId)
 
-    await signIn(page)
-    await page.goto(`/customers/${customerId}`)
+    await signIn(page, `/customers/${customerId}`)
     await expect(page.getByRole('heading', { name: 'Termine' })).toBeVisible()
     await page.getByRole('link', { name: new RegExp(name) }).click()
     await expect(page).toHaveURL(new RegExp(`/appointments/${appointmentId}$`))
@@ -207,8 +206,7 @@ test.describe('appointments', () => {
     const visitService = await seedService(request, { perVisit: true })
     const animalService = await seedService(request)
 
-    await signIn(page)
-    await page.goto(`/appointments/${appointmentId}`)
+    await signIn(page, `/appointments/${appointmentId}`)
     const picker = page.getByPlaceholder('Patienten')
     const addAnimal = page.getByRole('button', { name: 'Tier', exact: true })
 

@@ -96,8 +96,7 @@ test.describe('bookkeeping hand-off', () => {
   test('the PDF of an invoice is reachable from the list', async ({ page, request }) => {
     const invoice = await seedAcceptedInvoice(request)
 
-    await signIn(page)
-    await page.goto('/invoices')
+    await signIn(page, '/invoices')
 
     // Wait for *this* invoice's link, not for any link called PDF: the header's "Alle PDFs
     // herunterladen" also matches that name (Playwright matches accessible names as a
