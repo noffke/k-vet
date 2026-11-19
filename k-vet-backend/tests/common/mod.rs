@@ -30,7 +30,12 @@ pub use db::database;
 
 pub const TEST_USER: &str = "tierarzt";
 pub const TEST_PASSWORD: &str = "test1234";
-const TEST_PASSWORD_HASH: &str = "$argon2id$v=19$m=19456,t=2,p=1$sv7lVNC/98GKqHKTWF2RnA$e/w5YttGxthEXoRvReBLS4+Y1NQOvwaFcRGrtg6JXNU";
+/// `TEST_PASSWORD` hashed with the cheapest argon2id parameters (`m=8,t=1,p=1`). Verification
+/// reads the parameters from the hash, so every test's login costs microseconds rather than an
+/// unoptimised production-strength argon2 run; production hashes (`--hash-password`) are as
+/// strong as ever.
+const TEST_PASSWORD_HASH: &str =
+    "$argon2id$v=19$m=8,t=1,p=1$y/0sUMHarkKgaBpzUS9UGA$5hD61A/y1ge0S53p4cTVsgncVRm4QCAEuF/d5rToM04";
 
 /// An in-process application under test, with a cookie jar for the session.
 pub struct TestApp {
