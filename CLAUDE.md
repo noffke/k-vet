@@ -31,7 +31,7 @@ Postgres for development and tests:
 ```bash
 docker compose -f docker-compose.dev.yml up -d db      # postgres://kvet:kvet@localhost:5432/kvet
 export DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet
-docker compose -f docker-compose.dev.yml exec db createdb -U kvet kvet_e2e   # once; E2E wants its own database
+docker compose -f docker-compose.dev.yml exec db createdb -U kvet kvet_e2e   # once; E2E connects through it to make its own
 ```
 
 Backend (`k-vet-backend/`), the same gates CI runs:
@@ -67,12 +67,15 @@ cd k-vet-web && npm run build                        # the binary serves dist/ f
 cd ../k-vet-backend && cargo build
 cd ../e2e && DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet_e2e npx playwright test
 npx playwright test core-loop --project=desktop      # one spec, one viewport
+E2E_WORKERS=1 npx playwright test                    # one worker (default 4, CI 2) — for debugging
 KVET_BINARY=../k-vet-backend/target/release/k-vet-backend npx playwright test   # release check
 ```
 
-`global-setup.ts` writes `server.web_dir` into the generated config, pointing at
-`k-vet-web/dist`, and fails fast when that directory has no `index.html` — so a stale or missing
-frontend build is reported instead of serving 404s. `KVET_WEB_DIR` overrides it.
+Each Playwright worker starts its own backend on its own database (`fixtures/backend.ts`):
+`kvet_e2e_w<n>`, dropped and created fresh on the server `DATABASE_URL` names, a config of its own
+with `server.web_dir` pointing at `k-vet-web/dist` (`KVET_WEB_DIR` overrides it). `global-setup.ts`
+only fails fast when the binary or `dist/index.html` is missing — so a stale or missing frontend
+build is reported instead of serving 404s — and starts the one fake Google all workers share.
 
 The deployment image (`Dockerfile`, `deploy/`) is a separate path: three stages
 (node → rust → `ubuntu:noble`), built on the Pi, with `config.toml`, the templates dir and the
@@ -274,11 +277,14 @@ overflow sheet).
   migrations themselves stay `#[sqlx::test(migrations = false)]`, on an empty database. They
   drive the real router through `tests/api/common/mod.rs::TestApp` (`get`/`post`/`patch`/
   `post_multipart`, cookie jar, `seed_*` helpers). Prefer these over mocking anything.
-- Playwright specs share **one** database across specs and both viewport projects. Fixtures must
-  therefore generate unique names (`fixtures/seed.ts` suffixes with a timestamp) and assertions
-  must not assume global counts — `clearPendingInvoices()` is how a spec establishes a known
-  slate. Scope text assertions with `.filter({ visible: true })`, because both DataList layouts
-  are in the DOM.
+- Specs import `test` and `expect` from `fixtures/test.ts`, never from `@playwright/test` — that
+  is what gives them a backend. Its worker-scoped `backend` fixture starts the binary on a fresh
+  database once per worker and keeps it for every spec the worker runs, across files and both
+  viewport projects; a worker replaced after a failure starts afresh. The specs of one worker
+  therefore still share a database, and which specs share it changes from run to run: fixtures
+  generate unique names (`fixtures/seed.ts` suffixes with a timestamp) and assertions must not
+  assume global counts — `clearPendingInvoices()` is how a spec establishes a known slate. Scope
+  text assertions with `.filter({ visible: true })`, because both DataList layouts are in the DOM.
 - `tests/helpers.ts::navigate()` clicks the right chrome for the viewport and asserts the page
   does not scroll sideways; horizontal overflow on a phone also shrinks Chrome's page scale and
   makes fixed-tab-bar clicks miss, so keep that assertion.

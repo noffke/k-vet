@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
 import { pdfText, signIn } from './helpers'
 

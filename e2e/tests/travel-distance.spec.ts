@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { ROUTED_KM, ROUTED_STREET } from '../fixtures/fakeGoogle'
 import {

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -9,7 +9,7 @@ import { navigate, signIn } from './helpers'
  */
 test.describe('text blocks', () => {
   test('a block is written once and inserted at the cursor', async ({ page, request }) => {
-    // Unique per run: the specs share one database.
+    // Unique per run: a worker's specs share one database.
     const suffix = Date.now().toString().slice(-6)
     const blockName = `Impfung-${suffix}`
     const blockText = `Impfung nach Schema ${suffix}.`

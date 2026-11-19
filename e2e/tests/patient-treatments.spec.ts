@@ -3,7 +3,7 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { type APIRequestContext, expect, test } from '@playwright/test'
+import { type APIRequestContext, expect, test } from '../fixtures/test'
 import {
   doc,
   seedCustomer,

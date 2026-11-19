@@ -1,5 +1,5 @@
 /**
- * Pack codes for the specs. A code belongs to one drug, and the specs share one database, so
+ * Pack codes for the specs. A code belongs to one drug, and a worker's specs share one database, so
  * every test makes its own: a fresh PZN with valid check digits, and the Data Matrix contents a
  * pack with it would carry (securPharm coding rules: PPN = "11" + PZN + two check characters,
  * NTIN = "4150" + PZN + GS1 check digit).

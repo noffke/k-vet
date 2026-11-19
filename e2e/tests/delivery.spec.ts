@@ -1,4 +1,4 @@
-import { type APIRequestContext, expect, type Page, test } from '@playwright/test'
+import { type APIRequestContext, expect, type Page, test } from '../fixtures/test'
 import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { login, seedDrug } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'

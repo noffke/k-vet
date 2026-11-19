@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedService } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
@@ -13,7 +13,7 @@ import { navigate, signIn } from './helpers'
  */
 test('a visit is recorded and its invoice accepted', async ({ page, request }) => {
   const { customerId, lastName } = await seedCustomer(request)
-  // Unique per run: the specs share one database, and the picker searches all patients.
+  // Unique per run: a worker's specs share one database, and the picker searches all patients.
   const patientName = `Rex-${Date.now().toString().slice(-6)}`
   await seedPatient(request, customerId, patientName)
   const { drugName, packagingId } = await seedDrug(request)

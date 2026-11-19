@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { seedDrug } from '../fixtures/seed'
 import { signIn } from './helpers'

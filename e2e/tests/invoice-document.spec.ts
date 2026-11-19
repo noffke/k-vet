@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { doc, seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { pdfText, signIn } from './helpers'
 
@@ -33,7 +33,8 @@ test.describe('the invoice document', () => {
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
-    await expect(page.getByText(serviceName).filter({ visible: true }).first()).toBeVisible()
+    // The line's name is its own field; text on the page only matched the passing toast.
+    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue(serviceName)
 
     await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
     await page.getByRole('button', { name: 'Rechnung erstellen', exact: true }).last().click()
@@ -60,7 +61,7 @@ test.describe('the invoice document', () => {
 
     // The GiroCode block only renders when the practice has bank details, and this spec asserts
     // where that block sits — so it puts them there itself rather than relying on whichever
-    // other spec ran first (the specs share one database). `seedCustomer` has logged in by now.
+    // other spec ran first (a worker's specs share one database). `seedCustomer` has logged in by now.
     const settings = await request.patch('/api/settings', {
       data: { iban: `DE${Date.now().toString().slice(-18)}`, bic: 'BYLADEM1001' },
     })

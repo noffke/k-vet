@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
@@ -121,14 +121,18 @@ test.describe('pharmacy', () => {
     const drug = await seedDrug(request)
     await signIn(page)
     await page.goto(`/pharmacy/${drug.drugId}`)
-    await page.getByLabel('Einheit').first().waitFor()
+    const units = page.getByLabel('Einheit')
+    await units.first().waitFor()
+    // The seeded drug has its original and a 10 ml Teilmenge already: the new row is one more.
+    // Counting them first is what makes this an assertion about the new row rather than one that
+    // passes on an existing row by coincidence — it used to expect two, and passed only when it
+    // looked before the new row had arrived.
+    const before = await units.count()
 
     await page.getByRole('button', { name: 'Teilmenge', exact: true }).click()
-    // The original is already `ml`, so waiting for the second row is what makes this an
-    // assertion about the subset rather than one that passes on the original by coincidence.
-    await expect(page.getByLabel('Einheit')).toHaveCount(2)
-    // 10 ml out of a 100 ml bottle: the same unit, so it is not retyped every time.
-    await expect(page.getByLabel('Einheit').last()).toHaveValue('ml')
+    await expect(units).toHaveCount(before + 1)
+    // Out of a 100 ml bottle: the same unit, so it is not retyped every time.
+    await expect(units.last()).toHaveValue('ml')
 
     // The field also offers what the practice already writes elsewhere.
     const suggestions = await page

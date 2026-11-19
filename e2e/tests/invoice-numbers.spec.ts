@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page, test } from '../fixtures/test'
 import { practiceYear } from '../fixtures/clock'
 import { seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { signIn } from './helpers'

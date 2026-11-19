@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import {
   clearPendingInvoices,
   seedAcceptedInvoice,
@@ -22,7 +22,7 @@ test.describe('dashboard and settings', () => {
     // A lot that expires next week, so it belongs in the expiring list.
     const { drugName, packagingId } = await seedDrug(request)
     const expiresOn = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
-    // Unique per run: the specs share one database.
+    // Unique per run: a worker's specs share one database.
     const batchNumber = `CH-VERFALL-${Date.now().toString().slice(-6)}`
     const intake = await request.post(`/api/packagings/${packagingId}/stock-intakes`, {
       data: { packages_received: 1, batch_number: batchNumber, expiration_date: expiresOn },
@@ -153,7 +153,7 @@ test.describe('dashboard and settings', () => {
     expect(hasColourNearTop(raster, [60, 160, 80]), 'the middle band too').toBeTruthy()
     expect(hasColourNearTop(raster, [40, 80, 200]), 'and the bottom band').toBeTruthy()
 
-    // Put the practice back as it was, since the specs share one database and the rest of them
+    // Put the practice back as it was, since a worker's specs share one database and the rest of them
     // do not expect a letterhead.
     await page.getByRole('button', { name: 'Löschen' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen' }).click()

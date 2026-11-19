@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedPatient } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -13,6 +13,8 @@ test.describe('customers and patients', () => {
     await signIn(page)
     await navigate(page, 'Kunden')
     await page.getByRole('button', { name: 'Neuer Kunde' }).click()
+    // On the new customer's page — the list behind it shows the fresh draft for a moment too.
+    await expect(page).toHaveURL(/\/customers\/\d+$/)
 
     // The record exists from the first keystroke, flagged incomplete until it is whole.
     await expect(page.getByTitle(/Unvollständig/)).toBeVisible()

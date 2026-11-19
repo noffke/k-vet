@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { DOUBTFUL_ZIP, MISSPELLED_STREET, UNKNOWN_HOUSE, WRONG_ZIP } from '../fixtures/fakeGoogle'
 import { seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
 import { signIn } from './helpers'

@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedPatient } from '../fixtures/seed'
 import { signIn } from './helpers'
 
@@ -14,7 +14,7 @@ test.describe('the dashboard', () => {
     const { customerId, lastName } = await seedCustomer(request)
     const animal = `Heute-${Date.now() % 1e6}`
     await seedPatient(request, customerId, animal)
-    // Early in the day, so it is at the top of a day the shared database has filled.
+    // Early in the day, so it is at the top of a day the worker's database has filled.
     const early = new Date()
     early.setHours(0, 5, 0, 0)
     const created = await request.post('/api/appointments', {

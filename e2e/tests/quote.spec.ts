@@ -1,4 +1,4 @@
-import { expect, type Page, test } from '@playwright/test'
+import { expect, type Page, test } from '../fixtures/test'
 import {
   login,
   seedCustomer,
@@ -124,7 +124,9 @@ test.describe('Preisauskunft', () => {
     await expect(dialog.getByLabel('wie angeboten (28,11 €)')).toBeChecked()
     await dialog.getByRole('button', { name: 'Übernehmen' }).click()
 
-    await expect(page.getByText(serviceName).first()).toBeVisible()
+    // The line's name is its own field: text on the page only matched the dialog while it was
+    // still closing, which a fast backend no longer waits for.
+    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue(serviceName)
     await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('28,11')
     await page.getByRole('button', { name: 'Rückgängig' }).click()
     await expect(page.getByLabel('Preis (brutto)')).toHaveCount(0)

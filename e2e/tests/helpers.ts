@@ -3,7 +3,7 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { expect, type Locator, type Page } from '@playwright/test'
+import { expect, type Locator, type Page } from '../fixtures/test'
 import { E2E_PASSWORD, E2E_USERNAME } from '../fixtures/credentials'
 
 const run = promisify(execFile)

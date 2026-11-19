@@ -63,7 +63,7 @@ export async function seedCustomer(
 ): Promise<SeededCustomer> {
   await login(request)
   const customer = await post<{ id: number }>(request, '/api/customers')
-  // Unique per run: the specs share one database.
+  // Unique per run: a worker's specs share one database.
   const lastName = `Mustermann-${Date.now().toString().slice(-6)}`
   await patch(request, `/api/customers/${customer.id}`, {
     salutation: 'frau',

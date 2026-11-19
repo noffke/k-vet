@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { clearPendingInvoices, seedAcceptedInvoice, seedSentInvoice } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
@@ -11,7 +11,7 @@ test.describe('bookkeeping hand-off', () => {
     page,
     request,
   }) => {
-    // The specs share one database, so the slate is cleared before counting.
+    // A worker's specs share one database, so the slate is cleared before counting.
     await clearPendingInvoices(request)
     const invoices = [
       await seedSentInvoice(request),

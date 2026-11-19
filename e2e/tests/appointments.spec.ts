@@ -1,4 +1,4 @@
-import { type APIRequestContext, expect, test } from '@playwright/test'
+import { type APIRequestContext, expect, test } from '../fixtures/test'
 import { practiceMidday } from '../fixtures/clock'
 import {
   seedAcceptedInvoice,

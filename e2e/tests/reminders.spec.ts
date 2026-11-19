@@ -1,4 +1,4 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
 import { expectInside, navigate, signIn } from './helpers'

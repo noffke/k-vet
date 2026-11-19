@@ -1,7 +1,12 @@
 import { defineConfig, devices } from '@playwright/test'
 import { TIME_ZONE } from './fixtures/clock'
 
-const port = Number(process.env.KVET_PORT ?? 8081)
+/**
+ * Workers run spec files in parallel, each with a backend and a database of its own
+ * (`fixtures/test.ts`). Four suit an 8-core machine, two a CI runner; `E2E_WORKERS=1` runs one at
+ * a time, for following a single failure.
+ */
+const workers = Number(process.env.E2E_WORKERS ?? (process.env.CI ? 2 : 4))
 
 /**
  * Pixel 9a viewport (1080x2424 physical, DPR 2.625). Playwright's device registry
@@ -20,15 +25,16 @@ export default defineConfig({
   testDir: './tests',
   outputDir: './test-results',
   globalSetup: './global-setup.ts',
+  // Files are what is spread across workers; a file's tests stay in order, in one worker.
   fullyParallel: false,
-  workers: 1,
+  workers,
   forbidOnly: Boolean(process.env.CI),
   retries: process.env.CI ? 1 : 0,
   reporter: process.env.CI ? [['github'], ['list']] : [['list']],
   timeout: 60_000,
   expect: { timeout: 10_000 },
   use: {
-    baseURL: process.env.KVET_BASE_URL ?? `http://127.0.0.1:${port}`,
+    // `baseURL` is the worker's own backend, set by the fixture in `fixtures/test.ts`.
     trace: 'retain-on-failure',
     screenshot: 'only-on-failure',
     locale: 'de-DE',

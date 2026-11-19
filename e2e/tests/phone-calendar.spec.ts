@@ -1,6 +1,6 @@
-import { expect, test } from '@playwright/test'
+import { expect, test } from '../fixtures/test'
 import { E2E_PASSWORD, E2E_USERNAME } from '../fixtures/credentials'
-import { seedCustomer, seedPatient } from '../fixtures/seed'
+import { seedCustomer } from '../fixtures/seed'
 import { navigate, signIn } from './helpers'
 
 const basic = `Basic ${Buffer.from(`${E2E_USERNAME}:${E2E_PASSWORD}`).toString('base64')}`
