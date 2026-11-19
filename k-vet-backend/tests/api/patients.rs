@@ -1,0 +1,413 @@
+//! Patients: draft completion, death-date archiving, files, search (T041).
+
+// Integration tests may panic on unexpected results — that is how a test reports failure.
+#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+use crate::common;
+
+use axum::http::StatusCode;
+use chrono::{TimeZone, Utc};
+use common::TestApp;
+use serde_json::json;
+
+#[tokio::test]
+async fn a_patient_completes_when_owner_name_sex_and_species_are_known() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+
+    let created = app
+        .post("/api/patients", json!({ "customer_id": customer_id }))
+        .await;
+    let id = created.id();
+    assert_eq!(created.json()["draft"], true);
+    assert_eq!(
+        created.json()["missing_fields"],
+        json!(["name", "sex", "species"])
+    );
+
+    let complete = app
+        .patch(
+            &format!("/api/patients/{id}"),
+            json!({ "name": "Bello", "sex": "male", "species": "Hund" }),
+        )
+        .await
+        .json();
+
+    assert_eq!(complete["draft"], false);
+    assert_eq!(complete["customer_name"], "Erika Mustermann");
+}
+
+/// The customer comes first (decided 2026-11-17): no animal is made for, or moved to, a
+/// customer still without an address — a new caller entered with only a name, say. Once the
+/// customer is complete, both go through.
+#[tokio::test]
+async fn an_animal_waits_for_its_customer_to_be_complete() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let newcomer = app.post("/api/customers", json!({})).await.id();
+    app.patch(
+        &format!("/api/customers/{newcomer}"),
+        json!({ "salutation": "frau", "first_name": "Erika", "last_name": "Neu" }),
+    )
+    .await;
+
+    let refused = app
+        .post("/api/patients", json!({ "customer_id": newcomer }))
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(refused.error_fields(), vec!["customer_id".to_owned()]);
+
+    // Nor does an animal of another customer move over to them.
+    let known = common::seed_customer(&pool).await;
+    let bello = common::seed_patient(&pool, known).await;
+    let moved = app
+        .patch(
+            &format!("/api/patients/{bello}"),
+            json!({ "customer_id": newcomer }),
+        )
+        .await;
+    assert_eq!(moved.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(moved.error_fields(), vec!["customer_id".to_owned()]);
+
+    // With the address in, the customer is complete and takes animals.
+    app.patch(
+        &format!("/api/customers/{newcomer}"),
+        json!({ "home_street": "Musterweg 5", "home_zip": "12345", "home_city": "Musterstadt" }),
+    )
+    .await;
+    let created = app
+        .post("/api/patients", json!({ "customer_id": newcomer }))
+        .await;
+    assert_eq!(created.status, StatusCode::OK);
+    let moved = app
+        .patch(
+            &format!("/api/patients/{bello}"),
+            json!({ "customer_id": newcomer }),
+        )
+        .await;
+    assert_eq!(moved.status, StatusCode::OK);
+}
+
+#[tokio::test]
+async fn an_unknown_sex_value_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let id = common::seed_patient(&pool, customer_id).await;
+
+    let rejected = app
+        .patch(&format!("/api/patients/{id}"), json!({ "sex": "diverse" }))
+        .await;
+
+    assert_eq!(rejected.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert!(rejected.error_fields().contains(&"sex".to_owned()));
+}
+
+#[tokio::test]
+async fn a_date_of_death_archives_the_patient() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let id = common::seed_patient(&pool, customer_id).await;
+
+    let deceased = app
+        .patch(
+            &format!("/api/patients/{id}"),
+            json!({ "date_of_death": "2026-05-04" }),
+        )
+        .await
+        .json();
+
+    assert_eq!(deceased["date_of_death"], "2026-05-04");
+    assert_eq!(
+        deceased["archived"], true,
+        "setting the date of death archives the record"
+    );
+
+    // Un-archiving a deceased patient would be a data error, not a restore.
+    let refused = app
+        .post_empty(&format!("/api/patients/{id}/unarchive"))
+        .await;
+    assert_eq!(refused.status, StatusCode::CONFLICT);
+}
+
+#[tokio::test]
+async fn archived_patients_are_hidden_from_lists_by_default() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let id = common::seed_patient(&pool, customer_id).await;
+    app.post_empty(&format!("/api/patients/{id}/archive")).await;
+
+    assert_eq!(
+        app.get("/api/patients")
+            .await
+            .json()
+            .as_array()
+            .map(Vec::len),
+        Some(0)
+    );
+    assert_eq!(
+        app.get("/api/patients?archived=true")
+            .await
+            .json()
+            .as_array()
+            .map(Vec::len),
+        Some(1)
+    );
+}
+
+#[tokio::test]
+async fn patients_can_be_filtered_by_owner_and_searched() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let first_customer = common::seed_customer(&pool).await;
+    let second_customer = common::seed_customer(&pool).await;
+    common::seed_patient(&pool, first_customer).await;
+    let other = common::seed_patient(&pool, second_customer).await;
+    app.patch(
+        &format!("/api/patients/{other}"),
+        json!({ "name": "Minka" }),
+    )
+    .await;
+
+    let of_customer = app
+        .get(&format!("/api/patients?customer_id={first_customer}"))
+        .await
+        .json();
+    assert_eq!(of_customer.as_array().map(Vec::len), Some(1));
+    assert_eq!(of_customer[0]["name"], "Bello");
+
+    let by_name = app.get("/api/patients?q=Minka").await.json();
+    assert_eq!(by_name.as_array().map(Vec::len), Some(1));
+
+    let by_owner = app.get("/api/patients?q=Mustermann").await.json();
+    assert_eq!(
+        by_owner.as_array().map(Vec::len),
+        Some(2),
+        "the owner name is searchable"
+    );
+}
+
+#[tokio::test]
+async fn customer_provided_files_carry_a_reference_date_and_note() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let uploaded = app
+        .post_multipart(
+            "/api/attachments",
+            "vorbericht.pdf",
+            "application/pdf",
+            b"%PDF-1.7 lab report",
+            &[
+                ("kind", "patient_file"),
+                ("patient_id", &patient_id.to_string()),
+                ("reference_date", "2026-04-01"),
+                ("note", "Vorbericht der Klinik"),
+            ],
+        )
+        .await;
+    assert_eq!(uploaded.status, StatusCode::OK);
+
+    let files = app
+        .get(&format!("/api/patients/{patient_id}/files"))
+        .await
+        .json();
+    assert_eq!(files.as_array().map(Vec::len), Some(1));
+    assert_eq!(files[0]["reference_date"], "2026-04-01");
+    assert_eq!(files[0]["note"], "Vorbericht der Klinik");
+
+    let corrected = app
+        .patch(
+            &format!("/api/patient-files/{}", files[0]["id"]),
+            json!({ "reference_date": "2026-03-15", "note": null }),
+        )
+        .await
+        .json();
+    assert_eq!(corrected["reference_date"], "2026-03-15");
+    assert!(corrected["note"].is_null());
+}
+
+#[tokio::test]
+async fn a_photo_is_referenced_from_the_patient() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let mut png = Vec::new();
+    let image = image::RgbImage::from_pixel(200, 200, image::Rgb([200, 150, 100]));
+    image::DynamicImage::ImageRgb8(image)
+        .write_to(&mut std::io::Cursor::new(&mut png), image::ImageFormat::Png)
+        .expect("encodes png");
+
+    let uploaded = app
+        .post_multipart(
+            "/api/attachments",
+            "bello.png",
+            "image/png",
+            &png,
+            &[("kind", "referenced")],
+        )
+        .await;
+    let attachment_id = uploaded.id();
+
+    let patient = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "photo_attachment_id": attachment_id }),
+        )
+        .await
+        .json();
+
+    assert_eq!(patient["photo_attachment_id"], attachment_id);
+    let thumbnail = app
+        .get(&format!("/api/attachments/{attachment_id}/thumbnail"))
+        .await;
+    assert_eq!(
+        thumbnail.status,
+        StatusCode::OK,
+        "the circle avatar has a thumbnail"
+    );
+}
+
+/// The weight is optional, stored to one decimal, and must never hold a patient in draft.
+#[tokio::test]
+async fn a_weight_round_trips_and_stays_optional() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let saved = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "weight_kg": "4.2" }),
+        )
+        .await
+        .json();
+    assert_eq!(saved["weight_kg"], "4.2");
+    assert!(
+        !saved["missing_fields"]
+            .as_array()
+            .expect("missing_fields")
+            .iter()
+            .any(|field| field == "weight_kg"),
+        "a weight is optional — it must never hold a patient in draft",
+    );
+    assert_eq!(saved["draft"], false, "the patient stays complete");
+
+    // Cleared again: not weighed is a legitimate state, not an empty string.
+    let cleared = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "weight_kg": null }),
+        )
+        .await
+        .json();
+    assert!(cleared["weight_kg"].is_null());
+    assert_eq!(cleared["draft"], false);
+}
+
+/// A second decimal is refused rather than silently rounded away by `NUMERIC(5,1)`.
+#[tokio::test]
+async fn a_weight_keeps_at_most_one_decimal() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let rejected = app
+        .patch(
+            &format!("/api/patients/{patient_id}"),
+            json!({ "weight_kg": "4.25" }),
+        )
+        .await;
+    assert_eq!(
+        rejected.status,
+        StatusCode::UNPROCESSABLE_ENTITY,
+        "4,25 kg must be reported, not quietly recorded as 4,3",
+    );
+
+    let unchanged = app.get(&format!("/api/patients/{patient_id}")).await.json();
+    assert!(unchanged["weight_kg"].is_null(), "nothing was stored");
+}
+
+#[tokio::test]
+async fn a_weight_must_be_positive() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    for weight in ["0", "-1.5"] {
+        let rejected = app
+            .patch(
+                &format!("/api/patients/{patient_id}"),
+                json!({ "weight_kg": weight }),
+            )
+            .await;
+        assert_eq!(
+            rejected.status,
+            StatusCode::UNPROCESSABLE_ENTITY,
+            "{weight} kg is not a weight",
+        );
+    }
+}
+
+/// issues.md 19: the animal's page lists every visit it was part of, newest first — the history
+/// the vet reads before a consultation.
+#[tokio::test]
+async fn a_patient_lists_the_visits_it_was_part_of() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    let empty = app
+        .get(&format!("/api/patients/{patient_id}/treatments"))
+        .await
+        .json();
+    assert_eq!(empty.as_array().map(Vec::len), Some(0));
+
+    let older =
+        common::seed_appointment(&pool, Utc.with_ymd_and_hms(2026, 3, 1, 9, 0, 0).unwrap()).await;
+    let newer =
+        common::seed_appointment(&pool, Utc.with_ymd_and_hms(2026, 5, 3, 9, 0, 0).unwrap()).await;
+    let (_, older_record) = common::seed_patient_treatment(&pool, older, patient_id).await;
+    let (_, newer_record) = common::seed_patient_treatment(&pool, newer, patient_id).await;
+
+    // Another animal's visit must not show up here.
+    let other_patient = common::seed_patient(&pool, customer_id).await;
+    common::seed_patient_treatment(&pool, older, other_patient).await;
+
+    let visits = app
+        .get(&format!("/api/patients/{patient_id}/treatments"))
+        .await
+        .json();
+    assert_eq!(visits.as_array().map(Vec::len), Some(2));
+    assert_eq!(visits[0]["id"], newer_record, "newest visit first");
+    assert_eq!(
+        visits[0]["appointment_id"], newer,
+        "the appointment whose page holds the animal's tab"
+    );
+    assert_eq!(visits[1]["id"], older_record);
+    assert_eq!(visits[0]["treatment_reason"], "Routinekontrolle");
+    // Nothing billed yet, so no invoice to name.
+    assert_eq!(visits[0]["invoice_number"], serde_json::Value::Null);
+}

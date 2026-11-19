@@ -45,8 +45,9 @@ cargo run                                       # API on :8080 (KVET_CONFIG or .
 cargo run -- --hash-password                    # argon2id hash for [auth] password_hash
 # no reset flag: drop and recreate the database in Postgres, migrations run at start
 
-cargo test --test invoices                                  # one integration test binary
-cargo test --test invoices creating_an_invoice_allocates     # one test by name substring
+cargo test --test api                                       # all integration tests (one binary)
+cargo test --test api invoices::                            # one area (a module per former file)
+cargo test --test api invoices::creating_an_invoice_allocates   # one test
 cargo test --lib money::                                    # unit tests of one module
 ```
 
@@ -262,13 +263,16 @@ overflow sheet).
 
 ## Testing conventions
 
-- Integration tests (`k-vet-backend/tests/*.rs`) are `#[tokio::test]` and start with
+- Integration tests are **one binary**, `k-vet-backend/tests/api/` — `main.rs` declares a module
+  per area (`invoices.rs`, `stock.rs`, …); a new area is a file there plus its `mod` line. One
+  binary instead of one per file cut the clean build from 283 s to 171 s and the target
+  directory from 31 GB to 8 GB. The tests are `#[tokio::test]` and start with
   `let db = common::database().await; let pool = db.pool();` — each test's own database, a clone
-  of a template the migrations built once (`tests/common/db.rs`, named after the migrations'
+  of a template the migrations built once (`tests/api/common/db.rs`, named after the migrations'
   checksums, so a new migration builds a new one by itself). A passed test's database is
   dropped, a failed one's kept for inspection and swept by the next run. Only the tests of the
   migrations themselves stay `#[sqlx::test(migrations = false)]`, on an empty database. They
-  drive the real router through `tests/common/mod.rs::TestApp` (`get`/`post`/`patch`/
+  drive the real router through `tests/api/common/mod.rs::TestApp` (`get`/`post`/`patch`/
   `post_multipart`, cookie jar, `seed_*` helpers). Prefer these over mocking anything.
 - Playwright specs share **one** database across specs and both viewport projects. Fixtures must
   therefore generate unique names (`fixtures/seed.ts` suffixes with a timestamp) and assertions

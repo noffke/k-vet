@@ -372,7 +372,7 @@ client.
 
 ```bash
 # Backend tests cover both renderers, including a German address block and umlaut subjects.
-cd k-vet-backend && cargo test --test invoices && cargo test --lib mail::
+cd k-vet-backend && cargo test --test api invoices:: && cargo test --lib mail::
 
 # End to end: the E2E suite generates a real invoice and reads the PDF's text back with
 # pdftotext, asserting the practice's IBAN and name are on it.

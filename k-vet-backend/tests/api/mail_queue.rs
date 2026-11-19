@@ -1,0 +1,679 @@
+//! The invoice mail queue (migration 0026): requests only queue, the job delivers, a failure is
+//! kept on the row and retried for six hours — or not at all when the mail server refused.
+
+// Integration tests may panic on unexpected results — that is how a test reports failure.
+#![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
+use crate::common;
+
+use axum::http::StatusCode;
+use chrono::Utc;
+use common::{MailServer, TestApp};
+use k_vet_backend::jobs::{self, MailRun};
+use serde_json::{Value, json};
+use sqlx::PgPool;
+
+/// A treatment with one position and its invoice, written but not released yet.
+async fn written_invoice(app: &TestApp, pool: &PgPool) -> i64 {
+    let customer_id = common::seed_customer(pool).await;
+    let patient_id = common::seed_patient(pool, customer_id).await;
+    let appointment_id = common::seed_appointment(pool, Utc::now()).await;
+    let treatment_id = common::seed_treatment(pool, appointment_id, patient_id).await;
+    let service_id = common::seed_got_service(pool).await;
+    app.post(
+        &format!("/api/treatments/{treatment_id}/items"),
+        json!({ "kind": "service", "service_id": service_id, "quantity": "1" }),
+    )
+    .await;
+    let invoice = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({}),
+        )
+        .await
+        .json();
+    invoice["id"].as_i64().expect("an invoice")
+}
+
+/// Such an invoice, released with `recipients` ticked and its mail due at `send_at`.
+async fn released_at(
+    app: &TestApp,
+    pool: &PgPool,
+    recipients: &[&str],
+    send_at: chrono::DateTime<Utc>,
+) -> i64 {
+    let invoice_id = written_invoice(app, pool).await;
+    let released = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/accept"),
+            json!({ "recipient_emails": recipients, "send_at": send_at, "template": "Standard" }),
+        )
+        .await;
+    assert_eq!(released.status, StatusCode::OK);
+    invoice_id
+}
+
+/// Released with "Gleich versenden".
+async fn released_invoice(app: &TestApp, pool: &PgPool, recipients: &[&str]) -> i64 {
+    released_at(app, pool, recipients, Utc::now()).await
+}
+
+async fn invoice(app: &TestApp, invoice_id: i64) -> Value {
+    app.get(&format!("/api/invoices/{invoice_id}")).await.json()
+}
+
+async fn run(app: &TestApp) -> MailRun {
+    jobs::send_queued_mail(&app.state)
+        .await
+        .expect("the queue runs")
+}
+
+async fn queued(pool: &PgPool) -> i64 {
+    sqlx::query_scalar("SELECT count(*) FROM mail_queue")
+        .fetch_one(pool)
+        .await
+        .expect("count")
+}
+
+/// Releasing only queues the mail; nothing reaches the mail server until the queue's run, which
+/// delivers it, records the delivery on the invoice and empties the queue.
+#[tokio::test]
+async fn releasing_queues_the_mail_and_the_run_delivers_it() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+
+    let waiting = invoice(&app, invoice_id).await;
+    assert_eq!(waiting["status"], "accepted");
+    assert_eq!(
+        waiting["email_queue"]["recipients"],
+        json!(["kundin@example.com"])
+    );
+    assert!(
+        mail.delivered().is_empty(),
+        "the release itself sends nothing"
+    );
+
+    assert_eq!(
+        run(&app).await,
+        MailRun {
+            sent: 1,
+            ..MailRun::default()
+        }
+    );
+    let sent = invoice(&app, invoice_id).await;
+    assert_eq!(sent["status"], "sent");
+    assert_eq!(sent["sent_email_to"], json!(["kundin@example.com"]));
+    assert!(sent["email_queue"].is_null());
+    assert_eq!(mail.delivered(), ["kundin@example.com"]);
+    assert_eq!(queued(&pool).await, 0);
+
+    assert_eq!(run(&app).await, MailRun::default(), "nothing is sent twice");
+}
+
+/// An unreachable mail server is tried again on every run, until six hours after the first
+/// failure; then the queue gives up and leaves the mail alone.
+#[tokio::test]
+async fn an_unreachable_mail_server_is_retried_for_six_hours() {
+    let db = common::database().await;
+    let pool = db.pool();
+    // No mail server: the test configuration points at a port nothing listens on.
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+
+    assert_eq!(run(&app).await.failed, 1);
+    let failing = invoice(&app, invoice_id).await;
+    let queue = &failing["email_queue"];
+    assert_eq!(queue["attempts"], 1);
+    assert_eq!(queue["refused"], false);
+    assert!(queue["gave_up_at"].is_null());
+    assert!(!queue["retry_until"].is_null());
+    assert!(
+        queue["last_error"]
+            .as_str()
+            .is_some_and(|error| error.to_lowercase().contains("connection")),
+        "the transport's own words are kept: {}",
+        queue["last_error"]
+    );
+    assert_eq!(run(&app).await.failed, 1, "tried again on the next run");
+
+    // Six hours of failing later, the next failure is the last.
+    sqlx::query("UPDATE mail_queue SET first_failure_at = now() - interval '6 hours 1 minute'")
+        .execute(&pool)
+        .await
+        .expect("back-date the first failure");
+    assert_eq!(run(&app).await.gave_up, 1);
+    assert_eq!(
+        run(&app).await,
+        MailRun::default(),
+        "no attempt after giving up"
+    );
+
+    let given_up = invoice(&app, invoice_id).await;
+    assert_eq!(given_up["email_queue"]["attempts"], 3);
+    assert!(!given_up["email_queue"]["gave_up_at"].is_null());
+    assert_eq!(given_up["status"], "accepted", "still not at the customer");
+}
+
+/// A mail server that refuses a recipient for good is not asked again: the mail is given up at
+/// once, with the server's answer — and nobody got it, the other recipients included.
+#[tokio::test]
+async fn a_refused_recipient_is_given_up_at_once() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    mail.refuse_recipient("weg@example.com");
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id =
+        released_invoice(&app, &pool, &["kundin@example.com", "weg@example.com"]).await;
+
+    assert_eq!(run(&app).await.gave_up, 1);
+    let refused = invoice(&app, invoice_id).await;
+    let queue = &refused["email_queue"];
+    assert_eq!(queue["refused"], true);
+    assert_eq!(queue["attempts"], 1);
+    assert!(!queue["gave_up_at"].is_null());
+    assert!(
+        queue["last_error"]
+            .as_str()
+            .is_some_and(|error| error.contains("550")),
+        "the mail server's answer: {}",
+        queue["last_error"]
+    );
+    assert!(
+        mail.delivered().is_empty(),
+        "a refused message reaches nobody"
+    );
+    assert_eq!(run(&app).await, MailRun::default());
+}
+
+/// From the dashboard a failed mail is tried again from the start, or taken out of the queue —
+/// which leaves the invoice released and unsent.
+#[tokio::test]
+async fn a_failed_mail_can_be_retried_or_removed() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    mail.refuse();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let retried = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    let removed = released_invoice(&app, &pool, &["nachbar@example.com"]).await;
+    assert_eq!(run(&app).await.failed, 2);
+
+    let dashboard = app.get("/api/dashboard").await.json();
+    let failed = dashboard["failed_mails"].as_array().expect("failed mails");
+    assert_eq!(failed.len(), 2);
+    assert!(failed[0]["mail"]["last_error"].is_string());
+    assert!(
+        !failed[0]["invoice_number"]
+            .as_str()
+            .unwrap_or_default()
+            .is_empty()
+    );
+
+    let retried_id = invoice(&app, retried).await["email_queue"]["id"].clone();
+    let reset = app
+        .post_empty(&format!("/api/mail-queue/{retried_id}/retry"))
+        .await;
+    assert_eq!(reset.status, StatusCode::OK);
+    let reset = reset.json();
+    assert!(reset["last_error"].is_null());
+    assert_eq!(reset["attempts"], 0);
+
+    let removed_id = invoice(&app, removed).await["email_queue"]["id"].clone();
+    let gone = app.delete(&format!("/api/mail-queue/{removed_id}")).await;
+    assert_eq!(gone.status, StatusCode::NO_CONTENT);
+    let left_alone = invoice(&app, removed).await;
+    assert!(left_alone["email_queue"].is_null());
+    assert_eq!(left_alone["status"], "accepted");
+    assert_eq!(
+        app.delete(&format!("/api/mail-queue/{removed_id}"))
+            .await
+            .status,
+        StatusCode::NOT_FOUND
+    );
+
+    // The mail server is back: the retried mail goes out with the next run.
+    mail.accepting
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(invoice(&app, retried).await["status"], "sent");
+    assert_eq!(mail.delivered(), ["kundin@example.com"]);
+    assert!(
+        app.get("/api/dashboard").await.json()["failed_mails"]
+            .as_array()
+            .is_some_and(Vec::is_empty)
+    );
+}
+
+/// One waiting mail per invoice: sending again replaces it, with a fresh start.
+#[tokio::test]
+async fn sending_again_replaces_the_waiting_mail() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    assert_eq!(run(&app).await.failed, 1);
+
+    let resent = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({ "recipient_emails": ["neu@example.com"], "send_at": Utc::now(), "template": "Standard" }),
+        )
+        .await
+        .json();
+    assert_eq!(
+        resent["email_queue"]["recipients"],
+        json!(["neu@example.com"])
+    );
+    assert_eq!(resent["email_queue"]["attempts"], 0);
+    assert!(resent["email_queue"]["last_error"].is_null());
+    assert_eq!(queued(&pool).await, 1);
+}
+
+/// A cancelled invoice never reaches the customer, and one handed over on paper does not need
+/// to arrive a second time: both drop the waiting mail.
+#[tokio::test]
+async fn cancelling_or_posting_drops_the_waiting_mail() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let posted = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    let cancelled = released_invoice(&app, &pool, &["nachbar@example.com"]).await;
+
+    let marked = app
+        .post_empty(&format!("/api/invoices/{posted}/mark-posted"))
+        .await;
+    assert_eq!(marked.status, StatusCode::OK);
+    assert!(marked.json()["email_queue"].is_null());
+    let cancel = app
+        .post_empty(&format!("/api/invoices/{cancelled}/cancel"))
+        .await;
+    assert_eq!(cancel.status, StatusCode::OK);
+    assert_eq!(queued(&pool).await, 0);
+
+    // A row that slipped past the cancel is dropped by the run, never sent.
+    sqlx::query(
+        "INSERT INTO mail_queue (invoice_id, recipients) VALUES ($1, '{nachbar@example.com}')",
+    )
+    .bind(cancelled)
+    .execute(&pool)
+    .await
+    .expect("a stray queued mail");
+    assert_eq!(
+        run(&app).await,
+        MailRun {
+            dropped: 1,
+            ..MailRun::default()
+        }
+    );
+    assert!(mail.delivered().is_empty());
+}
+
+/// A mail planned for later is gone with its invoice, whichever way the invoice is cancelled —
+/// cancelled outright, or replaced by updating it after release — and its time coming changes
+/// nothing: the run has nothing to send.
+#[tokio::test]
+async fn a_planned_mail_is_never_sent_for_a_cancelled_invoice() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
+
+    let cancelled = released_at(&app, &pool, &["kundin@example.com"], tomorrow).await;
+    assert!(!invoice(&app, cancelled).await["email_queue"].is_null());
+    let cancel = app
+        .post_empty(&format!("/api/invoices/{cancelled}/cancel"))
+        .await;
+    assert_eq!(cancel.status, StatusCode::OK);
+    assert!(cancel.json()["email_queue"].is_null());
+
+    // Updated after release: the released one is cancelled, and the new one, not yet released
+    // itself, has no mail either.
+    let replaced = released_at(&app, &pool, &["nachbar@example.com"], tomorrow).await;
+    let treatment_id = invoice(&app, replaced).await["treatment_id"]
+        .as_i64()
+        .expect("the invoice's treatment");
+    let replacement = app
+        .post(
+            &format!("/api/treatments/{treatment_id}/invoice"),
+            json!({}),
+        )
+        .await;
+    assert_eq!(replacement.status, StatusCode::OK);
+    assert!(replacement.json()["email_queue"].is_null());
+    assert_eq!(invoice(&app, replaced).await["status"], "cancelled");
+    assert!(invoice(&app, replaced).await["email_queue"].is_null());
+    assert_eq!(queued(&pool).await, 0);
+
+    // The planned time comes: nothing goes out, and the dashboard plans nothing.
+    sqlx::query("UPDATE mail_queue SET send_after = now() - interval '1 minute'")
+        .execute(&pool)
+        .await
+        .expect("the time has come");
+    assert_eq!(run(&app).await, MailRun::default());
+    assert!(mail.delivered().is_empty());
+    let dashboard = app.get("/api/dashboard").await.json();
+    let planned = dashboard["unsent"]["entries"]
+        .as_array()
+        .into_iter()
+        .flatten()
+        .filter(|entry| !entry["email_queue"].is_null())
+        .count();
+    assert_eq!(planned, 0);
+}
+
+/// "Später versenden": the mail waits for its time — the invoice is released and done with,
+/// the owners get it tomorrow morning — and goes out with the first run after it.
+#[tokio::test]
+async fn a_mail_scheduled_for_later_waits_for_its_time() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
+    let invoice_id = released_at(&app, &pool, &["kundin@example.com"], tomorrow).await;
+
+    let scheduled = invoice(&app, invoice_id).await;
+    let send_after = scheduled["email_queue"]["send_after"]
+        .as_str()
+        .and_then(|value| value.parse::<chrono::DateTime<Utc>>().ok())
+        .expect("a schedule");
+    assert_eq!(send_after.timestamp(), tomorrow.timestamp());
+    assert_eq!(run(&app).await, MailRun::default(), "not before its time");
+    assert!(mail.delivered().is_empty());
+
+    // The dashboard tells it apart from an invoice nobody sent.
+    let dashboard = app.get("/api/dashboard").await.json();
+    let entry = dashboard["unsent"]["entries"]
+        .as_array()
+        .and_then(|entries| {
+            entries
+                .iter()
+                .find(|entry| entry["invoice_number"] == scheduled["invoice_number"])
+        })
+        .expect("still not at the customer");
+    assert_eq!(
+        entry["email_queue"]["send_after"],
+        scheduled["email_queue"]["send_after"]
+    );
+    assert!(entry["email_queue"]["last_error"].is_null());
+
+    sqlx::query("UPDATE mail_queue SET send_after = now() - interval '1 minute'")
+        .execute(&pool)
+        .await
+        .expect("the time has come");
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(mail.delivered(), ["kundin@example.com"]);
+}
+
+/// "Nicht versendet" says what became of each mail, and a failed one comes first — before an
+/// invoice released earlier whose mail is only waiting for its time.
+#[tokio::test]
+async fn the_unsent_list_puts_a_failed_mail_first_with_its_error() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    mail.refuse_recipient("weg@example.com");
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
+    let waiting = released_at(&app, &pool, &["kundin@example.com"], tomorrow).await;
+    let failed = released_invoice(&app, &pool, &["weg@example.com"]).await;
+    assert_eq!(run(&app).await.gave_up, 1);
+
+    let dashboard = app.get("/api/dashboard").await.json();
+    let entries = dashboard["unsent"]["entries"]
+        .as_array()
+        .cloned()
+        .unwrap_or_default();
+    assert_eq!(entries.len(), 2);
+    assert_eq!(
+        entries[0]["invoice_number"],
+        invoice(&app, failed).await["invoice_number"]
+    );
+    assert!(
+        entries[0]["email_queue"]["last_error"]
+            .as_str()
+            .is_some_and(|error| error.contains("550")),
+        "the failure says why: {}",
+        entries[0]["email_queue"]
+    );
+    assert_eq!(
+        entries[1]["invoice_number"],
+        invoice(&app, waiting).await["invoice_number"]
+    );
+    assert!(entries[1]["email_queue"]["last_error"].is_null());
+    assert!(!entries[1]["email_queue"]["send_after"].is_null());
+}
+
+/// "Gleich versenden" is now: sending again with now turns a scheduled mail into one for the
+/// next run — and a time already past (a browser clock a little behind) means the same.
+#[tokio::test]
+async fn now_or_a_past_time_goes_out_with_the_next_run() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let rescheduled = released_at(
+        &app,
+        &pool,
+        &["kundin@example.com"],
+        Utc::now() + chrono::TimeDelta::days(1),
+    )
+    .await;
+    let resent = app
+        .post(
+            &format!("/api/invoices/{rescheduled}/send"),
+            json!({ "recipient_emails": ["kundin@example.com"], "send_at": Utc::now(), "template": "Standard" }),
+        )
+        .await;
+    assert_eq!(resent.status, StatusCode::OK);
+    released_at(
+        &app,
+        &pool,
+        &["nachbar@example.com"],
+        Utc::now() - chrono::TimeDelta::minutes(2),
+    )
+    .await;
+
+    assert_eq!(run(&app).await.sent, 2);
+    assert_eq!(
+        mail.delivered(),
+        ["kundin@example.com", "nachbar@example.com"]
+    );
+}
+
+/// When the mail goes out is always said: a release or send without `send_at` is refused.
+#[tokio::test]
+async fn a_release_must_say_when_its_mail_goes_out() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+    let refused = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/accept"),
+            json!({ "recipient_emails": ["kundin@example.com"] }),
+        )
+        .await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(queued(&pool).await, 0);
+}
+
+/// Releases a written invoice with `template` for its mail, going out now.
+async fn release_with(app: &TestApp, invoice_id: i64, template: &str) -> common::TestResponse {
+    app.post(
+        &format!("/api/invoices/{invoice_id}/accept"),
+        json!({
+            "recipient_emails": ["kundin@example.com"],
+            "send_at": Utc::now(),
+            "template": template
+        }),
+    )
+    .await
+}
+
+/// The mail goes out with the template the vet chose — read from its file when it is sent.
+#[tokio::test]
+async fn the_mail_goes_out_with_the_template_chosen() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+    assert_eq!(
+        release_with(&app, invoice_id, "Kurz").await.status,
+        StatusCode::OK
+    );
+    assert_eq!(
+        invoice(&app, invoice_id).await["email_queue"]["template"],
+        "Kurz"
+    );
+
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(
+        invoice(&app, invoice_id).await["sent_email_template"],
+        "Kurz",
+        "the delivery records the text it went out with"
+    );
+    let messages = mail.messages.lock().expect("messages").clone();
+    assert_eq!(messages.len(), 1);
+    assert!(
+        messages[0].contains(&format!("Subject: {}", common::SHORT_TEMPLATE_SUBJECT)),
+        "the chosen template's subject: {}",
+        messages[0]
+    );
+}
+
+/// A template that is not configured, or whose file is missing, cannot be chosen — the form
+/// shows the latter disabled, and the server holds to it too. Nothing is released.
+#[tokio::test]
+async fn an_unknown_or_missing_template_is_refused() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+
+    let unknown = release_with(&app, invoice_id, "Gibt es nicht").await;
+    assert_eq!(unknown.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(unknown.error_fields(), vec!["template"]);
+    let missing = release_with(&app, invoice_id, "Fehlt").await;
+    assert_eq!(missing.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(missing.error_fields(), vec!["template"]);
+
+    assert_eq!(queued(&pool).await, 0);
+    assert_eq!(invoice(&app, invoice_id).await["status"], "created");
+}
+
+/// Sending again with another template replaces the waiting mail's.
+#[tokio::test]
+async fn sending_again_can_change_the_template() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    let resent = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({
+                "recipient_emails": ["kundin@example.com"],
+                "send_at": Utc::now(),
+                "template": "Kurz"
+            }),
+        )
+        .await
+        .json();
+    assert_eq!(resent["email_queue"]["template"], "Kurz");
+    assert_eq!(queued(&pool).await, 1);
+}
+
+/// A template whose file went away after the mail was queued does not send another text: the
+/// mail is refused, naming the file, until it is back or another template is chosen.
+#[tokio::test]
+async fn a_template_file_gone_since_queueing_refuses_the_mail() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = written_invoice(&app, &pool).await;
+    assert_eq!(
+        release_with(&app, invoice_id, "Kurz").await.status,
+        StatusCode::OK
+    );
+    std::fs::remove_file(app.templates.path().join("invoice-email-kurz.txt"))
+        .expect("the file goes");
+
+    assert_eq!(run(&app).await.gave_up, 1);
+    let refused = invoice(&app, invoice_id).await;
+    assert_eq!(refused["email_queue"]["refused"], true);
+    assert!(
+        refused["email_queue"]["last_error"]
+            .as_str()
+            .is_some_and(|error| error.contains("invoice-email-kurz.txt")),
+        "names the file: {}",
+        refused["email_queue"]["last_error"]
+    );
+    assert!(mail.delivered().is_empty());
+}
+
+/// The invoice records which template each delivery used — the one actually rendered: the first
+/// for a mail queued before there was a choice, nothing for an attempt that failed, and the
+/// latest on a resend, as the addresses are.
+#[tokio::test]
+async fn the_delivery_records_the_template_it_was_written_with() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let mail = MailServer::start();
+    mail.refuse();
+    let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
+    let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
+    sqlx::query("UPDATE mail_queue SET template = NULL")
+        .execute(&pool)
+        .await
+        .expect("a mail queued before templates could be chosen");
+
+    assert_eq!(run(&app).await.failed, 1);
+    assert!(
+        invoice(&app, invoice_id).await["sent_email_template"].is_null(),
+        "nothing went out, nothing is recorded"
+    );
+
+    mail.accepting
+        .store(true, std::sync::atomic::Ordering::SeqCst);
+    let id = invoice(&app, invoice_id).await["email_queue"]["id"].clone();
+    app.post_empty(&format!("/api/mail-queue/{id}/retry")).await;
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(
+        invoice(&app, invoice_id).await["sent_email_template"],
+        "Standard",
+        "no choice means the first template, and that is what is recorded"
+    );
+
+    let resent = app
+        .post(
+            &format!("/api/invoices/{invoice_id}/send"),
+            json!({
+                "recipient_emails": ["kundin@example.com"],
+                "send_at": Utc::now(),
+                "template": "Kurz"
+            }),
+        )
+        .await;
+    assert_eq!(resent.status, StatusCode::OK);
+    assert_eq!(run(&app).await.sent, 1);
+    assert_eq!(
+        invoice(&app, invoice_id).await["sent_email_template"],
+        "Kurz"
+    );
+
+    // A template only goes with an email delivery.
+    let posted_only = written_invoice(&app, &pool).await;
+    let refused = sqlx::query("UPDATE invoice SET sent_email_template = 'Kurz' WHERE id = $1")
+        .bind(posted_only)
+        .execute(&pool)
+        .await;
+    assert!(refused.is_err(), "no template without an email delivery");
+}
