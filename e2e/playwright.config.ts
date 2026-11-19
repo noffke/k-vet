@@ -35,7 +35,10 @@ export default defineConfig({
   expect: { timeout: 10_000 },
   use: {
     // `baseURL` is the worker's own backend, set by the fixture in `fixtures/test.ts`.
-    trace: 'retain-on-failure',
+    // A failed test keeps its trace: actions, DOM snapshots, network, console. Not the
+    // screencast, which every test recorded and almost all threw away — 11 % of the suite's time.
+    // The page at the failure is still `screenshot` below; `--trace on` brings the screencast back.
+    trace: { mode: 'retain-on-failure', screenshots: false },
     screenshot: 'only-on-failure',
     locale: 'de-DE',
     timezoneId: TIME_ZONE,
