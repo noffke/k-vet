@@ -40,6 +40,10 @@ test.describe('text blocks', () => {
 
     const reason = page.getByLabel('Vorbericht und Untersuchung')
     await reason.fill('AnfangEnde')
+    // Saved means the editor has taken the text in. On the phone (Android) it reads a change
+    // from the page a moment later and puts the caret after it, which undid an arrow key
+    // pressed right after the fill.
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
     // Put the caret between the two words; the picker steals focus, so the position has to
     // survive the dialog opening.
     for (let step = 0; step < 'Ende'.length; step += 1) await reason.press('ArrowLeft')
