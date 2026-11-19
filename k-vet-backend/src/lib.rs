@@ -6,12 +6,13 @@
 use std::sync::{Arc, OnceLock};
 
 use axum::extract::{DefaultBodyLimit, State};
-use axum::http::StatusCode;
+use axum::http::{HeaderName, HeaderValue, StatusCode};
 use axum::routing::get;
 use axum::{Router, middleware};
 use sqlx::PgPool;
 use tower_http::compression::CompressionLayer;
 use tower_http::limit::RequestBodyLimitLayer;
+use tower_http::set_header::SetResponseHeaderLayer;
 use tower_http::trace::TraceLayer;
 use tower_sessions::cookie::SameSite;
 use tower_sessions::cookie::time::Duration as CookieDuration;
@@ -28,6 +29,26 @@ use tower_sessions::{Expiry, SessionManagerLayer};
 pub fn version() -> &'static str {
     static VERSION: OnceLock<String> = OnceLock::new();
     VERSION.get_or_init(|| std::env::var("KVET_VERSION").unwrap_or_else(|_| "dev".to_owned()))
+}
+
+/// The response header naming the release that answered. An open tab takes the first value it
+/// sees as its own, and a different one later means a new release is running — so it offers to
+/// reload (`k-vet-web/src/lib/version.ts`).
+pub const VERSION_HEADER: HeaderName = HeaderName::from_static("x-kvet-version");
+
+/// `version()` as a header value; `None`, and said once, for a release name a header cannot
+/// carry — the app then runs without the update notice rather than not at all.
+fn version_header_value() -> Option<HeaderValue> {
+    match HeaderValue::from_str(version()) {
+        Ok(value) => Some(value),
+        Err(_) => {
+            tracing::warn!(
+                version = version(),
+                "KVET_VERSION is not a valid header value; open tabs will not learn of updates"
+            );
+            None
+        }
+    }
 }
 
 pub mod api;
@@ -365,6 +386,12 @@ pub async fn build_app(state: AppState) -> AppResult<Router> {
         .layer(session_layer)
         .layer(middleware::from_fn(metrics::track))
         .layer(TraceLayer::new_for_http())
+        // Outermost, so every answer says which release gave it — the API's, a refusal, the
+        // health probe, the frontend's files.
+        .layer(SetResponseHeaderLayer::overriding(
+            VERSION_HEADER,
+            version_header_value(),
+        ))
         .with_state(state))
 }
 

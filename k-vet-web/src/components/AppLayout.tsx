@@ -20,11 +20,13 @@ import type { ComponentType } from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EnvironmentBanner } from '@/components/EnvironmentBanner'
+import { UpdateBanner } from '@/components/UpdateBanner'
 import { useLogout } from '@/features/auth/session'
 import type { Locale } from '@/lib/format'
 import { LOCALES, setLocale } from '@/lib/i18n'
 import { useLocaleFormat } from '@/lib/locale'
 import { cn } from '@/lib/utils'
+import { useVersionWatch } from '@/lib/version'
 
 interface NavItem {
   to: string
@@ -58,6 +60,8 @@ const NAV: NavItem[] = [
 export function AppLayout() {
   const { t } = useTranslation()
   const signOut = useLogout()
+  // A new release is noticed on any answer; this asks while the app sits unused.
+  useVersionWatch()
   const { locale } = useLocaleFormat()
   const [overflowOpen, setOverflowOpen] = useState(false)
   const path = useRouterState({ select: (state) => state.location.pathname })
@@ -70,6 +74,7 @@ export function AppLayout() {
     // desktop rail and the content live in is the inner one.
     <div className="flex min-h-dvh flex-col">
       <EnvironmentBanner />
+      <UpdateBanner />
       <div className="flex flex-1 flex-col sm:flex-row">
         {/* Desktop rail */}
         <nav className="hidden w-56 shrink-0 flex-col border-r border-line bg-cream px-3 py-4 sm:flex print:hidden">

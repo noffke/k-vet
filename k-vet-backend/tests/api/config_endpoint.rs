@@ -118,3 +118,37 @@ async fn the_phone_sync_is_described_only_when_enabled() {
     assert_eq!(dav["addressbook_name"], "Kunden");
     assert!(dav.get("password").is_none());
 }
+
+/// Every answer names the release that gave it, so an open tab notices a new one and offers to
+/// reload: the API's, a refusal, the health probe, and the frontend the browser loads.
+#[tokio::test]
+async fn every_response_names_the_release_that_gave_it() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let signed_in = TestApp::new(pool.clone()).await;
+    let anonymous = TestApp::anonymous(pool.clone()).await;
+    let expected = k_vet_backend::version();
+
+    let config = signed_in.get("/api/config").await;
+    assert_eq!(config.status, StatusCode::OK);
+    let refused = anonymous.get("/api/customers").await;
+    assert_eq!(refused.status, StatusCode::UNAUTHORIZED);
+    let health = anonymous.get("/healthz").await;
+    assert_eq!(health.status, StatusCode::OK);
+    // A client-side route, answered with the frontend's index.html (or, with none built, the
+    // page saying so) — either way by the fallback that serves the app.
+    let page = anonymous.get("/customers/1").await;
+
+    for (what, response) in [
+        ("the API", &config),
+        ("a refusal", &refused),
+        ("the health probe", &health),
+        ("the app's page", &page),
+    ] {
+        assert_eq!(
+            response.header(k_vet_backend::VERSION_HEADER),
+            Some(expected),
+            "{what} names the release"
+        );
+    }
+}

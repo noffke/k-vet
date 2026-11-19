@@ -833,5 +833,10 @@
   },
   "correction": {
     "countOrChange": "Enter either the counted remaining stock or the change."
+  },
+  "update": {
+    "available": "k-vet {{version}} has been installed.",
+    "reload": "Reload",
+    "saving": "Saving …"
   }
 }

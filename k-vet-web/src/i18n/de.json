@@ -833,5 +833,10 @@
   },
   "correction": {
     "countOrChange": "Entweder den gezählten Restbestand oder die Änderung eintragen."
+  },
+  "update": {
+    "available": "k-vet {{version}} ist installiert.",
+    "reload": "Neu laden",
+    "saving": "Wird gespeichert …"
   }
 }

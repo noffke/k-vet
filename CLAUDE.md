@@ -110,7 +110,8 @@ hook names from it and silently collides otherwise.
 `src/main.rs` is a thin wrapper; the whole application lives in `src/lib.rs::build_app()` so
 integration tests drive the real router in-process. Layers, outermost first: request body limit →
 session (`tower-sessions` with a hand-written `PostgresSessionStore` — the upstream store pins
-sqlx 0.8) → metrics → tracing. `/api/*` is behind `auth::require_auth`; `/healthz` and `/metrics`
+sqlx 0.8) → metrics → tracing, and around all of them `x-kvet-version: <version()>` on every
+response (the update notice reads it). `/api/*` is behind `auth::require_auth`; `/healthz` and `/metrics`
 are open; everything else falls through to `static_assets::handler`, which serves
 `server.web_dir` from disk with an `index.html` fallback for client-side routes (its `resolve()`
 is pure and unit-tested, including path-traversal refusal).
@@ -241,6 +242,12 @@ overflow sheet).
   Leaving an open quote is guarded with `useBlocker` (keep / discard / cancel).
 - `lib/autosave.ts` — `useAutoSave` debounces 600 ms and flushes on blur, `visibilitychange`,
   `pagehide` and unmount; it surfaces per-field server errors. Use it for every editable record.
+- `lib/version.ts` + `components/UpdateBanner.tsx` — the update notice. The page takes the first
+  `x-kvet-version` it hears (`apiFetch` notes it on every answer) as its own release; a different
+  one later shows the banner. An idle tab asks `HEAD /healthz` when shown again and every five
+  minutes (`useVersionWatch`, in `AppLayout`). "Neu laden" blurs the focused field and waits for
+  `writesSettled()` (no write in flight or started for 800 ms) before reloading — a write that
+  does not go through `apiFetch` is invisible to it.
 - `components/DataList.tsx` — one column definition renders a real table on desktop and cards on
   a phone. The card *is* a `<button>`, so per-row buttons/links go through `rowActions`, never
   into a `cell`. Row clicks ignore events from interactive elements. Lists read through

@@ -63,6 +63,10 @@ It builds `k-vet:1.2.3` if that image is not already there, rewrites `KVET_VERSI
 the instance, waits for `/healthz`, and reports the version the instance *actually* answers with
 — read from `/metrics`, not from the tag you typed.
 
+Pages already open on the laptop or the phone notice the new release by themselves — on their
+next request, when the tab is shown again, or within five minutes — and show a strip with
+**Neu laden**. Reloading keeps what was being typed; nothing needs doing on the devices.
+
 Try the change. Then:
 
 ```bash

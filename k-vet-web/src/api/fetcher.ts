@@ -1,3 +1,5 @@
+import { noteServerVersion, VERSION_HEADER } from '@/lib/version'
+
 /**
  * Fetch mutator used by every generated endpoint.
  *
@@ -62,18 +64,55 @@ export function setUnauthorizedHandler(handler: UnauthorizedHandler): void {
 const isJson = (response: Response): boolean =>
   (response.headers.get('content-type') ?? '').includes('json')
 
+/** Writes under way, and when the last one started — what a reload has to wait for. */
+let writesInFlight = 0
+let lastWriteStarted = 0
+
+const isWrite = (options: RequestInit): boolean => {
+  const method = (options.method ?? 'GET').toUpperCase()
+  return method !== 'GET' && method !== 'HEAD'
+}
+
+/**
+ * Resolves once no write is under way and none has started for `quietMs` since it was called —
+ * long enough for a debounced save still waiting (600 ms auto-save, 400 ms Preisauskunft) to
+ * have gone out and come back. Gives up after `timeoutMs`: a server that does not answer must
+ * not hold the page forever.
+ */
+export async function writesSettled({ quietMs = 800, timeoutMs = 5000 } = {}): Promise<void> {
+  const called = Date.now()
+  const deadline = called + timeoutMs
+  while (Date.now() < deadline) {
+    const quietFor = Date.now() - Math.max(lastWriteStarted, called)
+    if (writesInFlight === 0 && quietFor >= quietMs) return
+    await new Promise((resolve) => setTimeout(resolve, 50))
+  }
+}
+
 export const apiFetch = async <T>(url: string, options: RequestInit = {}): Promise<T> => {
-  const response = await fetch(url, {
-    ...options,
-    credentials: 'same-origin',
-    headers: {
-      Accept: 'application/json',
-      ...(options.body !== undefined && !(options.body instanceof FormData)
-        ? { 'Content-Type': 'application/json' }
-        : {}),
-      ...options.headers,
-    },
-  })
+  const write = isWrite(options)
+  if (write) {
+    writesInFlight += 1
+    lastWriteStarted = Date.now()
+  }
+  let response: Response
+  try {
+    response = await fetch(url, {
+      ...options,
+      credentials: 'same-origin',
+      headers: {
+        Accept: 'application/json',
+        ...(options.body !== undefined && !(options.body instanceof FormData)
+          ? { 'Content-Type': 'application/json' }
+          : {}),
+        ...options.headers,
+      },
+    })
+  } finally {
+    if (write) writesInFlight -= 1
+  }
+  // Any answer, a refusal too, says which release is running.
+  noteServerVersion(response.headers.get(VERSION_HEADER))
 
   if (!response.ok) {
     // The handler decides what happens next; the error is still thrown so the caller's own
