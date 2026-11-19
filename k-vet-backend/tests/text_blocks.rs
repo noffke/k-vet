@@ -7,10 +7,11 @@ mod common;
 use axum::http::StatusCode;
 use common::TestApp;
 use serde_json::json;
-use sqlx::PgPool;
 
-#[sqlx::test]
-async fn a_text_block_is_a_draft_until_it_has_a_name_and_a_text(pool: PgPool) {
+#[tokio::test]
+async fn a_text_block_is_a_draft_until_it_has_a_name_and_a_text() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app.post_empty("/api/text-blocks").await;
@@ -44,8 +45,10 @@ async fn a_text_block_is_a_draft_until_it_has_a_name_and_a_text(pool: PgPool) {
 
 /// A document of empty paragraphs is what an emptied editor sends. It is no text, so it neither
 /// completes a draft nor empties a finished block behind the vet's back.
-#[sqlx::test]
-async fn a_document_without_text_is_no_content(pool: PgPool) {
+#[tokio::test]
+async fn a_document_without_text_is_no_content() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/text-blocks").await.id();
     let blank = json!({ "type": "doc", "content": [{ "type": "paragraph" }] });
@@ -77,8 +80,10 @@ async fn a_document_without_text_is_no_content(pool: PgPool) {
 }
 
 /// The transition is one-way (datamodel.md): a complete record cannot be emptied back out.
-#[sqlx::test]
-async fn clearing_the_text_of_a_finished_block_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn clearing_the_text_of_a_finished_block_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/text-blocks").await.id();
     app.patch(
@@ -101,8 +106,10 @@ async fn clearing_the_text_of_a_finished_block_is_rejected(pool: PgPool) {
 }
 
 /// The vet remembers the wording long before they remember what they called it.
-#[sqlx::test]
-async fn search_covers_the_text_as_well_as_the_name(pool: PgPool) {
+#[tokio::test]
+async fn search_covers_the_text_as_well_as_the_name() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/text-blocks").await.id();
     app.patch(
@@ -131,8 +138,10 @@ async fn search_covers_the_text_as_well_as_the_name(pool: PgPool) {
 /// A block is searched by its words, not by how they are stored: a word half in bold is two
 /// runs of text in the document, and still one word to the vet. The list shows the same plain
 /// text, list items on lines of their own.
-#[sqlx::test]
-async fn search_and_preview_read_the_words_not_the_formatting(pool: PgPool) {
+#[tokio::test]
+async fn search_and_preview_read_the_words_not_the_formatting() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/text-blocks").await.id();
     let content = json!({ "type": "doc", "content": [
@@ -169,8 +178,10 @@ async fn search_and_preview_read_the_words_not_the_formatting(pool: PgPool) {
     assert_eq!(markup.as_array().map(Vec::len), Some(0));
 }
 
-#[sqlx::test]
-async fn archiving_hides_a_block_until_it_is_asked_for(pool: PgPool) {
+#[tokio::test]
+async fn archiving_hides_a_block_until_it_is_asked_for() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/text-blocks").await.id();
     app.patch(
@@ -194,8 +205,10 @@ async fn archiving_hides_a_block_until_it_is_asked_for(pool: PgPool) {
     assert_eq!(restored.as_array().map(Vec::len), Some(1));
 }
 
-#[sqlx::test]
-async fn an_unknown_text_block_is_a_404(pool: PgPool) {
+#[tokio::test]
+async fn an_unknown_text_block_is_a_404() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     assert_eq!(
         app.get("/api/text-blocks/999999").await.status,

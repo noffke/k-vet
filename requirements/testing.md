@@ -7,12 +7,12 @@
 
 ## Test layers
 1. **Rust unit tests** (`cargo test`, no DB) — the money math: AMPreisV subset price formula, GOT factor / travel expenses, VAT, invoice number pattern.
-2. **Backend integration tests — the workhorse.** Axum tested in-process (`tower::ServiceExt::oneshot`, or a spawned server + reqwest where streaming matters) on top of `#[sqlx::test]` databases. Covers handler → SQL → constraints in one test: stock-ledger semantics (FEFO split across lots, cancellation reversals, append-only after invoicing), price snapshots, CHECK/index enforcement.
+2. **Backend integration tests — the workhorse.** Axum tested in-process (`tower::ServiceExt::oneshot`, or a spawned server + reqwest where streaming matters) on top of a real Postgres database per test. Covers handler → SQL → constraints in one test: stock-ledger semantics (FEFO split across lots, cancellation reversals, append-only after invoicing), price snapshots, CHECK/index enforcement.
 3. **Frontend component tests** — Vitest + React Testing Library for the form-heavy screens; **MSW** for API mocking, kept honest by the OpenAPI-generated zod schemas and types.
 4. **E2E — Playwright, full-stack.** Build the real binary, spawn it against a real Postgres, drive the UI. This is what catches auto-save actually persisting (top UX requirement), invoice PDF generation, and stock side effects. Two Playwright projects: desktop viewport and Pixel 9a viewport (responsive requirement).
 
 ## Database provisioning for tests
-- **`#[sqlx::test]`**: per-test database, migrations applied automatically, parallel, auto-cleanup. No testcontainers — plain Postgres is simpler and faster.
+- **A database per test, cloned from a migrated template** (`k-vet-backend/tests/common/db.rs`, decided 2026-11-19): the migrations run once into a template named after their checksums, and each test gets `CREATE DATABASE … TEMPLATE …` — the same pristine, migrated and seeded state (the GOT catalogue among it), its own, so tests stay parallel. That replaced `#[sqlx::test]`, which ran all migrations into a fresh database for every test: about 1.5 s of setup per test against 0.2 s for a clone, and the backend run went from 258 s to 137 s. Truncating one shared database was considered and not taken: the migrations seed data the tests rely on, and one database would serialise the tests. A passed test's database is dropped; a failed one's is kept for inspection and swept by the next run. No testcontainers — plain Postgres is simpler and faster.
 - CI: Postgres as a GitHub Actions `services:` container.
 - Local: `docker compose -f docker-compose.dev.yml up db`.
 - Commit the `.sqlx` offline query metadata so builds need no live DB; CI runs `cargo sqlx prepare --check` to catch drift.

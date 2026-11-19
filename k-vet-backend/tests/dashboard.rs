@@ -90,8 +90,10 @@ fn batch_numbers(lots: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-#[sqlx::test]
-async fn the_dashboard_counts_what_is_waiting_for_the_bookkeeper(pool: PgPool) {
+#[tokio::test]
+async fn the_dashboard_counts_what_is_waiting_for_the_bookkeeper() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     let empty = app.get("/api/dashboard").await;
@@ -119,8 +121,10 @@ async fn the_dashboard_counts_what_is_waiting_for_the_bookkeeper(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn the_dashboard_lists_the_three_ways_money_goes_missing(pool: PgPool) {
+#[tokio::test]
+async fn the_dashboard_lists_the_three_ways_money_goes_missing() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let last_week = Utc::now() - Days::new(7);
 
@@ -186,8 +190,10 @@ async fn the_dashboard_lists_the_three_ways_money_goes_missing(pool: PgPool) {
     assert_eq!(board["pending_invoice_count"], 1);
 }
 
-#[sqlx::test]
-async fn todays_unbilled_work_is_work_in_hand_and_not_yet_at_risk(pool: PgPool) {
+#[tokio::test]
+async fn todays_unbilled_work_is_work_in_hand_and_not_yet_at_risk() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // Written up during the visit: positions, no invoice yet. A dashboard that shouts about
@@ -205,8 +211,10 @@ async fn todays_unbilled_work_is_work_in_hand_and_not_yet_at_risk(pool: PgPool) 
     );
 }
 
-#[sqlx::test]
-async fn the_dashboard_shows_the_five_soonest_expiring_lots_that_still_have_stock(pool: PgPool) {
+#[tokio::test]
+async fn the_dashboard_shows_the_five_soonest_expiring_lots_that_still_have_stock() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let today = Utc::now().date_naive();
@@ -265,8 +273,10 @@ async fn the_dashboard_shows_the_five_soonest_expiring_lots_that_still_have_stoc
     );
 }
 
-#[sqlx::test]
-async fn lots_without_an_expiration_date_are_not_expiring(pool: PgPool) {
+#[tokio::test]
+async fn lots_without_an_expiration_date_are_not_expiring() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
 
@@ -276,8 +286,10 @@ async fn lots_without_an_expiration_date_are_not_expiring(pool: PgPool) {
     assert_eq!(lots, json!([]), "an undated lot cannot expire: {lots:?}");
 }
 
-#[sqlx::test]
-async fn settings_start_empty_and_are_patched_field_by_field(pool: PgPool) {
+#[tokio::test]
+async fn settings_start_empty_and_are_patched_field_by_field() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let initial = app.get("/api/settings").await;
@@ -358,8 +370,10 @@ async fn settings_start_empty_and_are_patched_field_by_field(pool: PgPool) {
     assert_eq!(rows, 1);
 }
 
-#[sqlx::test]
-async fn the_global_email_copies_are_validated(pool: PgPool) {
+#[tokio::test]
+async fn the_global_email_copies_are_validated() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let saved = app
@@ -391,8 +405,10 @@ async fn the_global_email_copies_are_validated(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn the_practice_logo_is_referenced_and_can_be_removed_again(pool: PgPool) {
+#[tokio::test]
+async fn the_practice_logo_is_referenced_and_can_be_removed_again() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let uploaded = app
@@ -433,8 +449,10 @@ async fn the_practice_logo_is_referenced_and_can_be_removed_again(pool: PgPool) 
 /// A drug below its Mindestbestand is on the dashboard, to be reordered (migration 0044); at or
 /// above it — after a delivery, say — it is not. The minimum is in packs, so it follows a
 /// changed pack size.
-#[sqlx::test]
-async fn drugs_below_their_minimum_stock_are_listed(pool: PgPool) {
+#[tokio::test]
+async fn drugs_below_their_minimum_stock_are_listed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     // One 100 ml bottle on the shelf.

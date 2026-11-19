@@ -7,12 +7,13 @@ mod common;
 
 use common::TestApp;
 use serde_json::json;
-use sqlx::PgPool;
 
 /// The configured order is the order offered, the first being the default; a template whose
 /// file is missing is listed as unavailable — and the app started all the same.
-#[sqlx::test]
-async fn the_templates_are_offered_in_order_with_their_files_checked(pool: PgPool) {
+#[tokio::test]
+async fn the_templates_are_offered_in_order_with_their_files_checked() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let templates = app.get("/api/email-templates").await.json();
     assert_eq!(

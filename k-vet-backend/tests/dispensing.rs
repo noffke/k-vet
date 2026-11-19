@@ -56,8 +56,10 @@ async fn set_freely_divisible(app: &TestApp, drug_id: i64) {
 
 /// 150 ml from 100 ml bottles: one bottle at the pack price, 50 ml as five Teilmengen — two
 /// rows with their own prices — and 150 ml off the shelf.
-#[sqlx::test]
-async fn a_dispensed_quantity_is_billed_as_whole_packs_and_a_teilmenge(pool: PgPool) {
+#[tokio::test]
+async fn a_dispensed_quantity_is_billed_as_whole_packs_and_a_teilmenge() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let treatment_id = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -107,8 +109,10 @@ async fn a_dispensed_quantity_is_billed_as_whole_packs_and_a_teilmenge(pool: PgP
 
 /// Without "Beliebig teilbar" the rest goes in steps of the smallest Teilmenge, on adding and on
 /// changing a line; with it, any amount — 2,7 ml of an injection.
-#[sqlx::test]
-async fn the_rest_goes_in_teilmenge_steps_unless_the_drug_is_freely_divisible(pool: PgPool) {
+#[tokio::test]
+async fn the_rest_goes_in_teilmenge_steps_unless_the_drug_is_freely_divisible() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let treatment_id = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -177,8 +181,10 @@ async fn the_rest_goes_in_teilmenge_steps_unless_the_drug_is_freely_divisible(po
 
 /// A drug without a Teilmenge goes in whole packs — unless it is "beliebig teilbar", when the
 /// rest takes its share of the whole pack priced as a Teilmenge (§ 4 by analogy, 100 %).
-#[sqlx::test]
-async fn a_drug_without_a_teilmenge_goes_in_whole_packs(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_without_a_teilmenge_goes_in_whole_packs() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let treatment_id = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -229,8 +235,10 @@ async fn a_drug_without_a_teilmenge_goes_in_whole_packs(pool: PgPool) {
 }
 
 /// A new line starts at one unit where one unit can be dispensed, else at the smallest Teilmenge.
-#[sqlx::test]
-async fn a_new_line_starts_at_what_the_drug_allows(pool: PgPool) {
+#[tokio::test]
+async fn a_new_line_starts_at_what_the_drug_allows() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let treatment_id = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -270,8 +278,10 @@ async fn a_new_line_starts_at_what_the_drug_allows(pool: PgPool) {
 
 /// The Teilmenge row's price can be typed per unit, gross; it is stored for the Teilmenge as
 /// pinned, so the steps stay.
-#[sqlx::test]
-async fn the_teilmenge_price_can_be_typed_per_unit(pool: PgPool) {
+#[tokio::test]
+async fn the_teilmenge_price_can_be_typed_per_unit() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let treatment_id = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -312,8 +322,10 @@ async fn the_teilmenge_price_can_be_typed_per_unit(pool: PgPool) {
 
 /// A line billed before migration 0039 counts packagings: it reads, prices, edits and prints as
 /// it always did.
-#[sqlx::test]
-async fn a_line_in_the_old_form_keeps_counting_packagings(pool: PgPool) {
+#[tokio::test]
+async fn a_line_in_the_old_form_keeps_counting_packagings() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -588,8 +600,10 @@ async fn the_migration_converts_what_is_open_and_keeps_what_was_billed(pool: PgP
 
 /// Raising a line counts what the line already holds: 10 ml raised to the whole bottle, with one
 /// bottle on the shelf, goes through; one ml more is refused and leaves the line as it was.
-#[sqlx::test]
-async fn raising_a_line_counts_what_it_already_holds(pool: PgPool) {
+#[tokio::test]
+async fn raising_a_line_counts_what_it_already_holds() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let treatment_id = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -635,8 +649,10 @@ async fn raising_a_line_counts_what_it_already_holds(pool: PgPool) {
 
 /// A Teilmenge goes from the drug — deleted, or archived where lines billed before migration
 /// 0039 still name it, so they and their invoices keep it.
-#[sqlx::test]
-async fn a_teilmenge_is_deleted_or_kept_for_the_lines_that_billed_it(pool: PgPool) {
+#[tokio::test]
+async fn a_teilmenge_is_deleted_or_kept_for_the_lines_that_billed_it() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let packagings = |drug_id: i64| {
         let app = &app;
@@ -726,8 +742,10 @@ async fn a_teilmenge_is_deleted_or_kept_for_the_lines_that_billed_it(pool: PgPoo
 
 /// "Beliebig teilbar" and Teilmengen exclude each other: the flag waits until the Teilmengen
 /// are deleted, and while it is set none can be added — in the database too (migration 0041).
-#[sqlx::test]
-async fn beliebig_teilbar_and_teilmengen_exclude_each_other(pool: PgPool) {
+#[tokio::test]
+async fn beliebig_teilbar_and_teilmengen_exclude_each_other() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
 

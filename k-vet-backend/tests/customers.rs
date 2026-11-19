@@ -7,10 +7,11 @@ mod common;
 use axum::http::StatusCode;
 use common::TestApp;
 use serde_json::json;
-use sqlx::PgPool;
 
-#[sqlx::test]
-async fn a_new_customer_is_an_empty_draft_that_completes_field_by_field(pool: PgPool) {
+#[tokio::test]
+async fn a_new_customer_is_an_empty_draft_that_completes_field_by_field() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app.post_empty("/api/customers").await;
@@ -54,8 +55,10 @@ async fn a_new_customer_is_an_empty_draft_that_completes_field_by_field(pool: Pg
     assert_eq!(complete["missing_fields"], json!([]));
 }
 
-#[sqlx::test]
-async fn clearing_a_mandatory_field_is_rejected_and_the_last_value_stays(pool: PgPool) {
+#[tokio::test]
+async fn clearing_a_mandatory_field_is_rejected_and_the_last_value_stays() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -70,8 +73,10 @@ async fn clearing_a_mandatory_field_is_rejected_and_the_last_value_stays(pool: P
     assert_eq!(unchanged["last_name"], "Mustermann");
 }
 
-#[sqlx::test]
-async fn phone_numbers_are_normalised_and_redisplayed_nationally(pool: PgPool) {
+#[tokio::test]
+async fn phone_numbers_are_normalised_and_redisplayed_nationally() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -96,8 +101,10 @@ async fn phone_numbers_are_normalised_and_redisplayed_nationally(pool: PgPool) {
 
 /// A customer abroad: digits typed without a country code are read in the customer's country,
 /// and the number keeps its code on screen — so saving the field as shown changes nothing.
-#[sqlx::test]
-async fn a_customer_abroad_has_numbers_read_in_their_country(pool: PgPool) {
+#[tokio::test]
+async fn a_customer_abroad_has_numbers_read_in_their_country() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     let uri = format!("/api/customers/{id}");
@@ -141,8 +148,10 @@ async fn a_customer_abroad_has_numbers_read_in_their_country(pool: PgPool) {
     assert_eq!(resaved["phone"], "+493012345678");
 }
 
-#[sqlx::test]
-async fn an_invalid_phone_number_is_never_persisted(pool: PgPool) {
+#[tokio::test]
+async fn an_invalid_phone_number_is_never_persisted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     app.patch(
@@ -170,8 +179,10 @@ async fn an_invalid_phone_number_is_never_persisted(pool: PgPool) {
 
 /// The second number (migration 0037): validated, stored and shown like the first, and found
 /// by the list's search as typed on a phone.
-#[sqlx::test]
-async fn a_mobile_number_is_a_second_number(pool: PgPool) {
+#[tokio::test]
+async fn a_mobile_number_is_a_second_number() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     let uri = format!("/api/customers/{id}");
@@ -200,8 +211,10 @@ async fn a_mobile_number_is_a_second_number(pool: PgPool) {
     assert_eq!(cleared["mobile"], serde_json::Value::Null);
 }
 
-#[sqlx::test]
-async fn email_addresses_are_validated_and_typed(pool: PgPool) {
+#[tokio::test]
+async fn email_addresses_are_validated_and_typed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -233,8 +246,10 @@ async fn email_addresses_are_validated_and_typed(pool: PgPool) {
     assert_eq!(after["emails"].as_array().map(Vec::len), Some(0));
 }
 
-#[sqlx::test]
-async fn archived_customers_are_hidden_until_asked_for(pool: PgPool) {
+#[tokio::test]
+async fn archived_customers_are_hidden_until_asked_for() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -258,8 +273,10 @@ async fn archived_customers_are_hidden_until_asked_for(pool: PgPool) {
     assert_eq!(restored.as_array().map(Vec::len), Some(1));
 }
 
-#[sqlx::test]
-async fn search_matches_both_names_of_a_household(pool: PgPool) {
+#[tokio::test]
+async fn search_matches_both_names_of_a_household() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     app.patch(
@@ -285,8 +302,10 @@ async fn search_matches_both_names_of_a_household(pool: PgPool) {
 
 /// issues.md 3: the vet looks a customer up by whatever they have in front of them — the street
 /// on an envelope, the number on the phone display, or the animal's name.
-#[sqlx::test]
-async fn search_also_matches_street_phone_and_the_animals(pool: PgPool) {
+#[tokio::test]
+async fn search_also_matches_street_phone_and_the_animals() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     common::seed_patient(&pool, id).await;
@@ -343,8 +362,10 @@ async fn search_also_matches_street_phone_and_the_animals(pool: PgPool) {
 }
 
 /// issues.md 4: the list names a household by its animals, and deceased ones are not among them.
-#[sqlx::test]
-async fn the_customer_carries_the_names_of_its_living_animals(pool: PgPool) {
+#[tokio::test]
+async fn the_customer_carries_the_names_of_its_living_animals() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     let bello = common::seed_patient(&pool, id).await;
@@ -370,8 +391,10 @@ async fn the_customer_carries_the_names_of_its_living_animals(pool: PgPool) {
 
 /// issues.md 20: an invoice needs more than the record does — a first name and an address —
 /// but that is reported, never enforced. The `customer_complete` CHECK stays where it is.
-#[sqlx::test]
-async fn a_customer_reports_what_an_invoice_would_still_be_missing(pool: PgPool) {
+#[tokio::test]
+async fn a_customer_reports_what_an_invoice_would_still_be_missing() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -398,8 +421,10 @@ async fn a_customer_reports_what_an_invoice_would_still_be_missing(pool: PgPool)
 
 /// The set follows the address the invoice would actually print, so a complete separate
 /// invoice address is not judged by gaps in the home address nobody will see.
-#[sqlx::test]
-async fn invoice_readiness_follows_the_address_that_would_be_printed(pool: PgPool) {
+#[tokio::test]
+async fn invoice_readiness_follows_the_address_that_would_be_printed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
     app.patch(
@@ -433,8 +458,10 @@ async fn invoice_readiness_follows_the_address_that_would_be_printed(pool: PgPoo
 
 /// issues.md, follow-up: the country field is prefilled rather than left to a render-time
 /// fallback, so what the vet sees on the form is what is stored.
-#[sqlx::test]
-async fn a_new_customer_starts_with_the_configured_country(pool: PgPool) {
+#[tokio::test]
+async fn a_new_customer_starts_with_the_configured_country() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let created = app.post_empty("/api/customers").await.json();
     assert_eq!(created["home_country"], "DE");
@@ -442,8 +469,10 @@ async fn a_new_customer_starts_with_the_configured_country(pool: PgPool) {
     assert_eq!(created["draft"], true);
 }
 
-#[sqlx::test]
-async fn an_invoice_address_is_only_used_once_it_is_complete(pool: PgPool) {
+#[tokio::test]
+async fn an_invoice_address_is_only_used_once_it_is_complete() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -480,8 +509,10 @@ async fn an_invoice_address_is_only_used_once_it_is_complete(pool: PgPool) {
     assert_eq!(complete["has_invoice_address"], true);
 }
 
-#[sqlx::test]
-async fn a_company_round_trips_per_address_and_stays_optional(pool: PgPool) {
+#[tokio::test]
+async fn a_company_round_trips_per_address_and_stays_optional() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 
@@ -518,8 +549,10 @@ async fn a_company_round_trips_per_address_and_stays_optional(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn a_warning_remark_round_trips(pool: PgPool) {
+#[tokio::test]
+async fn a_warning_remark_round_trips() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_customer(&pool).await;
 

@@ -10,7 +10,6 @@ use chrono::Utc;
 use common::TestApp;
 use rust_decimal::Decimal;
 use serde_json::{Value, json};
-use sqlx::PgPool;
 
 fn ids(items: &Value) -> Vec<i64> {
     items
@@ -36,8 +35,10 @@ fn names(items: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-#[sqlx::test]
-async fn a_template_completes_with_its_name(pool: PgPool) {
+#[tokio::test]
+async fn a_template_completes_with_its_name() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app.post_empty("/api/treatment-templates").await;
@@ -55,8 +56,10 @@ async fn a_template_completes_with_its_name(pool: PgPool) {
     assert_eq!(named["item_count"], 0);
 }
 
-#[sqlx::test]
-async fn template_lines_reference_the_catalog_without_a_price(pool: PgPool) {
+#[tokio::test]
+async fn template_lines_reference_the_catalog_without_a_price() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
@@ -140,8 +143,10 @@ async fn template_lines_reference_the_catalog_without_a_price(pool: PgPool) {
     assert_eq!(preset[2]["quantity"], "10.00");
 }
 
-#[sqlx::test]
-async fn lines_can_be_reordered_and_removed(pool: PgPool) {
+#[tokio::test]
+async fn lines_can_be_reordered_and_removed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_got_service(&pool).await;
     let other_service: i64 = sqlx::query_scalar(
@@ -231,8 +236,10 @@ async fn lines_can_be_reordered_and_removed(pool: PgPool) {
     assert_eq!(remaining[1]["position"], 2);
 }
 
-#[sqlx::test]
-async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool) {
+#[tokio::test]
+async fn applying_a_template_pins_current_prices_in_template_order() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     common::seed_lot(&pool, drug.packaging_id, 1, Decimal::from(100), None).await;
@@ -312,8 +319,10 @@ async fn applying_a_template_pins_current_prices_in_template_order(pool: PgPool)
 
 /// Undoing a Behandlungsgruppe that was clicked by mistake: the lines go, and — the part
 /// that matters — the drugs they dispensed FEFO go back on the shelf.
-#[sqlx::test]
-async fn a_group_applied_by_mistake_can_be_taken_back_in_one_call(pool: PgPool) {
+#[tokio::test]
+async fn a_group_applied_by_mistake_can_be_taken_back_in_one_call() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     common::seed_lot(&pool, drug.packaging_id, 1, Decimal::from(100), None).await;
@@ -401,8 +410,10 @@ async fn a_group_applied_by_mistake_can_be_taken_back_in_one_call(pool: PgPool) 
     );
 }
 
-#[sqlx::test]
-async fn an_incomplete_template_cannot_be_applied(pool: PgPool) {
+#[tokio::test]
+async fn an_incomplete_template_cannot_be_applied() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let template_id = app.post_empty("/api/treatment-templates").await.id();
     let customer_id = common::seed_customer(&pool).await;
@@ -420,8 +431,10 @@ async fn an_incomplete_template_cannot_be_applied(pool: PgPool) {
     assert_eq!(rejected.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[sqlx::test]
-async fn a_template_line_needs_a_positive_quantity(pool: PgPool) {
+#[tokio::test]
+async fn a_template_line_needs_a_positive_quantity() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_got_service(&pool).await;
     let template_id = app.post_empty("/api/treatment-templates").await.id();
@@ -437,8 +450,10 @@ async fn a_template_line_needs_a_positive_quantity(pool: PgPool) {
     assert!(rejected.error_fields().contains(&"quantity".to_owned()));
 }
 
-#[sqlx::test]
-async fn templates_are_archived_not_deleted(pool: PgPool) {
+#[tokio::test]
+async fn templates_are_archived_not_deleted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/treatment-templates").await.id();
     app.patch(

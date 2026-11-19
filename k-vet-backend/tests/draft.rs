@@ -4,10 +4,10 @@
 #![allow(clippy::expect_used, clippy::panic, clippy::unwrap_used)]
 mod common;
 
-use sqlx::PgPool;
-
-#[sqlx::test]
-async fn completeness_check_rejects_completing_an_empty_row(pool: PgPool) {
+#[tokio::test]
+async fn completeness_check_rejects_completing_an_empty_row() {
+    let db = common::database().await;
+    let pool = db.pool();
     let result = sqlx::query(
         "INSERT INTO customer (salutation, last_name, draft) VALUES ('frau', NULL, false)",
     )
@@ -23,8 +23,10 @@ async fn completeness_check_rejects_completing_an_empty_row(pool: PgPool) {
     assert_eq!(constraint, "customer_complete");
 }
 
-#[sqlx::test]
-async fn draft_rows_may_be_empty(pool: PgPool) {
+#[tokio::test]
+async fn draft_rows_may_be_empty() {
+    let db = common::database().await;
+    let pool = db.pool();
     let id: i64 = sqlx::query_scalar("INSERT INTO customer DEFAULT VALUES RETURNING id")
         .fetch_one(&pool)
         .await
@@ -38,8 +40,10 @@ async fn draft_rows_may_be_empty(pool: PgPool) {
     assert!(draft, "new rows start as drafts");
 }
 
-#[sqlx::test]
-async fn a_complete_row_cannot_lose_a_mandatory_field(pool: PgPool) {
+#[tokio::test]
+async fn a_complete_row_cannot_lose_a_mandatory_field() {
+    let db = common::database().await;
+    let pool = db.pool();
     let id = common::seed_customer(&pool).await;
 
     let result = sqlx::query("UPDATE customer SET home_zip = NULL WHERE id = $1")
@@ -57,8 +61,10 @@ async fn a_complete_row_cannot_lose_a_mandatory_field(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn patient_completeness_covers_its_own_field_set(pool: PgPool) {
+#[tokio::test]
+async fn patient_completeness_covers_its_own_field_set() {
+    let db = common::database().await;
+    let pool = db.pool();
     let customer_id = common::seed_customer(&pool).await;
 
     let result = sqlx::query(
@@ -78,8 +84,10 @@ async fn patient_completeness_covers_its_own_field_set(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn kind_bound_checks_are_draft_aware(pool: PgPool) {
+#[tokio::test]
+async fn kind_bound_checks_are_draft_aware() {
+    let db = common::database().await;
+    let pool = db.pool();
     let manufacturer_id = common::seed_manufacturer(&pool).await;
     let drug_id: i64 = sqlx::query_scalar(
         "INSERT INTO drug (name, manufacturer_id, vat_percent, draft)
@@ -118,8 +126,10 @@ async fn kind_bound_checks_are_draft_aware(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn only_one_original_packaging_per_drug(pool: PgPool) {
+#[tokio::test]
+async fn only_one_original_packaging_per_drug() {
+    let db = common::database().await;
+    let pool = db.pool();
     let seeded = common::seed_drug(&pool).await;
 
     let result = sqlx::query("INSERT INTO drug_packaging (drug_id, kind) VALUES ($1, 'original')")
@@ -133,8 +143,10 @@ async fn only_one_original_packaging_per_drug(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn stock_lots_reference_original_packagings_only(pool: PgPool) {
+#[tokio::test]
+async fn stock_lots_reference_original_packagings_only() {
+    let db = common::database().await;
+    let pool = db.pool();
     let seeded = common::seed_drug(&pool).await;
     let subset_id: i64 = sqlx::query_scalar(
         "INSERT INTO drug_packaging

@@ -109,8 +109,10 @@ fn zip_entries(response: &TestResponse) -> Vec<String> {
         .collect()
 }
 
-#[sqlx::test]
-async fn pending_invoices_come_first_and_cancelled_ones_stay_out_of_the_list(pool: PgPool) {
+#[tokio::test]
+async fn pending_invoices_come_first_and_cancelled_ones_stay_out_of_the_list() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // Created first, so it is the oldest by id — ordering must not fall back to that.
@@ -162,8 +164,10 @@ async fn pending_invoices_come_first_and_cancelled_ones_stay_out_of_the_list(poo
     assert_eq!(numbers(&only_pending), vec![number_of(&pending)]);
 }
 
-#[sqlx::test]
-async fn the_list_can_be_searched_by_number_and_customer_name(pool: PgPool) {
+#[tokio::test]
+async fn the_list_can_be_searched_by_number_and_customer_name() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let target = accepted_invoice(&app, &pool).await;
     let _other = accepted_invoice(&app, &pool).await;
@@ -180,8 +184,10 @@ async fn the_list_can_be_searched_by_number_and_customer_name(pool: PgPool) {
     assert_eq!(by_name[0]["customer_name"], "Erika Mustermann");
 }
 
-#[sqlx::test]
-async fn submitting_stamps_the_hand_off_and_happens_once(pool: PgPool) {
+#[tokio::test]
+async fn submitting_stamps_the_hand_off_and_happens_once() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let invoice = sent_invoice(&app, &pool).await;
     let id = invoice["id"].as_i64().unwrap_or_default();
@@ -207,8 +213,10 @@ async fn submitting_stamps_the_hand_off_and_happens_once(pool: PgPool) {
     assert_eq!(again.status, StatusCode::CONFLICT);
 }
 
-#[sqlx::test]
-async fn only_a_sent_invoice_can_be_submitted(pool: PgPool) {
+#[tokio::test]
+async fn only_a_sent_invoice_can_be_submitted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     let created = invoice(&app, &pool).await;
@@ -245,8 +253,10 @@ async fn only_a_sent_invoice_can_be_submitted(pool: PgPool) {
     assert_eq!(rejected.status, StatusCode::CONFLICT);
 }
 
-#[sqlx::test]
-async fn bulk_submit_hands_over_every_pending_invoice_at_once(pool: PgPool) {
+#[tokio::test]
+async fn bulk_submit_hands_over_every_pending_invoice_at_once() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let first = sent_invoice(&app, &pool).await;
     let second = sent_invoice(&app, &pool).await;
@@ -292,8 +302,10 @@ async fn bulk_submit_hands_over_every_pending_invoice_at_once(pool: PgPool) {
     assert_eq!(empty["submitted"], 0);
 }
 
-#[sqlx::test]
-async fn the_pending_bundle_zips_one_pdf_per_waiting_invoice(pool: PgPool) {
+#[tokio::test]
+async fn the_pending_bundle_zips_one_pdf_per_waiting_invoice() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let first = sent_invoice(&app, &pool).await;
     let second = sent_invoice(&app, &pool).await;
@@ -329,8 +341,10 @@ async fn the_pending_bundle_zips_one_pdf_per_waiting_invoice(pool: PgPool) {
     assert_eq!(still_pending.as_array().map(Vec::len), Some(2));
 }
 
-#[sqlx::test]
-async fn an_empty_bundle_says_so_instead_of_shipping_an_empty_zip(pool: PgPool) {
+#[tokio::test]
+async fn an_empty_bundle_says_so_instead_of_shipping_an_empty_zip() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let bundle = app.get("/api/invoices/pending-pdfs").await;

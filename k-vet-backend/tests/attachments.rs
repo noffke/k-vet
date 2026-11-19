@@ -6,7 +6,6 @@ mod common;
 
 use axum::http::{StatusCode, header};
 use common::TestApp;
-use sqlx::PgPool;
 
 /// A small in-memory PNG so the thumbnail path is exercised for real.
 fn png(width: u32, height: u32) -> Vec<u8> {
@@ -21,8 +20,10 @@ fn png(width: u32, height: u32) -> Vec<u8> {
     bytes
 }
 
-#[sqlx::test]
-async fn uploads_a_patient_file_with_reference_date_and_note(pool: PgPool) {
+#[tokio::test]
+async fn uploads_a_patient_file_with_reference_date_and_note() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -75,8 +76,10 @@ async fn uploads_a_patient_file_with_reference_date_and_note(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn streams_content_and_thumbnail(pool: PgPool) {
+#[tokio::test]
+async fn streams_content_and_thumbnail() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let content = png(800, 600);
 
@@ -102,8 +105,10 @@ async fn streams_content_and_thumbnail(pool: PgPool) {
     assert!(decoded.width() <= 320 && decoded.height() <= 320);
 }
 
-#[sqlx::test]
-async fn identical_content_is_stored_once(pool: PgPool) {
+#[tokio::test]
+async fn identical_content_is_stored_once() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let content = png(120, 120);
 
@@ -128,8 +133,10 @@ async fn identical_content_is_stored_once(pool: PgPool) {
     assert_eq!(distinct_hashes, 1, "dedup for free");
 }
 
-#[sqlx::test]
-async fn non_image_uploads_have_no_thumbnail(pool: PgPool) {
+#[tokio::test]
+async fn non_image_uploads_have_no_thumbnail() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let uploaded = app
@@ -149,8 +156,10 @@ async fn non_image_uploads_have_no_thumbnail(pool: PgPool) {
     assert_eq!(thumbnail.status, StatusCode::NOT_FOUND);
 }
 
-#[sqlx::test]
-async fn upload_without_a_file_part_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn upload_without_a_file_part_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let response = app
@@ -166,8 +175,10 @@ async fn upload_without_a_file_part_is_rejected(pool: PgPool) {
     assert_eq!(response.status, StatusCode::BAD_REQUEST);
 }
 
-#[sqlx::test]
-async fn attachment_kind_shape_is_enforced_by_the_database(pool: PgPool) {
+#[tokio::test]
+async fn attachment_kind_shape_is_enforced_by_the_database() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     // `patient_file` without a patient violates the kind-bound CHECK.
@@ -184,8 +195,10 @@ async fn attachment_kind_shape_is_enforced_by_the_database(pool: PgPool) {
     assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[sqlx::test]
-async fn unknown_attachment_is_a_404(pool: PgPool) {
+#[tokio::test]
+async fn unknown_attachment_is_a_404() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     assert_eq!(
         app.get("/api/attachments/999").await.status,
@@ -196,8 +209,10 @@ async fn unknown_attachment_is_a_404(pool: PgPool) {
 /// A photo straight from a phone's camera is several megabytes. Uploads are bounded by
 /// `[storage] max_upload_mb` alone — axum's own 2 MB default for a multipart body refused
 /// them with a 400 "Error parsing `multipart/form-data` request".
-#[sqlx::test]
-async fn a_phone_photo_of_several_megabytes_is_accepted(pool: PgPool) {
+#[tokio::test]
+async fn a_phone_photo_of_several_megabytes_is_accepted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let photo = vec![0x5a_u8; 6 * 1024 * 1024];
 
@@ -222,8 +237,10 @@ async fn a_phone_photo_of_several_megabytes_is_accepted(pool: PgPool) {
 
 /// Over the configured limit the upload is refused as too large — 413, which the page can name
 /// — and not as malformed.
-#[sqlx::test]
-async fn an_upload_over_the_limit_is_too_large(pool: PgPool) {
+#[tokio::test]
+async fn an_upload_over_the_limit_is_too_large() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let limit = app.state.config.max_upload_bytes();
     let too_big = vec![0x5a_u8; limit + 1024];

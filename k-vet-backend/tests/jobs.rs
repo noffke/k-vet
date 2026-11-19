@@ -39,8 +39,10 @@ async fn exists(pool: &PgPool, table: &str, id: i64) -> bool {
         .is_some()
 }
 
-#[sqlx::test]
-async fn the_picker_usage_table_is_rebuilt_from_the_billed_lines(pool: PgPool) {
+#[tokio::test]
+async fn the_picker_usage_table_is_rebuilt_from_the_billed_lines() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_got_service(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -102,8 +104,10 @@ async fn the_picker_usage_table_is_rebuilt_from_the_billed_lines(pool: PgPool) {
     assert_eq!(stale, 0, "the rebuild replaces the whole table");
 }
 
-#[sqlx::test]
-async fn untouched_drafts_are_removed_after_a_day(pool: PgPool) {
+#[tokio::test]
+async fn untouched_drafts_are_removed_after_a_day() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // Opened by accident and left alone: no field was ever filled in.
@@ -165,8 +169,10 @@ async fn untouched_drafts_are_removed_after_a_day(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn a_draft_with_children_is_never_removed(pool: PgPool) {
+#[tokio::test]
+async fn a_draft_with_children_is_never_removed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // An empty customer draft that already has an email address and a patient attached.
@@ -198,8 +204,10 @@ async fn a_draft_with_children_is_never_removed(pool: PgPool) {
     assert!(exists(&pool, "drug", drug_id).await);
 }
 
-#[sqlx::test]
-async fn orphaned_attachments_are_swept_with_their_files(pool: PgPool) {
+#[tokio::test]
+async fn orphaned_attachments_are_swept_with_their_files() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let store = AttachmentStore::new(app.attachments.path());
 

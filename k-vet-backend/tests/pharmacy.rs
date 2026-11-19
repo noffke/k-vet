@@ -7,7 +7,6 @@ mod common;
 use axum::http::StatusCode;
 use common::TestApp;
 use serde_json::{Value, json};
-use sqlx::PgPool;
 
 /// A complete supplier and manufacturer, created through the API.
 async fn address_book(app: &TestApp) -> (i64, i64) {
@@ -58,8 +57,10 @@ fn packaging(packagings: &Value, id: i64) -> &Value {
         .expect("the packaging is listed")
 }
 
-#[sqlx::test]
-async fn address_book_entries_complete_with_their_name(pool: PgPool) {
+#[tokio::test]
+async fn address_book_entries_complete_with_their_name() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app.post_empty("/api/suppliers").await;
@@ -86,8 +87,10 @@ async fn address_book_entries_complete_with_their_name(pool: PgPool) {
     assert_eq!(addressed["has_address"], true);
 }
 
-#[sqlx::test]
-async fn manufacturers_behave_like_suppliers_and_archive(pool: PgPool) {
+#[tokio::test]
+async fn manufacturers_behave_like_suppliers_and_archive() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let id = app.post_empty("/api/manufacturers").await.id();
     app.patch(
@@ -119,8 +122,10 @@ async fn manufacturers_behave_like_suppliers_and_archive(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn a_drug_completes_with_name_manufacturer_and_vat(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_completes_with_name_manufacturer_and_vat() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (_, manufacturer) = address_book(&app).await;
 
@@ -149,8 +154,10 @@ async fn a_drug_completes_with_name_manufacturer_and_vat(pool: PgPool) {
     assert_eq!(complete["in_stock"], "0");
 }
 
-#[sqlx::test]
-async fn the_sales_price_of_an_original_packaging_is_computed_per_ampreisv(pool: PgPool) {
+#[tokio::test]
+async fn the_sales_price_of_an_original_packaging_is_computed_per_ampreisv() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, packaging_id) = drug_with_original(&app, supplier, manufacturer).await;
@@ -178,8 +185,10 @@ async fn the_sales_price_of_an_original_packaging_is_computed_per_ampreisv(pool:
     assert_eq!(drug["original_price_gross"], "17.61");
 }
 
-#[sqlx::test]
-async fn a_subset_derives_its_list_price_and_carries_the_teilmengenzuschlag(pool: PgPool) {
+#[tokio::test]
+async fn a_subset_derives_its_list_price_and_carries_the_teilmengenzuschlag() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
@@ -221,8 +230,10 @@ async fn a_subset_derives_its_list_price_and_carries_the_teilmengenzuschlag(pool
     assert!(subset["supplier_id"].is_null());
 }
 
-#[sqlx::test]
-async fn changing_the_purchase_price_or_vat_moves_every_computed_price(pool: PgPool) {
+#[tokio::test]
+async fn changing_the_purchase_price_or_vat_moves_every_computed_price() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, packaging_id) = drug_with_original(&app, supplier, manufacturer).await;
@@ -295,8 +306,10 @@ async fn changing_the_purchase_price_or_vat_moves_every_computed_price(pool: PgP
     );
 }
 
-#[sqlx::test]
-async fn a_manual_price_wins_until_it_is_cleared(pool: PgPool) {
+#[tokio::test]
+async fn a_manual_price_wins_until_it_is_cleared() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, packaging_id) = drug_with_original(&app, supplier, manufacturer).await;
@@ -348,8 +361,10 @@ async fn a_manual_price_wins_until_it_is_cleared(pool: PgPool) {
     assert_eq!(restored["sales_price_gross"], "61.88");
 }
 
-#[sqlx::test]
-async fn a_drug_has_at_most_one_original_packaging(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_has_at_most_one_original_packaging() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
@@ -368,8 +383,10 @@ async fn a_drug_has_at_most_one_original_packaging(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn the_price_preview_answers_before_anything_is_saved(pool: PgPool) {
+#[tokio::test]
+async fn the_price_preview_answers_before_anything_is_saved() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let original: Value = app
@@ -403,8 +420,10 @@ async fn the_price_preview_answers_before_anything_is_saved(pool: PgPool) {
     assert!(subset["rule"].as_str().unwrap_or_default().contains("§ 4"));
 }
 
-#[sqlx::test]
-async fn drugs_report_their_derived_stock(pool: PgPool) {
+#[tokio::test]
+async fn drugs_report_their_derived_stock() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let seeded = common::seed_drug(&pool).await;
     app.post(
@@ -423,8 +442,10 @@ async fn drugs_report_their_derived_stock(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn drugs_can_be_searched_by_name_manufacturer_and_approval_number(pool: PgPool) {
+#[tokio::test]
+async fn drugs_can_be_searched_by_name_manufacturer_and_approval_number() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
@@ -454,8 +475,10 @@ async fn drugs_can_be_searched_by_name_manufacturer_and_approval_number(pool: Pg
 
 /// A drug is marked as a euthanasia preparation on its own page; the mark is what a release
 /// reads to set the date of death (tests/invoices.rs).
-#[sqlx::test]
-async fn a_drug_can_be_marked_as_a_euthanasia_preparation(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_can_be_marked_as_a_euthanasia_preparation() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
@@ -481,8 +504,10 @@ async fn a_drug_can_be_marked_as_a_euthanasia_preparation(pool: PgPool) {
 }
 
 /// An antibiotic is marked on the drug's page — informational, it changes nothing else.
-#[sqlx::test]
-async fn a_drug_can_be_marked_as_an_antibiotic(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_can_be_marked_as_an_antibiotic() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, _) = drug_with_original(&app, supplier, manufacturer).await;
@@ -506,8 +531,10 @@ async fn a_drug_can_be_marked_as_an_antibiotic(pool: PgPool) {
 }
 
 /// Marking a drug as a Humanpräparat switches it to § 3 Abs. 1 Satz 2 and reprices the catalogue.
-#[sqlx::test]
-async fn a_human_preparation_switches_the_ampreisv_rule(pool: PgPool) {
+#[tokio::test]
+async fn a_human_preparation_switches_the_ampreisv_rule() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let (supplier, manufacturer) = address_book(&app).await;
     let (drug_id, packaging_id) = drug_with_original(&app, supplier, manufacturer).await;
@@ -544,8 +571,10 @@ async fn a_human_preparation_switches_the_ampreisv_rule(pool: PgPool) {
 ///
 /// This is the switch's whole purpose, exercised through the real API rather than the pure
 /// function, so the config actually reaches the price.
-#[sqlx::test]
-async fn the_configured_floor_lifts_a_cheap_human_teilmenge(pool: PgPool) {
+#[tokio::test]
+async fn the_configured_floor_lifts_a_cheap_human_teilmenge() {
+    let db = common::database().await;
+    let pool = db.pool();
     for (floor, expected) in [(false, "1.00"), (true, "4.57")] {
         let app = TestApp::with_config(pool.clone(), |config| {
             config.pharmacy.subset_never_below_proportional = floor;
@@ -612,8 +641,10 @@ async fn the_configured_floor_lifts_a_cheap_human_teilmenge(pool: PgPool) {
 
 /// A Mindestbestand is a whole number of original packs (migration 0044): optional, cleared
 /// with `null`, never below one — and a consumable "Ohne Bestand" has none.
-#[sqlx::test]
-async fn a_drug_has_an_optional_minimum_stock_in_whole_packs(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_has_an_optional_minimum_stock_in_whole_packs() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let uri = format!("/api/drugs/{}", drug.drug_id);

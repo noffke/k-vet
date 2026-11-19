@@ -9,7 +9,6 @@ mod common;
 use axum::http::StatusCode;
 use common::TestApp;
 use serde_json::{Value, json};
-use sqlx::PgPool;
 
 const EAN: &str = "4006381333931";
 /// The NTIN of PZN 12345678, as the securPharm coding rules give it.
@@ -21,8 +20,10 @@ async fn scan(app: &TestApp, raw: &str) -> Value {
     response.json()
 }
 
-#[sqlx::test]
-async fn a_code_is_added_shown_and_removed(pool: PgPool) {
+#[tokio::test]
+async fn a_code_is_added_shown_and_removed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let uri = format!("/api/drugs/{}/codes", drug.drug_id);
@@ -62,8 +63,10 @@ async fn a_code_is_added_shown_and_removed(pool: PgPool) {
     assert!(scan(&app, EAN).await["drug"].is_null());
 }
 
-#[sqlx::test]
-async fn a_code_names_one_drug_and_must_be_one(pool: PgPool) {
+#[tokio::test]
+async fn a_code_names_one_drug_and_must_be_one() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let first = common::seed_drug(&pool).await;
     let second = common::seed_drug(&pool).await;
@@ -101,8 +104,10 @@ async fn a_code_names_one_drug_and_must_be_one(pool: PgPool) {
 
 /// A Data Matrix added as a code keeps only the product: a pack of the next delivery, with
 /// another batch and expiry, finds the same drug — and brings its own batch and expiry.
-#[sqlx::test]
-async fn a_data_matrix_names_the_drug_and_brings_the_lot(pool: PgPool) {
+#[tokio::test]
+async fn a_data_matrix_names_the_drug_and_brings_the_lot() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     // GS1: AI 01 the NTIN, 17 the expiry, 10 the batch (ended by GS), 21 the serial.
@@ -133,8 +138,10 @@ async fn a_data_matrix_names_the_drug_and_brings_the_lot(pool: PgPool) {
     assert_eq!(scan(&app, "-12345678").await["drug"]["id"], drug.drug_id);
 }
 
-#[sqlx::test]
-async fn a_scan_of_nothing_known_says_so(pool: PgPool) {
+#[tokio::test]
+async fn a_scan_of_nothing_known_says_so() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let unknown = scan(&app, EAN).await;
     assert_eq!(unknown["gtin"], format!("0{EAN}"));
@@ -147,8 +154,10 @@ async fn a_scan_of_nothing_known_says_so(pool: PgPool) {
 }
 
 /// Deleting an incomplete drug takes its codes along.
-#[sqlx::test]
-async fn a_deleted_draft_takes_its_codes(pool: PgPool) {
+#[tokio::test]
+async fn a_deleted_draft_takes_its_codes() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug_id = app.post_empty("/api/drugs").await.id();
     app.post(

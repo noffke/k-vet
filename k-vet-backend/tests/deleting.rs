@@ -19,8 +19,10 @@ async fn count(pool: &PgPool, sql: &'static str, id: i64) -> i64 {
 }
 
 /// Every kind of record that starts as a draft can be deleted while it is one.
-#[sqlx::test]
-async fn an_incomplete_record_of_any_kind_is_deleted(pool: PgPool) {
+#[tokio::test]
+async fn an_incomplete_record_of_any_kind_is_deleted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     for collection in [
         "customers",
@@ -62,8 +64,10 @@ async fn an_incomplete_record_of_any_kind_is_deleted(pool: PgPool) {
 }
 
 /// A complete record is archived, never deleted (`requirements/datamodel.md`).
-#[sqlx::test]
-async fn a_complete_record_is_not_deleted(pool: PgPool) {
+#[tokio::test]
+async fn a_complete_record_is_not_deleted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let manufacturer_id = common::seed_manufacturer(&pool).await;
@@ -99,8 +103,10 @@ async fn a_complete_record_is_not_deleted(pool: PgPool) {
 
 /// What the draft owns goes with it: a customer's addresses, an animal's files, a template's
 /// positions, a drug's packagings.
-#[sqlx::test]
-async fn what_belongs_to_a_draft_goes_with_it(pool: PgPool) {
+#[tokio::test]
+async fn what_belongs_to_a_draft_goes_with_it() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     let customer_id = app.post("/api/customers", json!({})).await.id();
@@ -204,8 +210,10 @@ async fn what_belongs_to_a_draft_goes_with_it(pool: PgPool) {
 
 /// A draft something still refers to stays, and the answer says it is in use — a 409, not the
 /// 422 "referenced record does not exist" the foreign key would otherwise produce.
-#[sqlx::test]
-async fn a_draft_in_use_stays(pool: PgPool) {
+#[tokio::test]
+async fn a_draft_in_use_stays() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // A manufacturer set on a drug.

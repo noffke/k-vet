@@ -76,8 +76,10 @@ async fn queued(pool: &PgPool) -> i64 {
 
 /// Releasing only queues the mail; nothing reaches the mail server until the queue's run, which
 /// delivers it, records the delivery on the invoice and empties the queue.
-#[sqlx::test]
-async fn releasing_queues_the_mail_and_the_run_delivers_it(pool: PgPool) {
+#[tokio::test]
+async fn releasing_queues_the_mail_and_the_run_delivers_it() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
@@ -112,8 +114,10 @@ async fn releasing_queues_the_mail_and_the_run_delivers_it(pool: PgPool) {
 
 /// An unreachable mail server is tried again on every run, until six hours after the first
 /// failure; then the queue gives up and leaves the mail alone.
-#[sqlx::test]
-async fn an_unreachable_mail_server_is_retried_for_six_hours(pool: PgPool) {
+#[tokio::test]
+async fn an_unreachable_mail_server_is_retried_for_six_hours() {
+    let db = common::database().await;
+    let pool = db.pool();
     // No mail server: the test configuration points at a port nothing listens on.
     let app = TestApp::new(pool.clone()).await;
     let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
@@ -154,8 +158,10 @@ async fn an_unreachable_mail_server_is_retried_for_six_hours(pool: PgPool) {
 
 /// A mail server that refuses a recipient for good is not asked again: the mail is given up at
 /// once, with the server's answer — and nobody got it, the other recipients included.
-#[sqlx::test]
-async fn a_refused_recipient_is_given_up_at_once(pool: PgPool) {
+#[tokio::test]
+async fn a_refused_recipient_is_given_up_at_once() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     mail.refuse_recipient("weg@example.com");
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
@@ -184,8 +190,10 @@ async fn a_refused_recipient_is_given_up_at_once(pool: PgPool) {
 
 /// From the dashboard a failed mail is tried again from the start, or taken out of the queue —
 /// which leaves the invoice released and unsent.
-#[sqlx::test]
-async fn a_failed_mail_can_be_retried_or_removed(pool: PgPool) {
+#[tokio::test]
+async fn a_failed_mail_can_be_retried_or_removed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     mail.refuse();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
@@ -240,8 +248,10 @@ async fn a_failed_mail_can_be_retried_or_removed(pool: PgPool) {
 }
 
 /// One waiting mail per invoice: sending again replaces it, with a fresh start.
-#[sqlx::test]
-async fn sending_again_replaces_the_waiting_mail(pool: PgPool) {
+#[tokio::test]
+async fn sending_again_replaces_the_waiting_mail() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
     assert_eq!(run(&app).await.failed, 1);
@@ -264,8 +274,10 @@ async fn sending_again_replaces_the_waiting_mail(pool: PgPool) {
 
 /// A cancelled invoice never reaches the customer, and one handed over on paper does not need
 /// to arrive a second time: both drop the waiting mail.
-#[sqlx::test]
-async fn cancelling_or_posting_drops_the_waiting_mail(pool: PgPool) {
+#[tokio::test]
+async fn cancelling_or_posting_drops_the_waiting_mail() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let posted = released_invoice(&app, &pool, &["kundin@example.com"]).await;
@@ -303,8 +315,10 @@ async fn cancelling_or_posting_drops_the_waiting_mail(pool: PgPool) {
 /// A mail planned for later is gone with its invoice, whichever way the invoice is cancelled —
 /// cancelled outright, or replaced by updating it after release — and its time coming changes
 /// nothing: the run has nothing to send.
-#[sqlx::test]
-async fn a_planned_mail_is_never_sent_for_a_cancelled_invoice(pool: PgPool) {
+#[tokio::test]
+async fn a_planned_mail_is_never_sent_for_a_cancelled_invoice() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
@@ -354,8 +368,10 @@ async fn a_planned_mail_is_never_sent_for_a_cancelled_invoice(pool: PgPool) {
 
 /// "Später versenden": the mail waits for its time — the invoice is released and done with,
 /// the owners get it tomorrow morning — and goes out with the first run after it.
-#[sqlx::test]
-async fn a_mail_scheduled_for_later_waits_for_its_time(pool: PgPool) {
+#[tokio::test]
+async fn a_mail_scheduled_for_later_waits_for_its_time() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let tomorrow = Utc::now() + chrono::TimeDelta::hours(18);
@@ -396,8 +412,10 @@ async fn a_mail_scheduled_for_later_waits_for_its_time(pool: PgPool) {
 
 /// "Nicht versendet" says what became of each mail, and a failed one comes first — before an
 /// invoice released earlier whose mail is only waiting for its time.
-#[sqlx::test]
-async fn the_unsent_list_puts_a_failed_mail_first_with_its_error(pool: PgPool) {
+#[tokio::test]
+async fn the_unsent_list_puts_a_failed_mail_first_with_its_error() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     mail.refuse_recipient("weg@example.com");
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
@@ -433,8 +451,10 @@ async fn the_unsent_list_puts_a_failed_mail_first_with_its_error(pool: PgPool) {
 
 /// "Gleich versenden" is now: sending again with now turns a scheduled mail into one for the
 /// next run — and a time already past (a browser clock a little behind) means the same.
-#[sqlx::test]
-async fn now_or_a_past_time_goes_out_with_the_next_run(pool: PgPool) {
+#[tokio::test]
+async fn now_or_a_past_time_goes_out_with_the_next_run() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let rescheduled = released_at(
@@ -467,8 +487,10 @@ async fn now_or_a_past_time_goes_out_with_the_next_run(pool: PgPool) {
 }
 
 /// When the mail goes out is always said: a release or send without `send_at` is refused.
-#[sqlx::test]
-async fn a_release_must_say_when_its_mail_goes_out(pool: PgPool) {
+#[tokio::test]
+async fn a_release_must_say_when_its_mail_goes_out() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let invoice_id = written_invoice(&app, &pool).await;
     let refused = app
@@ -495,8 +517,10 @@ async fn release_with(app: &TestApp, invoice_id: i64, template: &str) -> common:
 }
 
 /// The mail goes out with the template the vet chose — read from its file when it is sent.
-#[sqlx::test]
-async fn the_mail_goes_out_with_the_template_chosen(pool: PgPool) {
+#[tokio::test]
+async fn the_mail_goes_out_with_the_template_chosen() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let invoice_id = written_invoice(&app, &pool).await;
@@ -526,8 +550,10 @@ async fn the_mail_goes_out_with_the_template_chosen(pool: PgPool) {
 
 /// A template that is not configured, or whose file is missing, cannot be chosen — the form
 /// shows the latter disabled, and the server holds to it too. Nothing is released.
-#[sqlx::test]
-async fn an_unknown_or_missing_template_is_refused(pool: PgPool) {
+#[tokio::test]
+async fn an_unknown_or_missing_template_is_refused() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let invoice_id = written_invoice(&app, &pool).await;
 
@@ -543,8 +569,10 @@ async fn an_unknown_or_missing_template_is_refused(pool: PgPool) {
 }
 
 /// Sending again with another template replaces the waiting mail's.
-#[sqlx::test]
-async fn sending_again_can_change_the_template(pool: PgPool) {
+#[tokio::test]
+async fn sending_again_can_change_the_template() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let invoice_id = released_invoice(&app, &pool, &["kundin@example.com"]).await;
     let resent = app
@@ -564,8 +592,10 @@ async fn sending_again_can_change_the_template(pool: PgPool) {
 
 /// A template whose file went away after the mail was queued does not send another text: the
 /// mail is refused, naming the file, until it is back or another template is chosen.
-#[sqlx::test]
-async fn a_template_file_gone_since_queueing_refuses_the_mail(pool: PgPool) {
+#[tokio::test]
+async fn a_template_file_gone_since_queueing_refuses_the_mail() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     let invoice_id = written_invoice(&app, &pool).await;
@@ -592,8 +622,10 @@ async fn a_template_file_gone_since_queueing_refuses_the_mail(pool: PgPool) {
 /// The invoice records which template each delivery used — the one actually rendered: the first
 /// for a mail queued before there was a choice, nothing for an attempt that failed, and the
 /// latest on a resend, as the addresses are.
-#[sqlx::test]
-async fn the_delivery_records_the_template_it_was_written_with(pool: PgPool) {
+#[tokio::test]
+async fn the_delivery_records_the_template_it_was_written_with() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = MailServer::start();
     mail.refuse();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;

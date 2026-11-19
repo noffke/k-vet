@@ -1,5 +1,5 @@
-//! Shared integration-test harness: a real router on a `#[sqlx::test]` database plus
-//! the seed fixtures the story tests build on.
+//! Shared integration-test harness: a real router on a test's own database (`database()`, a
+//! clone of the migrated template — see `db.rs`) plus the seed fixtures the story tests build on.
 
 #![allow(dead_code)]
 // Test helpers panic to report failures.
@@ -24,6 +24,9 @@ use serde_json::Value;
 use sqlx::PgPool;
 use tempfile::TempDir;
 use tower::ServiceExt;
+
+pub mod db;
+pub use db::database;
 
 pub const TEST_USER: &str = "tierarzt";
 pub const TEST_PASSWORD: &str = "test1234";

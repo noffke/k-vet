@@ -6,10 +6,11 @@ mod common;
 
 use axum::http::{Method, StatusCode};
 use common::{TEST_PASSWORD, TEST_USER, TestApp};
-use sqlx::PgPool;
 
-#[sqlx::test]
-async fn wrong_password_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn wrong_password_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool).await;
 
     let response = app.login(TEST_USER, "wrong-password").await;
@@ -22,8 +23,10 @@ async fn wrong_password_is_rejected(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn unknown_user_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn unknown_user_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool).await;
 
     let response = app.login("somebody-else", TEST_PASSWORD).await;
@@ -31,8 +34,10 @@ async fn unknown_user_is_rejected(pool: PgPool) {
     assert_eq!(response.status, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test]
-async fn protected_endpoints_require_a_session(pool: PgPool) {
+#[tokio::test]
+async fn protected_endpoints_require_a_session() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool).await;
 
     let response = app.get("/api/settings").await;
@@ -40,8 +45,10 @@ async fn protected_endpoints_require_a_session(pool: PgPool) {
     assert_eq!(response.status, StatusCode::UNAUTHORIZED);
 }
 
-#[sqlx::test]
-async fn login_establishes_a_persisted_session(pool: PgPool) {
+#[tokio::test]
+async fn login_establishes_a_persisted_session() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool.clone()).await;
 
     let login = app.login(TEST_USER, TEST_PASSWORD).await;
@@ -62,8 +69,10 @@ async fn login_establishes_a_persisted_session(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn logout_invalidates_the_session(pool: PgPool) {
+#[tokio::test]
+async fn logout_invalidates_the_session() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     assert_eq!(
         app.get("/api/auth/session").await.json()["authenticated"],
@@ -83,8 +92,10 @@ async fn logout_invalidates_the_session(pool: PgPool) {
     assert_eq!(stored, 0, "logout removes the stored session");
 }
 
-#[sqlx::test]
-async fn session_survives_a_restart_of_the_binary(pool: PgPool) {
+#[tokio::test]
+async fn session_survives_a_restart_of_the_binary() {
+    let db = common::database().await;
+    let pool = db.pool();
     let first = TestApp::new(pool.clone()).await;
     let cookie = first.session_cookie().expect("a session cookie was set");
 
@@ -100,8 +111,10 @@ async fn session_survives_a_restart_of_the_binary(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn two_instances_on_one_host_keep_separate_logins(pool: PgPool) {
+#[tokio::test]
+async fn two_instances_on_one_host_keep_separate_logins() {
+    let db = common::database().await;
+    let pool = db.pool();
     // Browsers scope cookies by host, not port: prod on :8080 and staging on :8081 share one
     // jar, so the instances must not share a cookie name or one login evicts the other.
     let staging = TestApp::with_config(pool, |config| {
@@ -122,8 +135,10 @@ async fn two_instances_on_one_host_keep_separate_logins(pool: PgPool) {
 
 /// The health probe the monitoring timer asks says "ok" only while the database answers: a
 /// k-vet that cannot reach it serves nothing the vet could use.
-#[sqlx::test]
-async fn the_health_probe_fails_without_the_database(pool: PgPool) {
+#[tokio::test]
+async fn the_health_probe_fails_without_the_database() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool.clone()).await;
     let healthy = app.get("/healthz").await;
     assert_eq!(healthy.status, StatusCode::OK);
@@ -138,8 +153,10 @@ async fn the_health_probe_fails_without_the_database(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn health_and_metrics_answer_without_a_session(pool: PgPool) {
+#[tokio::test]
+async fn health_and_metrics_answer_without_a_session() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool).await;
 
     let health = app.get("/healthz").await;

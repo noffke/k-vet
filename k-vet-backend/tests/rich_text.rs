@@ -9,7 +9,6 @@ use axum::http::StatusCode;
 use chrono::Utc;
 use common::TestApp;
 use serde_json::{Value, json};
-use sqlx::PgPool;
 
 /// What the editor sends for a reason with a bold word and a numbered list — including the
 /// attributes TipTap adds that mean nothing here.
@@ -49,8 +48,10 @@ fn blank() -> Value {
     ] })
 }
 
-#[sqlx::test]
-async fn the_record_keeps_its_formatting(pool: PgPool) {
+#[tokio::test]
+async fn the_record_keeps_its_formatting() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -81,8 +82,10 @@ async fn the_record_keeps_its_formatting(pool: PgPool) {
 
 /// Emptying the editor sends a document of empty paragraphs. It is stored as no text at all —
 /// otherwise an emptied field would still count as something entered and lock the customer.
-#[sqlx::test]
-async fn an_emptied_text_is_null_and_locks_nothing(pool: PgPool) {
+#[tokio::test]
+async fn an_emptied_text_is_null_and_locks_nothing() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let first = common::seed_customer(&pool).await;
     let second = common::seed_customer(&pool).await;
@@ -124,8 +127,10 @@ async fn an_emptied_text_is_null_and_locks_nothing(pool: PgPool) {
 
 /// Only what the editor offers is stored — a heading or a list inside a list would be a
 /// document the editor could not show and the invoice would not print.
-#[sqlx::test]
-async fn a_text_the_editor_cannot_show_is_refused(pool: PgPool) {
+#[tokio::test]
+async fn a_text_the_editor_cannot_show_is_refused() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -163,8 +168,10 @@ async fn a_text_the_editor_cannot_show_is_refused(pool: PgPool) {
 
 /// Text written before formatting existed became a document of one paragraph per line; the
 /// function that did it stays, for anything that only has plain text to write.
-#[sqlx::test]
-async fn plain_text_becomes_a_document_line_by_line(pool: PgPool) {
+#[tokio::test]
+async fn plain_text_becomes_a_document_line_by_line() {
+    let db = common::database().await;
+    let pool = db.pool();
     let convert = |plain: &'static str| {
         let pool = pool.clone();
         async move {
@@ -198,8 +205,10 @@ async fn plain_text_becomes_a_document_line_by_line(pool: PgPool) {
 
 /// The database holds the rule too: a column of formatted text is a document with text in it,
 /// or NULL.
-#[sqlx::test]
-async fn the_database_refuses_a_document_without_text(pool: PgPool) {
+#[tokio::test]
+async fn the_database_refuses_a_document_without_text() {
+    let db = common::database().await;
+    let pool = db.pool();
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
     let appointment_id = common::seed_appointment(&pool, Utc::now()).await;

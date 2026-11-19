@@ -9,7 +9,6 @@ use std::time::Instant;
 use axum::http::StatusCode;
 use common::TestApp;
 use serde_json::{Value, json};
-use sqlx::PgPool;
 
 fn kinds(items: &Value) -> Vec<String> {
     items
@@ -36,8 +35,10 @@ fn names(items: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-#[sqlx::test]
-async fn returns_drugs_and_services_as_a_tagged_union(pool: PgPool) {
+#[tokio::test]
+async fn returns_drugs_and_services_as_a_tagged_union() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     common::seed_lot(
@@ -114,8 +115,10 @@ async fn returns_drugs_and_services_as_a_tagged_union(pool: PgPool) {
     assert_eq!(service_item["got_number"], "1");
 }
 
-#[sqlx::test]
-async fn searches_by_name_and_got_number(pool: PgPool) {
+#[tokio::test]
+async fn searches_by_name_and_got_number() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     common::seed_drug(&pool).await;
     common::seed_got_service(&pool).await;
@@ -141,8 +144,10 @@ async fn searches_by_name_and_got_number(pool: PgPool) {
     assert!(nothing.as_array().map(Vec::is_empty).unwrap_or(false));
 }
 
-#[sqlx::test]
-async fn hidden_archived_and_draft_entries_are_excluded(pool: PgPool) {
+#[tokio::test]
+async fn hidden_archived_and_draft_entries_are_excluded() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     common::seed_got_service(&pool).await;
@@ -210,8 +215,10 @@ async fn hidden_archived_and_draft_entries_are_excluded(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn frequently_used_entries_rank_first(pool: PgPool) {
+#[tokio::test]
+async fn frequently_used_entries_rank_first() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let rare: i64 = sqlx::query_scalar(
         "INSERT INTO service (type, name, vat_percent, net_price, draft)
@@ -252,8 +259,10 @@ async fn frequently_used_entries_rank_first(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn ranked_results_arrive_well_within_a_second(pool: PgPool) {
+#[tokio::test]
+async fn ranked_results_arrive_well_within_a_second() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // A full catalog: the GOT schedule is ~1000 positions, plus the practice's drugs.
@@ -299,8 +308,10 @@ async fn ranked_results_arrive_well_within_a_second(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn without_a_search_term_only_used_entries_are_offered(pool: PgPool) {
+#[tokio::test]
+async fn without_a_search_term_only_used_entries_are_offered() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     common::seed_drug(&pool).await;
     let service_id = common::seed_got_service(&pool).await;

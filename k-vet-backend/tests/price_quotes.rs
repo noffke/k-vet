@@ -57,8 +57,10 @@ async fn visit(pool: &PgPool, customer_id: i64) -> i64 {
     common::seed_treatment(pool, appointment_id, patient_id).await
 }
 
-#[sqlx::test]
-async fn a_quote_comes_to_what_the_invoice_would(pool: PgPool) {
+#[tokio::test]
+async fn a_quote_comes_to_what_the_invoice_would() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let reduced = seed_reduced_service(&pool).await;
@@ -182,8 +184,10 @@ async fn a_quote_comes_to_what_the_invoice_would(pool: PgPool) {
     assert_eq!(priced["prices_changed"], false);
 }
 
-#[sqlx::test]
-async fn wegegeld_without_kilometres_costs_the_catalogue_price(pool: PgPool) {
+#[tokio::test]
+async fn wegegeld_without_kilometres_costs_the_catalogue_price() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let wegegeld = common::seed_travel_service(&pool).await;
     let house_call = common::seed_visit_service(&pool).await;
@@ -208,8 +212,10 @@ async fn wegegeld_without_kilometres_costs_the_catalogue_price(pool: PgPool) {
     assert_eq!(empty["vat_groups"], json!([]));
 }
 
-#[sqlx::test]
-async fn a_position_that_cannot_be_priced_is_named(pool: PgPool) {
+#[tokio::test]
+async fn a_position_that_cannot_be_priced_is_named() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let draft: i64 = sqlx::query_scalar(
@@ -276,8 +282,10 @@ async fn a_position_that_cannot_be_priced_is_named(pool: PgPool) {
     assert_eq!(unchanged["lines"].as_array().unwrap().len(), 1);
 }
 
-#[sqlx::test]
-async fn a_quote_is_open_until_it_belongs_to_a_customer(pool: PgPool) {
+#[tokio::test]
+async fn a_quote_is_open_until_it_belongs_to_a_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -350,8 +358,10 @@ async fn a_quote_is_open_until_it_belongs_to_a_customer(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn a_changed_catalogue_price_is_said_and_the_quote_keeps_its_own(pool: PgPool) {
+#[tokio::test]
+async fn a_changed_catalogue_price_is_said_and_the_quote_keeps_its_own() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -386,8 +396,10 @@ async fn a_changed_catalogue_price_is_said_and_the_quote_keeps_its_own(pool: PgP
     assert_eq!(listed[0]["prices_changed"], true);
 }
 
-#[sqlx::test]
-async fn a_customer_s_page_lists_their_quotes_and_the_open_ones_are_listed_apart(pool: PgPool) {
+#[tokio::test]
+async fn a_customer_s_page_lists_their_quotes_and_the_open_ones_are_listed_apart() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -448,8 +460,10 @@ async fn a_customer_s_page_lists_their_quotes_and_the_open_ones_are_listed_apart
     assert_eq!(theirs_now.as_array().unwrap().len(), 2);
 }
 
-#[sqlx::test]
-async fn a_quote_is_taken_into_a_visit_at_the_prices_quoted(pool: PgPool) {
+#[tokio::test]
+async fn a_quote_is_taken_into_a_visit_at_the_prices_quoted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let wegegeld = common::seed_travel_service(&pool).await;
@@ -545,8 +559,10 @@ async fn a_quote_is_taken_into_a_visit_at_the_prices_quoted(pool: PgPool) {
     assert_eq!(today_got["price_net"], "25.00");
 }
 
-#[sqlx::test]
-async fn a_quote_goes_only_into_its_customer_s_open_visit(pool: PgPool) {
+#[tokio::test]
+async fn a_quote_goes_only_into_its_customer_s_open_visit() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let got = common::seed_got_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -598,8 +614,10 @@ async fn a_quote_goes_only_into_its_customer_s_open_visit(pool: PgPool) {
     assert_eq!(apply(own, &kept["id"]).await.status, StatusCode::CONFLICT);
 }
 
-#[sqlx::test]
-async fn an_open_quote_is_cleaned_up_28_days_after_its_last_change(pool: PgPool) {
+#[tokio::test]
+async fn an_open_quote_is_cleaned_up_28_days_after_its_last_change() {
+    let db = common::database().await;
+    let pool = db.pool();
     let customer_id = common::seed_customer(&pool).await;
     let insert = |customer: Option<i64>, days_ago: i64| {
         let pool = pool.clone();
@@ -631,8 +649,10 @@ async fn an_open_quote_is_cleaned_up_28_days_after_its_last_change(pool: PgPool)
     assert!(!left.contains(&stale));
 }
 
-#[sqlx::test]
-async fn a_customer_gets_the_kilometres_of_their_last_visit(pool: PgPool) {
+#[tokio::test]
+async fn a_customer_gets_the_kilometres_of_their_last_visit() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = TestApp::with_config(pool.clone(), |config| google.configure(config)).await;
     common::seed_practice_address(&pool).await;
@@ -692,8 +712,10 @@ async fn a_customer_gets_the_kilometres_of_their_last_visit(pool: PgPool) {
     assert_eq!(unknown.status, StatusCode::NOT_FOUND);
 }
 
-#[sqlx::test]
-async fn a_new_caller_s_address_is_asked_of_google(pool: PgPool) {
+#[tokio::test]
+async fn a_new_caller_s_address_is_asked_of_google() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = TestApp::with_config(pool.clone(), |config| google.configure(config)).await;
     common::seed_practice_address(&pool).await;
@@ -722,8 +744,10 @@ async fn a_new_caller_s_address_is_asked_of_google(pool: PgPool) {
     assert_eq!(partial["km_suggestion"]["problem"], "no_customer_address");
 }
 
-#[sqlx::test]
-async fn without_a_key_only_an_earlier_visit_can_say(pool: PgPool) {
+#[tokio::test]
+async fn without_a_key_only_an_earlier_visit_can_say() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
 

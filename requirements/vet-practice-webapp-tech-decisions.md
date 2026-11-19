@@ -45,7 +45,7 @@ Single-user, records/billing-centric practice management app, self-hosted on a R
 - Do one full test restore (DB + attachments, open a photo) before trusting it.
 
 ## Testing & CI
-- **GitHub Actions**; real Postgres via `#[sqlx::test]` (no mocks, no testcontainers); **Playwright full-stack E2E** against the real binary. Details in `testing.md`.
+- **GitHub Actions**; real Postgres per test, cloned from a migrated template (no mocks, no testcontainers); **Playwright full-stack E2E** against the real binary. Details in `testing.md`.
 
 ## Deployment
 - **One container image**, assembled on `ubuntu:noble`: the backend binary plus the built frontend as files, API and static assets on one port.

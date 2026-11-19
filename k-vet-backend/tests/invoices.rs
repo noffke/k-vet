@@ -73,8 +73,10 @@ async fn create_invoice(app: &TestApp, treatment_id: i64) -> Value {
     response.json()
 }
 
-#[sqlx::test]
-async fn creating_an_invoice_allocates_a_number_and_renders_a_pdf(pool: PgPool) {
+#[tokio::test]
+async fn creating_an_invoice_allocates_a_number_and_renders_a_pdf() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
 
@@ -106,8 +108,10 @@ async fn creating_an_invoice_allocates_a_number_and_renders_a_pdf(pool: PgPool) 
     assert!(pdf.body.starts_with(b"%PDF-"));
 }
 
-#[sqlx::test]
-async fn updating_a_created_invoice_keeps_its_number(pool: PgPool) {
+#[tokio::test]
+async fn updating_a_created_invoice_keeps_its_number() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let first = create_invoice(&app, billed.treatment_id).await;
@@ -131,8 +135,10 @@ async fn updating_a_created_invoice_keeps_its_number(pool: PgPool) {
     assert_eq!(invoices, 1, "no number was burned");
 }
 
-#[sqlx::test]
-async fn accepting_freezes_the_treatment(pool: PgPool) {
+#[tokio::test]
+async fn accepting_freezes_the_treatment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -177,8 +183,10 @@ async fn accepting_freezes_the_treatment(pool: PgPool) {
     assert_eq!(treatment["frozen"], true);
 }
 
-#[sqlx::test]
-async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock(pool: PgPool) {
+#[tokio::test]
+async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let first = create_invoice(&app, billed.treatment_id).await;
@@ -254,8 +262,10 @@ async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock(po
     assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("80"));
 }
 
-#[sqlx::test]
-async fn cancelling_an_accepted_invoice_restores_the_stock(pool: PgPool) {
+#[tokio::test]
+async fn cancelling_an_accepted_invoice_restores_the_stock() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -285,8 +295,10 @@ async fn cancelling_an_accepted_invoice_restores_the_stock(pool: PgPool) {
     assert_eq!(again.status, StatusCode::CONFLICT);
 }
 
-#[sqlx::test]
-async fn cancelling_a_created_invoice_leaves_the_draft_dispenses_alone(pool: PgPool) {
+#[tokio::test]
+async fn cancelling_a_created_invoice_leaves_the_draft_dispenses_alone() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -304,8 +316,10 @@ async fn cancelling_a_created_invoice_leaves_the_draft_dispenses_alone(pool: PgP
     assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("90"));
 }
 
-#[sqlx::test]
-async fn numbers_are_monotonic_and_never_reused(pool: PgPool) {
+#[tokio::test]
+async fn numbers_are_monotonic_and_never_reused() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let year = Local::now().year();
 
@@ -360,8 +374,10 @@ async fn numbers_are_monotonic_and_never_reused(pool: PgPool) {
     assert_eq!(counter, 3);
 }
 
-#[sqlx::test]
-async fn a_treatment_without_lines_cannot_be_invoiced(pool: PgPool) {
+#[tokio::test]
+async fn a_treatment_without_lines_cannot_be_invoiced() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -378,8 +394,10 @@ async fn a_treatment_without_lines_cannot_be_invoiced(pool: PgPool) {
     assert_eq!(response.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[sqlx::test]
-async fn only_a_created_invoice_can_be_accepted(pool: PgPool) {
+#[tokio::test]
+async fn only_a_created_invoice_can_be_accepted() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -400,8 +418,10 @@ async fn only_a_created_invoice_can_be_accepted(pool: PgPool) {
     assert_eq!(twice.status, StatusCode::CONFLICT);
 }
 
-#[sqlx::test]
-async fn one_live_invoice_per_treatment_is_enforced_by_the_database(pool: PgPool) {
+#[tokio::test]
+async fn one_live_invoice_per_treatment_is_enforced_by_the_database() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     create_invoice(&app, billed.treatment_id).await;
@@ -418,8 +438,10 @@ async fn one_live_invoice_per_treatment_is_enforced_by_the_database(pool: PgPool
     assert!(result.is_err(), "a second live invoice must be impossible");
 }
 
-#[sqlx::test]
-async fn a_dispensed_treatment_cannot_be_deleted_once_invoiced(pool: PgPool) {
+#[tokio::test]
+async fn a_dispensed_treatment_cannot_be_deleted_once_invoiced() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     create_invoice(&app, billed.treatment_id).await;
@@ -443,8 +465,10 @@ async fn a_dispensed_treatment_cannot_be_deleted_once_invoiced(pool: PgPool) {
 /// the delete went through to the database, hit `invoice.treatment_id` (no ON DELETE) and came
 /// back as a foreign-key 422 the screen had no branch for — nothing happened and nothing was
 /// said. A burned invoice number is a record in its own right, so the answer is a plain 409.
-#[sqlx::test]
-async fn a_cancelled_invoice_still_keeps_its_treatment_and_appointment(pool: PgPool) {
+#[tokio::test]
+async fn a_cancelled_invoice_still_keeps_its_treatment_and_appointment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -475,8 +499,10 @@ async fn a_cancelled_invoice_still_keeps_its_treatment_and_appointment(pool: PgP
     );
 }
 
-#[sqlx::test]
-async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool) {
+#[tokio::test]
+async fn sending_needs_a_released_invoice_and_an_address_to_send_to() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -529,8 +555,10 @@ async fn sending_needs_a_released_invoice_and_an_address_to_send_to(pool: PgPool
     );
 }
 
-#[sqlx::test]
-async fn a_postal_hand_over_is_recorded_by_hand(pool: PgPool) {
+#[tokio::test]
+async fn a_postal_hand_over_is_recorded_by_hand() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -581,8 +609,10 @@ async fn a_postal_hand_over_is_recorded_by_hand(pool: PgPool) {
 /// used to treat them as gross and extract VAT from them, billing every position about 16 % too
 /// low. The expected values here were not produced by this project: they are read off the
 /// practice's own RE-289, written by the system k-vet replaces. See item `GOT-01` in `review.md`.
-#[sqlx::test]
-async fn got_positions_are_billed_with_vat_on_top(pool: PgPool) {
+#[tokio::test]
+async fn got_positions_are_billed_with_vat_on_top() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // (GOT number, published net fee, gross amount on RE-289)
@@ -642,8 +672,10 @@ async fn got_positions_are_billed_with_vat_on_top(pool: PgPool) {
 
 /// Renders a two-animal invoice with the practice fully configured and writes it to
 /// `KVET_PDF_DUMP` when set, so the layout can be eyeballed against RE-289.
-#[sqlx::test]
-async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
+#[tokio::test]
+async fn a_realistic_invoice_renders_for_inspection() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     sqlx::query(
@@ -757,8 +789,10 @@ async fn a_realistic_invoice_renders_for_inspection(pool: PgPool) {
 /// "Sent to" names where the mail went, not where it was asked to go (issues.md, 2026-10-17):
 /// recorded only once the mail server took the message, CC and BCC from the settings included,
 /// and left alone by a resend that never got through.
-#[sqlx::test]
-async fn an_emailed_invoice_records_where_it_actually_went(pool: PgPool) {
+#[tokio::test]
+async fn an_emailed_invoice_records_where_it_actually_went() {
+    let db = common::database().await;
+    let pool = db.pool();
     let mail = common::MailServer::start();
     let app = TestApp::with_config(pool.clone(), |config| config.mail.smtp_port = mail.port).await;
     sqlx::query(
@@ -883,8 +917,10 @@ async fn death(pool: &PgPool, patient_id: i64) -> (Option<chrono::NaiveDate>, bo
 
 /// Releasing an invoice with a euthanasia drug on it ends that animal's record on the day of the
 /// appointment (issues.md) — that animal's only — and a release after an update changes nothing.
-#[sqlx::test]
-async fn releasing_a_euthanasia_line_sets_the_animals_date_of_death(pool: PgPool) {
+#[tokio::test]
+async fn releasing_a_euthanasia_line_sets_the_animals_date_of_death() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, put_down, companion) = euthanasia_visit(&app, &pool).await;
     let items = app
@@ -964,8 +1000,10 @@ async fn the_migration_marks_release_as_a_euthanasia_drug(pool: PgPool) {
     assert_eq!(marked, vec![ids[0], ids[1]]);
 }
 
-#[sqlx::test]
-async fn a_wegegeld_line_without_kilometres_holds_the_invoice_back(pool: PgPool) {
+#[tokio::test]
+async fn a_wegegeld_line_without_kilometres_holds_the_invoice_back() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let treatment_id = billed.treatment_id;
@@ -1061,8 +1099,10 @@ async fn line_ids(app: &TestApp, treatment_id: i64) -> Vec<i64> {
 /// The PDF is made once; the treatment can change after. What changed is said, line by line
 /// (issues.md): the appointment list and the dashboard know it too, and updating the invoice
 /// makes a PDF that matches again.
-#[sqlx::test]
-async fn what_changed_since_the_pdf_is_said_everywhere(pool: PgPool) {
+#[tokio::test]
+async fn what_changed_since_the_pdf_is_said_everywhere() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let invoice = create_invoice(&app, billed.treatment_id).await;
@@ -1136,8 +1176,10 @@ async fn what_changed_since_the_pdf_is_said_everywhere(pool: PgPool) {
 
 /// Only what the PDF prints counts: a change taken back, and a finding an invoice without
 /// "Befund aufführen" does not print, leave it current. A new order is a change of its own.
-#[sqlx::test]
-async fn only_what_the_pdf_prints_makes_it_out_of_date(pool: PgPool) {
+#[tokio::test]
+async fn only_what_the_pdf_prints_makes_it_out_of_date() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     let created = app
@@ -1183,8 +1225,10 @@ async fn only_what_the_pdf_prints_makes_it_out_of_date(pool: PgPool) {
 
 /// An invoice whose PDF was made before its contents were recorded is still judged by the
 /// timestamps, as it was until now — it can say that something changed, not what.
-#[sqlx::test]
-async fn a_pdf_from_before_the_snapshot_keeps_the_old_rule(pool: PgPool) {
+#[tokio::test]
+async fn a_pdf_from_before_the_snapshot_keeps_the_old_rule() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let billed = billable_treatment(&app, &pool).await;
     create_invoice(&app, billed.treatment_id).await;
@@ -1214,8 +1258,10 @@ async fn a_pdf_from_before_the_snapshot_keeps_the_old_rule(pool: PgPool) {
 /// Migration 0034's backfill on the invoices it finds: a PDF still current by the old rule gets
 /// the treatment as it is for its snapshot, one already out of date keeps the old rule — so the
 /// upgrade neither invents nor hides a change.
-#[sqlx::test]
-async fn the_migration_snapshots_only_pdfs_that_are_current(pool: PgPool) {
+#[tokio::test]
+async fn the_migration_snapshots_only_pdfs_that_are_current() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let current = billable_treatment(&app, &pool).await;
     let outdated = billable_treatment(&app, &pool).await;

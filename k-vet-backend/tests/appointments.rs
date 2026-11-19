@@ -11,8 +11,10 @@ use common::TestApp;
 use serde_json::json;
 use sqlx::PgPool;
 
-#[sqlx::test]
-async fn a_new_appointment_starts_as_an_empty_draft(pool: PgPool) {
+#[tokio::test]
+async fn a_new_appointment_starts_as_an_empty_draft() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app.post("/api/appointments", json!({})).await;
@@ -27,8 +29,10 @@ async fn a_new_appointment_starts_as_an_empty_draft(pool: PgPool) {
     assert!(body["starts_at"].is_null());
 }
 
-#[sqlx::test]
-async fn filling_the_time_completes_the_appointment(pool: PgPool) {
+#[tokio::test]
+async fn filling_the_time_completes_the_appointment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let created = app.post("/api/appointments", json!({})).await;
 
@@ -48,8 +52,10 @@ async fn filling_the_time_completes_the_appointment(pool: PgPool) {
     assert_eq!(patched["note"], "Hausbesuch");
 }
 
-#[sqlx::test]
-async fn clearing_the_time_of_a_complete_appointment_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn clearing_the_time_of_a_complete_appointment_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_appointment(&pool, Utc::now()).await;
 
@@ -68,8 +74,10 @@ async fn clearing_the_time_of_a_complete_appointment_is_rejected(pool: PgPool) {
     assert!(!unchanged["starts_at"].is_null());
 }
 
-#[sqlx::test]
-async fn the_note_can_be_cleared(pool: PgPool) {
+#[tokio::test]
+async fn the_note_can_be_cleared() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
     let created = app
         .post(
@@ -93,8 +101,10 @@ async fn the_note_can_be_cleared(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn the_list_shows_newest_first_each_with_its_treatment(pool: PgPool) {
+#[tokio::test]
+async fn the_list_shows_newest_first_each_with_its_treatment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let older = common::seed_appointment(
         &pool,
@@ -123,8 +133,10 @@ async fn the_list_shows_newest_first_each_with_its_treatment(pool: PgPool) {
 
 /// The customer page lists the customer's appointments: only theirs, newest first, and page by
 /// page like every list.
-#[sqlx::test]
-async fn the_list_can_be_limited_to_one_customer(pool: PgPool) {
+#[tokio::test]
+async fn the_list_can_be_limited_to_one_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -171,8 +183,10 @@ async fn the_list_can_be_limited_to_one_customer(pool: PgPool) {
     assert_eq!(ids(&second_page), vec![theirs[0]]);
 }
 
-#[sqlx::test]
-async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
+#[tokio::test]
+async fn the_list_marks_appointments_whose_work_nobody_billed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let appointment_id = common::seed_appointment(
         &pool,
@@ -206,8 +220,10 @@ async fn the_list_marks_appointments_whose_work_nobody_billed(pool: PgPool) {
     assert_eq!(list[0]["unbilled"], false);
 }
 
-#[sqlx::test]
-async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(pool: PgPool) {
+#[tokio::test]
+async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let source = common::seed_appointment(
         &pool,
@@ -294,8 +310,10 @@ async fn duplicating_moves_the_appointment_to_today_and_copies_its_treatments(po
     );
 }
 
-#[sqlx::test]
-async fn an_appointment_can_be_deleted_while_it_is_not_invoiced(pool: PgPool) {
+#[tokio::test]
+async fn an_appointment_can_be_deleted_while_it_is_not_invoiced() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_appointment(&pool, Utc::now()).await;
 
@@ -309,8 +327,10 @@ async fn an_appointment_can_be_deleted_while_it_is_not_invoiced(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn creating_an_appointment_creates_its_one_treatment(pool: PgPool) {
+#[tokio::test]
+async fn creating_an_appointment_creates_its_one_treatment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     let created = app.post("/api/appointments", json!({})).await.json();
@@ -330,8 +350,10 @@ async fn creating_an_appointment_creates_its_one_treatment(pool: PgPool) {
 
 /// A second invoice for the same visit is a second appointment; the database refuses a second
 /// treatment from any code path.
-#[sqlx::test]
-async fn a_second_treatment_on_one_appointment_is_impossible(pool: PgPool) {
+#[tokio::test]
+async fn a_second_treatment_on_one_appointment_is_impossible() {
+    let db = common::database().await;
+    let pool = db.pool();
     let id = common::seed_appointment(&pool, Utc::now()).await;
 
     let second = sqlx::query("INSERT INTO treatment (appointment_id) VALUES ($1)")
@@ -345,8 +367,10 @@ async fn a_second_treatment_on_one_appointment_is_impossible(pool: PgPool) {
 /// The customer can change until something is entered on the treatment. Its animals are only
 /// the default until then — the customer's only one is attached by itself — so they go with
 /// the change rather than locking a visit to a customer picked by mistake.
-#[sqlx::test]
-async fn the_customer_can_change_until_something_is_entered(pool: PgPool) {
+#[tokio::test]
+async fn the_customer_can_change_until_something_is_entered() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let first = common::seed_customer(&pool).await;
     let second = common::seed_customer(&pool).await;
@@ -390,8 +414,10 @@ async fn the_customer_can_change_until_something_is_entered(pool: PgPool) {
 
 /// issues.md, 2026-10-17: with one animal there is nothing to choose. It is attached as soon as
 /// the customer is, and it stays — removing it is refused.
-#[sqlx::test]
-async fn a_customers_only_animal_is_attached_and_stays(pool: PgPool) {
+#[tokio::test]
+async fn a_customers_only_animal_is_attached_and_stays() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let animal = common::seed_patient(&pool, customer_id).await;
@@ -447,8 +473,10 @@ async fn a_customers_only_animal_is_attached_and_stays(pool: PgPool) {
 /// first animal is entered on their page — goes onto the visits still waiting for one as soon
 /// as it is complete, as if it had been there when the customer was picked. Where there are two
 /// or more animals the vet chooses.
-#[sqlx::test]
-async fn an_animal_completed_later_goes_onto_the_visits_waiting_for_one(pool: PgPool) {
+#[tokio::test]
+async fn an_animal_completed_later_goes_onto_the_visits_waiting_for_one() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let animals_on = |treatment_id: serde_json::Value| {
@@ -539,8 +567,10 @@ async fn an_animal_completed_later_goes_onto_the_visits_waiting_for_one(pool: Pg
 }
 
 /// With two animals the vet chooses: none is attached, and either can come off again.
-#[sqlx::test]
-async fn with_two_animals_nothing_is_preselected(pool: PgPool) {
+#[tokio::test]
+async fn with_two_animals_nothing_is_preselected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let bello = common::seed_patient(&pool, customer_id).await;
@@ -576,8 +606,10 @@ async fn with_two_animals_nothing_is_preselected(pool: PgPool) {
 /// "Only animal" counts the animals that can still come: an archived or deceased one is not a
 /// choice, so a customer with one living and one deceased animal has one — and one whose only
 /// animal is archived has none to attach.
-#[sqlx::test]
-async fn deceased_and_archived_animals_are_no_choice(pool: PgPool) {
+#[tokio::test]
+async fn deceased_and_archived_animals_are_no_choice() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let living = common::seed_patient(&pool, customer_id).await;
@@ -703,8 +735,10 @@ async fn the_migration_splits_and_backfills(pool: PgPool) {
 
 /// The list says whose visit it is and which animals came (issues.md, 2026-10-17), and can be
 /// searched by both — the note is no longer a column.
-#[sqlx::test]
-async fn the_list_names_customer_and_animals_and_finds_them(pool: PgPool) {
+#[tokio::test]
+async fn the_list_names_customer_and_animals_and_finds_them() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let appointment = common::seed_appointment(&pool, Utc::now()).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -740,8 +774,10 @@ async fn the_list_names_customer_and_animals_and_finds_them(pool: PgPool) {
 
 /// "Anstehend" and "Vergangen": from the start of today on, earliest first with the undated
 /// drafts at the top; before today, latest first. The search works within each.
-#[sqlx::test]
-async fn the_list_splits_upcoming_from_past(pool: PgPool) {
+#[tokio::test]
+async fn the_list_splits_upcoming_from_past() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let create = |starts_at: Option<DateTime<Utc>>, note: &str| {
         let body = json!({ "starts_at": starts_at, "note": note });
@@ -814,8 +850,10 @@ async fn the_list_splits_upcoming_from_past(pool: PgPool) {
 /// From the customer's page or an animal's: the appointment is the customer's, and an animal
 /// named is the one on it — the only one, even when the customer has more. Without one, a
 /// customer's only animal comes along as before.
-#[sqlx::test]
-async fn an_appointment_is_made_for_a_customer_or_one_of_their_animals(pool: PgPool) {
+#[tokio::test]
+async fn an_appointment_is_made_for_a_customer_or_one_of_their_animals() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let bello = common::seed_patient(&pool, customer_id).await;
@@ -878,8 +916,10 @@ async fn an_appointment_is_made_for_a_customer_or_one_of_their_animals(pool: PgP
 
 /// The list says where each visit goes — the customer's home address — so the upcoming
 /// appointments can be driven to from the list; one without a customer has none.
-#[sqlx::test]
-async fn an_appointment_carries_the_address_it_goes_to(pool: PgPool) {
+#[tokio::test]
+async fn an_appointment_carries_the_address_it_goes_to() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let visit = app

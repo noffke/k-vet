@@ -65,8 +65,10 @@ async fn starts_at(pool: &PgPool, treatment_id: i64) -> DateTime<Utc> {
     .unwrap()
 }
 
-#[sqlx::test]
-async fn the_first_wegegeld_takes_googles_shortest_route(pool: PgPool) {
+#[tokio::test]
+async fn the_first_wegegeld_takes_googles_shortest_route() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -113,8 +115,10 @@ async fn the_first_wegegeld_takes_googles_shortest_route(pool: PgPool) {
     assert!(!request.body.to_string().contains("Mustermann"));
 }
 
-#[sqlx::test]
-async fn a_later_visit_takes_over_the_kilometres_the_vet_settled_on(pool: PgPool) {
+#[tokio::test]
+async fn a_later_visit_takes_over_the_kilometres_the_vet_settled_on() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -150,8 +154,10 @@ async fn a_later_visit_takes_over_the_kilometres_the_vet_settled_on(pool: PgPool
     assert_eq!(google.requests().len(), 2);
 }
 
-#[sqlx::test]
-async fn nothing_is_looked_up_without_a_reason(pool: PgPool) {
+#[tokio::test]
+async fn nothing_is_looked_up_without_a_reason() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -183,8 +189,10 @@ async fn nothing_is_looked_up_without_a_reason(pool: PgPool) {
     assert!(google.requests().is_empty());
 }
 
-#[sqlx::test]
-async fn without_a_key_the_field_stays_empty_as_before(pool: PgPool) {
+#[tokio::test]
+async fn without_a_key_the_field_stays_empty_as_before() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     common::seed_practice_address(&pool).await;
     let wegegeld = common::seed_travel_service(&pool).await;
@@ -200,8 +208,10 @@ async fn without_a_key_the_field_stays_empty_as_before(pool: PgPool) {
     assert_eq!(config["maps_enabled"], false);
 }
 
-#[sqlx::test]
-async fn a_changed_home_address_asks_google_again(pool: PgPool) {
+#[tokio::test]
+async fn a_changed_home_address_asks_google_again() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -261,8 +271,10 @@ async fn a_changed_home_address_asks_google_again(pool: PgPool) {
     assert_eq!(items[0]["km"], "25.00");
 }
 
-#[sqlx::test]
-async fn kilometres_typed_by_the_vet_clear_the_mark_too(pool: PgPool) {
+#[tokio::test]
+async fn kilometres_typed_by_the_vet_clear_the_mark_too() {
+    let db = common::database().await;
+    let pool = db.pool();
     // No key: once marked, nothing is taken over, and the vet types the distance herself.
     let app = TestApp::new(pool.clone()).await;
     common::seed_practice_address(&pool).await;
@@ -299,8 +311,10 @@ async fn kilometres_typed_by_the_vet_clear_the_mark_too(pool: PgPool) {
     assert_eq!(line["km_suggestion"]["source"], "previous");
 }
 
-#[sqlx::test]
-async fn a_practice_move_marks_every_customer(pool: PgPool) {
+#[tokio::test]
+async fn a_practice_move_marks_every_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     common::seed_practice_address(&pool).await;
     let first = common::seed_customer(&pool).await;
@@ -322,8 +336,10 @@ async fn a_practice_move_marks_every_customer(pool: PgPool) {
     assert!(outdated(&pool, second).await);
 }
 
-#[sqlx::test]
-async fn a_copied_appointment_keeps_the_mark(pool: PgPool) {
+#[tokio::test]
+async fn a_copied_appointment_keeps_the_mark() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     common::seed_practice_address(&pool).await;
     let wegegeld = common::seed_travel_service(&pool).await;
@@ -358,8 +374,10 @@ async fn a_copied_appointment_keeps_the_mark(pool: PgPool) {
     assert!(outdated(&pool, customer_id).await);
 }
 
-#[sqlx::test]
-async fn recomputing_asks_google_for_this_line(pool: PgPool) {
+#[tokio::test]
+async fn recomputing_asks_google_for_this_line() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -453,8 +471,10 @@ async fn recomputing_asks_google_for_this_line(pool: PgPool) {
     assert_eq!(google.requests().len(), asked);
 }
 
-#[sqlx::test]
-async fn recomputing_needs_a_key(pool: PgPool) {
+#[tokio::test]
+async fn recomputing_needs_a_key() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let wegegeld = common::seed_travel_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -473,8 +493,10 @@ async fn recomputing_needs_a_key(pool: PgPool) {
     assert_eq!(refused.error_fields(), vec!["km"]);
 }
 
-#[sqlx::test]
-async fn a_line_without_kilometres_says_why(pool: PgPool) {
+#[tokio::test]
+async fn a_line_without_kilometres_says_why() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     let wegegeld = common::seed_travel_service(&pool).await;
@@ -524,8 +546,10 @@ async fn a_line_without_kilometres_says_why(pool: PgPool) {
     assert_eq!(google.requests().len(), asked);
 }
 
-#[sqlx::test]
-async fn an_address_google_places_only_roughly_is_flagged(pool: PgPool) {
+#[tokio::test]
+async fn an_address_google_places_only_roughly_is_flagged() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -545,8 +569,10 @@ async fn an_address_google_places_only_roughly_is_flagged(pool: PgPool) {
     assert_eq!(line["km_suggestion"]["approximate"], true);
 }
 
-#[sqlx::test]
-async fn a_treatment_group_with_wegegeld_gets_the_kilometres_on_that_line_only(pool: PgPool) {
+#[tokio::test]
+async fn a_treatment_group_with_wegegeld_gets_the_kilometres_on_that_line_only() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     common::seed_practice_address(&pool).await;
@@ -600,8 +626,10 @@ async fn a_treatment_group_with_wegegeld_gets_the_kilometres_on_that_line_only(p
     assert_eq!(google.requests().len(), 1);
 }
 
-#[sqlx::test]
-async fn an_address_is_checked_as_typed(pool: PgPool) {
+#[tokio::test]
+async fn an_address_is_checked_as_typed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let google = FakeGoogle::start().await;
     let app = maps_app(&pool, &google).await;
     let at = |street: &str, zip: &str| json!({ "street": street, "zip": zip, "city": "Musterstadt", "country": "DE" });
@@ -690,8 +718,10 @@ async fn an_address_is_checked_as_typed(pool: PgPool) {
     assert_eq!(config["maps_enabled"], true);
 }
 
-#[sqlx::test]
-async fn the_address_check_needs_a_key(pool: PgPool) {
+#[tokio::test]
+async fn the_address_check_needs_a_key() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let refused = app
         .post(

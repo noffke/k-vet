@@ -23,8 +23,10 @@ fn names(services: &Value) -> Vec<String> {
         .unwrap_or_default()
 }
 
-#[sqlx::test]
-async fn the_got_2022_catalog_is_imported_with_surgery_hidden(pool: PgPool) {
+#[tokio::test]
+async fn the_got_2022_catalog_is_imported_with_surgery_hidden() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
 
     // The import migrations provision the whole fee schedule (FR-022); `got_catalogue.rs`
@@ -61,8 +63,10 @@ async fn the_got_2022_catalog_is_imported_with_surgery_hidden(pool: PgPool) {
     assert_eq!(hidden, 1);
 }
 
-#[sqlx::test]
-async fn hidden_services_are_excluded_from_lists_until_asked_for(pool: PgPool) {
+#[tokio::test]
+async fn hidden_services_are_excluded_from_lists_until_asked_for() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let visible = app.get("/api/services?q=Nephrotomie").await.json();
@@ -80,8 +84,10 @@ async fn hidden_services_are_excluded_from_lists_until_asked_for(pool: PgPool) {
     assert_eq!(with_hidden[0]["hidden"], true);
 }
 
-#[sqlx::test]
-async fn a_got_service_needs_its_number_and_factor_to_complete(pool: PgPool) {
+#[tokio::test]
+async fn a_got_service_needs_its_number_and_factor_to_complete() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app.post("/api/services", json!({ "type": "got" })).await;
@@ -120,8 +126,10 @@ async fn a_got_service_needs_its_number_and_factor_to_complete(pool: PgPool) {
 
 /// § 8 GOT: the practice may define its own position on the basis of a listed one. The number
 /// it names is what marks it as such — there is no second flag — and it stays optional.
-#[sqlx::test]
-async fn a_self_defined_service_may_name_the_got_position_it_follows(pool: PgPool) {
+#[tokio::test]
+async fn a_self_defined_service_may_name_the_got_position_it_follows() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let created = app
@@ -168,8 +176,10 @@ async fn a_self_defined_service_may_name_the_got_position_it_follows(pool: PgPoo
     );
 }
 
-#[sqlx::test]
-async fn a_zero_factor_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn a_zero_factor_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_got_service(&pool).await;
 
@@ -181,8 +191,10 @@ async fn a_zero_factor_is_rejected(pool: PgPool) {
     assert!(rejected.error_fields().contains(&"factor".to_owned()));
 }
 
-#[sqlx::test]
-async fn services_can_be_hidden_and_archived(pool: PgPool) {
+#[tokio::test]
+async fn services_can_be_hidden_and_archived() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_got_service(&pool).await;
 
@@ -215,8 +227,10 @@ async fn services_can_be_hidden_and_archived(pool: PgPool) {
     assert!(names(&restored).contains(&"Allgemeine Untersuchung".to_owned()));
 }
 
-#[sqlx::test]
-async fn a_travel_expense_line_is_priced_from_the_kilometres(pool: PgPool) {
+#[tokio::test]
+async fn a_travel_expense_line_is_priced_from_the_kilometres() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_travel_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -264,8 +278,10 @@ async fn a_travel_expense_line_is_priced_from_the_kilometres(pool: PgPool) {
     assert_eq!(doubled["line_net"], "84.00");
 }
 
-#[sqlx::test]
-async fn an_ordinary_service_line_keeps_the_catalog_price(pool: PgPool) {
+#[tokio::test]
+async fn an_ordinary_service_line_keeps_the_catalog_price() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_got_service(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
@@ -289,8 +305,10 @@ async fn an_ordinary_service_line_keeps_the_catalog_price(pool: PgPool) {
 /// analogously to — that is what decides between `GOT-Nr. 16` and `GOT-Nr. 16 (§8)` on the
 /// invoice. The number itself is pinned; this flag is read from the service, like
 /// `travel_expenses`.
-#[sqlx::test]
-async fn a_line_says_whether_its_got_number_is_its_own_or_an_analogy(pool: PgPool) {
+#[tokio::test]
+async fn a_line_says_whether_its_got_number_is_its_own_or_an_analogy() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -346,8 +364,10 @@ async fn a_line_says_whether_its_got_number_is_its_own_or_an_analogy(pool: PgPoo
 /// "pro Termin" is the service's to say: its lines belong to the visit, never to an animal.
 /// Wegegeld cannot be without it — GOT § 10 charges it per visit — so ticking Wegegeld ticks it
 /// too, and unticking it on a travel-expense service is refused.
-#[sqlx::test]
-async fn a_service_is_marked_per_visit_and_wegegeld_always_is(pool: PgPool) {
+#[tokio::test]
+async fn a_service_is_marked_per_visit_and_wegegeld_always_is() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let id = common::seed_got_service(&pool).await;
 

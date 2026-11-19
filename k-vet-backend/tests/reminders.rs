@@ -54,8 +54,10 @@ async fn remind(app: &TestApp, appointment_id: i64, packaging_id: i64, quantity:
 
 /// A reminder is written as the vet picks it, changed and ticked off in place, and removed;
 /// the positions close up. Nothing is dispensed by a reminder.
-#[sqlx::test]
-async fn a_reminder_is_kept_changed_and_removed(pool: PgPool) {
+#[tokio::test]
+async fn a_reminder_is_kept_changed_and_removed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -143,8 +145,10 @@ async fn a_reminder_is_kept_changed_and_removed(pool: PgPool) {
 
 /// On the day the reminder becomes a position: on the visit's animal, dispensed from the lots
 /// as if picked. Once only; beyond the stock it is refused and stays a reminder.
-#[sqlx::test]
-async fn a_reminder_is_taken_into_a_position(pool: PgPool) {
+#[tokio::test]
+async fn a_reminder_is_taken_into_a_position() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -221,8 +225,10 @@ async fn a_reminder_is_taken_into_a_position(pool: PgPool) {
 }
 
 /// Released, the invoice holds the treatment: a reminder cannot become a position any more.
-#[sqlx::test]
-async fn a_released_invoice_takes_no_reminder(pool: PgPool) {
+#[tokio::test]
+async fn a_released_invoice_takes_no_reminder() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -259,8 +265,10 @@ async fn a_released_invoice_takes_no_reminder(pool: PgPool) {
 /// The Packliste adds up a day's open reminders per drug, in base units, and checks them against
 /// the shelf, and lists them visit by visit, in time order. Other days and reminders already
 /// taken are not on it.
-#[sqlx::test]
-async fn the_packing_list_adds_up_the_day(pool: PgPool) {
+#[tokio::test]
+async fn the_packing_list_adds_up_the_day() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;

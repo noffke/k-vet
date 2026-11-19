@@ -262,10 +262,14 @@ overflow sheet).
 
 ## Testing conventions
 
-- Integration tests (`k-vet-backend/tests/*.rs`) use `#[sqlx::test]`, which gives each test its
-  own migrated database, and drive the real router through `tests/common/mod.rs::TestApp`
-  (`get`/`post`/`patch`/`post_multipart`, cookie jar, `seed_*` helpers). Prefer these over
-  mocking anything.
+- Integration tests (`k-vet-backend/tests/*.rs`) are `#[tokio::test]` and start with
+  `let db = common::database().await; let pool = db.pool();` — each test's own database, a clone
+  of a template the migrations built once (`tests/common/db.rs`, named after the migrations'
+  checksums, so a new migration builds a new one by itself). A passed test's database is
+  dropped, a failed one's kept for inspection and swept by the next run. Only the tests of the
+  migrations themselves stay `#[sqlx::test(migrations = false)]`, on an empty database. They
+  drive the real router through `tests/common/mod.rs::TestApp` (`get`/`post`/`patch`/
+  `post_multipart`, cookie jar, `seed_*` helpers). Prefer these over mocking anything.
 - Playwright specs share **one** database across specs and both viewport projects. Fixtures must
   therefore generate unique names (`fixtures/seed.ts` suffixes with a timestamp) and assertions
   must not assume global counts — `clearPendingInvoices()` is how a spec establishes a known

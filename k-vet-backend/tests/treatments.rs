@@ -29,8 +29,10 @@ async fn treatment(pool: &PgPool) -> (i64, i64) {
     common::seed_patient_treatment(pool, appointment_id, patient_id).await
 }
 
-#[sqlx::test]
-async fn line_values_are_pinned_at_entry_and_survive_catalog_changes(pool: PgPool) {
+#[tokio::test]
+async fn line_values_are_pinned_at_entry_and_survive_catalog_changes() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
@@ -73,8 +75,10 @@ async fn line_values_are_pinned_at_entry_and_survive_catalog_changes(pool: PgPoo
     assert_eq!(items[0]["name"], "Allgemeine Untersuchung");
 }
 
-#[sqlx::test]
-async fn line_total_applies_quantity_and_factor(pool: PgPool) {
+#[tokio::test]
+async fn line_total_applies_quantity_and_factor() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
@@ -113,8 +117,10 @@ async fn line_total_applies_quantity_and_factor(pool: PgPool) {
 
 /// A GOT position costs what the fee schedule says: its price is refused, its factor is how it
 /// is adjusted. A self-defined service charged by analogy (§ 8) is the practice's own price.
-#[sqlx::test]
-async fn a_got_positions_price_is_fixed(pool: PgPool) {
+#[tokio::test]
+async fn a_got_positions_price_is_fixed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let got_service = common::seed_got_service(&pool).await;
@@ -171,8 +177,10 @@ async fn a_got_positions_price_is_fixed(pool: PgPool) {
 /// Outside the GOT a position is priced gross, as the customer sees it; the net behind it is
 /// what is stored. A gross no net in whole cents gives comes back a cent lower (`review.md`,
 /// MWS-05), and the gross is the unit price after the factor.
-#[sqlx::test]
-async fn a_typed_gross_price_is_stored_as_its_net(pool: PgPool) {
+#[tokio::test]
+async fn a_typed_gross_price_is_stored_as_its_net() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let service_id: i64 = sqlx::query_scalar(
@@ -227,8 +235,10 @@ async fn a_typed_gross_price_is_stored_as_its_net(pool: PgPool) {
 
 /// The same figure reaches the picker, so the price previewed before a pick is the price the
 /// line ends up costing (issues.md 16).
-#[sqlx::test]
-async fn the_picker_previews_the_price_the_line_will_have(pool: PgPool) {
+#[tokio::test]
+async fn the_picker_previews_the_price_the_line_will_have() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let service_id = common::seed_got_service(&pool).await;
     sqlx::query("UPDATE service SET factor = 150.000 WHERE id = $1")
@@ -250,8 +260,10 @@ async fn the_picker_previews_the_price_the_line_will_have(pool: PgPool) {
     assert_eq!(service["price_gross"], "42.16");
 }
 
-#[sqlx::test]
-async fn drug_lines_dispense_fefo_and_split_across_lots(pool: PgPool) {
+#[tokio::test]
+async fn drug_lines_dispense_fefo_and_split_across_lots() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -305,8 +317,10 @@ async fn drug_lines_dispense_fefo_and_split_across_lots(pool: PgPool) {
     assert_eq!(common::lot_remaining(&pool, lot_b).await, dec("90"));
 }
 
-#[sqlx::test]
-async fn changing_the_quantity_recalculates_the_draft_dispense(pool: PgPool) {
+#[tokio::test]
+async fn changing_the_quantity_recalculates_the_draft_dispense() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -347,8 +361,10 @@ async fn changing_the_quantity_recalculates_the_draft_dispense(pool: PgPool) {
     assert_eq!(movements, 1);
 }
 
-#[sqlx::test]
-async fn a_dispense_the_stock_cannot_cover_is_refused(pool: PgPool) {
+#[tokio::test]
+async fn a_dispense_the_stock_cannot_cover_is_refused() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -392,8 +408,10 @@ async fn a_dispense_the_stock_cannot_cover_is_refused(pool: PgPool) {
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
 
-#[sqlx::test]
-async fn the_lot_selection_can_be_overridden(pool: PgPool) {
+#[tokio::test]
+async fn the_lot_selection_can_be_overridden() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -452,8 +470,10 @@ async fn the_lot_selection_can_be_overridden(pool: PgPool) {
     assert_eq!(mismatch.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[sqlx::test]
-async fn the_only_patient_is_preselected_and_drug_lines_require_one(pool: PgPool) {
+#[tokio::test]
+async fn the_only_patient_is_preselected_and_drug_lines_require_one() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, record_id) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -510,8 +530,10 @@ async fn add_line(app: &TestApp, treatment_id: i64, line: Value) -> common::Test
 /// Drug dispensing and treatment belong to a single animal; the house-call fee and Wegegeld
 /// belong to the visit. Which of the two a line is, its service says ("pro Termin") — not the
 /// tab it was picked in, and it cannot be changed on the line afterwards.
-#[sqlx::test]
-async fn a_per_visit_service_belongs_to_the_visit_wherever_it_is_picked(pool: PgPool) {
+#[tokio::test]
+async fn a_per_visit_service_belongs_to_the_visit_wherever_it_is_picked() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, record_id) = treatment(&pool).await;
     let visit_service = common::seed_visit_service(&pool).await;
@@ -608,8 +630,10 @@ async fn a_per_visit_service_belongs_to_the_visit_wherever_it_is_picked(pool: Pg
 
 /// Every line that is not a per-visit service needs an animal: with several, the one it is
 /// for; with none attached yet, only the visit's own positions can be written down.
-#[sqlx::test]
-async fn every_other_line_needs_an_animal(pool: PgPool) {
+#[tokio::test]
+async fn every_other_line_needs_an_animal() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let first = common::seed_patient(&pool, customer_id).await;
@@ -687,8 +711,10 @@ async fn every_other_line_needs_an_animal(pool: PgPool) {
 /// A duplicate reproduces its source: the visit's lines stay the visit's — also one from
 /// before the service decided (migration 0024), whose service is not marked "pro Termin" —
 /// even when the prices are re-read from the catalogue.
-#[sqlx::test]
-async fn a_duplicate_keeps_the_visits_lines_the_visits(pool: PgPool) {
+#[tokio::test]
+async fn a_duplicate_keeps_the_visits_lines_the_visits() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let visit_service = common::seed_visit_service(&pool).await;
@@ -760,8 +786,10 @@ async fn a_duplicate_keeps_the_visits_lines_the_visits(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let first = common::seed_patient(&pool, customer_id).await;
@@ -811,8 +839,10 @@ async fn a_drug_line_needs_an_explicit_patient_when_several_are_treated(pool: Pg
     assert_eq!(with_patient.status, StatusCode::OK);
 }
 
-#[sqlx::test]
-async fn a_line_cannot_belong_to_another_treatments_animal(pool: PgPool) {
+#[tokio::test]
+async fn a_line_cannot_belong_to_another_treatments_animal() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let (_, foreign_record) = treatment(&pool).await;
@@ -836,8 +866,10 @@ async fn a_line_cannot_belong_to_another_treatments_animal(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn positions_are_ordered_within_each_animal(pool: PgPool) {
+#[tokio::test]
+async fn positions_are_ordered_within_each_animal() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let first = common::seed_patient(&pool, customer_id).await;
@@ -905,8 +937,10 @@ async fn positions_are_ordered_within_each_animal(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn a_line_moved_to_another_animal_lands_at_the_end(pool: PgPool) {
+#[tokio::test]
+async fn a_line_moved_to_another_animal_lands_at_the_end() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let first = common::seed_patient(&pool, customer_id).await;
@@ -965,8 +999,10 @@ async fn a_line_moved_to_another_animal_lands_at_the_end(pool: PgPool) {
     assert_eq!(stayed["position"], 1);
 }
 
-#[sqlx::test]
-async fn patients_of_a_treatment_must_share_one_customer(pool: PgPool) {
+#[tokio::test]
+async fn patients_of_a_treatment_must_share_one_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
 
@@ -989,8 +1025,10 @@ async fn patients_of_a_treatment_must_share_one_customer(pool: PgPool) {
 /// It lived only in `attach_patient` before, so it held exactly as long as every write went
 /// through that function — and it engaged only once a first animal was attached, which is the
 /// gap that let an empty treatment offer the whole practice. Composite keys close both.
-#[sqlx::test]
-async fn the_database_refuses_a_mixed_customer_treatment(pool: PgPool) {
+#[tokio::test]
+async fn the_database_refuses_a_mixed_customer_treatment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let (treatment_id, _) = treatment(&pool).await;
     let other_customer = common::seed_customer(&pool).await;
     let other_patient = common::seed_patient(&pool, other_customer).await;
@@ -1033,8 +1071,10 @@ async fn the_database_refuses_a_mixed_customer_treatment(pool: PgPool) {
 /// Nothing goes onto the treatment until the appointment says whose visit it is — that answer is
 /// what the animal picker is filtered by (issues.md 7). The treatment itself is there from the
 /// start; the customer reaches it as soon as the appointment has one.
-#[sqlx::test]
-async fn a_treatment_takes_content_only_once_the_appointment_has_a_customer(pool: PgPool) {
+#[tokio::test]
+async fn a_treatment_takes_content_only_once_the_appointment_has_a_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let appointment = app
         .post(
@@ -1090,8 +1130,10 @@ async fn a_treatment_takes_content_only_once_the_appointment_has_a_customer(pool
     assert_eq!(attached.status, StatusCode::OK);
 }
 
-#[sqlx::test]
-async fn lines_can_be_reordered(pool: PgPool) {
+#[tokio::test]
+async fn lines_can_be_reordered() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
@@ -1155,8 +1197,10 @@ async fn lines_can_be_reordered(pool: PgPool) {
     assert_eq!(names(&unmoved.json()), vec![ids[0], ids[1], ids[2]]);
 }
 
-#[sqlx::test]
-async fn deleting_a_line_removes_its_draft_dispense_and_closes_the_gap(pool: PgPool) {
+#[tokio::test]
+async fn deleting_a_line_removes_its_draft_dispense_and_closes_the_gap() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -1201,8 +1245,10 @@ async fn deleting_a_line_removes_its_draft_dispense_and_closes_the_gap(pool: PgP
     assert_eq!(items[0]["position"], 1, "positions stay 1..n");
 }
 
-#[sqlx::test]
-async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool: PgPool) {
+#[tokio::test]
+async fn applying_a_template_appends_its_items_in_order_with_current_prices() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -1277,8 +1323,10 @@ async fn applying_a_template_appends_its_items_in_order_with_current_prices(pool
 /// animal: it walks its positions onto each other, and `UNIQUE (treatment_id,
 /// patient_treatment_id, position)` then rejects the commit. Deleting anything but the last
 /// line of a two-animal treatment used to fail with a 409 for exactly that reason.
-#[sqlx::test]
-async fn removing_a_line_renumbers_only_its_own_animal(pool: PgPool) {
+#[tokio::test]
+async fn removing_a_line_renumbers_only_its_own_animal() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, first_record) = treatment(&pool).await;
     let service_id = common::seed_got_service(&pool).await;
@@ -1378,8 +1426,10 @@ async fn removing_a_line_renumbers_only_its_own_animal(pool: PgPool) {
     assert_eq!(positions_of(&remaining, first_record), vec![1, 2]);
 }
 
-#[sqlx::test]
-async fn a_bulk_removal_refuses_lines_it_was_not_asked_about(pool: PgPool) {
+#[tokio::test]
+async fn a_bulk_removal_refuses_lines_it_was_not_asked_about() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let (other_treatment_id, _) = treatment(&pool).await;
@@ -1413,8 +1463,10 @@ async fn a_bulk_removal_refuses_lines_it_was_not_asked_about(pool: PgPool) {
 }
 
 /// A treatment is duplicated with its appointment (FR-026), the only copy there is now.
-#[sqlx::test]
-async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
+#[tokio::test]
+async fn duplicating_a_treatment_copies_or_refreshes_prices() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, _) = treatment(&pool).await;
     let appointment_id: i64 =
@@ -1475,8 +1527,10 @@ async fn duplicating_a_treatment_copies_or_refreshes_prices(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
+#[tokio::test]
+async fn treatment_text_is_patched_field_by_field() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     // The reason and the finding belong to the animal, not to the visit: two animals seen
     // together are rarely seen for the same thing.
@@ -1509,8 +1563,10 @@ async fn treatment_text_is_patched_field_by_field(pool: PgPool) {
 }
 
 /// A draft appointment has its treatment too, but what is billed needs a date first.
-#[sqlx::test]
-async fn a_draft_appointments_treatment_takes_no_content(pool: PgPool) {
+#[tokio::test]
+async fn a_draft_appointments_treatment_takes_no_content() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -1536,8 +1592,10 @@ async fn a_draft_appointments_treatment_takes_no_content(pool: PgPool) {
 }
 
 /// The ad-hoc Umwidmung is a documentation flag on the line, and only a drug line can carry it.
-#[sqlx::test]
-async fn a_drug_line_can_be_redesignated_but_a_service_line_cannot(pool: PgPool) {
+#[tokio::test]
+async fn a_drug_line_can_be_redesignated_but_a_service_line_cannot() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let (treatment_id, patient_id) = treatment(&pool).await;
     let drug = common::seed_drug(&pool).await;
@@ -1692,8 +1750,10 @@ async fn names(app: &TestApp, treatment_id: i64) -> Vec<i64> {
 /// An animal put on the visit by mistake comes off with everything written for it (issues.md):
 /// its lines — the draft dispense returned to the shelf — its texts and its files, from the
 /// disk too. The other animal's and the visit's lines stay, in their places.
-#[sqlx::test]
-async fn an_animal_comes_off_with_its_lines_texts_and_files(pool: PgPool) {
+#[tokio::test]
+async fn an_animal_comes_off_with_its_lines_texts_and_files() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let visit = two_animals(&app, &pool).await;
     let stored = app.state.files.content_path(&visit.sha256);
@@ -1727,8 +1787,10 @@ async fn an_animal_comes_off_with_its_lines_texts_and_files(pool: PgPool) {
 /// The customer calls later and wants the second pet on its own invoice (issues.md): it moves
 /// to an appointment of its own, same customer and time, with its record — texts, lines and
 /// their dispenses, files. The visit's own lines stay; both invoices' PDFs are out of date.
-#[sqlx::test]
-async fn an_animal_moves_to_its_own_appointment_with_what_was_written_for_it(pool: PgPool) {
+#[tokio::test]
+async fn an_animal_moves_to_its_own_appointment_with_what_was_written_for_it() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let visit = two_animals(&app, &pool).await;
     let invoice = app
@@ -1813,8 +1875,10 @@ async fn an_animal_moves_to_its_own_appointment_with_what_was_written_for_it(poo
 }
 
 /// Released, the invoice holds the animals where they are: neither comes off, neither moves.
-#[sqlx::test]
-async fn a_released_invoice_keeps_its_animals(pool: PgPool) {
+#[tokio::test]
+async fn a_released_invoice_keeps_its_animals() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let visit = two_animals(&app, &pool).await;
     let invoice = app

@@ -8,10 +8,11 @@ use axum::http::StatusCode;
 use chrono::{TimeZone, Utc};
 use common::TestApp;
 use serde_json::json;
-use sqlx::PgPool;
 
-#[sqlx::test]
-async fn a_patient_completes_when_owner_name_sex_and_species_are_known(pool: PgPool) {
+#[tokio::test]
+async fn a_patient_completes_when_owner_name_sex_and_species_are_known() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
 
@@ -40,8 +41,10 @@ async fn a_patient_completes_when_owner_name_sex_and_species_are_known(pool: PgP
 /// The customer comes first (decided 2026-11-17): no animal is made for, or moved to, a
 /// customer still without an address — a new caller entered with only a name, say. Once the
 /// customer is complete, both go through.
-#[sqlx::test]
-async fn an_animal_waits_for_its_customer_to_be_complete(pool: PgPool) {
+#[tokio::test]
+async fn an_animal_waits_for_its_customer_to_be_complete() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let newcomer = app.post("/api/customers", json!({})).await.id();
     app.patch(
@@ -87,8 +90,10 @@ async fn an_animal_waits_for_its_customer_to_be_complete(pool: PgPool) {
     assert_eq!(moved.status, StatusCode::OK);
 }
 
-#[sqlx::test]
-async fn an_unknown_sex_value_is_rejected(pool: PgPool) {
+#[tokio::test]
+async fn an_unknown_sex_value_is_rejected() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let id = common::seed_patient(&pool, customer_id).await;
@@ -101,8 +106,10 @@ async fn an_unknown_sex_value_is_rejected(pool: PgPool) {
     assert!(rejected.error_fields().contains(&"sex".to_owned()));
 }
 
-#[sqlx::test]
-async fn a_date_of_death_archives_the_patient(pool: PgPool) {
+#[tokio::test]
+async fn a_date_of_death_archives_the_patient() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let id = common::seed_patient(&pool, customer_id).await;
@@ -128,8 +135,10 @@ async fn a_date_of_death_archives_the_patient(pool: PgPool) {
     assert_eq!(refused.status, StatusCode::CONFLICT);
 }
 
-#[sqlx::test]
-async fn archived_patients_are_hidden_from_lists_by_default(pool: PgPool) {
+#[tokio::test]
+async fn archived_patients_are_hidden_from_lists_by_default() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let id = common::seed_patient(&pool, customer_id).await;
@@ -153,8 +162,10 @@ async fn archived_patients_are_hidden_from_lists_by_default(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn patients_can_be_filtered_by_owner_and_searched(pool: PgPool) {
+#[tokio::test]
+async fn patients_can_be_filtered_by_owner_and_searched() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let first_customer = common::seed_customer(&pool).await;
     let second_customer = common::seed_customer(&pool).await;
@@ -184,8 +195,10 @@ async fn patients_can_be_filtered_by_owner_and_searched(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn customer_provided_files_carry_a_reference_date_and_note(pool: PgPool) {
+#[tokio::test]
+async fn customer_provided_files_carry_a_reference_date_and_note() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -225,8 +238,10 @@ async fn customer_provided_files_carry_a_reference_date_and_note(pool: PgPool) {
     assert!(corrected["note"].is_null());
 }
 
-#[sqlx::test]
-async fn a_photo_is_referenced_from_the_patient(pool: PgPool) {
+#[tokio::test]
+async fn a_photo_is_referenced_from_the_patient() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -268,8 +283,10 @@ async fn a_photo_is_referenced_from_the_patient(pool: PgPool) {
 }
 
 /// The weight is optional, stored to one decimal, and must never hold a patient in draft.
-#[sqlx::test]
-async fn a_weight_round_trips_and_stays_optional(pool: PgPool) {
+#[tokio::test]
+async fn a_weight_round_trips_and_stays_optional() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -305,8 +322,10 @@ async fn a_weight_round_trips_and_stays_optional(pool: PgPool) {
 }
 
 /// A second decimal is refused rather than silently rounded away by `NUMERIC(5,1)`.
-#[sqlx::test]
-async fn a_weight_keeps_at_most_one_decimal(pool: PgPool) {
+#[tokio::test]
+async fn a_weight_keeps_at_most_one_decimal() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -327,8 +346,10 @@ async fn a_weight_keeps_at_most_one_decimal(pool: PgPool) {
     assert!(unchanged["weight_kg"].is_null(), "nothing was stored");
 }
 
-#[sqlx::test]
-async fn a_weight_must_be_positive(pool: PgPool) {
+#[tokio::test]
+async fn a_weight_must_be_positive() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;
@@ -350,8 +371,10 @@ async fn a_weight_must_be_positive(pool: PgPool) {
 
 /// issues.md 19: the animal's page lists every visit it was part of, newest first — the history
 /// the vet reads before a consultation.
-#[sqlx::test]
-async fn a_patient_lists_the_visits_it_was_part_of(pool: PgPool) {
+#[tokio::test]
+async fn a_patient_lists_the_visits_it_was_part_of() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let customer_id = common::seed_customer(&pool).await;
     let patient_id = common::seed_patient(&pool, customer_id).await;

@@ -27,8 +27,10 @@ async fn position(pool: &PgPool, number: &str) -> (String, Decimal, bool) {
     .unwrap_or_else(|error| panic!("GOT {number} is in the catalogue: {error}"))
 }
 
-#[sqlx::test]
-async fn every_position_of_the_schedule_is_there_exactly_once(pool: PgPool) {
+#[tokio::test]
+async fn every_position_of_the_schedule_is_there_exactly_once() {
+    let db = common::database().await;
+    let pool = db.pool();
     let total: i64 = sqlx::query_scalar("SELECT count(*) FROM service WHERE type = 'got'")
         .fetch_one(&pool)
         .await
@@ -62,8 +64,10 @@ async fn every_position_of_the_schedule_is_there_exactly_once(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn positions_carry_the_published_number_text_and_fee(pool: PgPool) {
+#[tokio::test]
+async fn positions_carry_the_published_number_text_and_fee() {
+    let db = common::database().await;
+    let pool = db.pool();
     // (number, start of the published text, net fee) — each one damaged by the first import.
     let published = [
         // Its number had been read from "101 bis zu 150 Tieren".
@@ -109,8 +113,10 @@ async fn positions_carry_the_published_number_text_and_fee(pool: PgPool) {
     }
 }
 
-#[sqlx::test]
-async fn suspended_hyphens_survive_in_names(pool: PgPool) {
+#[tokio::test]
+async fn suspended_hyphens_survive_in_names() {
+    let db = common::database().await;
+    let pool = db.pool();
     let glued: Vec<String> = sqlx::query_scalar(
         "SELECT name FROM service WHERE type = 'got'
             AND name ~ '(Zucht|Lege|Rasse|Sehnen|Planungs|Thrombozyten|Unterkiefer)(und|oder|u\\.)'",
@@ -128,8 +134,10 @@ async fn suspended_hyphens_survive_in_names(pool: PgPool) {
     assert_eq!(name, "Sehnen- und Muskelnaht");
 }
 
-#[sqlx::test]
-async fn surgery_is_hidden_and_everything_else_is_not(pool: PgPool) {
+#[tokio::test]
+async fn surgery_is_hidden_and_everything_else_is_not() {
+    let db = common::database().await;
+    let pool = db.pool();
     // Everyday work the first import hid, because "Nicht chirurgische Behandlungen" matched its
     // test for surgical chapters.
     for number in ["404", "455", "627", "716", "763", "985"] {

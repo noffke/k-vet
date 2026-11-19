@@ -6,10 +6,11 @@ mod common;
 
 use axum::http::StatusCode;
 use common::TestApp;
-use sqlx::PgPool;
 
-#[sqlx::test]
-async fn the_defaults_are_the_german_ones(pool: PgPool) {
+#[tokio::test]
+async fn the_defaults_are_the_german_ones() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let response = app.get("/api/config").await;
@@ -24,8 +25,10 @@ async fn the_defaults_are_the_german_ones(pool: PgPool) {
     assert_eq!(body["vat_rates"][1], "7.000");
 }
 
-#[sqlx::test]
-async fn it_reports_what_the_operator_configured(pool: PgPool) {
+#[tokio::test]
+async fn it_reports_what_the_operator_configured() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::with_config(pool, |config| {
         config.invoice.currency = "CHF".to_owned();
         config.invoice.default_country = "at".to_owned();
@@ -39,8 +42,10 @@ async fn it_reports_what_the_operator_configured(pool: PgPool) {
     assert_eq!(body["default_country"], "AT");
 }
 
-#[sqlx::test]
-async fn an_unlabelled_instance_is_the_practice_s_own(pool: PgPool) {
+#[tokio::test]
+async fn an_unlabelled_instance_is_the_practice_s_own() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool).await;
 
     let body = app.get("/api/config").await.json();
@@ -51,8 +56,10 @@ async fn an_unlabelled_instance_is_the_practice_s_own(pool: PgPool) {
     assert_eq!(body["version"], "dev");
 }
 
-#[sqlx::test]
-async fn a_labelled_instance_says_which_one_it_is(pool: PgPool) {
+#[tokio::test]
+async fn a_labelled_instance_says_which_one_it_is() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::with_config(pool, |config| {
         config.server.environment_label = Some("TEST".to_owned());
     })
@@ -63,8 +70,10 @@ async fn a_labelled_instance_says_which_one_it_is(pool: PgPool) {
     assert_eq!(body["environment_label"], "TEST");
 }
 
-#[sqlx::test]
-async fn a_blank_label_is_no_label(pool: PgPool) {
+#[tokio::test]
+async fn a_blank_label_is_no_label() {
+    let db = common::database().await;
+    let pool = db.pool();
     // `environment_label = ""` is what an operator writes when they mean production, and it
     // must not draw an empty banner.
     let app = TestApp::with_config(pool, |config| {
@@ -77,8 +86,10 @@ async fn a_blank_label_is_no_label(pool: PgPool) {
     assert!(body["environment_label"].is_null());
 }
 
-#[sqlx::test]
-async fn it_needs_a_session(pool: PgPool) {
+#[tokio::test]
+async fn it_needs_a_session() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::anonymous(pool).await;
 
     let response = app.get("/api/config").await;
@@ -88,8 +99,10 @@ async fn it_needs_a_session(pool: PgPool) {
 
 /// What the sync app on the phone is set up with: off by default, and with `[dav] enabled` the
 /// address, the login's name and the two collections — never a password.
-#[sqlx::test]
-async fn the_phone_sync_is_described_only_when_enabled(pool: PgPool) {
+#[tokio::test]
+async fn the_phone_sync_is_described_only_when_enabled() {
+    let db = common::database().await;
+    let pool = db.pool();
     let off = TestApp::new(pool.clone()).await;
     assert!(off.get("/api/config").await.json()["dav"].is_null());
 

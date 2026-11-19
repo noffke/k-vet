@@ -107,8 +107,10 @@ fn phone_event(uid: &str, start: &str, summary: &str) -> String {
 
 /// What a sync app walks on first setup: the well-known address, the principal, its calendar
 /// home, the one calendar in it — signed in with the k-vet login.
-#[sqlx::test]
-async fn the_sync_app_finds_the_calendar(pool: PgPool) {
+#[tokio::test]
+async fn the_sync_app_finds_the_calendar() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
 
     let well_known = app.dav("GET", "/.well-known/caldav", &[], "").await;
@@ -177,8 +179,10 @@ async fn the_sync_app_finds_the_calendar(pool: PgPool) {
 
 /// The phone signs in with the k-vet login on every request; anything else is turned away,
 /// and guessing runs into the login's throttle. Switched off, there is no calendar.
-#[sqlx::test]
-async fn only_the_k_vet_login_opens_the_calendar(pool: PgPool) {
+#[tokio::test]
+async fn only_the_k_vet_login_opens_the_calendar() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let anonymous = app
         .dav("PROPFIND", "/dav/", &[("Authorization", "")], "")
@@ -213,8 +217,10 @@ async fn only_the_k_vet_login_opens_the_calendar(pool: PgPool) {
 
 /// Each appointment from the window on is an event that says whose visit it is, where, and
 /// what to bring; a change to any of that is a new ETag and a new ctag, so the phone fetches it.
-#[sqlx::test]
-async fn appointments_are_events(pool: PgPool) {
+#[tokio::test]
+async fn appointments_are_events() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let tomorrow = Utc::now() + TimeDelta::days(1);
     let (appointment_id, _) = visit(&pool, tomorrow).await;
@@ -283,8 +289,10 @@ async fn appointments_are_events(pool: PgPool) {
 
 /// An entry made on the phone becomes an appointment without a customer; its title names the
 /// customer to suggest. The answer carries no ETag: what k-vet keeps is not what was sent.
-#[sqlx::test]
-async fn an_entry_made_on_the_phone_becomes_an_appointment(pool: PgPool) {
+#[tokio::test]
+async fn an_entry_made_on_the_phone_becomes_an_appointment() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let (_, _) = visit(&pool, Utc::now() + TimeDelta::days(3)).await;
     let body = phone_event(
@@ -355,8 +363,10 @@ async fn an_entry_made_on_the_phone_becomes_an_appointment(pool: PgPool) {
 
 /// Moved on the phone, the appointment moves — unless its invoice already bills the date;
 /// then k-vet's time stands and the phone fetches it back. A stale ETag is refused.
-#[sqlx::test]
-async fn a_moved_event_moves_its_appointment_unless_invoiced(pool: PgPool) {
+#[tokio::test]
+async fn a_moved_event_moves_its_appointment_unless_invoiced() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let (appointment_id, treatment_id) = visit(&pool, Utc::now() + TimeDelta::days(2)).await;
     let href = format!("/dav/calendars/praxis/kvet-{appointment_id}.ics");
@@ -426,8 +436,10 @@ async fn a_moved_event_moves_its_appointment_unless_invoiced(pool: PgPool) {
 
 /// Deleted on the phone: an appointment with nothing recorded goes, one with an animal on it
 /// stays in k-vet and only leaves the calendar until shown again.
-#[sqlx::test]
-async fn a_deleted_event_goes_or_is_only_hidden(pool: PgPool) {
+#[tokio::test]
+async fn a_deleted_event_goes_or_is_only_hidden() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let empty = app
         .dav(
@@ -471,8 +483,10 @@ async fn a_deleted_event_goes_or_is_only_hidden(pool: PgPool) {
 
 /// An all-day or recurring entry cannot be an appointment: it is kept as it was sent and
 /// served back unchanged, until deleted.
-#[sqlx::test]
-async fn all_day_entries_are_kept_as_they_are(pool: PgPool) {
+#[tokio::test]
+async fn all_day_entries_are_kept_as_they_are() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let body = phone_event(
         "urlaub",
@@ -508,8 +522,10 @@ async fn all_day_entries_are_kept_as_they_are(pool: PgPool) {
 }
 
 /// `calendar-query` with a time range answers the events in it.
-#[sqlx::test]
-async fn a_calendar_query_keeps_to_its_time_range(pool: PgPool) {
+#[tokio::test]
+async fn a_calendar_query_keeps_to_its_time_range() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let (soon, _) = visit(&pool, Utc::now() + TimeDelta::days(1)).await;
     let (later, _) = visit(&pool, Utc::now() + TimeDelta::days(40)).await;
@@ -583,8 +599,10 @@ async fn customer_at(pool: &PgPool, href: &str) -> i64 {
 
 /// The same discovery, for the address book: the principal names its home, the home holds
 /// "Kunden", which says it takes vCard 3.0 and may be written to.
-#[sqlx::test]
-async fn the_sync_app_finds_the_address_book(pool: PgPool) {
+#[tokio::test]
+async fn the_sync_app_finds_the_address_book() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
 
     let well_known = app.dav("GET", "/.well-known/carddav", &[], "").await;
@@ -637,8 +655,10 @@ async fn the_sync_app_finds_the_address_book(pool: PgPool) {
 /// Every customer with a name is a contact named with the living animals, carrying the numbers,
 /// addresses and a note with the species — never the breed. A change to the customer, an animal
 /// or an e-mail address is a new ETag and a new ctag; an archived customer drops out.
-#[sqlx::test]
-async fn customers_are_contacts(pool: PgPool) {
+#[tokio::test]
+async fn customers_are_contacts() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
     sqlx::query(
@@ -742,8 +762,10 @@ async fn customers_are_contacts(pool: PgPool) {
 /// A contact made on the phone becomes a customer — a draft, for want of a salutation — that
 /// keeps the phone's name for it, and that the nightly cleanup leaves alone however little it
 /// holds.
-#[sqlx::test]
-async fn a_contact_made_on_the_phone_becomes_a_customer(pool: PgPool) {
+#[tokio::test]
+async fn a_contact_made_on_the_phone_becomes_a_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let href = "/dav/addressbooks/kunden/3f2a-heike.vcf";
     let card = "BEGIN:VCARD\r\nVERSION:3.0\r\nUID:3f2a-heike\r\nFN:Heike Müller\r\n\
@@ -834,8 +856,10 @@ async fn a_contact_made_on_the_phone_becomes_a_customer(pool: PgPool) {
 /// displayed name is not taken into it — the numbers, the e-mail addresses matched by address
 /// (an existing one keeps its type) and the address. What makes a customer complete is changed,
 /// never emptied; a number that does not read as one leaves the stored one.
-#[sqlx::test]
-async fn an_edit_on_the_phone_changes_the_customer(pool: PgPool) {
+#[tokio::test]
+async fn an_edit_on_the_phone_changes_the_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
     common::seed_patient(&pool, customer_id).await;
@@ -918,8 +942,10 @@ async fn an_edit_on_the_phone_changes_the_customer(pool: PgPool) {
 }
 
 /// A contact deleted on the phone is not a customer deleted: it stays, and is listed again.
-#[sqlx::test]
-async fn a_contact_deleted_on_the_phone_comes_back(pool: PgPool) {
+#[tokio::test]
+async fn a_contact_deleted_on_the_phone_comes_back() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = app(&pool).await;
     let customer_id = common::seed_customer(&pool).await;
     let href = contact_href(customer_id);

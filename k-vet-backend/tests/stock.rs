@@ -16,8 +16,10 @@ fn dec(value: &str) -> Decimal {
     Decimal::from_str_exact(value).expect("test literal is a decimal")
 }
 
-#[sqlx::test]
-async fn an_intake_snapshots_packages_times_packaging_quantity(pool: PgPool) {
+#[tokio::test]
+async fn an_intake_snapshots_packages_times_packaging_quantity() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
 
@@ -62,8 +64,10 @@ async fn an_intake_snapshots_packages_times_packaging_quantity(pool: PgPool) {
 /// The list price is confirmed at every Wareneingang — a changed wholesaler price is easily
 /// missed. A changed one is stored with the lot, and the AMPreisV prices follow: the original's
 /// sales price and the subsets', unless set by hand. A blank batch is no batch.
-#[sqlx::test]
-async fn a_changed_list_price_comes_in_with_the_lot(pool: PgPool) {
+#[tokio::test]
+async fn a_changed_list_price_comes_in_with_the_lot() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let intake = format!("/api/packagings/{}/stock-intakes", drug.packaging_id);
@@ -131,8 +135,10 @@ async fn a_changed_list_price_comes_in_with_the_lot(pool: PgPool) {
 
 /// A lot booked by mistake is taken back while untouched; once something was dispensed from it
 /// or corrected, it is stock history and stays.
-#[sqlx::test]
-async fn an_untouched_lot_can_be_taken_back(pool: PgPool) {
+#[tokio::test]
+async fn an_untouched_lot_can_be_taken_back() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let intake = format!("/api/packagings/{}/stock-intakes", drug.packaging_id);
@@ -175,8 +181,10 @@ async fn an_untouched_lot_can_be_taken_back(pool: PgPool) {
     );
 }
 
-#[sqlx::test]
-async fn stock_can_only_be_booked_on_original_packagings(pool: PgPool) {
+#[tokio::test]
+async fn stock_can_only_be_booked_on_original_packagings() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
 
@@ -190,8 +198,10 @@ async fn stock_can_only_be_booked_on_original_packagings(pool: PgPool) {
     assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[sqlx::test]
-async fn remaining_stock_reconciles_after_every_kind_of_movement(pool: PgPool) {
+#[tokio::test]
+async fn remaining_stock_reconciles_after_every_kind_of_movement() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -236,8 +246,10 @@ async fn remaining_stock_reconciles_after_every_kind_of_movement(pool: PgPool) {
     assert_eq!(sum, dec("65"));
 }
 
-#[sqlx::test]
-async fn a_correction_records_the_difference_and_its_reason(pool: PgPool) {
+#[tokio::test]
+async fn a_correction_records_the_difference_and_its_reason() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -270,8 +282,10 @@ async fn a_correction_records_the_difference_and_its_reason(pool: PgPool) {
     assert_eq!(noop.status, StatusCode::UNPROCESSABLE_ENTITY);
 }
 
-#[sqlx::test]
-async fn a_correction_can_add_stock_again(pool: PgPool) {
+#[tokio::test]
+async fn a_correction_can_add_stock_again() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -285,8 +299,10 @@ async fn a_correction_can_add_stock_again(pool: PgPool) {
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("120"));
 }
 
-#[sqlx::test]
-async fn previously_used_reasons_are_offered_alphabetically(pool: PgPool) {
+#[tokio::test]
+async fn previously_used_reasons_are_offered_alphabetically() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -310,8 +326,10 @@ async fn previously_used_reasons_are_offered_alphabetically(pool: PgPool) {
 
 /// A correction by a change rather than a count (issues.md, 2026-11-18): one broken bottle is
 /// −50 ml, without counting the rest; a pack found again is +50 ml. It is booked as stated.
-#[sqlx::test]
-async fn a_correction_can_be_a_change_instead_of_a_count(pool: PgPool) {
+#[tokio::test]
+async fn a_correction_can_be_a_change_instead_of_a_count() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 2, dec("100"), None).await;
@@ -365,8 +383,10 @@ async fn a_correction_can_be_a_change_instead_of_a_count(pool: PgPool) {
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
 }
 
-#[sqlx::test]
-async fn the_lot_history_links_every_dispense_to_its_treatment_and_customer(pool: PgPool) {
+#[tokio::test]
+async fn the_lot_history_links_every_dispense_to_its_treatment_and_customer() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -418,8 +438,10 @@ async fn the_lot_history_links_every_dispense_to_its_treatment_and_customer(pool
     );
 }
 
-#[sqlx::test]
-async fn cancelling_an_invoice_appends_a_linked_counter_movement(pool: PgPool) {
+#[tokio::test]
+async fn cancelling_an_invoice_appends_a_linked_counter_movement() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -468,8 +490,10 @@ async fn cancelling_an_invoice_appends_a_linked_counter_movement(pool: PgPool) {
     assert_eq!(detail["remaining"], "100.00", "the lot is whole again");
 }
 
-#[sqlx::test]
-async fn lots_are_listed_fefo_and_used_up_ones_are_hidden(pool: PgPool) {
+#[tokio::test]
+async fn lots_are_listed_fefo_and_used_up_ones_are_hidden() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let later = common::seed_lot(
@@ -522,8 +546,10 @@ async fn lots_are_listed_fefo_and_used_up_ones_are_hidden(pool: PgPool) {
     assert!(ids(&all).contains(&empty));
 }
 
-#[sqlx::test]
-async fn frozen_movements_are_append_only(pool: PgPool) {
+#[tokio::test]
+async fn frozen_movements_are_append_only() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -574,8 +600,10 @@ async fn frozen_movements_are_append_only(pool: PgPool) {
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("90"));
 }
 
-#[sqlx::test]
-async fn the_movement_shape_checks_hold_at_the_database_level(pool: PgPool) {
+#[tokio::test]
+async fn the_movement_shape_checks_hold_at_the_database_level() {
+    let db = common::database().await;
+    let pool = db.pool();
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
 
@@ -621,8 +649,10 @@ async fn the_movement_shape_checks_hold_at_the_database_level(pool: PgPool) {
 /// The stocktake is refused in the handler, so it reads as a field error rather than a
 /// database failure; the trigger underneath is what makes the rule hold for writes that never
 /// reach a handler at all.
-#[sqlx::test]
-async fn a_stocktake_cannot_count_below_zero(pool: PgPool) {
+#[tokio::test]
+async fn a_stocktake_cannot_count_below_zero() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -658,8 +688,10 @@ async fn a_stocktake_cannot_count_below_zero(pool: PgPool) {
 
 /// The same rule asked of the database, which is where it has to hold: the handler can only
 /// speak for the paths that go through it.
-#[sqlx::test]
-async fn the_database_refuses_a_movement_that_would_go_below_zero(pool: PgPool) {
+#[tokio::test]
+async fn the_database_refuses_a_movement_that_would_go_below_zero() {
+    let db = common::database().await;
+    let pool = db.pool();
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
 
@@ -689,8 +721,10 @@ async fn the_database_refuses_a_movement_that_would_go_below_zero(pool: PgPool) 
 
 /// A drug the lots cannot cover is marked in the picker before it is picked, and the refusal
 /// says why — on adding the line and on raising its quantity (issues.md: "a clear error").
-#[sqlx::test]
-async fn a_dispense_beyond_the_stock_is_marked_and_refused_with_its_reason(pool: PgPool) {
+#[tokio::test]
+async fn a_dispense_beyond_the_stock_is_marked_and_refused_with_its_reason() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -786,8 +820,10 @@ async fn consumable(app: &TestApp, drug: &common::SeededDrug) {
 
 /// A consumable goes on the invoice without any lot: picked, raised, released and cancelled,
 /// and not one stock movement is written. It goes in whole packs only.
-#[sqlx::test]
-async fn a_consumable_is_billed_without_any_stock(pool: PgPool) {
+#[tokio::test]
+async fn a_consumable_is_billed_without_any_stock() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     consumable(&app, &drug).await;
@@ -863,8 +899,10 @@ async fn a_consumable_is_billed_without_any_stock(pool: PgPool) {
 /// The flag waits for what it excludes — stock on the shelf, a Teilmenge — and while it is set
 /// nothing brings stock back: no Wareneingang, no correction, no Teilmenge, no "Beliebig
 /// teilbar". A lot from before stays readable, and says so.
-#[sqlx::test]
-async fn a_consumable_takes_no_stock_teilmenge_or_division(pool: PgPool) {
+#[tokio::test]
+async fn a_consumable_takes_no_stock_teilmenge_or_division() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
@@ -961,8 +999,10 @@ async fn a_consumable_takes_no_stock_teilmenge_or_division(pool: PgPool) {
 
 /// A consumable is no Arzneimittel: the AMPreisV does not price it. Its sales price is the one
 /// the vet types, and a changed list price moves nothing; turned off, the AMPreisV is back.
-#[sqlx::test]
-async fn a_consumable_is_priced_by_the_vet_not_the_ampreisv(pool: PgPool) {
+#[tokio::test]
+async fn a_consumable_is_priced_by_the_vet_not_the_ampreisv() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     consumable(&app, &drug).await;
@@ -1004,8 +1044,10 @@ async fn a_consumable_is_priced_by_the_vet_not_the_ampreisv(pool: PgPool) {
 }
 
 /// Mitbringen and the Packliste never call a consumable short: there is no stock to be short of.
-#[sqlx::test]
-async fn a_consumable_to_bring_is_never_short(pool: PgPool) {
+#[tokio::test]
+async fn a_consumable_to_bring_is_never_short() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     consumable(&app, &drug).await;
@@ -1033,8 +1075,10 @@ async fn a_consumable_to_bring_is_never_short(pool: PgPool) {
 
 /// An invoice billed before the flag is still cancelled whole: its dispense goes back to the
 /// lot it came from — the ledger staying true, not stock being kept.
-#[sqlx::test]
-async fn an_invoice_from_before_the_flag_is_still_reversed(pool: PgPool) {
+#[tokio::test]
+async fn an_invoice_from_before_the_flag_is_still_reversed() {
+    let db = common::database().await;
+    let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
     let drug = common::seed_drug(&pool).await;
     let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
