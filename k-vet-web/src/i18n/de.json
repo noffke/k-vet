@@ -672,7 +672,7 @@
     "forWhomHint": "Ein Kunde — oder für einen neuen Anrufer die Adresse, falls Wegegeld anfällt.",
     "addressLegend": "Adresse für das Wegegeld (neuer Anrufer)",
     "positions": "Positionen",
-    "empty": "Noch keine Positionen. Leistungen, Medikamente oder eine Behandlungsgruppe oben suchen.",
+    "empty": "Noch keine Positionen. Leistungen, Medikamente oder eine Behandlungsgruppe unten suchen.",
     "total": "Gesamt (brutto)",
     "net": "netto {{amount}}",
     "vatGroup": "USt. {{rate}}: {{amount}}",

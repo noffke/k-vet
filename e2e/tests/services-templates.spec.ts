@@ -380,6 +380,7 @@ test.describe('treatment lines', () => {
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
     await expect(page.getByLabel('Menge')).toHaveCount(0)
-    await expect(page.getByText('Keine Einträge').first()).toBeVisible()
+    // The pickers' own "Keine Einträge" waits, hidden, until they are searched in.
+    await expect(page.getByText('Keine Einträge').filter({ visible: true }).first()).toBeVisible()
   })
 })

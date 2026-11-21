@@ -77,19 +77,8 @@ export function RemindersCard({ appointmentId, treatmentId, startsAt }: Reminder
         ) : null}
       </div>
       <p className="mt-0.5 text-xs text-ink-faint">{t('reminders.hint')}</p>
-      <div className="mt-2">
-        <ItemPicker
-          drugsOnly
-          placeholder={t('reminders.pickerPlaceholder')}
-          disabled={create.isPending}
-          // No quantity: the drug starts at what it allows — one unit, else one step.
-          onPick={(item) =>
-            create.mutate({ id: appointmentId, data: { drug_packaging_id: item.id } })
-          }
-        />
-      </div>
       {rows.length > 0 ? (
-        <ul className="mt-3 flex flex-col gap-2">
+        <ul className="mt-2 flex flex-col gap-2">
           {rows.map((reminder) => (
             <ReminderRow
               key={reminder.id}
@@ -100,6 +89,18 @@ export function RemindersCard({ appointmentId, treatmentId, startsAt }: Reminder
           ))}
         </ul>
       ) : null}
+      {/* Under the list, as everywhere a list is built from the picker. */}
+      <div className="mt-3">
+        <ItemPicker
+          drugsOnly
+          placeholder={t('reminders.pickerPlaceholder')}
+          disabled={create.isPending}
+          // No quantity: the drug starts at what it allows — one unit, else one step.
+          onPick={(item) =>
+            create.mutate({ id: appointmentId, data: { drug_packaging_id: item.id } })
+          }
+        />
+      </div>
     </section>
   )
 }

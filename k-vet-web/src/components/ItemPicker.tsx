@@ -1,6 +1,6 @@
 import { Command } from 'cmdk'
 import { FileText, PackageX, Pill, Stethoscope } from 'lucide-react'
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useListTemplates, usePickerItems } from '@/api/generated/endpoints'
 import type { PickerItem, Template } from '@/api/generated/model'
@@ -40,14 +40,25 @@ interface ItemPickerProps {
   perVisitOnly?: boolean
   /** Offers drugs only — what a "Mitbringen" reminder can be. */
   drugsOnly?: boolean
+  /**
+   * While a pick is on its way: the results cannot be picked (no double entry), but the field
+   * keeps the focus and the vet can type on.
+   */
   disabled?: boolean
   placeholder?: string
 }
+
+/** Below Tailwind's `sm`: a phone, where the keyboard takes half the screen. */
+const PHONE = '(max-width: 639px)'
 
 /**
  * The unified drug/service picker (FR-005): one search box, results ranked by how often
  * the practice used them, drugs and services told apart by icon. This is the highest
  * frequency interaction in the app, so it stays open after a pick.
+ *
+ * At rest it is only its search field: the results — the most used ones before anything is
+ * typed — open while the field has the focus, and close on Escape or when the focus leaves.
+ * It sits under the list it adds to, so it does not push that list down.
  *
  * Behandlungsgruppen are searched alongside them but kept in a group of their own: they
  * are not billable positions, they insert several, and a group has no single price or VAT
@@ -66,6 +77,26 @@ export function ItemPicker({
   const label = (item: PickerItem) => pickerLabel(item, quantity)
   const [term, setTerm] = useState('')
   const [debounced, setDebounced] = useState('')
+  const [open, setOpen] = useState(false)
+  const root = useRef<HTMLDivElement>(null)
+  const input = useRef<HTMLInputElement | null>(null)
+
+  // cmdk writes `aria-expanded="true"` after the props it is given, so the real state is set
+  // on the element; React never rewrites it, since its own value never changes.
+  useEffect(() => {
+    input.current?.setAttribute('aria-expanded', String(open))
+  }, [open])
+
+  /**
+   * Brings the opened results into view. On a phone the field goes to the top of the screen,
+   * so the results have the room above the keyboard; on a laptop just as far as they need.
+   */
+  const reveal = () => {
+    requestAnimationFrame(() => {
+      const phone = window.matchMedia?.(PHONE).matches ?? false
+      root.current?.scrollIntoView({ block: phone ? 'start' : 'nearest' })
+    })
+  }
 
   useEffect(() => {
     const timer = setTimeout(() => setDebounced(term), SEARCH_DEBOUNCE_MS)
@@ -95,15 +126,30 @@ export function ItemPicker({
 
   return (
     <Command
+      ref={root}
       // Ranking comes from the server (usage weights); the list must not reshuffle it.
       shouldFilter={false}
-      className="rounded-card border border-line-strong bg-surface"
+      className="scroll-mt-4 rounded-card border border-line-strong bg-surface focus-within:border-rust-bright"
+      onKeyDown={(event) => {
+        if (event.key === 'Escape') setOpen(false)
+      }}
     >
       <Command.Input
-        ref={unmarkCmdkInput}
+        ref={(node) => {
+          unmarkCmdkInput(node)
+          input.current = node
+          node?.setAttribute('aria-expanded', String(open))
+        }}
         value={term}
-        onValueChange={setTerm}
-        disabled={disabled}
+        onValueChange={(value) => {
+          setTerm(value)
+          setOpen(true)
+        }}
+        onFocus={() => {
+          setOpen(true)
+          reveal()
+        }}
+        onBlur={() => setOpen(false)}
         placeholder={
           placeholder ??
           (perVisitOnly
@@ -112,9 +158,18 @@ export function ItemPicker({
               ? t('treatments.pickerPlaceholder')
               : t('treatments.pickerItemsOnly'))
         }
-        className="w-full rounded-t-card border-b border-line bg-transparent px-3 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none"
+        className={cn(
+          'min-h-11 w-full bg-transparent px-3 py-2.5 text-ink placeholder:text-ink-faint focus:outline-none',
+          open ? 'rounded-t-card border-b border-line' : 'rounded-card',
+        )}
       />
-      <Command.List className="max-h-64 overflow-y-auto p-1">
+      <Command.List
+        hidden={!open}
+        className="max-h-64 overflow-y-auto p-1"
+        // A click on a result must not take the focus off the field, or the list would close
+        // before the click lands.
+        onMouseDown={(event) => event.preventDefault()}
+      >
         {results.isPending ? (
           <Command.Loading>
             <p className="px-2 py-3 text-sm text-ink-faint">{t('list.loading')}</p>
@@ -133,13 +188,14 @@ export function ItemPicker({
               <Command.Item
                 key={`template-${template.id}`}
                 value={`template-${template.id}`}
+                disabled={disabled}
                 onSelect={() => {
                   onPickTemplate(template)
                   setTerm('')
                 }}
                 className={cn(
                   'flex cursor-pointer items-center gap-2.5 rounded-control px-2 py-2 text-sm',
-                  'data-[selected=true]:bg-cream-soft',
+                  'data-[selected=true]:bg-cream-soft data-[disabled=true]:opacity-50',
                 )}
               >
                 <FileText
@@ -163,13 +219,14 @@ export function ItemPicker({
             <Command.Item
               key={`${item.kind}-${item.id}`}
               value={`${item.kind}-${item.id}`}
+              disabled={disabled}
               onSelect={() => {
                 onPick(item)
                 setTerm('')
               }}
               className={cn(
                 'flex cursor-pointer items-center gap-2.5 rounded-control px-2 py-2 text-sm',
-                'data-[selected=true]:bg-cream-soft',
+                'data-[selected=true]:bg-cream-soft data-[disabled=true]:opacity-50',
               )}
             >
               {item.kind === 'drug_packaging' ? (

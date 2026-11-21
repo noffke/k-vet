@@ -246,9 +246,6 @@ export function TemplateDetailPage() {
 
       <section className="mt-6">
         <h2 className="text-base">{t('templates.items')}</h2>
-        <div className="mt-3">
-          <ItemPicker onPick={pick} disabled={addItem.isPending} />
-        </div>
 
         <ul className="mt-3 flex flex-col gap-2">
           {lines.map((item, index) => (
@@ -334,6 +331,10 @@ export function TemplateDetailPage() {
             </li>
           ) : null}
         </ul>
+        {/* Under the list: a picked position appears right above the search it came from. */}
+        <div className="mt-3">
+          <ItemPicker onPick={pick} disabled={addItem.isPending} />
+        </div>
       </section>
 
       <ConfirmDialog

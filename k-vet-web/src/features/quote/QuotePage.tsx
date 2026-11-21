@@ -479,11 +479,8 @@ export function QuotePage() {
 
       <section className="mt-6">
         <h2 className="text-sm font-semibold text-ink">{t('quote.positions')}</h2>
-        <div className="mt-2">
-          <ItemPicker onPick={pick} onPickTemplate={(template) => void pickGroup(template)} />
-        </div>
         {draft.lines.length > 0 ? (
-          <ul className="mt-3 flex flex-col gap-2">
+          <ul className="mt-2 flex flex-col gap-2">
             {draft.lines.map((line, index) => (
               <QuoteLineCard
                 key={line.key}
@@ -516,10 +513,14 @@ export function QuotePage() {
             ))}
           </ul>
         ) : (
-          <p className="mt-3 rounded-card border border-dashed border-line px-3 py-6 text-center text-sm text-ink-faint">
+          <p className="mt-2 rounded-card border border-dashed border-line px-3 py-6 text-center text-sm text-ink-faint">
             {t('quote.empty')}
           </p>
         )}
+        {/* Under the list: a picked position appears right above the search it came from. */}
+        <div className="mt-3">
+          <ItemPicker onPick={pick} onPickTemplate={(template) => void pickGroup(template)} />
+        </div>
       </section>
 
       {draft.lines.length > 0 ? (

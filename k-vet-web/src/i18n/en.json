@@ -672,7 +672,7 @@
     "forWhomHint": "A customer — or, for a new caller, the address in case travel expenses apply.",
     "addressLegend": "Address for travel expenses (new caller)",
     "positions": "Positions",
-    "empty": "No positions yet. Search above for services, drugs or a treatment group.",
+    "empty": "No positions yet. Search below for services, drugs or a treatment group.",
     "total": "Total (gross)",
     "net": "net {{amount}}",
     "vatGroup": "VAT {{rate}}: {{amount}}",

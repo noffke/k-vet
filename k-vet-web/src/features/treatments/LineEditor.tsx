@@ -258,8 +258,6 @@ export function PositionGroup({
         <p className="mt-0.5 text-xs text-ink-faint">{t('treatments.withoutPatientHint')}</p>
       ) : null}
 
-      {pickerBlock}
-
       <ul className="mt-2 flex flex-col gap-2">
         {items.map((item, index) => (
           <li
@@ -550,6 +548,10 @@ export function PositionGroup({
           </li>
         ) : null}
       </ul>
+
+      {/* Under the list: a picked position appears right above the search it came from,
+          where the vet is looking, instead of off screen at the end of a long list. */}
+      {pickerBlock}
 
       <ConfirmDialog
         open={pendingRemoval !== null}
