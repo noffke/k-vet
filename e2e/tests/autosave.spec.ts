@@ -35,6 +35,9 @@ test.describe('auto-save', () => {
     // Navigate away immediately: the pending change is flushed, not dropped.
     await navigate(page, 'Kunden')
     await expect(page).toHaveURL(/\/customers$/)
+    // The flush is a request on its way; a reload this instant would abort it, which no vet's
+    // next click does. Let it land, then look.
+    await page.waitForLoadState('networkidle')
 
     await page.goto(visit)
     await expect(page.getByLabel('Vorbericht und Untersuchung')).toHaveText('Impfung und Kontrolle')
