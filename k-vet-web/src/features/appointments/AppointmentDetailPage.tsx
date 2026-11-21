@@ -162,7 +162,7 @@ export function AppointmentDetailPage() {
         : null
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <PageHeader
         back={<BackLink to="/appointments" label={t('appointments.title')} />}
         title={storedDate ? formatDate(storedDate) : t('appointments.new')}

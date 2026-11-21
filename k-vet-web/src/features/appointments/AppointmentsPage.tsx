@@ -118,7 +118,7 @@ export function AppointmentsPage() {
   ]
 
   return (
-    <div className="mx-auto max-w-4xl">
+    <div className="mx-auto max-w-5xl">
       <PageHeader
         eyebrow={t('app.practice')}
         title={t('appointments.title')}

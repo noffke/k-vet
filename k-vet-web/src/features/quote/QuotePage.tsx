@@ -351,7 +351,7 @@ export function QuotePage() {
     ([customer.data?.first_name, customer.data?.last_name].filter(Boolean).join(' ') || null)
 
   return (
-    <div className="mx-auto max-w-3xl">
+    <div className="mx-auto max-w-5xl">
       <PageHeader
         title={t('quote.title')}
         actions={
