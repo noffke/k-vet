@@ -307,6 +307,12 @@ overflow sheet).
 - `tests/helpers.ts::navigate()` clicks the right chrome for the viewport and asserts the page
   does not scroll sideways; horizontal overflow on a phone also shrinks Chrome's page scale and
   makes fixed-tab-bar clicks miss, so keep that assertion.
+- **No screen may scroll sideways** (2026-11-21). `no-sideways-scroll.spec.ts` seeds long data
+  (a double-barrelled name, a long e-mail address, a long drug name with "Tablette", a long SMTP
+  error) and measures every route of `src/router.tsx` on both viewports; it fails when the
+  router gains a path it has no entry for — add one. Fix an overflow where it starts
+  (`min-w-0`, wrapping, a box that may grow), never with a page-wide `overflow-x` clip, which
+  would hide it from this check.
 - `signIn(page, path?)` logs in through the API (the page's requests share its cookies) and
   opens `path`, else the Übersicht — pass the page a test starts on rather than `signIn` then
   `goto`, which loaded the app twice. The login form itself is `signInThroughForm`, used by

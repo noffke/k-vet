@@ -260,7 +260,9 @@ export function TemplateDetailPage() {
                 <Stethoscope className="size-4 shrink-0 text-ink-soft" aria-hidden />
               )}
               <span className="min-w-0 flex-1 truncate text-sm text-ink">{item.name}</span>
-              <span className="w-36">
+              {/* At least this wide, and wider for a long unit with the −/+ beside it: a fixed
+                  width let "Tablette" push the stepper out of the row on a phone. */}
+              <span className="min-w-36">
                 <NumberInput
                   label={t('field.quantity')}
                   value={item.quantity}

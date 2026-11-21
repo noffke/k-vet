@@ -55,6 +55,9 @@
     font-size: 0.9375rem;
     line-height: 1.5;
     -webkit-font-smoothing: antialiased;
+    /* A word longer than its line — an e-mail address, an SMTP error — breaks instead of
+       pushing the page sideways. Changes nothing that fits. */
+    overflow-wrap: break-word;
     /* The bottom tab bar on phones must not cover content. */
     padding-bottom: env(safe-area-inset-bottom);
   }
