@@ -44,7 +44,7 @@ import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
-import { dispenseRuleText, quantityStep, refusalText } from '@/lib/dispense'
+import { dispenseRuleText, refusalText } from '@/lib/dispense'
 import { useLocaleFormat } from '@/lib/locale'
 import { usePagedList } from '@/lib/paging'
 import { refusalKey } from '@/lib/refusal'
@@ -260,15 +260,13 @@ export function TemplateDetailPage() {
                 <Stethoscope className="size-4 shrink-0 text-ink-soft" aria-hidden />
               )}
               <span className="min-w-0 flex-1 truncate text-sm text-ink">{item.name}</span>
-              {/* At least this wide, and wider for a long unit with the −/+ beside it: a fixed
-                  width let "Tablette" push the stepper out of the row on a phone. */}
+              {/* At least this wide, and wider for a long unit: a fixed width once let "Tablette"
+                  push the field out of the row on a phone. Typed, never stepped. */}
               <span className="min-w-36">
                 <NumberInput
                   label={t('field.quantity')}
                   value={item.quantity}
                   unit={item.unit ?? undefined}
-                  step={item.rule ? quantityStep(item.rule) : undefined}
-                  min={item.rule ? quantityStep(item.rule) : undefined}
                   hint={
                     item.rule
                       ? dispenseRuleText(item.rule, item.unit, t, formatQuantity)

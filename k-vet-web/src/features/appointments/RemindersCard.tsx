@@ -26,7 +26,7 @@ import { Button } from '@/components/ui/button'
 import { Dialog } from '@/components/ui/dialog'
 import { TextField } from '@/components/ui/field'
 import { useAutoSave } from '@/lib/autosave'
-import { dispenseRuleText, quantityStep, refusalText } from '@/lib/dispense'
+import { dispenseRuleText, refusalText } from '@/lib/dispense'
 import { useLocaleFormat } from '@/lib/locale'
 import { refusalKey } from '@/lib/refusal'
 import { scheduleOf } from '@/lib/schedule'
@@ -200,15 +200,14 @@ function ReminderRow({
 
       {taken ? null : (
         <>
-          {/* The quantity takes up to 16rem, more only when its −/+ buttons and a long unit
-              need it (the field's own minimum), and the note the rest. */}
+          {/* The quantity takes up to 16rem, more only when a long unit needs it (the field's
+              own minimum), and the note the rest. Typed, never stepped: amounts are rarely a
+              step or two (decided 2026-11-21). */}
           <div className="mt-2 grid gap-2 sm:grid-cols-[minmax(min-content,16rem)_1fr]">
             <NumberInput
               label={t('field.quantity')}
               value={reminder.quantity}
               unit={reminder.unit ?? undefined}
-              step={reminder.rule ? quantityStep(reminder.rule) : 1}
-              min={reminder.rule ? quantityStep(reminder.rule) : 1}
               hint={
                 reminder.rule
                   ? dispenseRuleText(reminder.rule, reminder.unit, t, quantity)

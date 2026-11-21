@@ -2,7 +2,7 @@ import i18n from 'i18next'
 import { beforeAll, describe, expect, it } from 'vitest'
 import type { Dispense, DispenseRule } from '@/api/generated/model'
 import de from '@/i18n/de.json'
-import { dispenseBreakdown, dispenseRuleText, quantityStep, refusalText } from '@/lib/dispense'
+import { dispenseBreakdown, dispenseRuleText, refusalText } from '@/lib/dispense'
 import { formatMoney, formatQuantity, formatUnitPrice } from '@/lib/format'
 
 const quantity = (value: string | number | null | undefined) => formatQuantity(value, 'de-DE')
@@ -64,12 +64,6 @@ describe('dispensing a drug', () => {
     expect(
       dispenseBreakdown({ ...dispense, packs: null }, 'ml', t, { quantity, money, unitPrice }),
     ).toBe('50 ml Teilmenge à 0,298 €/ml')
-  })
-
-  it('steps a quantity field by the Teilmenge, one unit, or a whole pack', () => {
-    expect(quantityStep(steps)).toBe(10)
-    expect(quantityStep({ ...steps, step: null })).toBe(100)
-    expect(quantityStep({ ...steps, step: null, freely_divisible: true })).toBe(1)
   })
 })
 

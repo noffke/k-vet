@@ -76,9 +76,3 @@ export function dispenseBreakdown(
   }
   return parts.join(' + ')
 }
-
-/** The stepper of a quantity field: the Teilmenge's step, one unit, or a whole pack. */
-export function quantityStep(rule: DispenseRule): number {
-  if (rule.freely_divisible) return 1
-  return Number(rule.step ?? rule.pack_size)
-}

@@ -56,8 +56,8 @@ test.describe('Mitbringen', () => {
     await expect(allPositions(page.getByRole('tabpanel'))).toContainText([new RegExp(drugName)])
   })
 
-  // The Mitbringen row gave its quantity a narrow column: the −/+ buttons took the room, the
-  // value vanished and a long unit ran out of the field to the left (the vet's screenshot).
+  // The Mitbringen row once gave its quantity a narrow column: the −/+ buttons it had then took
+  // the room, the value vanished and a long unit ran out of the field (the vet's screenshot).
   test('the quantity shows its value with the unit inside the field, however long the unit', async ({
     page,
     request,
