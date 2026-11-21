@@ -406,7 +406,8 @@
       "refrigerate": "Kühlpflichtig",
       "submissionReceipt": "Abgabebeleg",
       "vaccine": "Impfstoff",
-      "withoutStock": "Ohne Bestand (Verbrauchsmaterial)"
+      "withoutStock": "Ohne Bestand (Verbrauchsmaterial)",
+      "notAMedicine": "Kein Medikament"
     },
     "flagsLegend": "Kennzeichen",
     "freelyDivisibleHint": "Z. B. Injektionslösungen: jede Menge abrechenbar, etwa 2,7 ml aus einer 100-ml-Flasche. Ohne diesen Haken geht der Rest nach ganzen Packungen nur in Schritten der kleinsten Teilmenge.",
@@ -431,7 +432,7 @@
     "packageCountOnly": "{{count}} Packungen",
     "packagings": "Packungen",
     "packs": "Packungen",
-    "priceByHand": "Verkaufspreis von Hand – Verbrauchsmaterial fällt nicht unter die AMPreisV.",
+    "priceByHand": "Verkaufspreis von Hand – kein Medikament, die AMPreisV gilt nicht.",
     "priceOverride": "Preis manuell überschrieben",
     "remaining": "Restbestand",
     "removeCode": "Code {{code}} entfernen",
@@ -445,11 +446,13 @@
     "subsetPriceDerived": "Wird aus der Originalpackung berechnet",
     "title": "Apotheke",
     "withoutStock": "Ohne Bestand",
-    "withoutStockHint": "Verbrauchsmaterial wie Spritzen, Kanülen oder Verbände: kommt auf die Rechnung, ohne Chargen und ohne Bestand, in ganzen Packungen — für einen Stückpreis die Packung als 1 Stück anlegen. Nicht nach AMPreisV: den Verkaufspreis von Hand eintragen.",
+    "withoutStockHint": "Verbrauchsmaterial wie Spritzen, Kanülen oder Verbände: kommt auf die Rechnung, ohne Chargen und ohne Bestand, in ganzen Packungen — für einen Stückpreis die Packung als 1 Stück anlegen. Ist es kein Arzneimittel, zusätzlich „Kein Medikament“ setzen: dann gilt die AMPreisV nicht.",
     "withoutStockNeedsNoMinStock": "Erst den Mindestbestand leeren – Verbrauchsmaterial ohne Bestand hat keinen.",
     "withoutStockNeedsNoStock": "Erst den Restbestand auf 0 korrigieren – Verbrauchsmaterial ohne Bestand hat keinen.",
     "withoutStockNeedsNoSubsets": "Erst die Teilmengen löschen – Verbrauchsmaterial ohne Bestand hat keine.",
-    "withoutStockNotDivisible": "Nicht zusammen mit „Beliebig teilbar“ – Verbrauchsmaterial geht in ganzen Packungen."
+    "withoutStockNotDivisible": "Nicht zusammen mit „Beliebig teilbar“ – Verbrauchsmaterial geht in ganzen Packungen.",
+    "notAMedicineHint": "Kein Arzneimittel, etwa Futter, Shampoo oder Verbrauchsmaterial: Die AMPreisV gilt nicht. Den Verkaufspreis netto von Hand eintragen, brutto kommt die USt. dazu; eine Teilmenge kostet anteilig. „Humanpräparat“ spielt dann keine Rolle.",
+    "computedProRata": "Anteilig aus dem Packungspreis"
   },
   "pdfStale": {
     "title": "PDF veraltet",
@@ -777,7 +780,8 @@
     "salesPriceManual": "Verkaufspreis von Hand gesetzt ({{price}}) — bleibt so",
     "scan": "Packung scannen",
     "scanPlaceholder": "Data-Matrix-Code scannen: füllt Charge und Verfall",
-    "unknownCode": "Diesen Code kennt k-vet noch nicht."
+    "unknownCode": "Diesen Code kennt k-vet noch nicht.",
+    "salesPriceByHand": "Kein Medikament: Verkaufspreis von Hand ({{price}}) — bleibt so"
   },
   "delivery": {
     "addCode": "Hinzufügen",

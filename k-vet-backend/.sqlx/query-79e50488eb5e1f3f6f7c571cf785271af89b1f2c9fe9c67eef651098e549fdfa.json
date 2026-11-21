@@ -1,0 +1,16 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug_packaging SET\n                 list_price_net  = COALESCE($2, list_price_net),\n                 sales_price_net = CASE WHEN price_overridden OR $3::numeric IS NULL\n                                        THEN sales_price_net ELSE $3 END\n             WHERE id = $1",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8",
+        "Numeric",
+        "Numeric"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "79e50488eb5e1f3f6f7c571cf785271af89b1f2c9fe9c67eef651098e549fdfa"
+}

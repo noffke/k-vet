@@ -592,7 +592,8 @@ async fn load_items(
                   drug.name AS "drug_name?", service.name AS "service_name?",
                   rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,
                   rule.subset_price_net, rule.freely_divisible AS "freely_divisible?",
-                  rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?"
+                  rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?",
+                  rule.not_a_medicine AS "not_a_medicine?"
            FROM treatment_template_item item
            LEFT JOIN drug_packaging packaging ON packaging.id = item.drug_packaging_id
            LEFT JOIN drug ON drug.id = packaging.drug_id
@@ -626,6 +627,7 @@ async fn load_items(
                             freely_divisible: row.freely_divisible.unwrap_or(false),
                             human_drug: row.human_drug.unwrap_or(false),
                             vat_percent: row.vat_percent,
+                            not_a_medicine: row.not_a_medicine.unwrap_or(false),
                         },
                         pharmacy,
                     )

@@ -406,7 +406,8 @@
       "refrigerate": "Refrigerate",
       "submissionReceipt": "Submission receipt",
       "vaccine": "Vaccine",
-      "withoutStock": "No stock kept (consumable)"
+      "withoutStock": "No stock kept (consumable)",
+      "notAMedicine": "Not a medicine"
     },
     "flagsLegend": "Flags",
     "freelyDivisibleHint": "E.g. injection liquids: any quantity can be billed, such as 2.7 ml from a 100 ml bottle. Without it, what is left after whole packs goes only in steps of the smallest part pack.",
@@ -431,7 +432,7 @@
     "packageCountOnly": "{{count}} packages",
     "packagings": "Packagings",
     "packs": "packs",
-    "priceByHand": "Sales price by hand — consumables are not priced by the AMPreisV.",
+    "priceByHand": "Sales price by hand — not a medicine, so the AMPreisV does not apply.",
     "priceOverride": "Price overridden manually",
     "remaining": "Remaining",
     "removeCode": "Remove code {{code}}",
@@ -445,11 +446,13 @@
     "subsetPriceDerived": "Derived from the original packaging",
     "title": "Pharmacy",
     "withoutStock": "No stock kept",
-    "withoutStockHint": "Consumables such as syringes, needles or bandages: billed without lots or stock, in whole packs — for a price per piece, set the pack up as 1 piece. Not priced by the AMPreisV: enter the sales price by hand.",
+    "withoutStockHint": "Consumables such as syringes, needles or bandages: billed without lots or stock, in whole packs — for a price per piece, set the pack up as 1 piece. If it is not a medicine, also set “Not a medicine”: then the AMPreisV does not apply.",
     "withoutStockNeedsNoMinStock": "Clear the minimum stock first — a consumable has none.",
     "withoutStockNeedsNoStock": "Correct the remaining stock to 0 first — a consumable keeps none.",
     "withoutStockNeedsNoSubsets": "Delete the subsets first — a consumable has none.",
-    "withoutStockNotDivisible": "Not together with “freely divisible” — a consumable goes in whole packs."
+    "withoutStockNotDivisible": "Not together with “freely divisible” — a consumable goes in whole packs.",
+    "notAMedicineHint": "Not a medicine, such as food, shampoo or consumables: the AMPreisV does not apply. Enter the net sales price by hand; the gross adds the VAT; a subset costs its share. “Human preparation” does not matter then.",
+    "computedProRata": "Share of the pack price"
   },
   "pdfStale": {
     "title": "PDF out of date",
@@ -777,7 +780,8 @@
     "salesPriceManual": "Sales price set by hand ({{price}}) — stays as it is",
     "scan": "Scan the pack",
     "scanPlaceholder": "Scan the Data Matrix: fills batch and expiry",
-    "unknownCode": "k-vet does not know this code yet."
+    "unknownCode": "k-vet does not know this code yet.",
+    "salesPriceByHand": "Not a medicine: sales price by hand ({{price}}) — stays as it is"
   },
   "delivery": {
     "addCode": "Add",

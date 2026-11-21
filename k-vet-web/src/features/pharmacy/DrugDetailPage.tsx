@@ -75,8 +75,8 @@ export function DrugDetailPage() {
       }),
     onSaved: (updated) => {
       store(updated)
-      // A changed VAT rate — or the Humanpräparat flag, which picks the AMPreisV rule — moves
-      // every computed packaging price. Use the generated key: a hand-written one silently
+      // A changed VAT rate — or the Humanpräparat flag, which picks the AMPreisV rule, or
+      // "Kein Medikament", which leaves it — moves every computed packaging price. Use the generated key: a hand-written one silently
       // matches nothing, which is why this refresh never actually happened.
       void client.invalidateQueries({ queryKey: getListPackagingsQueryKey(drugId) })
     },
@@ -239,6 +239,9 @@ export function DrugDetailPage() {
                 key={flag}
                 label={t(`pharmacy.flags.${camelCase(flag)}`)}
                 defaultChecked={record[flag]}
+                // A product that is no medicine is not priced by the AMPreisV at all, so which
+                // of its rules applies does not arise.
+                disabled={flag === 'human_drug' && record.not_a_medicine}
                 onChange={(event) => {
                   autoSave.set({ [flag]: event.target.checked } as Partial<Drug>)
                   void autoSave.flush()
@@ -258,6 +261,19 @@ export function DrugDetailPage() {
               }}
             />
             <p className="text-xs text-ink-faint">{t('pharmacy.euthanasiaHint')}</p>
+          </div>
+          {/* Not informational either: it takes the drug out of the AMPreisV (migration 0045).
+              The vet types the net sales price; a Teilmenge is proposed pro rata. */}
+          <div className="mt-2 flex flex-col gap-1">
+            <CheckboxField
+              label={t('pharmacy.flags.notAMedicine')}
+              defaultChecked={record.not_a_medicine}
+              onChange={(event) => {
+                autoSave.set({ not_a_medicine: event.target.checked })
+                void autoSave.flush()
+              }}
+            />
+            <p className="text-xs text-ink-faint">{t('pharmacy.notAMedicineHint')}</p>
           </div>
           {/* Not informational either: it decides which quantities a position can take. It
               excludes Teilmengen (migration 0041), so it waits until they are deleted. */}
@@ -285,8 +301,7 @@ export function DrugDetailPage() {
             ) : null}
           </div>
           {/* A consumable — syringe, needle, bandage: on the invoice without any stock kept,
-              in whole packs, at the price the vet types; not an Arzneimittel, so not priced by
-              the AMPreisV (migration 0043). */}
+              in whole packs (migration 0043). How it is priced is "Kein Medikament"'s call. */}
           <div className="mt-2 flex flex-col gap-1">
             <CheckboxField
               label={t('pharmacy.flags.withoutStock')}

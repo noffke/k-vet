@@ -35,6 +35,8 @@ export interface PatchDrug {
   freely_divisible?: boolean | null;
   /** @nullable */
   without_stock?: boolean | null;
+  /** @nullable */
+  not_a_medicine?: boolean | null;
   /**
      * `null` clears the Mindestbestand.
      * @nullable

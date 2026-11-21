@@ -680,3 +680,117 @@ async fn a_drug_has_an_optional_minimum_stock_in_whole_packs() {
         json!([{ "field": "min_stock_packs", "message": "drug.minStockWithoutStock" }])
     );
 }
+
+/// "Kein Medikament" (migration 0045, 2026-11-21): not an Arzneimittel, so the AMPreisV prices
+/// none of it. The vet types the pack's net price and the gross follows from the VAT rate; a
+/// Teilmenge is allowed and proposed as its share of that price, without the § 4 mark-up; and a
+/// changed list price moves nothing. Turned off, the AMPreisV is back.
+#[tokio::test]
+async fn a_product_that_is_no_medicine_is_priced_by_hand_and_its_teilmenge_pro_rata() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool).await;
+    let (supplier, manufacturer) = address_book(&app).await;
+    let (drug_id, packaging_id) = drug_with_original(&app, supplier, manufacturer).await;
+    let packagings_uri = format!("/api/drugs/{drug_id}/packagings");
+
+    let marked = app
+        .patch(
+            &format!("/api/drugs/{drug_id}"),
+            json!({ "not_a_medicine": true }),
+        )
+        .await;
+    assert_eq!(marked.status, StatusCode::OK);
+    assert_eq!(marked.json()["not_a_medicine"], true);
+    let packagings = app.get(&packagings_uri).await.json();
+    assert!(
+        packaging(&packagings, packaging_id)["computed_price_net"].is_null(),
+        "no AMPreisV figure beside the pack's price"
+    );
+
+    // The net price as typed, the gross derived: 10,00 € + 19 % = 11,90 €.
+    app.patch(
+        &format!("/api/packagings/{packaging_id}"),
+        json!({ "sales_price_net": "10.00" }),
+    )
+    .await;
+    app.patch(
+        &format!("/api/packagings/{packaging_id}"),
+        json!({ "list_price_net": "20.00" }),
+    )
+    .await;
+    let packagings = app.get(&packagings_uri).await.json();
+    let pack = packaging(&packagings, packaging_id);
+    assert_eq!(
+        pack["sales_price_net"], "10.00",
+        "the list price moves nothing"
+    );
+    assert_eq!(pack["sales_price_gross"], "11.90");
+
+    // A Teilmenge is allowed, and proposed as its share of the pack: 10 ml of 100 ml = 1,00 €.
+    let subset_id = app
+        .post(&packagings_uri, json!({ "kind": "subset" }))
+        .await
+        .id();
+    let created = app
+        .patch(
+            &format!("/api/packagings/{subset_id}"),
+            json!({ "quantity": "10" }),
+        )
+        .await;
+    assert_eq!(
+        created.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&created.body)
+    );
+    let packagings = app.get(&packagings_uri).await.json();
+    let subset = packaging(&packagings, subset_id);
+    assert_eq!(subset["sales_price_net"], "1.00");
+    assert_eq!(subset["sales_price_gross"], "1.19");
+    assert_eq!(subset["computed_price_net"], "1.00");
+    assert_eq!(subset["list_price_net"], "2.00", "still derived pro rata");
+    assert_eq!(subset["price_overridden"], false);
+    assert_eq!(subset["draft"], false);
+
+    // Typed over, it stays; reset, the share is back.
+    app.patch(
+        &format!("/api/packagings/{subset_id}"),
+        json!({ "sales_price_net": "1.50" }),
+    )
+    .await;
+    let packagings = app.get(&packagings_uri).await.json();
+    assert_eq!(packaging(&packagings, subset_id)["sales_price_net"], "1.50");
+    assert_eq!(packaging(&packagings, subset_id)["price_overridden"], true);
+    app.patch(
+        &format!("/api/packagings/{subset_id}"),
+        json!({ "sales_price_net": null }),
+    )
+    .await;
+    let packagings = app.get(&packagings_uri).await.json();
+    assert_eq!(packaging(&packagings, subset_id)["sales_price_net"], "1.00");
+
+    // A new pack price moves the proposal with it: 12,00 € → 1,20 € for 10 ml.
+    app.patch(
+        &format!("/api/packagings/{packaging_id}"),
+        json!({ "sales_price_net": "12.00" }),
+    )
+    .await;
+    let packagings = app.get(&packagings_uri).await.json();
+    assert_eq!(packaging(&packagings, subset_id)["sales_price_net"], "1.20");
+
+    // A medicine after all: the AMPreisV prices the Teilmenge again — 2,00 € listed for 10 ml,
+    // plus 100 % — while the pack keeps the price the vet typed.
+    app.patch(
+        &format!("/api/drugs/{drug_id}"),
+        json!({ "not_a_medicine": false }),
+    )
+    .await;
+    let packagings = app.get(&packagings_uri).await.json();
+    assert_eq!(packaging(&packagings, subset_id)["sales_price_net"], "4.00");
+    assert!(!packaging(&packagings, packaging_id)["computed_price_net"].is_null());
+    assert_eq!(
+        packaging(&packagings, packaging_id)["sales_price_net"],
+        "12.00"
+    );
+}

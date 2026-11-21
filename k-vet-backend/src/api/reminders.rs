@@ -148,7 +148,8 @@ async fn load(
                   drug.without_stock,
                   rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,
                   rule.subset_price_net, rule.freely_divisible AS "freely_divisible?",
-                  rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?"
+                  rule.human_drug AS "human_drug?", rule.vat_percent AS "vat_percent?",
+                  rule.not_a_medicine AS "not_a_medicine?"
            FROM appointment_reminder reminder
            JOIN appointment ON appointment.id = reminder.appointment_id
            JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id
@@ -182,6 +183,7 @@ async fn load(
                     freely_divisible: row.freely_divisible.unwrap_or(false),
                     human_drug: row.human_drug.unwrap_or(false),
                     vat_percent: row.vat_percent,
+                    not_a_medicine: row.not_a_medicine.unwrap_or(false),
                 },
                 pharmacy,
             )

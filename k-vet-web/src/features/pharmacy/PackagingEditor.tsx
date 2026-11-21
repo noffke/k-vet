@@ -188,7 +188,8 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   money
                   disabled={!isOriginal}
                   hint={
-                    drug.without_stock
+                    // Not a medicine: no AMPreisV computes from the purchase price.
+                    drug.not_a_medicine && isOriginal
                       ? t('pharmacy.listPriceForReference')
                       : isOriginal
                         ? t('field.listPriceHint')
@@ -196,8 +197,9 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                   }
                   onChange={(value) => value && isOriginal && patch({ list_price_net: value })}
                 />
-                {/* The vet edits the net price the AMPreisV computes; the gross it comes to is
-                    on this box's headline, so there is no hidden conversion either way. */}
+                {/* The vet edits the net price the AMPreisV computes — or, for a product that is
+                    no medicine, sets it; the gross it comes to is on this box's headline, so
+                    there is no hidden conversion either way. */}
                 <NumberInput
                   label={t('field.salesPriceNet')}
                   value={packaging.sales_price_net ?? null}
@@ -242,8 +244,8 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                 ) : null}
 
                 <p className="self-end text-xs text-ink-faint sm:col-span-2">
-                  {drug.without_stock ? (
-                    // No AMPreisV figure to set it against: a consumable's price is the vet's.
+                  {drug.not_a_medicine && isOriginal ? (
+                    // No AMPreisV figure to set it against: the pack's price is the vet's.
                     <span>{t('pharmacy.priceByHand')}</span>
                   ) : packaging.price_overridden ? (
                     <span className="flex flex-wrap items-center gap-2">
@@ -259,6 +261,11 @@ export function PackagingEditor({ drug, packagings, suppliers }: PackagingEditor
                         <RotateCcw className="size-3.5" />
                         {t('pharmacy.resetPrice')}
                       </Button>
+                    </span>
+                  ) : drug.not_a_medicine ? (
+                    // A Teilmenge of a product that is no medicine: its share of the pack.
+                    <span className="numeric">
+                      {t('pharmacy.computedProRata')}: {money(packaging.computed_price_net)}
                     </span>
                   ) : (
                     <span className="numeric">

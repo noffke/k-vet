@@ -97,14 +97,25 @@ default and exceeds the statutory maximum**: § 10 Abs. 1 permits *höchstens* t
 the vet, not a default of this application. It never bites on veterinary medicines, whose bands stay
 below 100 %.
 
-## Consumables are not priced by the AMPreisV
+## "Kein Medikament" is not priced by the AMPreisV
 
-A drug marked "Ohne Bestand" — syringes, needles, bandages (logic.md) — is not an Arzneimittel,
-so the AMPreisV does not apply to it (decided 2026-11-18). Its sales price is the one the vet
-types; nothing computes it, and a changed list price moves nothing — the list price stays on
-record for reference only. It is billed in whole packs, without the Teilmenge mark-up: no
-Teilmenge, never "Beliebig teilbar". Turned back into a drug, the AMPreisV applies again to a
-price the vet did not type.
+A product marked **"Kein Medikament"** — food, shampoo, a supplement, a consumable — is not an
+Arzneimittel, so the AMPreisV does not apply to it (decided 2026-11-21, migration 0045; until then
+"Ohne Bestand" carried this meaning, from 2026-11-18). The vet types the pack's **net** sales
+price and the gross follows from the VAT rate; nothing computes it, and a changed list price moves
+nothing — the list price stays on record for reference only.
+
+A Teilmenge stays possible, and so do "Beliebig teilbar" and "Ohne Bestand" (each with its own
+rules, logic.md). A Teilmenge the vet did not price is proposed as its **share of the pack's net
+price**, without the § 4 mark-up (`money::subset_share`: 10 ml of a 100 ml bottle at 10,00 € net
+are 1,00 € net); she may type another and go back to the share. A "beliebig teilbar" product
+without a Teilmenge bills its rest pro rata of the pack price. Its invoice rows say "Teilmenge
+50 ml" without "mit Anbruchaufschlag", since there is none.
+
+The flag turned off, the AMPreisV applies again to every price the vet did not type. "Ohne
+Bestand" on its own only says that no stock is kept: a medicine without stock is priced by the
+AMPreisV like any other. Every drug that was "Ohne Bestand" before 0045 became "Kein Medikament"
+as well and kept its typed price.
 
 ## Net is the stored unit
 

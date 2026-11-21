@@ -413,10 +413,26 @@ pub fn subset_list_price(
     original_quantity: Decimal,
     subset_quantity: Decimal,
 ) -> Decimal {
-    if original_quantity <= Decimal::ZERO {
+    pro_rata(original_list_price_net, original_quantity, subset_quantity)
+}
+
+/// The sales price proposed for a Teilmenge of a product that is not a medicine ("Kein
+/// Medikament"): its share of the pack's net sales price, without any mark-up — the AMPreisV
+/// does not apply, so neither does its § 4 Teilmengenzuschlag. The vet may type another.
+pub fn subset_share(
+    pack_price_net: Decimal,
+    pack_quantity: Decimal,
+    subset_quantity: Decimal,
+) -> Decimal {
+    pro_rata(pack_price_net, pack_quantity, subset_quantity)
+}
+
+/// `price` for `whole` units, scaled to `part` units and rounded to the cent.
+fn pro_rata(price: Decimal, whole: Decimal, part: Decimal) -> Decimal {
+    if whole <= Decimal::ZERO {
         return Decimal::ZERO;
     }
-    round_money(original_list_price_net / original_quantity * subset_quantity)
+    round_money(price / whole * part)
 }
 
 fn price_from(basis: Decimal, surcharge: Decimal, vat_percent: Decimal) -> DrugPrice {
@@ -1165,6 +1181,29 @@ mod tests {
             PricingPolicy::veterinary(),
         );
         assert_eq!(reduced.gross, dec("2.14"));
+    }
+
+    #[test]
+    fn a_teilmenge_of_a_product_that_is_no_medicine_is_its_share_of_the_pack() {
+        // ⚠ FOR VET REVIEW (SC-005), item AMP-07 in `review.md`: "Kein Medikament" is outside
+        // the AMPreisV, so a Teilmenge is proposed as its plain share of the pack's net price —
+        // no § 4 mark-up. A 100 ml bottle at 10.00 net: 10 ml are 1.00 net, 1.19 gross at 19 %.
+        let ten = subset_share(dec("10.00"), dec("100"), dec("10"));
+        assert_eq!(ten, dec("1.00"));
+        assert_eq!(add_vat(ten, dec("19")).gross, dec("1.19"));
+
+        // A pack of 30 tablets at 12.00 net: one tablet 0.40, seven 2.80.
+        assert_eq!(subset_share(dec("12.00"), dec("30"), dec("1")), dec("0.40"));
+        assert_eq!(subset_share(dec("12.00"), dec("30"), dec("7")), dec("2.80"));
+
+        // Rounded to the cent like every amount: a third of 10.00 is 3.33.
+        assert_eq!(subset_share(dec("10.00"), dec("3"), dec("1")), dec("3.33"));
+
+        // A pack without a size has no share to give.
+        assert_eq!(
+            subset_share(dec("10.00"), dec("0"), dec("1")),
+            Decimal::ZERO
+        );
     }
 
     #[test]

@@ -122,11 +122,13 @@ pub struct Catalogue {
     pub freely_divisible: bool,
     pub human_drug: bool,
     pub vat_percent: Option<Decimal>,
+    /// "Kein Medikament" (migration 0045): outside the AMPreisV.
+    pub not_a_medicine: bool,
 }
 
 /// How a drug is priced when dispensed today: its pack, its smallest Teilmenge — or, for a
-/// "beliebig teilbar" drug without one, the whole pack priced as a Teilmenge. `None` while the
-/// pack has no size or no price.
+/// "beliebig teilbar" drug without one, the whole pack priced as a Teilmenge (a product "Kein
+/// Medikament": the pack's own price, pro rata). `None` while the pack has no size or no price.
 pub fn pricing(catalogue: &Catalogue, pharmacy: &PharmacyConfig) -> Option<DispensePricing> {
     let pack_size = catalogue.pack_size.filter(|size| *size > Decimal::ZERO)?;
     let pack_price_net = catalogue.pack_price_net?;
@@ -137,6 +139,13 @@ pub fn pricing(catalogue: &Catalogue, pharmacy: &PharmacyConfig) -> Option<Dispe
     let subset = own.or_else(|| {
         if !catalogue.freely_divisible {
             return None;
+        }
+        // Not an Arzneimittel: no § 4 mark-up, the rest costs its share of the pack.
+        if catalogue.not_a_medicine {
+            return Some(SubsetPrice {
+                size: pack_size,
+                price_net: pack_price_net,
+            });
         }
         money::whole_pack_as_subset(
             catalogue.list_price_net?,
@@ -175,7 +184,8 @@ pub async fn drug_dispense(
     let row = sqlx::query!(
         r#"SELECT rule.original_id, rule.unit, rule.pack_size, rule.pack_price_net,
                   rule.list_price_net, rule.original_draft, rule.drug_name, rule.vat_percent,
-                  rule.human_drug, rule.freely_divisible, rule.subset_size, rule.subset_price_net
+                  rule.human_drug, rule.freely_divisible, rule.subset_size, rule.subset_price_net,
+                  rule.not_a_medicine
            FROM drug_packaging picked
            LEFT JOIN drug_dispense_rule rule ON rule.drug_id = picked.drug_id
            WHERE picked.id = $1"#,
@@ -200,6 +210,7 @@ pub async fn drug_dispense(
         freely_divisible: row.freely_divisible.unwrap_or(false),
         human_drug: row.human_drug.unwrap_or(false),
         vat_percent: Some(vat_percent),
+        not_a_medicine: row.not_a_medicine.unwrap_or(false),
     };
     let pricing = pricing(&catalogue, pharmacy).ok_or_else(incomplete)?;
     Ok(DrugDispense {
@@ -299,6 +310,34 @@ mod tests {
                 .map(|rule| rule.preset),
             Some(dec("100"))
         );
+    }
+
+    #[test]
+    fn a_freely_divisible_product_that_is_no_medicine_bills_its_rest_pro_rata() {
+        // "Kein Medikament": no § 4 mark-up on the rest, just its share of the pack's price —
+        // 14.80 for 100 ml, so 0.148 per ml rather than the AMPreisV's 0.20.
+        let catalogue = Catalogue {
+            freely_divisible: true,
+            not_a_medicine: true,
+            ..bottle()
+        };
+        let priced = pricing(&catalogue, &PharmacyConfig::default());
+        assert_eq!(
+            priced.and_then(|pricing| pricing.subset),
+            Some(SubsetPrice {
+                size: dec("100"),
+                price_net: dec("14.80"),
+            })
+        );
+        assert_eq!(priced.map(|pricing| pricing.freely_divisible), Some(true));
+
+        // Without a listed price as well: the pack's price is all it needs.
+        let unlisted = Catalogue {
+            list_price_net: None,
+            ..catalogue
+        };
+        let priced = pricing(&unlisted, &PharmacyConfig::default());
+        assert_eq!(priced.map(|pricing| pricing.freely_divisible), Some(true));
     }
 
     #[test]

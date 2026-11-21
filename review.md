@@ -309,6 +309,37 @@ der Zeilenbetrag immer in Cent.
 
 ---
 
+### AMP-07 · „Kein Medikament": Preis von Hand, Teilmenge anteilig
+
+Für Produkte, die **kein Arzneimittel** sind — Futter, Shampoo, Nahrungsergänzung,
+Verbrauchsmaterial — setzen Sie am Medikament den Haken **„Kein Medikament"**. Dann gilt die
+AMPreisV nicht: Sie tragen den **Verkaufspreis netto** von Hand ein, brutto kommt die
+Mehrwertsteuer dazu. Ein geänderter Einkaufspreis ändert daran nichts.
+
+Teilmengen gehen weiterhin. Eine Teilmenge kostet zunächst ihren **Anteil am Packungspreis, ohne
+Anbruchaufschlag** — Sie können einen anderen Preis eintragen.
+
+| Packung (netto)        | Teilmenge | Vorschlag netto | brutto bei 19 % |
+| ---------------------- | --------- | --------------- | --------------- |
+| 100 ml zu 10,00 €      | 10 ml     | 1,00 €          | 1,19 €          |
+| 30 Tabletten zu 12,00 € | 1 Tablette | 0,40 €         | 0,48 €          |
+| 30 Tabletten zu 12,00 € | 7 Tabletten | 2,80 €        | 3,33 €          |
+
+Ist das Produkt auch **„Beliebig teilbar"** und hat keine Teilmenge, kostet der Rest ebenfalls
+seinen Anteil am Packungspreis. Auf der Rechnung steht dann „Teilmenge 50 ml" — ohne „mit
+Anbruchaufschlag".
+
+Alles, was bisher **„Ohne Bestand"** war (Spritzen, Kanülen, Verbände), ist jetzt zusätzlich
+„Kein Medikament" und behält seinen Preis. „Ohne Bestand" allein heißt nur noch: kein Bestand.
+
+**Frage:** Ist der anteilige Vorschlag ohne Aufschlag für Teilmengen solcher Produkte richtig?
+
+*Fundstelle: `src/domain/money.rs`, `subset_share`*
+
+*Status:* ☐ bestätigt  ☐ Rückfrage: ______________________________________________
+
+---
+
 ## C · Wegegeld (GOT § 10)
 
 ### WEG-01 · Sätze

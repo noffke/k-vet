@@ -116,6 +116,7 @@ pub async fn items(
                   drug.freely_divisible   AS freely_divisible,
                   drug.human_drug         AS human_drug,
                   drug.without_stock      AS without_stock,
+                  drug.not_a_medicine     AS not_a_medicine,
                   NULL::text              AS got_number,
                   NULL::numeric           AS factor,
                   false                   AS travel_expenses,
@@ -159,6 +160,7 @@ pub async fn items(
                   false             AS freely_divisible,
                   false             AS human_drug,
                   false             AS without_stock,
+                  false             AS not_a_medicine,
                   service.got_number AS got_number,
                   service.factor    AS factor,
                   service.travel_expenses AS travel_expenses,
@@ -211,6 +213,7 @@ pub async fn items(
                             freely_divisible: row.freely_divisible.unwrap_or(false),
                             human_drug: row.human_drug.unwrap_or(false),
                             vat_percent: Some(vat_percent),
+                            not_a_medicine: row.not_a_medicine.unwrap_or(false),
                         },
                         pharmacy,
                     )?;

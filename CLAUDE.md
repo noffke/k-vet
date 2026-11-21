@@ -124,7 +124,10 @@ is pure and unit-tested, including path-traversal refusal).
   place pre-formatted strings.
   Which AMPreisV rule applies is chosen per drug by `drug.human_drug`: § 3 Abs. 1 Satz 3 (the
   Abs. 3/4 bands) for a veterinary medicine, Satz 2 (3 % + 8,10 €) for a human one used on an
-  animal. `[pharmacy] subset_never_below_proportional` is a deliberate, off-by-default deviation
+  animal. `drug.not_a_medicine` ("Kein Medikament", migration 0045) takes a drug out of the
+  AMPreisV altogether: the vet types the pack's net price, a Teilmenge is proposed pro rata
+  (`money::subset_share`, `drugs::recompute_prices`), independent of "Ohne Bestand".
+  `[pharmacy] subset_never_below_proportional` is a deliberate, off-by-default deviation
   that can exceed the statutory maximum — see `requirements/prices.md`.
   **Prices are net**, the gross is derived (`add_vat`). This is what the fee schedules compute in,
   and it is why migration `0009` exists: the GOT catalogue's published *net* fees had been imported

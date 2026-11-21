@@ -1,6 +1,6 @@
 {
   "db_name": "PostgreSQL",
-  "query": "WITH stock AS (\n               SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id\n           )\n           SELECT reminder.id, reminder.appointment_id, reminder.drug_packaging_id,\n                  drug.id AS drug_id, COALESCE(drug.name, '') AS \"name!\",\n                  packaging.unit, packaging.quantity AS size,\n                  reminder.quantity, reminder.note, reminder.packed, reminder.position,\n                  reminder.taken_item_id,\n                  (rule.original_id IS NOT NULL AND NOT drug.without_stock\n                   AND COALESCE(stock.remaining, 0) < reminder.quantity) AS \"stock_short!\",\n                  drug.without_stock,\n                  rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,\n                  rule.subset_price_net, rule.freely_divisible AS \"freely_divisible?\",\n                  rule.human_drug AS \"human_drug?\", rule.vat_percent AS \"vat_percent?\"\n           FROM appointment_reminder reminder\n           JOIN appointment ON appointment.id = reminder.appointment_id\n           JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN drug_dispense_rule rule ON rule.drug_id = drug.id\n           LEFT JOIN stock ON stock.drug_id = drug.id\n           WHERE ($1::bigint IS NULL OR reminder.id = $1)\n             AND ($2::bigint IS NULL OR reminder.appointment_id = $2)\n             AND ($3::timestamptz IS NULL\n                  OR (appointment.starts_at >= $3 AND appointment.starts_at < $4\n                      AND reminder.taken_item_id IS NULL))\n           ORDER BY appointment.starts_at, reminder.appointment_id, reminder.position",
+  "query": "WITH stock AS (\n               SELECT drug_id, SUM(remaining) AS remaining FROM lot_remaining GROUP BY drug_id\n           )\n           SELECT reminder.id, reminder.appointment_id, reminder.drug_packaging_id,\n                  drug.id AS drug_id, COALESCE(drug.name, '') AS \"name!\",\n                  packaging.unit, packaging.quantity AS size,\n                  reminder.quantity, reminder.note, reminder.packed, reminder.position,\n                  reminder.taken_item_id,\n                  (rule.original_id IS NOT NULL AND NOT drug.without_stock\n                   AND COALESCE(stock.remaining, 0) < reminder.quantity) AS \"stock_short!\",\n                  drug.without_stock,\n                  rule.pack_size, rule.pack_price_net, rule.list_price_net, rule.subset_size,\n                  rule.subset_price_net, rule.freely_divisible AS \"freely_divisible?\",\n                  rule.human_drug AS \"human_drug?\", rule.vat_percent AS \"vat_percent?\",\n                  rule.not_a_medicine AS \"not_a_medicine?\"\n           FROM appointment_reminder reminder\n           JOIN appointment ON appointment.id = reminder.appointment_id\n           JOIN drug_packaging packaging ON packaging.id = reminder.drug_packaging_id\n           JOIN drug ON drug.id = packaging.drug_id\n           LEFT JOIN drug_dispense_rule rule ON rule.drug_id = drug.id\n           LEFT JOIN stock ON stock.drug_id = drug.id\n           WHERE ($1::bigint IS NULL OR reminder.id = $1)\n             AND ($2::bigint IS NULL OR reminder.appointment_id = $2)\n             AND ($3::timestamptz IS NULL\n                  OR (appointment.starts_at >= $3 AND appointment.starts_at < $4\n                      AND reminder.taken_item_id IS NULL))\n           ORDER BY appointment.starts_at, reminder.appointment_id, reminder.position",
   "describe": {
     "columns": [
       {
@@ -234,6 +234,17 @@
             "name": "vat_percent"
           }
         }
+      },
+      {
+        "ordinal": 22,
+        "name": "not_a_medicine?",
+        "type_info": "Bool",
+        "origin": {
+          "Table": {
+            "table": "drug_dispense_rule",
+            "name": "not_a_medicine"
+          }
+        }
       }
     ],
     "parameters": {
@@ -266,8 +277,9 @@
       true,
       true,
       true,
+      true,
       true
     ]
   },
-  "hash": "9b0f3cd890082fdcd0788525ba6bad31fba96a881feaa2cf1ce11e87830106b1"
+  "hash": "98816cfe21fff8d7842ac8056279b8c63feadb8095f77b97a8cab0c9abecd62d"
 }

@@ -6704,6 +6704,7 @@
           "euthanasia",
           "freely_divisible",
           "without_stock",
+          "not_a_medicine",
           "archived",
           "draft",
           "missing_fields",
@@ -6770,7 +6771,11 @@
           },
           "without_stock": {
             "type": "boolean",
-            "description": "\"Ohne Bestand\": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs, at the sales price the vet types; not priced by the AMPreisV (migration\n0043). No lots, no Teilmengen, never \"Beliebig teilbar\"."
+            "description": "\"Ohne Bestand\": a consumable — syringe, bandage — billed without any stock kept, in\nwhole packs (migration 0043). No lots, no Teilmengen, never \"Beliebig teilbar\". How it\nis priced is `not_a_medicine`'s call."
+          },
+          "not_a_medicine": {
+            "type": "boolean",
+            "description": "\"Kein Medikament\": not an Arzneimittel — food, shampoo, a consumable — so the AMPreisV\ndoes not price it (migration 0045). The vet types the net sales price; a Teilmenge is\nproposed as its share of the pack's net price, without the § 4 mark-up."
           },
           "min_stock_packs": {
             "type": [
@@ -7811,7 +7816,7 @@
               "string",
               "null"
             ],
-            "description": "What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug\n\"Ohne Bestand\", which the AMPreisV does not price."
+            "description": "What AMPreisV would charge, net — shown next to an overridden price. For a product\n\"Kein Medikament\" the AMPreisV computes nothing: `None` for its pack, whose price the vet\ntypes, and the pro-rata share of that price for a Teilmenge."
           },
           "supplier_id": {
             "type": [
@@ -8323,6 +8328,12 @@
             ]
           },
           "without_stock": {
+            "type": [
+              "boolean",
+              "null"
+            ]
+          },
+          "not_a_medicine": {
             "type": [
               "boolean",
               "null"

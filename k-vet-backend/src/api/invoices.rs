@@ -964,7 +964,8 @@ async fn build_document(
         .collect();
     let packagings: Vec<PackagingDetail> = sqlx::query!(
         r#"SELECT packaging.id, packaging.kind AS "kind: PackagingKind", drug.approval_number,
-                  drug.human_drug OR drug.redesignation AS "redesignated!", drug.without_stock
+                  drug.human_drug OR drug.redesignation AS "redesignated!", drug.without_stock,
+                  drug.not_a_medicine
            FROM drug_packaging packaging
            JOIN drug ON drug.id = packaging.drug_id
            WHERE packaging.id = ANY($1)"#,
@@ -979,6 +980,7 @@ async fn build_document(
         approval_number: row.approval_number,
         redesignated: row.redesignated,
         consumable: row.without_stock,
+        not_a_medicine: row.not_a_medicine,
     })
     .collect();
 
@@ -1154,6 +1156,9 @@ struct PackagingDetail {
     /// A consumable "Ohne Bestand" — not an Arzneimittel, so it is counted in "Stück", not
     /// "Originalpackungen" (migration 0043).
     consumable: bool,
+    /// "Kein Medikament" (migration 0045): outside the AMPreisV, so a Teilmenge carries no
+    /// Anbruchaufschlag to mention.
+    not_a_medicine: bool,
 }
 
 /// `Hund, Havaneser, Geburtsdatum: 01.01.2021, Chipnummer: 276098106222333` — empty parts are
@@ -1286,14 +1291,21 @@ fn invoice_rows(
         ));
     }
     if let Some(rest) = &dispense.remainder {
+        let not_a_medicine = item
+            .drug_packaging_id
+            .and_then(|id| packagings.iter().find(|row| row.id == id))
+            .is_some_and(|packaging| packaging.not_a_medicine);
+        // The AMPreisV's § 4 mark-up is what "mit Anbruchaufschlag" names; a product that is no
+        // medicine is priced pro rata and has none.
+        let surcharge = if not_a_medicine {
+            ""
+        } else {
+            ", mit Anbruchaufschlag"
+        };
         rows.push(row(
             rest.quantity,
             unit.clone(),
-            format!(
-                "Teilmenge {} {unit}, mit Anbruchaufschlag",
-                number_de(rest.quantity)
-            )
-            .replace(" ,", ","),
+            format!("Teilmenge {} {unit}{surcharge}", number_de(rest.quantity)).replace(" ,", ","),
             unit_price_de(rest.price_gross, currency),
             rest.line_gross,
         ));
@@ -1897,6 +1909,7 @@ mod tests {
             approval_number: Some("402485.00.00".to_owned()),
             redesignated: false,
             consumable: false,
+            not_a_medicine: false,
         }];
         let rows = invoice_rows(&dispensed_line(), &packagings, String::new(), "EUR");
         let printed: Vec<(&str, &str, &str, &str, &str)> = rows
@@ -1957,6 +1970,7 @@ mod tests {
             approval_number: None,
             redesignated: false,
             consumable: true,
+            not_a_medicine: true,
         }];
         let detail = |pack_size: i64, packs: i64| {
             let mut line = dispensed_line();
@@ -1977,6 +1991,24 @@ mod tests {
         assert_eq!(detail(1, 1), "1 Stück");
         // A roll of bandage of 5 m: two rolls.
         assert_eq!(detail(5, 2), "2 Stück à 5 m");
+    }
+
+    /// A Teilmenge of a product that is no medicine is its share of the pack, not an AMPreisV
+    /// Teilmenge: the row says nothing of an Anbruchaufschlag it does not carry.
+    #[test]
+    fn a_teilmenge_of_a_product_that_is_no_medicine_has_no_anbruchaufschlag() {
+        let packagings = [PackagingDetail {
+            id: 7,
+            kind: PackagingKind::Original,
+            approval_number: None,
+            redesignated: false,
+            consumable: false,
+            not_a_medicine: true,
+        }];
+        let rows = invoice_rows(&dispensed_line(), &packagings, String::new(), "EUR");
+        assert_eq!(rows.len(), 2);
+        assert_eq!(rows[0].detail, "1 Originalpackung à 100 ml");
+        assert_eq!(rows[1].detail, "Teilmenge 50 ml");
     }
 
     #[test]
@@ -2012,6 +2044,7 @@ mod tests {
                 approval_number: None,
                 redesignated,
                 consumable: false,
+                not_a_medicine: false,
             }]
         };
         let marks = |line: &treatment_items::TreatmentItem, packagings: &[PackagingDetail]| {

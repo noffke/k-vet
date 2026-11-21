@@ -42,8 +42,12 @@ Generally, all entities should have a created and updated timestamp.
     liquids. Without a Teilmenge of its own, the rest is priced as its share of the whole pack
     priced as a Teilmenge (`prices.md`).
   * Without Stock ("Ohne Bestand") (bool) — a consumable (syringe, bandage): billed in whole
-    packs at the sales price the vet types, outside the AMPreisV; no lots, no stock movements,
-    no Teilmengen, never Freely Divisible. Set only while no lot holds stock (migration 0043).
+    packs; no lots, no stock movements, no Teilmengen, never Freely Divisible. Set only while no
+    lot holds stock (migration 0043). How it is priced is Not a Medicine's call.
+  * Not a Medicine ("Kein Medikament") (bool) — not an Arzneimittel (food, shampoo, consumables):
+    outside the AMPreisV. The pack's net sales price is typed by the vet; a Teilmenge is proposed
+    as its share of that price, without the § 4 mark-up (`prices.md`, migration 0045).
+    Independent of Without Stock and Freely Divisible.
   * Minimum Stock ("Mindestbestand") (int, optional) — in whole original packs; below it the
     dashboard lists the drug to reorder. None for a drug Without Stock (migration 0044).
   * Relation: 1 Manufacturer

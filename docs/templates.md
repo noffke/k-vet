@@ -198,7 +198,7 @@ price, and the rest as a Teilmenge with its own unit price. Both rows carry the 
 | `got_number` | GOT position number; empty for drugs and for self-defined services that name none. |
 | `km` | Kilometres on a travel-expense line; empty otherwise. |
 | `vat` | This line's VAT rate, e.g. `19 %`. |
-| `detail` | The small second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)` for a self-defined position charged analogously to that GOT number, `1 Originalpackung à 100 ml, Zulassungsnr: 402485.00.00` on a drug's pack row, `Teilmenge 50 ml, mit Anbruchaufschlag` on its Teilmenge row, `3 Stück` (or `2 Stück à 5 m` for a larger pack) on a consumable's. Empty when there is nothing to add. |
+| `detail` | The small second line: `GOT-Nr. 16`, `GOT-Nr. 16 (§8)` for a self-defined position charged analogously to that GOT number, `1 Originalpackung à 100 ml, Zulassungsnr: 402485.00.00` on a drug's pack row, `Teilmenge 50 ml, mit Anbruchaufschlag` on its Teilmenge row (`Teilmenge 50 ml` for a product "Kein Medikament", which has no mark-up), `3 Stück` (or `2 Stück à 5 m` for a larger pack) on a consumable's. Empty when there is nothing to add. |
 | `price` | Unit price, gross, **with the GOT factor already applied** — so `price × quantity` reconciles with `total`. Not the bare catalogue fee; that is the net figure the vet edits. On a Teilmenge row the price of one ml or tablet, with up to four decimals (`0,238 €`). |
 | `total` | Line total, gross. |
 | `redesignation` | `true` for a drug used outside its approval — a Humanpräparat, a drug flagged "Umwidmung", or a position ticked "Umwidmung". The default template writes "(Umwidmung)" after the name; `false` for services. |

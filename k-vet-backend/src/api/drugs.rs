@@ -61,9 +61,13 @@ pub struct Drug {
     /// only whole packs and multiples of the smallest Teilmenge. For injection liquids.
     pub freely_divisible: bool,
     /// "Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in
-    /// whole packs, at the sales price the vet types; not priced by the AMPreisV (migration
-    /// 0043). No lots, no Teilmengen, never "Beliebig teilbar".
+    /// whole packs (migration 0043). No lots, no Teilmengen, never "Beliebig teilbar". How it
+    /// is priced is `not_a_medicine`'s call.
     pub without_stock: bool,
+    /// "Kein Medikament": not an Arzneimittel — food, shampoo, a consumable — so the AMPreisV
+    /// does not price it (migration 0045). The vet types the net sales price; a Teilmenge is
+    /// proposed as its share of the pack's net price, without the § 4 mark-up.
+    pub not_a_medicine: bool,
     /// Mindestbestand, in whole original packagings: below it the dashboard lists the drug to
     /// reorder (migration 0044). Never for a drug "Ohne Bestand".
     pub min_stock_packs: Option<i32>,
@@ -100,8 +104,9 @@ pub struct Packaging {
     pub sales_price_gross: Option<Decimal>,
     /// `true` while the vet's manual price wins over the computed one.
     pub price_overridden: bool,
-    /// What AMPreisV would charge, net — shown next to an overridden price. `None` for a drug
-    /// "Ohne Bestand", which the AMPreisV does not price.
+    /// What AMPreisV would charge, net — shown next to an overridden price. For a product
+    /// "Kein Medikament" the AMPreisV computes nothing: `None` for its pack, whose price the vet
+    /// types, and the pro-rata share of that price for a Teilmenge.
     pub computed_price_net: Option<Decimal>,
     pub supplier_id: Option<i64>,
     pub supplier_name: Option<String>,
@@ -130,6 +135,7 @@ pub struct PatchDrug {
     pub euthanasia: Option<bool>,
     pub freely_divisible: Option<bool>,
     pub without_stock: Option<bool>,
+    pub not_a_medicine: Option<bool>,
     /// `null` clears the Mindestbestand.
     #[serde(default, deserialize_with = "double_option")]
     #[schema(value_type = Option<i32>)]
@@ -292,7 +298,8 @@ pub async fn patch(
                freely_divisible   = COALESCE($18, freely_divisible),
                antibiotic         = COALESCE($19, antibiotic),
                without_stock      = COALESCE($20, without_stock),
-               min_stock_packs    = CASE WHEN $21 THEN $22 ELSE min_stock_packs END
+               min_stock_packs    = CASE WHEN $21 THEN $22 ELSE min_stock_packs END,
+               not_a_medicine     = COALESCE($23, not_a_medicine)
            WHERE id = $1"#,
         id,
         body.name.is_some(),
@@ -316,11 +323,12 @@ pub async fn patch(
         body.without_stock,
         body.min_stock_packs.is_some(),
         body.min_stock_packs.flatten(),
+        body.not_a_medicine,
     )
     .execute(&mut *transaction)
     .await?;
 
-    // A changed VAT rate moves every computed price of this drug; "Ohne Bestand" turned off
+    // A changed VAT rate moves every computed price of this drug; "Kein Medikament" turned off
     // brings the AMPreisV back for a price the vet did not type.
     recompute_prices(&mut transaction, id, &state.config.pharmacy).await?;
     transaction.commit().await?;
@@ -556,22 +564,24 @@ pub async fn patch_packaging(
 ///
 /// The original's price follows § 3(3)/(4) capped by § 10(2); a subset takes its list
 /// price pro rata from the original and adds the § 4 Teilmengenzuschlag.
+///
+/// A product "Kein Medikament" is not an Arzneimittel, so the AMPreisV prices none of it: its
+/// pack keeps the net price the vet typed, and a Teilmenge she did not price is proposed as its
+/// share of that price (decided 2026-11-21).
 pub async fn recompute_prices(
     connection: &mut PgConnection,
     drug_id: i64,
     pharmacy: &PharmacyConfig,
 ) -> AppResult<()> {
     let drug = sqlx::query!(
-        "SELECT vat_percent, human_drug, without_stock FROM drug WHERE id = $1",
+        "SELECT vat_percent, human_drug, not_a_medicine FROM drug WHERE id = $1",
         drug_id
     )
     .fetch_optional(&mut *connection)
     .await?
     .ok_or(AppError::NotFound)?;
-    // A consumable is not an Arzneimittel: the AMPreisV does not price it, and its sales price
-    // is only ever the one the vet types (decided 2026-11-18).
-    if drug.without_stock {
-        return Ok(());
+    if drug.not_a_medicine {
+        return propose_subset_shares(connection, drug_id).await;
     }
     let vat = drug.vat_percent.unwrap_or(Decimal::ZERO);
     let policy = pricing_policy(drug.human_drug, pharmacy);
@@ -636,13 +646,63 @@ pub async fn recompute_prices(
     Ok(())
 }
 
+/// For a product "Kein Medikament": each Teilmenge keeps its pro-rata list price (which a
+/// complete Teilmenge needs), and one the vet did not price is offered its share of the pack's
+/// net sales price — nothing while the pack has none.
+async fn propose_subset_shares(connection: &mut PgConnection, drug_id: i64) -> AppResult<()> {
+    let Some(original) = sqlx::query!(
+        "SELECT quantity, list_price_net, sales_price_net FROM drug_packaging
+         WHERE drug_id = $1 AND kind = 'original'",
+        drug_id,
+    )
+    .fetch_optional(&mut *connection)
+    .await?
+    else {
+        return Ok(());
+    };
+    let Some(pack_quantity) = original.quantity else {
+        return Ok(());
+    };
+
+    let subsets = sqlx::query!(
+        "SELECT id, quantity FROM drug_packaging WHERE drug_id = $1 AND kind = 'subset'",
+        drug_id,
+    )
+    .fetch_all(&mut *connection)
+    .await?;
+    for subset in subsets {
+        let Some(quantity) = subset.quantity else {
+            continue;
+        };
+        let list_price = original
+            .list_price_net
+            .map(|price| money::subset_list_price(price, pack_quantity, quantity));
+        let share = original
+            .sales_price_net
+            .map(|price| money::subset_share(price, pack_quantity, quantity));
+        sqlx::query!(
+            "UPDATE drug_packaging SET
+                 list_price_net  = COALESCE($2, list_price_net),
+                 sales_price_net = CASE WHEN price_overridden OR $3::numeric IS NULL
+                                        THEN sales_price_net ELSE $3 END
+             WHERE id = $1",
+            subset.id,
+            list_price,
+            share,
+        )
+        .execute(&mut *connection)
+        .await?;
+    }
+    Ok(())
+}
+
 pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
     let row = sqlx::query!(
         r#"SELECT drug.id, drug.name, drug.manufacturer_id, drug.submission_receipt,
                   drug.narcotic, drug.vaccine, drug.antibiotic, drug.refrigerate,
                   drug.redesignation,
                   drug.human_drug, drug.euthanasia, drug.freely_divisible, drug.without_stock,
-                  drug.min_stock_packs, drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
+                  drug.not_a_medicine, drug.min_stock_packs, drug.vat_percent, drug.approval_number, drug.archived, drug.draft,
                   drug.created_at, drug.updated_at,
                   manufacturer.name AS "manufacturer_name?",
                   (SELECT COALESCE(SUM(remaining), 0) FROM lot_remaining
@@ -686,6 +746,7 @@ pub async fn load(pool: &PgPool, id: i64) -> AppResult<Drug> {
         euthanasia: row.euthanasia,
         freely_divisible: row.freely_divisible,
         without_stock: row.without_stock,
+        not_a_medicine: row.not_a_medicine,
         min_stock_packs: row.min_stock_packs,
         vat_percent: row.vat_percent,
         approval_number: row.approval_number,
@@ -731,7 +792,7 @@ pub async fn load_packagings(
                   packaging.sales_price_net, packaging.price_overridden,
                   packaging.supplier_id, packaging.archived, packaging.draft,
                   supplier.name AS "supplier_name?", drug.vat_percent, drug.human_drug,
-                  drug.without_stock
+                  drug.not_a_medicine
            FROM drug_packaging packaging
            JOIN drug ON drug.id = packaging.drug_id
            LEFT JOIN supplier ON supplier.id = packaging.supplier_id
@@ -749,6 +810,10 @@ pub async fn load_packagings(
         .iter()
         .find(|row| row.kind == PackagingKind::Original)
         .map(|row| (row.quantity, row.list_price_net));
+    let original_sales_price = rows
+        .iter()
+        .find(|row| row.kind == PackagingKind::Original)
+        .and_then(|row| row.sales_price_net);
 
     Ok(rows
         .iter()
@@ -756,8 +821,17 @@ pub async fn load_packagings(
             let vat = row.vat_percent.unwrap_or(Decimal::ZERO);
             let policy = pricing_policy(row.human_drug, pharmacy);
             let computed = match row.kind {
-                // Not an Arzneimittel: there is no AMPreisV price to show beside the vet's.
-                _ if row.without_stock => None,
+                // Not an Arzneimittel: no AMPreisV price beside the one the vet typed for the
+                // pack, and a Teilmenge's share of that price as what she may go back to.
+                PackagingKind::Original if row.not_a_medicine => None,
+                PackagingKind::Subset if row.not_a_medicine => {
+                    match (original, original_sales_price, row.quantity) {
+                        (Some((Some(pack_quantity), _)), Some(pack_price), Some(quantity)) => {
+                            Some(money::subset_share(pack_price, pack_quantity, quantity))
+                        }
+                        _ => None,
+                    }
+                }
                 PackagingKind::Original => row
                     .list_price_net
                     .map(|list_price| money::drug_price_original(list_price, vat, policy).net),

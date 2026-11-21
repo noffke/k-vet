@@ -799,3 +799,44 @@ async fn beliebig_teilbar_and_teilmengen_exclude_each_other() {
         .await;
     assert_eq!(subset.status, StatusCode::OK);
 }
+
+/// A product "Kein Medikament" that is "beliebig teilbar" and has no Teilmenge bills its rest
+/// pro rata of the pack's price — no § 4 mark-up (migration 0045).
+#[tokio::test]
+async fn a_freely_divisible_product_that_is_no_medicine_bills_its_rest_pro_rata() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let treatment_id = treatment(&pool).await;
+    let drug = common::seed_drug(&pool).await;
+    common::seed_lot(&pool, drug.packaging_id, 1, dec("200"), None).await;
+    app.delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        .await;
+    let marked = app
+        .patch(
+            &format!("/api/drugs/{}", drug.drug_id),
+            json!({ "not_a_medicine": true, "freely_divisible": true }),
+        )
+        .await;
+    assert_eq!(marked.status, StatusCode::OK);
+
+    let line = dispense(
+        &app,
+        treatment_id,
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id,
+                "quantity": "150" }),
+    )
+    .await;
+    assert_eq!(
+        line.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&line.body)
+    );
+    let line = line.json();
+    // One bottle at 12,50 € net, the other 50 ml at 12,50 € / 100 ml = 6,25 € net — not the
+    // AMPreisV's 10,00 € listed plus 100 %.
+    assert_eq!(line["dispense"]["packs"]["line_net"], "12.50");
+    assert_eq!(line["dispense"]["remainder"]["line_net"], "6.25");
+    assert_eq!(line["line_net"], "18.75");
+}

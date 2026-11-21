@@ -40,10 +40,16 @@ export interface Drug {
   freely_divisible: boolean;
   /**
      * "Ohne Bestand": a consumable — syringe, bandage — billed without any stock kept, in
-     * whole packs, at the sales price the vet types; not priced by the AMPreisV (migration
-     * 0043). No lots, no Teilmengen, never "Beliebig teilbar".
+     * whole packs (migration 0043). No lots, no Teilmengen, never "Beliebig teilbar". How it
+     * is priced is `not_a_medicine`'s call.
      */
   without_stock: boolean;
+  /**
+     * "Kein Medikament": not an Arzneimittel — food, shampoo, a consumable — so the AMPreisV
+     * does not price it (migration 0045). The vet types the net sales price; a Teilmenge is
+     * proposed as its share of the pack's net price, without the § 4 mark-up.
+     */
+  not_a_medicine: boolean;
   /**
      * Mindestbestand, in whole original packagings: below it the dashboard lists the drug to
      * reorder (migration 0044). Never for a drug "Ohne Bestand".

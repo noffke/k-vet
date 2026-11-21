@@ -797,17 +797,25 @@ async fn movement_count(pool: &PgPool) -> i64 {
         .expect("count movements")
 }
 
-/// The seeded drug as a consumable: its Teilmenge deleted, the flag set.
+/// The seeded drug as a consumable: its Teilmenge deleted, "Ohne Bestand" and "Kein Medikament"
+/// set — what migration 0045 makes of every consumable from before it.
 async fn consumable(app: &TestApp, drug: &common::SeededDrug) {
+    without_stock(
+        app,
+        drug,
+        json!({ "without_stock": true, "not_a_medicine": true }),
+    )
+    .await;
+}
+
+/// The seeded drug with its Teilmenge deleted and `flags` set.
+async fn without_stock(app: &TestApp, drug: &common::SeededDrug, flags: Value) {
     let deleted = app
         .delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
         .await;
     assert!(deleted.status.is_success(), "the Teilmenge goes first");
     let marked = app
-        .patch(
-            &format!("/api/drugs/{}", drug.drug_id),
-            json!({ "without_stock": true }),
-        )
+        .patch(&format!("/api/drugs/{}", drug.drug_id), flags)
         .await;
     assert_eq!(
         marked.status,
@@ -997,8 +1005,9 @@ async fn a_consumable_takes_no_stock_teilmenge_or_division() {
     assert_eq!(intake.status, StatusCode::OK);
 }
 
-/// A consumable is no Arzneimittel: the AMPreisV does not price it. Its sales price is the one
-/// the vet types, and a changed list price moves nothing; turned off, the AMPreisV is back.
+/// A consumable is no Arzneimittel ("Kein Medikament"): the AMPreisV does not price it. Its
+/// sales price is the one the vet types, and a changed list price moves nothing; with "Kein
+/// Medikament" turned off, the AMPreisV is back.
 #[tokio::test]
 async fn a_consumable_is_priced_by_the_vet_not_the_ampreisv() {
     let db = common::database().await;
@@ -1031,16 +1040,50 @@ async fn a_consumable_is_priced_by_the_vet_not_the_ampreisv() {
     let typed = original(app.get(&packagings_uri).await.json());
     assert_eq!(typed["sales_price_net"], "3.00");
 
-    // Back to a drug: the AMPreisV figure is shown again, beside the price the vet typed.
+    // A medicine after all: the AMPreisV figure is shown again, beside the price the vet typed.
     app.patch(
         &format!("/api/drugs/{}", drug.drug_id),
-        json!({ "without_stock": false }),
+        json!({ "not_a_medicine": false }),
     )
     .await;
     let drug_again = original(app.get(&packagings_uri).await.json());
     assert!(!drug_again["computed_price_net"].is_null());
     assert_eq!(drug_again["sales_price_net"], "3.00");
     assert_eq!(drug_again["price_overridden"], true);
+}
+
+/// "Ohne Bestand" alone only says that no stock is kept (migration 0045): a medicine without
+/// stock is still priced by the AMPreisV.
+#[tokio::test]
+async fn a_medicine_without_stock_is_priced_by_the_ampreisv() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let drug = common::seed_drug(&pool).await;
+    without_stock(&app, &drug, json!({ "without_stock": true })).await;
+    let packagings_uri = format!("/api/drugs/{}/packagings", drug.drug_id);
+    let original = |packagings: Value| {
+        packagings
+            .as_array()
+            .and_then(|all| all.iter().find(|row| row["kind"] == "original").cloned())
+            .expect("the original")
+    };
+
+    let shown = app
+        .get(&format!("/api/drugs/{}", drug.drug_id))
+        .await
+        .json();
+    assert_eq!(shown["without_stock"], true);
+    assert_eq!(shown["not_a_medicine"], false);
+    // 10,00 € listed, § 3(3): 14,80 € net.
+    app.patch(
+        &format!("/api/packagings/{}", drug.packaging_id),
+        json!({ "list_price_net": "10.00" }),
+    )
+    .await;
+    let priced = original(app.get(&packagings_uri).await.json());
+    assert_eq!(priced["computed_price_net"], "14.80");
+    assert_eq!(priced["sales_price_net"], "14.80");
 }
 
 /// Mitbringen and the Packliste never call a consumable short: there is no stock to be short of.
@@ -1115,4 +1158,49 @@ async fn an_invoice_from_before_the_flag_is_still_reversed() {
         String::from_utf8_lossy(&cancelled.body)
     );
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("100"));
+}
+
+/// Migration 0045 splits "Kein Medikament" off "Ohne Bestand": every consumable from before it
+/// is "Ohne Bestand" and not a medicine, so it becomes "Kein Medikament" and keeps the price the
+/// vet typed; every other drug stays a medicine.
+#[sqlx::test(migrations = false)]
+async fn the_migration_makes_every_consumable_no_medicine(pool: PgPool) {
+    let migrator = sqlx::migrate!("./migrations");
+    migrator.run_to(44, &pool).await.expect("migrate to 0044");
+    let consumable = common::seed_drug(&pool).await;
+    let medicine = common::seed_drug(&pool).await;
+    sqlx::query("DELETE FROM drug_packaging WHERE id = $1")
+        .bind(consumable.subset_packaging_id)
+        .execute(&pool)
+        .await
+        .expect("the Teilmenge goes first");
+    sqlx::query("UPDATE drug SET without_stock = true WHERE id = $1")
+        .bind(consumable.drug_id)
+        .execute(&pool)
+        .await
+        .expect("a consumable from before 0045");
+
+    migrator.run(&pool).await.expect("migrate to the end");
+
+    let flags = |drug_id: i64| {
+        let pool = pool.clone();
+        async move {
+            sqlx::query_as::<_, (bool, bool)>(
+                "SELECT without_stock, not_a_medicine FROM drug WHERE id = $1",
+            )
+            .bind(drug_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the drug")
+        }
+    };
+    assert_eq!(flags(consumable.drug_id).await, (true, true));
+    assert_eq!(flags(medicine.drug_id).await, (false, false));
+    let price: Decimal =
+        sqlx::query_scalar("SELECT sales_price_net FROM drug_packaging WHERE id = $1")
+            .bind(consumable.packaging_id)
+            .fetch_one(&pool)
+            .await
+            .expect("the pack's price");
+    assert_eq!(price, Decimal::from_str_exact("12.50").expect("decimal"));
 }

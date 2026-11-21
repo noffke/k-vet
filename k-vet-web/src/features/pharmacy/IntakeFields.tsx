@@ -96,7 +96,8 @@ function ListPriceCheck({
   const changedTo = value.state === 'changed' ? value.value : null
   useEffect(() => {
     setPreview(null)
-    if (!changedTo || Number(changedTo) <= 0 || !drug.vat_percent) return
+    // A product that is no medicine is not priced from its list price: nothing to preview.
+    if (!changedTo || Number(changedTo) <= 0 || !drug.vat_percent || drug.not_a_medicine) return
     let current = true
     void previewPrice({
       kind: 'original',
@@ -111,7 +112,7 @@ function ListPriceCheck({
     return () => {
       current = false
     }
-  }, [changedTo, drug.vat_percent, drug.human_drug])
+  }, [changedTo, drug.vat_percent, drug.human_drug, drug.not_a_medicine])
 
   const listed = money(original.list_price_net)
   return (
@@ -139,7 +140,11 @@ function ListPriceCheck({
             money
             onChange={(next) => onChange({ state: 'changed', value: next })}
           />
-          {preview ? (
+          {drug.not_a_medicine ? (
+            <p className="numeric text-sm text-ink-soft">
+              {t('intake.salesPriceByHand', { price: money(original.sales_price_gross) })}
+            </p>
+          ) : preview ? (
             <p className="numeric text-sm text-ink-soft">
               {original.price_overridden
                 ? t('intake.salesPriceManual', { price: money(original.sales_price_gross) })

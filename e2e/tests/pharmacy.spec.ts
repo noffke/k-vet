@@ -404,7 +404,8 @@ test.describe('pharmacy', () => {
     // No stock to show, and nothing to book in.
     await expect(page.getByRole('heading', { name: /Bestand\s*Ohne Bestand/ })).toBeVisible()
     await expect(page.getByRole('button', { name: 'Wareneingang' })).toHaveCount(0)
-    // Its price is the vet's, not the AMPreisV's.
+    // Not a medicine either: its price is the vet's, not the AMPreisV's.
+    await page.getByLabel('Kein Medikament').check()
     await expect(page.getByText('Verkaufspreis von Hand').first()).toBeVisible()
 
     await page.goto(`/treatments/${treatmentId}`)
@@ -418,6 +419,37 @@ test.describe('pharmacy', () => {
     // A whole pack, and no lot to name.
     await expect(page.getByLabel('Menge').first()).toHaveValue('100')
     await expect(page.getByText(/^Chargen:/)).toHaveCount(0)
+  })
+
+  // A product that is no medicine — food, shampoo — keeps its stock and its Teilmengen, but the
+  // AMPreisV does not price it: the net price is typed, the gross follows, a Teilmenge costs its
+  // share of the pack.
+  test('a product "Kein Medikament" is priced by hand, its Teilmenge pro rata', async ({
+    page,
+    request,
+  }) => {
+    const { drugId, drugName } = await seedDrug(request)
+    const { customerId } = await seedCustomer(request)
+    const { treatmentId } = await seedTreatment(request, await seedPatient(request, customerId))
+
+    await signIn(page, `/pharmacy/${drugId}`)
+    await page.getByLabel('Kein Medikament').check()
+    await expect(page.getByRole('status')).toHaveText('Gespeichert')
+    await expect(page.getByText('Verkaufspreis von Hand').first()).toBeVisible()
+    // 100 ml at 10,00 € net: 11,90 € gross; the 10 ml Teilmenge 1,00 € net, its share.
+    const salesPrices = page.getByLabel('Verkaufspreis (netto)')
+    await salesPrices.first().fill('10,00')
+    await expect(page.getByText('11,90 €').first()).toBeVisible()
+    await expect(salesPrices.last()).toHaveValue('1,00')
+    await expect(page.getByText(/Anteilig aus dem Packungspreis: 1,00/)).toBeVisible()
+
+    // On an appointment: 150 ml are one bottle and five Teilmengen, 11,90 € + 5 × 1,19 €.
+    await page.goto(`/treatments/${treatmentId}`)
+    await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
+    await page.getByRole('option', { name: new RegExp(drugName) }).first().click()
+    await expect(page.getByText(`„${drugName}“ hinzugefügt`)).toBeVisible()
+    await page.getByLabel('Menge').first().fill('150')
+    await expect(page.getByText('17,85 €').first()).toBeVisible()
   })
 
   test('a drug the shelf cannot cover is marked in the picker and refused with a reason', async ({
