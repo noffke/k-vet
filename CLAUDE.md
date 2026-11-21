@@ -67,13 +67,14 @@ cd k-vet-web && npm run build                        # the binary serves dist/ f
 cd ../k-vet-backend && cargo build
 cd ../e2e && DATABASE_URL=postgres://kvet:kvet@localhost:5432/kvet_e2e npx playwright test
 npx playwright test core-loop --project=desktop      # one spec, one viewport
-npx biome check --write && npx tsc --noEmit          # lint, format and typecheck the specs
+npx biome check --write && npx tsc --noEmit && npx knip   # lint, format, typecheck, unused code
 E2E_WORKERS=1 npx playwright test                    # one worker (default 4, CI 2) — for debugging
 KVET_BINARY=../k-vet-backend/target/release/k-vet-backend npx playwright test   # release check
 ```
 
-`e2e/biome.json` extends `k-vet-web/biome.json`, so the specs follow the app's style (CI runs
-`npx biome ci` in `e2e/` too).
+`e2e/biome.json` extends `k-vet-web/biome.json`, so the specs follow the app's style, and
+`e2e/knip.json` finds unused code there (its Playwright plugin knows the specs); CI runs
+`npx biome ci` and `npx knip` in `e2e/` too.
 
 Each Playwright worker starts its own backend on its own database (`fixtures/backend.ts`):
 `kvet_e2e_w<n>`, dropped and created fresh on the server `DATABASE_URL` names, a config of its own

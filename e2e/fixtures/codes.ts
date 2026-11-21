@@ -5,7 +5,7 @@
  * NTIN = "4150" + PZN + GS1 check digit).
  */
 
-export const GS = '\u001d'
+const GS = '\u001d'
 const RS = '\u001e'
 const EOT = '\u0004'
 
@@ -21,7 +21,7 @@ export function uniquePzn(): string {
 }
 
 /** The PPN of a PZN: ASCII values weighted from 2 upwards, mod 97. */
-export function ppnOf(pzn: string): string {
+function ppnOf(pzn: string): string {
   const body = `11${pzn}`
   const sum = [...body].reduce(
     (total, character, i) => total + character.charCodeAt(0) * (i + 2),

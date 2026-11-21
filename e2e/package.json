@@ -11,13 +11,15 @@
     "test:desktop": "playwright test --project=desktop",
     "test:mobile": "playwright test --project=pixel-9a",
     "lint": "biome check",
-    "lint:fix": "biome check --write"
+    "lint:fix": "biome check --write",
+    "knip": "knip"
   },
   "devDependencies": {
     "@biomejs/biome": "2.6.6",
     "@playwright/test": "1.65.0",
     "@types/node": "24.19.2",
     "@types/pg": "8.23.1",
+    "knip": "6.44.2",
     "pg": "8.23.1",
     "typescript": "7.0.2"
   }
