@@ -301,7 +301,8 @@
     },
     "recomputeKm": "Entfernung neu berechnen (Google Maps)",
     "kmRequiredForInvoice": "Ohne Kilometer kann keine Rechnung erstellt werden.",
-    "stockShort": "Nicht genug Bestand"
+    "stockShort": "Nicht genug Bestand",
+    "kmMissingShort": "km fehlt"
   },
   "invoices": {
     "accept": "Rechnung freigeben",
@@ -842,5 +843,8 @@
     "available": "k-vet {{version}} ist installiert.",
     "reload": "Neu laden",
     "saving": "Wird gespeichert …"
+  },
+  "position": {
+    "edit": "{{label}} ändern:"
   }
 }

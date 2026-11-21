@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedService } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
+import { navigate, openPosition, positions, signIn } from './helpers'
 
 /**
  * The core loop (T039, quickstart #1, SC-001): appointment → treatment → a stocked drug line
@@ -60,8 +60,7 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await picker.fill(serviceName)
   await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
 
-  const lines = page.getByLabel('Name')
-  await expect(lines).toHaveCount(2)
+  await expect(positions(page)).toHaveCount(2)
   // The drug is offered as its 100 ml bottle and starts at its 10 ml Teilmenge: net 2,00 € (AMPreisV
   // § 4) plus 23,62 € for the service = 25,62 €, plus 19 % VAT = 4,87 €.
   await expect(page.getByText('30,49 €').first()).toBeVisible()
@@ -103,9 +102,10 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   const marked = page.getByText('Seit dem PDF geändert')
   await expect(stale).toHaveCount(0)
   // Renaming a line is enough — the name is printed — and it moves neither the stock nor the
-  // total, which the rest of this test still asserts.
-  await page.getByLabel('Name').first().fill('Impfstoff, umbenannt')
-  await page.getByLabel('Name').first().blur()
+  // total, which the rest of this test still asserts. The name is behind the line's own.
+  const drugLine = await openPosition(page, drugName)
+  await drugLine.getByLabel('Name', { exact: true }).fill('Impfstoff, umbenannt')
+  await drugLine.getByLabel('Name', { exact: true }).blur()
   await expect(stale).toBeVisible()
   await expect(stale).toContainText('Positionen geändert: 1')
   await expect(marked).toHaveCount(1)

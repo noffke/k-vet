@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test'
 import { doc, seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
-import { pdfText, signIn } from './helpers'
+import { pdfText, position, positions, signIn } from './helpers'
 
 /**
  * What the rendered invoice says and in which order (issues.md 12, 16, 17).
@@ -32,8 +32,8 @@ test.describe('the invoice document', () => {
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
-    // The line's name is its own field; text on the page only matched the passing toast.
-    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue(serviceName)
+    // The pick landed as a position of its own; text on the page alone matched the passing toast.
+    await expect(position(page, serviceName)).toHaveCount(1)
 
     await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
     await page.getByRole('button', { name: 'Rechnung erstellen', exact: true }).last().click()
@@ -78,7 +78,7 @@ test.describe('the invoice document', () => {
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
 
     // The pick has to have landed first, or the id read back here is `undefined`.
-    await expect(page.getByLabel('Name')).toHaveCount(1)
+    await expect(positions(page)).toHaveCount(1)
     const items = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
     await request.patch(`/api/treatment-items/${items[0].id}`, { data: { factor: '150.000' } })
 

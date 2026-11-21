@@ -34,9 +34,11 @@ import { ItemPicker } from '@/components/ItemPicker'
 import { MapsLink } from '@/components/MapsLink'
 import { NumberInput } from '@/components/NumberInput'
 import { PageHeader } from '@/components/PageHeader'
+import { PositionList, PositionRow } from '@/components/PositionRow'
 import { SaveIndicator } from '@/components/SaveIndicator'
 import { Button } from '@/components/ui/button'
 import { TextAreaField, TextField } from '@/components/ui/field'
+import { ValueCell } from '@/components/ValueCell'
 import { useKmToast } from '@/features/treatments/kmToast'
 import type { SaveState } from '@/lib/autosave'
 import { useOperatorConfig } from '@/lib/config'
@@ -260,7 +262,22 @@ export function QuotePage() {
     })
   }, [destination, draft, answer, defaultCountry, t])
 
-  const pick = (item: PickerItem) =>
+  // The line just picked keeps its values open, its quantity focused; Enter goes back to the
+  // search. Its key is made in the draft's update, so it is found by what was there before.
+  const [newestKey, setNewestKey] = useState<string | null>(null)
+  const keysBeforePick = useRef<Set<string> | null>(null)
+  const search = useRef<HTMLInputElement | null>(null)
+  useEffect(() => {
+    const before = keysBeforePick.current
+    if (!before) return
+    const added = draft.lines.find((line) => !before.has(line.key))
+    if (!added) return
+    keysBeforePick.current = null
+    setNewestKey(added.key)
+  }, [draft.lines])
+
+  const pick = (item: PickerItem) => {
+    keysBeforePick.current = new Set(draftRef.current.lines.map((line) => line.key))
     edit(
       (current) =>
         addPositions(current, [
@@ -274,8 +291,10 @@ export function QuotePage() {
         ]),
       'lines',
     )
+  }
 
   const pickGroup = async (template: Template) => {
+    setNewestKey(null)
     const items = await listTemplateItems(template.id)
     edit(
       (current) =>
@@ -480,10 +499,12 @@ export function QuotePage() {
       <section className="mt-6">
         <h2 className="text-sm font-semibold text-ink">{t('quote.positions')}</h2>
         {draft.lines.length > 0 ? (
-          <ul className="mt-2 flex flex-col gap-2">
+          <PositionList label={t('quote.positions')}>
             {draft.lines.map((line, index) => (
               <QuoteLineCard
                 key={line.key}
+                newest={line.key === newestKey}
+                onReturnToSearch={() => search.current?.focus()}
                 line={line}
                 priced={pricedLine(index, line)}
                 error={
@@ -511,7 +532,7 @@ export function QuotePage() {
                 onRemove={() => edit((current) => removeLine(current, line.key), 'lines')}
               />
             ))}
-          </ul>
+          </PositionList>
         ) : (
           <p className="mt-2 rounded-card border border-dashed border-line px-3 py-6 text-center text-sm text-ink-faint">
             {t('quote.empty')}
@@ -519,7 +540,11 @@ export function QuotePage() {
         )}
         {/* Under the list: a picked position appears right above the search it came from. */}
         <div className="mt-3">
-          <ItemPicker onPick={pick} onPickTemplate={(template) => void pickGroup(template)} />
+          <ItemPicker
+            onPick={pick}
+            inputRef={search}
+            onPickTemplate={(template) => void pickGroup(template)}
+          />
         </div>
       </section>
 
@@ -611,125 +636,177 @@ interface QuoteLineCardProps {
   priced: QuoteLine | undefined
   error: string | undefined
   canLookUp: boolean
+  /** The line just picked: its values open, its quantity focused. */
+  newest: boolean
+  /** Enter in the newest line's value: back to the search. */
+  onReturnToSearch: () => void
   onChange: (patch: Partial<EditableLine>) => void
   /** Asks for the kilometres again. */
   onLookUp: () => void
   onRemove: () => void
 }
 
-/** One position of the quote: what it is, what it costs, and what the vet can change. */
+type QuoteCell = 'quantity' | 'factor' | 'km'
+
+/** One position of the quote: one line — what it is, how much, what it costs — the rest behind. */
 function QuoteLineCard({
   line,
   priced,
   error,
   canLookUp,
+  newest,
+  onReturnToSearch,
   onChange,
   onLookUp,
   onRemove,
 }: QuoteLineCardProps) {
   const { t } = useTranslation()
   const { money, percent, unitPrice, quantity } = useLocaleFormat()
+  const [editing, setEditing] = useState<QuoteCell | null>(null)
   const Icon = line.kind === 'drug_packaging' ? Pill : Stethoscope
   const rule = priced?.today_rule ?? priced?.dispense?.rule
+  const travel = priced?.travel_expenses ?? false
+  const isOpen = (cell: QuoteCell) => newest || editing === cell
+  const closeCell = (cell: QuoteCell) => () =>
+    setEditing((current) => (current === cell ? null : current))
+  const breakdown = priced?.dispense
+    ? dispenseBreakdown(priced.dispense, priced.unit, t, { quantity, money, unitPrice })
+    : null
+  const factor = line.factor ?? priced?.factor ?? null
 
   return (
-    <li className="rounded-card border border-line bg-surface p-3">
-      <div className="flex items-start gap-2">
+    <PositionRow
+      icon={
         <Icon
           className={cn(
-            'mt-0.5 size-4 shrink-0',
+            'size-4 shrink-0',
             line.kind === 'drug_packaging' ? 'text-rust' : 'text-ink-soft',
           )}
           aria-hidden
         />
-        <div className="min-w-0 flex-1">
-          <p className="font-medium text-ink">{priced?.name ?? line.name}</p>
-          {priced ? (
-            <p className="text-xs text-ink-faint">
-              {priced.got_number ? `GOT ${priced.got_number} · ` : ''}
-              {percent(priced.vat_percent)} {t('field.vat')}
-            </p>
-          ) : null}
-          {/* Whole packs and the rest as a Teilmenge, as the invoice will print them. */}
-          {priced?.dispense ? (
-            <p className="numeric text-xs text-ink-soft">
-              {dispenseBreakdown(priced.dispense, priced.unit, t, { quantity, money, unitPrice })}
-            </p>
-          ) : null}
-        </div>
-        <span className="numeric shrink-0 font-semibold text-ink">
-          {priced ? money(priced.line_gross) : '—'}
-        </span>
-        <Button
-          size="icon"
-          variant="ghost"
-          aria-label={t('quote.removeLine')}
-          title={t('quote.removeLine')}
-          onClick={onRemove}
-        >
-          <Trash2 className="size-4" />
-        </Button>
-      </div>
-      {priced?.price_changed ? (
-        <p className="numeric mt-1 text-xs font-semibold text-rust">
-          {priced.today_line_gross
-            ? t('quote.priceChanged', {
-                today: money(priced.today_line_gross),
-                quoted: money(priced.line_gross),
-              })
-            : t('quote.priceGone')}
-        </p>
-      ) : null}
-      {error ? (
-        <p className="mt-1 text-xs text-danger" role="alert">
-          {error}
-        </p>
-      ) : null}
-
-      <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-        <NumberInput
-          label={t('field.quantity')}
-          value={line.quantity}
-          unit={priced?.unit ?? undefined}
-          hint={rule ? dispenseRuleText(rule, priced?.unit, t, quantity) : undefined}
-          onChange={(value) => value && onChange({ quantity: value })}
-        />
-        {line.kind === 'service' ? (
-          <NumberInput
+      }
+      name={priced?.name ?? line.name}
+      newest={newest}
+      quantity={
+        travel ? (
+          <ValueCell
+            label={t('field.km')}
+            display={line.km != null ? `${quantity(line.km)} km` : t('treatments.kmMissingShort')}
+            missing={line.km == null}
+            value={line.km}
+            unit="km"
+            open={isOpen('km')}
+            onOpen={() => setEditing('km')}
+            onClose={closeCell('km')}
+            autoFocus={newest}
+            onEnter={newest ? onReturnToSearch : undefined}
+            onChange={(value) => onChange({ km: value, kmTyped: value !== null })}
+            action={
+              canLookUp
+                ? {
+                    label: t('treatments.recomputeKm'),
+                    icon: <RefreshCw className="size-4" />,
+                    onClick: onLookUp,
+                  }
+                : undefined
+            }
+          />
+        ) : (
+          <ValueCell
+            label={t('field.quantity')}
+            display={`${quantity(line.quantity)} ${line.kind === 'service' ? '×' : (priced?.unit ?? '')}`.trim()}
+            value={line.quantity}
+            unit={priced?.unit ?? undefined}
+            open={isOpen('quantity')}
+            onOpen={() => setEditing('quantity')}
+            onClose={closeCell('quantity')}
+            autoFocus={newest}
+            onEnter={newest ? onReturnToSearch : undefined}
+            onChange={(value) => value && onChange({ quantity: value })}
+          />
+        )
+      }
+      factor={
+        line.kind === 'service' ? (
+          <ValueCell
             label={t('field.factor')}
-            value={line.factor ?? priced?.factor ?? null}
+            display={percent(factor)}
+            value={factor}
             decimals={3}
             unit="%"
+            open={isOpen('factor')}
+            onOpen={() => setEditing('factor')}
+            onClose={closeCell('factor')}
+            onEnter={newest ? onReturnToSearch : undefined}
             onChange={(value) => onChange({ factor: value })}
           />
-        ) : null}
-        {priced?.travel_expenses ? (
+        ) : null
+      }
+      amount={priced ? money(priced.line_gross) : '—'}
+      hint={
+        isOpen('quantity') && !travel && rule ? (
+          <span className="numeric">
+            {dispenseRuleText(rule, priced?.unit, t, quantity)}
+            {breakdown ? ` · ${breakdown}` : ''}
+          </span>
+        ) : undefined
+      }
+      notice={
+        priced?.price_changed || error || (travel && line.km == null) ? (
           <>
-            <NumberInput
-              label={t('field.km')}
-              value={line.km}
-              unit="km"
-              hint={line.km == null ? t('quote.kmMissing') : t('treatments.kmHint')}
-              onChange={(value) => onChange({ km: value, kmTyped: value !== null })}
-              action={
-                canLookUp
-                  ? {
-                      label: t('treatments.recomputeKm'),
-                      icon: <RefreshCw className="size-4" />,
-                      onClick: onLookUp,
-                    }
-                  : undefined
-              }
-            />
-            <NumberInput
-              label={t('field.kmMultiplier')}
-              value={line.kmMultiplier}
-              decimals={3}
-              onChange={(value) => onChange({ kmMultiplier: value })}
-            />
+            {travel && line.km == null ? (
+              <span className="font-medium text-danger">{t('quote.kmMissing')}</span>
+            ) : null}
+            {priced?.price_changed ? (
+              <span className="numeric font-semibold text-rust">
+                {priced.today_line_gross
+                  ? t('quote.priceChanged', {
+                      today: money(priced.today_line_gross),
+                      quoted: money(priced.line_gross),
+                    })
+                  : t('quote.priceGone')}
+              </span>
+            ) : null}
+            {error ? (
+              <span className="text-danger" role="alert">
+                {error}
+              </span>
+            ) : null}
           </>
-        ) : null}
-      </div>
-    </li>
+        ) : undefined
+      }
+      removeLabel={t('quote.removeLine')}
+      onRemove={onRemove}
+      details={
+        <div className="flex flex-col gap-3">
+          {travel ? (
+            <div className="grid gap-3 sm:grid-cols-3">
+              <NumberInput
+                label={t('field.quantity')}
+                value={line.quantity}
+                onChange={(value) => value && onChange({ quantity: value })}
+              />
+              <NumberInput
+                label={t('field.kmMultiplier')}
+                value={line.kmMultiplier}
+                decimals={3}
+                hint={t('treatments.kmHint')}
+                onChange={(value) => onChange({ kmMultiplier: value })}
+              />
+            </div>
+          ) : null}
+          <div className="text-xs text-ink-faint">
+            {priced ? (
+              <p>
+                {priced.got_number ? `GOT ${priced.got_number} · ` : ''}
+                {percent(priced.vat_percent)} {t('field.vat')}
+              </p>
+            ) : null}
+            {/* Whole packs and the rest as a Teilmenge, as the invoice will print them. */}
+            {breakdown ? <p className="numeric text-ink-soft">{breakdown}</p> : null}
+          </div>
+        </div>
+      }
+    />
   )
 }

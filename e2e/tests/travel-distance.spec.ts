@@ -8,7 +8,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
-import { signIn } from './helpers'
+import { editValue, openPosition, position, signIn } from './helpers'
 
 /**
  * A Wegegeld line's kilometres: Google's shortest route the first time, the vet's own figure
@@ -45,13 +45,15 @@ test.describe('Wegegeld kilometres', () => {
     await expect(
       page.getByText(`${serviceName}: ${ROUTED_KM} km, kürzeste Strecke laut Google Maps`),
     ).toBeVisible()
+    // The line just picked has its kilometres open in its row; its price is behind its name.
     await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
     // 12 km × 3.50 € = 42.00 € net.
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,98')
+    const price = async () => (await openPosition(page, serviceName)).getByLabel('Preis (brutto)')
+    await expect(await price()).toHaveValue('49,98')
 
     // The vet knows a better way; the next visit takes her figure.
     await page.getByLabel('Kilometer').fill('13,2')
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('54,98')
+    await expect(await price()).toHaveValue('54,98')
     await pick(page, second, serviceName)
     await expect(
       page.getByText(`${serviceName}: 13,2 km wie beim Termin am ${today}`),
@@ -73,10 +75,10 @@ test.describe('Wegegeld kilometres', () => {
 
     // Typed over, the figure can be fetched again with the icon beside it.
     await page.getByLabel('Kilometer').fill('30')
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('124,95')
+    await expect(await price()).toHaveValue('124,95')
     await page.getByRole('button', { name: 'Entfernung neu berechnen (Google Maps)' }).click()
     await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,98')
+    await expect(await price()).toHaveValue('49,98')
   })
 
   test('hold the invoice back until they are entered', async ({ page, request }) => {
@@ -103,9 +105,13 @@ test.describe('Wegegeld kilometres', () => {
     ).toBeVisible()
     await expect(page.getByRole('button', { name: 'Rechnung erstellen' })).toBeDisabled()
 
+    // Back on the visit no line is the newest: the row says "km fehlt" until they are typed.
     await page.goto(`/treatments/${treatmentId}`)
-    await page.getByLabel('Kilometer').fill('4')
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('16,66')
+    await expect(position(page, serviceName)).toContainText('km fehlt')
+    await (await editValue(page, serviceName, 'Kilometer')).fill('4')
+    await expect(
+      (await openPosition(page, serviceName)).getByLabel('Preis (brutto)'),
+    ).toHaveValue('16,66')
     await page.goto(`/treatments/${treatmentId}/invoice`)
     await expect(page.getByRole('button', { name: 'Rechnung erstellen' })).toBeEnabled()
   })

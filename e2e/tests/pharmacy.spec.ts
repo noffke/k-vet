@@ -2,7 +2,7 @@ import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
+import { navigate, openPosition, positions, signIn } from './helpers'
 
 /**
  * Pharmacy (quickstart #7 and #4): a delivery becomes stock, a treatment dispenses it
@@ -362,8 +362,10 @@ test.describe('pharmacy', () => {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
     await page.getByLabel('Menge').first().fill('30')
-    await expect(page.getByText(/CH-A/).first()).toBeVisible()
-    await expect(page.getByText(/CH-B/).first()).toBeVisible()
+    // Which lots it came from is behind the line's name.
+    const line = await openPosition(page, drugName)
+    await expect(line.getByText(/CH-A/)).toBeVisible()
+    await expect(line.getByText(/CH-B/)).toBeVisible()
 
     // Accept the invoice: the dispense is frozen.
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
@@ -416,8 +418,9 @@ test.describe('pharmacy', () => {
     await expect(pack.getByLabel('Nicht genug Bestand')).toHaveCount(0)
     await pack.click()
     await expect(page.getByText(`„${drugName}“ hinzugefügt`)).toBeVisible()
-    // A whole pack, and no lot to name.
+    // A whole pack, and no lot to name — not even behind the line's name.
     await expect(page.getByLabel('Menge').first()).toHaveValue('100')
+    await openPosition(page, drugName)
     await expect(page.getByText(/^Chargen:/)).toHaveCount(0)
   })
 
@@ -488,7 +491,7 @@ test.describe('pharmacy', () => {
     await expect(again.getByLabel(short)).toBeVisible()
     await again.click()
     await expect(page.getByText(refusal)).toBeVisible()
-    await expect(page.getByLabel('Name')).toHaveCount(1)
+    await expect(positions(page)).toHaveCount(1)
 
     // Raising the line's quantity is refused alike, and the field shows what was kept.
     await expect(page.getByText(refusal)).toHaveCount(0, { timeout: 10_000 })

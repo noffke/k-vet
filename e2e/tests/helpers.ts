@@ -152,6 +152,53 @@ export async function signInThroughForm(page: Page): Promise<void> {
 }
 
 /**
+ * The positions of a list — an animal's "Positionen", the visit's "pro Termin", or a
+ * Preisauskunft's. Each is one row; its values and details open on demand (`PositionRow`).
+ */
+export function positions(page: Page, list = 'Positionen'): Locator {
+  return page.getByRole('list', { name: list, exact: true }).getByRole('listitem')
+}
+
+/** Every position within `scope` — an animal's tab holds its own and the visit's. */
+export function allPositions(scope: Page | Locator): Locator {
+  return scope.locator('li:has(> button[aria-expanded])')
+}
+
+/** One position's row, in whichever list, found by (part of) its name. */
+export function position(page: Page, name: string | RegExp): Locator {
+  return page
+    .getByRole('listitem')
+    .filter({ has: page.locator('button[aria-expanded]', { hasText: name }) })
+}
+
+/** Opens what waits behind a position's name — rename, prices, animal, Umwidmung, order. */
+export async function openPosition(page: Page, name: string | RegExp): Promise<Locator> {
+  const row = position(page, name).first()
+  const toggle = row.locator('button[aria-expanded]').first()
+  if ((await toggle.getAttribute('aria-expanded')) !== 'true') await toggle.click()
+  await expect(toggle).toHaveAttribute('aria-expanded', 'true')
+  return row
+}
+
+/**
+ * The field of one of a position's values — "Menge", "Faktor" or "Kilometer" — opened if it
+ * is not already (the line just picked has its values open).
+ */
+export async function editValue(
+  page: Page,
+  name: string | RegExp,
+  label: 'Menge' | 'Faktor' | 'Kilometer',
+): Promise<Locator> {
+  const row = position(page, name).first()
+  const field = row.getByLabel(label, { exact: true })
+  if ((await field.count()) === 0) {
+    await row.getByRole('button', { name: new RegExp(`^${label} ändern:`) }).click()
+  }
+  await expect(field).toBeVisible()
+  return field
+}
+
+/**
  * Asserts that `inner` lies within `outer` from left to right — a unit inside its field, say,
  * rather than spilling out of it because a narrow column squeezed the field.
  */

@@ -243,6 +243,15 @@ overflow sheet).
 - `features/quote/` — the Preisauskunft edits a local copy (`quoteState.ts`) that is saved,
   debounced, through `PATCH /api/quotes/{id}`, and only displays the amounts the server returns.
   Leaving an open quote is guarded with `useBlocker` (keep / discard / cancel).
+- `components/PositionRow.tsx` + `ValueCell.tsx` — the positions of an appointment and a
+  Preisauskunft as one ruled list (`PositionList`, a `subgrid` so columns line up and a long
+  unit widens its column). A row is name · quantity (a Wegegeld line: km) · factor (services
+  only) · amount · bin; everything else opens behind the name. A `ValueCell` is the whole cell
+  as one button that opens a typed `NumberInput` — no −/+ steps. The line just picked keeps its
+  values open and takes the focus unless the vet is already typing elsewhere; Enter returns to
+  the picker, which sits *under* the list. A missing km, a changed quote price and "Seit dem
+  PDF geändert" stay visible while closed. e2e: `positions`, `position`, `openPosition`,
+  `editValue` in `tests/helpers.ts`.
 - `lib/autosave.ts` — `useAutoSave` debounces 600 ms and flushes on blur, `visibilitychange`,
   `pagehide` and unmount; it surfaces per-field server errors. Use it for every editable record.
 - `lib/version.ts` + `components/UpdateBanner.tsx` — the update notice. The page takes the first

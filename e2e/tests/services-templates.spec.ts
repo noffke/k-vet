@@ -1,6 +1,6 @@
 import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
-import { navigate, pdfText, signIn } from './helpers'
+import { navigate, openPosition, pdfText, position, positions, signIn } from './helpers'
 
 /**
  * Services and templates (T066): the GOT catalog is searchable with surgery hidden, a
@@ -69,7 +69,7 @@ test.describe('services and templates', () => {
     // Both picks have to have landed before the server is asked: clicking an option fires the
     // mutation and returns, so reading the API straight away races it — which under the load of
     // a full suite run is a race the read sometimes wins.
-    await expect(page.getByLabel('Name')).toHaveCount(2)
+    await expect(positions(page)).toHaveCount(2)
     const lines = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
     expect(lines).toHaveLength(2)
 
@@ -132,13 +132,15 @@ test.describe('services and templates', () => {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Wegegeld')
     await page.getByRole('option', { name: /Wegegeld/ }).first().click()
 
+    // The line just picked asks for its kilometres in its own row.
     await page.getByLabel('Kilometer').fill('12')
     // 12 km × 3.50 € net = 42.00 € net (GOT quotes the Wegegeld net).
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('49,98')
-    await expect(page.getByText(/Preis \(netto\): 42,00/)).toBeVisible()
+    const line = await openPosition(page, 'Wegegeld Hausbesuch')
+    await expect(line.getByLabel('Preis (brutto)')).toHaveValue('49,98')
+    await expect(line.getByText(/Preis \(netto\): 42,00/)).toBeVisible()
 
-    await page.getByLabel('Faktor (Verkehrsverhältnisse)').fill('2')
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('99,96')
+    await line.getByLabel('Faktor (Verkehrsverhältnisse)').fill('2')
+    await expect(line.getByLabel('Preis (brutto)')).toHaveValue('99,96')
   })
 
   test('a template applies its lines in order with current prices', async ({ page, request }) => {
@@ -176,13 +178,14 @@ test.describe('services and templates', () => {
     ).toBeVisible()
     await page.getByRole('option', { name: new RegExp(templateName) }).first().click()
 
-    await expect(page.getByLabel('Name').first()).toHaveValue(new RegExp(drugName))
+    await expect(positions(page).first()).toContainText(drugName)
     // The group's 10 ml are the drug's 10 ml Teilmenge of a 100 ml bottle listed at 10.00 net:
     // § 4 basis 1.00, +100 % = 2.00 net — pinned at apply time, 2,38 € with VAT. The bottle
     // itself is pinned too, at 17,61 €.
-    await expect(page.getByText(/10 ml Teilmenge à 0,238/)).toBeVisible()
-    await expect(page.getByLabel('Preis je Packung (brutto)').first()).toHaveValue('17,61')
-    await expect(page.getByLabel('Teilmenge je ml (brutto)').first()).toHaveValue('0,238')
+    const line = await openPosition(page, drugName)
+    await expect(line.getByText(/10 ml Teilmenge à 0,238/)).toBeVisible()
+    await expect(line.getByLabel('Preis je Packung (brutto)')).toHaveValue('17,61')
+    await expect(line.getByLabel('Teilmenge je ml (brutto)')).toHaveValue('0,238')
     expect(subsetPackagingId).toBeGreaterThan(0)
   })
 
@@ -210,8 +213,7 @@ test.describe('services and templates', () => {
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill('Beratung im einzelnen Fall')
     await page.getByRole('option', { name: /Beratung im einzelnen Fall/ }).first().click()
-    // Every line carries an editable name, so counting those counts the positions.
-    const lines = page.getByLabel('Name')
+    const lines = positions(page)
     await expect(lines).toHaveCount(1)
 
     // The wrong group, and the way back out of it.
@@ -223,7 +225,7 @@ test.describe('services and templates', () => {
     await page.getByRole('button', { name: 'Rückgängig' }).click()
 
     await expect(lines).toHaveCount(1)
-    await expect(lines.first()).toHaveValue(/Beratung im einzelnen Fall/)
+    await expect(lines.first()).toContainText(/Beratung im einzelnen Fall/)
 
     // The vet's own line is left where it was, still numbered 1.
     const items = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()
@@ -244,17 +246,18 @@ test.describe('treatment lines', () => {
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
     // The price before and after must be identical: an Umwidmung documents, it does not price.
-    const price = page.getByLabel('Preis je Packung (brutto)').first()
+    const line = await openPosition(page, drug.drugName)
+    const price = line.getByLabel('Preis je Packung (brutto)')
     const before = await price.inputValue()
 
-    const umwidmung = page.getByLabel('Umwidmung')
+    const umwidmung = line.getByLabel('Umwidmung')
     await expect(umwidmung).not.toBeChecked()
     await umwidmung.check()
     await expect(price).toHaveValue(before)
 
     // It survives a reload — it is stored on the line, not just ticked in the browser.
     await page.reload()
-    await expect(page.getByLabel('Umwidmung')).toBeChecked()
+    await expect((await openPosition(page, drug.drugName)).getByLabel('Umwidmung')).toBeChecked()
   })
 
   test('a service marked "pro Termin" goes to the visit by itself, also with one animal', async ({
@@ -284,7 +287,9 @@ test.describe('treatment lines', () => {
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
     await expect(page.getByText(`„${serviceName}“ pro Termin hinzugefügt`)).toBeVisible()
     await expect(page.getByText('pro Termin', { exact: true })).toBeVisible()
-    // One animal, and the line is the visit's: there is nothing to move it to.
+    // One animal, and the line is the visit's: there is nothing to move it to — not even
+    // behind its name.
+    await openPosition(page, serviceName)
     await expect(page.getByRole('combobox', { name: 'Patient', exact: true })).toHaveCount(0)
 
     await expect
@@ -306,9 +311,11 @@ test.describe('treatment lines', () => {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
     await page.getByRole('option', { name: /Beratung/ }).first().click()
 
-    await expect(page.getByLabel('Preis (netto)')).toBeDisabled()
-    await expect(page.getByText(/fest nach GOT/)).toBeVisible()
+    // The factor is in the line's row, open on the line just picked; the price behind its name.
     await expect(page.getByLabel('Faktor', { exact: true })).toBeEnabled()
+    const line = await openPosition(page, /Beratung/)
+    await expect(line.getByLabel('Preis (netto)')).toBeDisabled()
+    await expect(line.getByText(/fest nach GOT/)).toBeVisible()
   })
 
   test('a position outside the GOT is priced gross, with its net underneath', async ({
@@ -324,16 +331,17 @@ test.describe('treatment lines', () => {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
 
-    const price = page.getByLabel('Preis (brutto)')
+    const line = await openPosition(page, serviceName)
+    const price = line.getByLabel('Preis (brutto)')
     await price.fill('10,00')
     await price.blur()
-    await expect(page.getByText(/Preis \(netto\): 8,40/)).toBeVisible()
+    await expect(line.getByText(/Preis \(netto\): 8,40/)).toBeVisible()
 
     // No net in whole cents gives 15,00 € at 19 %: the nearest below is what is stored.
     await price.fill('15,00')
     await price.blur()
     await expect(price).toHaveValue('14,99')
-    await expect(page.getByText(/Preis \(netto\): 12,60/)).toBeVisible()
+    await expect(line.getByText(/Preis \(netto\): 12,60/)).toBeVisible()
   })
 
   test('a position is not removed by a stray click', async ({ page, request }) => {
@@ -352,15 +360,11 @@ test.describe('treatment lines', () => {
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
 
     // Scoped to the position: the treatment's patient list carries a "Löschen" of its own.
-    const positionRow = page
-      .getByRole('listitem')
-      .filter({ has: page.getByLabel('Menge') })
-      .first()
-    const nameField = positionRow.getByLabel('Name')
-    await expect(nameField).toHaveValue(new RegExp(drug.drugName))
+    const positionRow = position(page, drug.drugName)
+    await expect(positionRow).toHaveCount(1)
     const remove = positionRow.getByRole('button', { name: 'Löschen', exact: true })
 
-    // Delete sits at the end of the reorder buttons, so the click alone must not remove anything.
+    // The bin sits on the line, beside its amount, so the click alone must not remove anything.
     // The dialog is modal, so the line behind it is out of the accessibility tree while it is
     // open — the line is checked again once it closes.
     await remove.click()
@@ -373,13 +377,13 @@ test.describe('treatment lines', () => {
     // Backing out leaves the line alone.
     await dialog.getByRole('button', { name: 'Abbrechen', exact: true }).click()
     await expect(dialog).toHaveCount(0)
-    await expect(nameField).toHaveValue(new RegExp(drug.drugName))
+    await expect(positionRow).toHaveCount(1)
 
     // Confirming is what removes it.
     await remove.click()
     await page.getByRole('dialog').getByRole('button', { name: 'Löschen', exact: true }).click()
     await expect(page.getByRole('dialog')).toHaveCount(0)
-    await expect(page.getByLabel('Menge')).toHaveCount(0)
+    await expect(positions(page)).toHaveCount(0)
     // The pickers' own "Keine Einträge" waits, hidden, until they are searched in.
     await expect(page.getByText('Keine Einträge').filter({ visible: true }).first()).toBeVisible()
   })

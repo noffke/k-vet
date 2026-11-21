@@ -1,7 +1,7 @@
 import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
-import { expectInside, navigate, signIn } from './helpers'
+import { allPositions, expectInside, navigate, signIn } from './helpers'
 
 /**
  * "Mitbringen" (migration 0035): a customer phones for more of a regular medication; it goes on
@@ -30,7 +30,7 @@ test.describe('Mitbringen', () => {
     await row.getByLabel('Notiz').fill('für den Rücken')
     await row.getByLabel('Notiz').blur()
     // Written down, not dispensed: no position yet.
-    await expect(page.getByRole('tabpanel').getByLabel('Name')).toHaveCount(0)
+    await expect(allPositions(page.getByRole('tabpanel'))).toHaveCount(0)
 
     // The day's Packliste has it, added up and visit by visit; a tick survives a reload.
     await card.getByRole('link', { name: 'Packliste' }).click()
@@ -53,7 +53,7 @@ test.describe('Mitbringen', () => {
     await row.getByRole('button', { name: 'Als Position übernehmen' }).click()
     await expect(page.getByText(`„${drugName}“ als Position übernommen`)).toBeVisible()
     await expect(card.getByText('Übernommen', { exact: true })).toBeVisible()
-    await expect(page.getByRole('tabpanel').getByLabel('Name')).toHaveValue(new RegExp(drugName))
+    await expect(allPositions(page.getByRole('tabpanel'))).toContainText([new RegExp(drugName)])
   })
 
   // The Mitbringen row gave its quantity a narrow column: the −/+ buttons took the room, the

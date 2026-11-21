@@ -1,7 +1,7 @@
 import * as Tabs from '@radix-ui/react-tabs'
 import { Link } from '@tanstack/react-router'
 import { Plus, TriangleAlert } from 'lucide-react'
-import { useState } from 'react'
+import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useGetTreatment, useListTreatmentItems } from '@/api/generated/endpoints'
 import type { Treatment, TreatmentItem, TreatmentPatient } from '@/api/generated/model'
@@ -15,6 +15,14 @@ import { PdfStaleBanner } from '@/features/treatments/PdfStaleBanner'
 import { useLocaleFormat } from '@/lib/locale'
 import type { SaveStatus } from '@/lib/saveState'
 import { cn } from '@/lib/utils'
+
+/** What the position groups of a visit share: the newest line, and the search to go back to. */
+interface LineFocus {
+  newestId: number | null
+  onAdded: (id: number) => void
+  pickerRef: { current: HTMLInputElement | null }
+  onReturnToSearch: () => void
+}
 
 interface TreatmentSectionProps {
   treatmentId: number
@@ -52,6 +60,16 @@ function TreatmentBody({
   const { money } = useLocaleFormat()
   const eligible = useEligibleAnimals(treatment)
   const [adding, setAdding] = useState(false)
+  // The line just picked keeps its values open — wherever it landed: a "pro Termin" service
+  // picked in an animal's tab goes to the visit's group. Enter there returns to the search.
+  const [newestId, setNewestId] = useState<number | null>(null)
+  const search = useRef<HTMLInputElement | null>(null)
+  const lines = {
+    newestId,
+    onAdded: setNewestId,
+    pickerRef: search,
+    onReturnToSearch: () => search.current?.focus(),
+  }
 
   const patients = treatment.patients
   const active = patients.find((patient) => patient.id === activeRecordId) ?? patients[0]
@@ -76,6 +94,7 @@ function TreatmentBody({
             patientTreatmentId={null}
             items={general}
             readOnly={treatment.frozen}
+            {...lines}
           />
         </>
       ) : (
@@ -153,6 +172,7 @@ function TreatmentBody({
                   if (next) onSelectRecord(next.id)
                 }}
                 onSaveState={onSaveState}
+                lines={lines}
               />
             </Tabs.Content>
           ))}
@@ -181,6 +201,7 @@ function AnimalPanel({
   removable,
   onRemoved,
   onSaveState,
+  lines,
 }: {
   treatment: Treatment
   patient: TreatmentPatient
@@ -189,6 +210,8 @@ function AnimalPanel({
   removable: boolean
   onRemoved: () => void
   onSaveState: (status: SaveStatus) => void
+  /** The newest line and the way back to the search, shared by both groups. */
+  lines: LineFocus
 }) {
   const { t } = useTranslation()
 
@@ -229,6 +252,7 @@ function AnimalPanel({
         patientTreatmentId={patient.id}
         items={items.filter((item) => item.patient_treatment_id === patient.id)}
         readOnly={treatment.frozen}
+        {...lines}
       />
 
       {general.length > 0 ? (
@@ -239,6 +263,8 @@ function AnimalPanel({
           items={general}
           readOnly={treatment.frozen}
           showPicker={false}
+          {...lines}
+          pickerRef={undefined}
         />
       ) : null}
     </div>

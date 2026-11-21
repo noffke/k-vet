@@ -7,7 +7,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
-import { navigate, signIn } from './helpers'
+import { editValue, navigate, openPosition, position, signIn } from './helpers'
 
 /**
  * Preisauskunft: positions priced for a caller as a treatment prices them, saved as they are
@@ -45,7 +45,9 @@ test.describe('Preisauskunft', () => {
 
     await page.reload()
     await expect(total(page)).toContainText('112,43 €')
-    await expect(page.getByLabel('Menge')).toHaveValue('2')
+    // Reloaded, no line is the newest: the quantity reads as text in its row.
+    await expect(position(page, serviceName)).toContainText('2 ×')
+    await expect(await editValue(page, serviceName, 'Menge')).toHaveValue('2')
 
     // Leaving an open quote asks; discarding leaves nothing behind.
     await navigate(page, 'Kunden')
@@ -123,12 +125,12 @@ test.describe('Preisauskunft', () => {
     await expect(dialog.getByLabel('wie angeboten (28,11 €)')).toBeChecked()
     await dialog.getByRole('button', { name: 'Übernehmen' }).click()
 
-    // The line's name is its own field: text on the page only matched the dialog while it was
-    // still closing, which a fast backend no longer waits for.
-    await expect(page.getByLabel('Name', { exact: true }).first()).toHaveValue(serviceName)
-    await expect(page.getByLabel('Preis (brutto)').first()).toHaveValue('28,11')
+    // A position of its own: text on the page alone only matched the dialog while it was still
+    // closing, which a fast backend no longer waits for. The price is behind the line's name.
+    const taken = await openPosition(page, serviceName)
+    await expect(taken.getByLabel('Preis (brutto)')).toHaveValue('28,11')
     await page.getByRole('button', { name: 'Rückgängig' }).click()
-    await expect(page.getByLabel('Preis (brutto)')).toHaveCount(0)
+    await expect(position(page, serviceName)).toHaveCount(0)
   })
 
   test('a quote left open stays reachable, and leaving it asks again', async ({

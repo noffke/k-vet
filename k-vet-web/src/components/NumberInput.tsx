@@ -1,5 +1,5 @@
 import { Minus, Plus } from 'lucide-react'
-import type { ReactNode } from 'react'
+import type { KeyboardEvent, ReactNode, Ref } from 'react'
 import { useEffect, useId, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/components/ui/field'
@@ -41,6 +41,11 @@ export interface NumberInputProps {
   className?: string | undefined
   wrapperClassName?: string | undefined
   onBlur?: (() => void) | undefined
+  onKeyDown?: ((event: KeyboardEvent<HTMLInputElement>) => void) | undefined
+  /** The input element, for a page that moves the focus into it. */
+  inputRef?: Ref<HTMLInputElement> | undefined
+  /** The label for screen readers only (see `Field`). */
+  hideLabel?: boolean | undefined
   /**
    * A button at the end of the field, inside its border like the stepper's: for a value that
    * can be fetched from elsewhere — the kilometres of a Wegegeld line, from Google Maps.
@@ -81,6 +86,9 @@ export function NumberInput({
   className,
   wrapperClassName,
   onBlur,
+  onKeyDown,
+  inputRef,
+  hideLabel,
   action,
 }: NumberInputProps) {
   const { t } = useTranslation()
@@ -137,7 +145,13 @@ export function NumberInput({
   const boxed = step !== undefined || action !== undefined
 
   return (
-    <Field label={label} error={shown} hint={hint} className={wrapperClassName}>
+    <Field
+      label={label}
+      error={shown}
+      hint={hint}
+      className={wrapperClassName}
+      hideLabel={hideLabel}
+    >
       {(id) => (
         <div
           className={cn(
@@ -159,6 +173,8 @@ export function NumberInput({
           >
             <input
               id={id}
+              ref={inputRef}
+              onKeyDown={onKeyDown}
               // `text` with a numeric keypad hint: `type=number` would fight the decimal comma.
               type="text"
               inputMode="decimal"

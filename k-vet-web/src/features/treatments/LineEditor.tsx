@@ -7,7 +7,6 @@ import {
   Pill,
   RefreshCw,
   Stethoscope,
-  Trash2,
 } from 'lucide-react'
 import type { ReactNode } from 'react'
 import { useState } from 'react'
@@ -27,12 +26,20 @@ import {
   usePatchTreatmentItem,
   useRecomputeTreatmentItemKm,
 } from '@/api/generated/endpoints'
-import type { MoveDirection, PickerItem, Treatment, TreatmentItem } from '@/api/generated/model'
+import type {
+  MoveDirection,
+  PatchTreatmentItem,
+  PickerItem,
+  Treatment,
+  TreatmentItem,
+} from '@/api/generated/model'
 import { ConfirmDialog } from '@/components/ConfirmDialog'
 import { ItemPicker } from '@/components/ItemPicker'
 import { NumberInput } from '@/components/NumberInput'
+import { PositionList, PositionRow } from '@/components/PositionRow'
 import { Button } from '@/components/ui/button'
 import { CheckboxField } from '@/components/ui/field'
+import { ValueCell } from '@/components/ValueCell'
 import { ApplyQuote } from '@/features/quote/ApplyQuoteDialog'
 import { useOperatorConfig } from '@/lib/config'
 import { dispenseBreakdown, dispenseRuleText, refusalText } from '@/lib/dispense'
@@ -62,7 +69,21 @@ interface PositionGroupProps {
    * lands among them by itself.
    */
   showPicker?: boolean
+  /**
+   * The line just picked, on this visit — kept by the treatment section, since a "pro Termin"
+   * service picked in an animal's tab lands in the visit's group. Its values stay open.
+   */
+  newestId?: number | null
+  /** Told the id of each line picked here. */
+  onAdded?: ((id: number) => void) | undefined
+  /** The search field of the group that has one, for Enter to return to. */
+  pickerRef?: { current: HTMLInputElement | null } | undefined
+  /** Enter in the newest line's value: back to the search, for the next position. */
+  onReturnToSearch?: (() => void) | undefined
 }
+
+/** A value of a position's row that is being typed into. */
+type Cell = 'quantity' | 'factor' | 'km'
 
 /**
  * One animal's positions: its own search box, its own order. A Behandlungsgruppe is offered
@@ -75,9 +96,13 @@ export function PositionGroup({
   items,
   readOnly,
   showPicker = true,
+  newestId = null,
+  onAdded,
+  pickerRef,
+  onReturnToSearch,
 }: PositionGroupProps) {
   const { t } = useTranslation()
-  const { money, unitPrice, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
+  const { money, unitPrice, quantity: formatQuantity, percent } = useLocaleFormat()
   const { maps_enabled: mapsEnabled } = useOperatorConfig()
   const client = useQueryClient()
 
@@ -103,7 +128,17 @@ export function PositionGroup({
   }
   const mutation = { onSuccess: invalidate, onError: refused }
 
-  const addItem = useCreateTreatmentItem({ mutation })
+  // The line is the newest before the list is read again, so it comes in with its values open
+  // (a call's own `onSuccess` runs only after this one's refetch).
+  const addItem = useCreateTreatmentItem({
+    mutation: {
+      onSuccess: (created) => {
+        onAdded?.(created.id)
+        return invalidate()
+      },
+      onError: refused,
+    },
+  })
   // A quantity off a drug's steps is refused with the steps themselves: "in Schritten von 10 ml".
   const patchItem = usePatchTreatmentItem({
     mutation: {
@@ -128,6 +163,8 @@ export function PositionGroup({
    * to reorder, and a removed drug line takes its dispense with it.
    */
   const [pendingRemoval, setPendingRemoval] = useState<TreatmentItem | null>(null)
+  /** A value opened with a tap, until the focus leaves it (the newest line's stay open). */
+  const [editing, setEditing] = useState<{ id: number; cell: Cell } | null>(null)
   const bulkDelete = useBulkDeleteTreatmentItems({ mutation })
   const applyTemplate = useApplyTemplate({ mutation })
 
@@ -202,6 +239,7 @@ export function PositionGroup({
       <div className="mt-2">
         <ItemPicker
           onPick={pick}
+          inputRef={pickerRef}
           perVisitOnly={patientTreatmentId === null}
           onPickTemplate={
             patientTreatmentId === null
@@ -258,296 +296,167 @@ export function PositionGroup({
         <p className="mt-0.5 text-xs text-ink-faint">{t('treatments.withoutPatientHint')}</p>
       ) : null}
 
-      <ul className="mt-2 flex flex-col gap-2">
-        {items.map((item, index) => (
-          <li
-            key={item.id}
-            className={cn(
-              'rounded-card border border-line bg-surface p-3',
-              changedSincePdf.has(item.id) && 'border-l-4 border-l-rust',
-            )}
-          >
-            <div className="flex items-start gap-2">
-              {item.kind === 'drug_packaging' ? (
-                <Pill className="mt-0.5 size-4 shrink-0 text-rust" aria-hidden />
-              ) : (
-                <Stethoscope className="mt-0.5 size-4 shrink-0 text-ink-soft" aria-hidden />
-              )}
-              <div className="min-w-0 flex-1">
-                <input
-                  aria-label={t('field.name')}
-                  defaultValue={item.name}
-                  disabled={readOnly}
-                  onBlur={(event) => {
-                    if (event.target.value !== item.name) {
-                      patchItem.mutate({ id: item.id, data: { name: event.target.value } })
-                    }
-                  }}
-                  className="w-full border-0 bg-transparent p-0 font-medium text-ink focus:outline-none disabled:text-ink-soft"
-                />
-                {changedSincePdf.has(item.id) ? (
-                  <p className="text-xs font-semibold text-rust">{t('pdfStale.lineChanged')}</p>
-                ) : null}
-                <p className="text-xs text-ink-faint">
-                  {item.got_number
-                    ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · `
-                    : ''}
-                  {percent(item.vat_percent)} {t('field.vat')}
-                </p>
-                {/* What the invoice prints for the quantity: whole packs and a Teilmenge. */}
-                {item.dispense ? (
-                  <p className="numeric text-xs text-ink-soft">
-                    {dispenseBreakdown(item.dispense, item.unit, t, {
-                      quantity: formatQuantity,
-                      money,
-                      unitPrice,
-                    })}
-                  </p>
-                ) : null}
-              </div>
-              <span className="numeric shrink-0 font-semibold text-ink">
-                {money(item.line_gross)}
-              </span>
-            </div>
-
-            <div className="mt-2 grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <NumberInput
-                label={t('field.quantity')}
-                value={item.quantity}
-                unit={item.dispense ? (item.unit ?? undefined) : undefined}
-                hint={
-                  item.dispense
-                    ? dispenseRuleText(item.dispense.rule, item.unit, t, formatQuantity)
+      {items.length === 0 ? (
+        <p className="mt-2 rounded-card border border-dashed border-line-strong px-4 py-4 text-center text-sm text-ink-faint">
+          {t('list.empty')}
+        </p>
+      ) : (
+        <PositionList label={typeof heading === 'string' ? heading : t('treatments.items')}>
+          {items.map((item, index) => {
+            const newest = item.id === newestId && !readOnly
+            const isOpen = (cell: Cell) =>
+              newest || (editing?.id === item.id && editing.cell === cell)
+            const close = (cell: Cell) => () =>
+              setEditing((current) =>
+                current?.id === item.id && current.cell === cell ? null : current,
+              )
+            const open = (cell: Cell) => () => setEditing({ id: item.id, cell })
+            const quantityCell = item.travel_expenses ? (
+              <ValueCell
+                label={t('field.km')}
+                display={
+                  item.km != null ? `${formatQuantity(item.km)} km` : t('treatments.kmMissingShort')
+                }
+                missing={item.km == null}
+                value={item.km ?? null}
+                unit="km"
+                open={isOpen('km')}
+                onOpen={open('km')}
+                onClose={close('km')}
+                autoFocus={newest}
+                onEnter={newest ? onReturnToSearch : undefined}
+                readOnly={readOnly}
+                onChange={(value) =>
+                  value && patchItem.mutate({ id: item.id, data: { km: value } })
+                }
+                action={
+                  mapsEnabled
+                    ? {
+                        label: t('treatments.recomputeKm'),
+                        icon: (
+                          <RefreshCw
+                            className={cn(
+                              'size-4',
+                              recomputeKm.isPending &&
+                                recomputeKm.variables?.id === item.id &&
+                                'animate-spin',
+                            )}
+                          />
+                        ),
+                        disabled: recomputeKm.isPending,
+                        onClick: () =>
+                          recomputeKm.mutate(
+                            { id: item.id },
+                            { onSuccess: (line) => kmToast(line.km_suggestion, item.name) },
+                          ),
+                      }
                     : undefined
                 }
-                disabled={readOnly}
+              />
+            ) : (
+              <ValueCell
+                label={t('field.quantity')}
+                display={`${formatQuantity(item.quantity)} ${
+                  item.dispense ? (item.unit ?? '') : '×'
+                }`.trim()}
+                value={item.quantity}
+                unit={item.dispense ? (item.unit ?? undefined) : undefined}
+                open={isOpen('quantity')}
+                onOpen={open('quantity')}
+                onClose={close('quantity')}
+                autoFocus={newest}
+                onEnter={newest ? onReturnToSearch : undefined}
+                readOnly={readOnly}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { quantity: value } })
                 }
               />
-              {/* A GOT position costs what the schedule says, net as the GOT publishes it; the
-                  factor adjusts it, the price stays (the server refuses one). */}
-              {gotPosition(item) ? (
-                <NumberInput
-                  label={t('field.priceNet')}
-                  value={item.price_net}
-                  unit={currencySymbol}
-                  money
-                  hint={`${t('field.priceGross')}: ${money(item.price_gross)} · ${t('treatments.gotPriceHint')}`}
-                  disabled
-                  onChange={() => undefined}
-                />
-              ) : null}
-              {item.kind === 'service' ? (
-                <NumberInput
+            )
+            const factorCell =
+              item.kind === 'service' ? (
+                <ValueCell
                   label={t('field.factor')}
+                  display={percent(item.factor)}
                   value={item.factor ?? null}
                   decimals={3}
                   unit="%"
-                  disabled={readOnly}
+                  open={isOpen('factor')}
+                  onOpen={open('factor')}
+                  onClose={close('factor')}
+                  onEnter={newest ? onReturnToSearch : undefined}
+                  readOnly={readOnly}
                   onChange={(value) =>
                     value && patchItem.mutate({ id: item.id, data: { factor: value } })
                   }
                 />
-              ) : null}
-              {item.travel_expenses ? (
-                <>
-                  <NumberInput
-                    label={t('field.km')}
-                    value={item.km ?? null}
-                    unit="km"
-                    disabled={readOnly}
-                    hint={t('treatments.kmHint')}
-                    // Said where it is fixed: the invoice is refused without them.
-                    error={
-                      item.km == null && !readOnly
-                        ? t('treatments.kmRequiredForInvoice')
-                        : undefined
-                    }
-                    onChange={(value) =>
-                      value && patchItem.mutate({ id: item.id, data: { km: value } })
-                    }
-                    action={
-                      mapsEnabled && !readOnly
-                        ? {
-                            label: t('treatments.recomputeKm'),
-                            icon: (
-                              <RefreshCw
-                                className={cn(
-                                  'size-4',
-                                  recomputeKm.isPending &&
-                                    recomputeKm.variables?.id === item.id &&
-                                    'animate-spin',
-                                )}
-                              />
-                            ),
-                            disabled: recomputeKm.isPending,
-                            onClick: () =>
-                              recomputeKm.mutate(
-                                { id: item.id },
-                                { onSuccess: (line) => kmToast(line.km_suggestion, item.name) },
-                              ),
-                          }
-                        : undefined
-                    }
-                  />
-                  <NumberInput
-                    label={t('field.kmMultiplier')}
-                    value={item.km_multiplier ?? null}
-                    decimals={3}
-                    disabled={readOnly}
-                    onChange={(value) =>
-                      value && patchItem.mutate({ id: item.id, data: { km_multiplier: value } })
-                    }
-                  />
-                </>
-              ) : null}
-              {/* Moving a line to the animal it belongs to, when it was entered under the
-                  wrong one. Never between an animal and the visit: that is the service's to
-                  say ("pro Termin"), and the visit's lines have no animal to move between. */}
-              {treatment.patients.length > 1 && item.patient_treatment_id !== null ? (
-                <label className="flex flex-col gap-1">
-                  <span className="text-xs font-semibold text-ink-soft">{t('field.patient')}</span>
-                  <select
-                    value={item.patient_treatment_id}
-                    disabled={readOnly}
-                    onChange={(event) =>
-                      patchItem.mutate({
-                        id: item.id,
-                        data: { patient_treatment_id: Number(event.target.value) },
-                      })
-                    }
-                    className="rounded-control border border-line-strong bg-surface px-2 py-2 min-h-11 sm:min-h-9"
-                  >
-                    {treatment.patients.map((patient) => (
-                      <option key={patient.id} value={patient.id}>
-                        {patient.name}
-                      </option>
-                    ))}
-                  </select>
-                </label>
-              ) : null}
-              {/* Every other position is priced as the customer sees it, last in the row (issues.md):
-                  gross, after the factor, with the net underneath. The server stores the net that
-                  comes closest, so a cent rounding moved shows here once the field is left. */}
-              {gotPosition(item) ? null : (
-                <NumberInput
-                  label={item.dispense ? t('dispense.packPrice') : t('field.priceGross')}
-                  value={item.price_gross}
-                  unit={currencySymbol}
-                  money
-                  hint={`${t('field.priceNet')}: ${money(item.unit_net)}`}
-                  disabled={readOnly}
-                  onChange={(value) =>
-                    value && patchItem.mutate({ id: item.id, data: { price_gross: value } })
-                  }
-                />
-              )}
-              {/* The rest's price per unit, when there is a rest: stored for the Teilmenge, so
-                  the steps stay what they are. */}
-              {item.dispense?.remainder ? (
-                <NumberInput
-                  label={t('dispense.subsetPrice', { unit: item.unit ?? '' })}
-                  value={item.dispense.remainder.price_gross}
-                  unit={currencySymbol}
-                  decimals={4}
-                  disabled={readOnly}
-                  onChange={(value) =>
-                    value && patchItem.mutate({ id: item.id, data: { subset_price_gross: value } })
-                  }
-                />
-              ) : null}
-            </div>
-
-            {item.kind === 'drug_packaging' ? (
-              // Ad-hoc Umwidmung — an eye preparation used in an ear. Documentation only: it is
-              // recorded on this line and never touches the price.
-              <div className="mt-2">
-                <CheckboxField
-                  label={t('treatments.redesignation')}
-                  defaultChecked={item.redesignation}
-                  disabled={readOnly}
-                  onChange={(event) =>
-                    patchItem.mutate({
-                      id: item.id,
-                      data: { redesignation: event.target.checked },
-                    })
-                  }
-                />
-                <p className="text-xs text-ink-faint">{t('treatments.redesignationHint')}</p>
-              </div>
-            ) : null}
-
-            {item.lots.length > 0 ? (
-              <p className="mt-2 text-xs text-ink-faint">
-                {t('treatments.lots')}:{' '}
-                {item.lots
-                  .map(
-                    (lot) =>
-                      `${lot.batch_number ?? lot.lot_id} (${formatQuantity(lot.quantity)} ${
-                        item.unit ?? ''
-                      })`,
+              ) : null
+            const breakdown = item.dispense
+              ? dispenseBreakdown(item.dispense, item.unit, t, {
+                  quantity: formatQuantity,
+                  money,
+                  unitPrice,
+                })
+              : null
+            const kmMissing = item.travel_expenses && item.km == null && !readOnly
+            const changed = changedSincePdf.has(item.id)
+            return (
+              <PositionRow
+                key={item.id}
+                icon={
+                  item.kind === 'drug_packaging' ? (
+                    <Pill className="size-4 shrink-0 text-rust" aria-hidden />
+                  ) : (
+                    <Stethoscope className="size-4 shrink-0 text-ink-soft" aria-hidden />
                   )
-                  .join(', ')}
-              </p>
-            ) : null}
-
-            {readOnly ? null : (
-              <div className="mt-2 flex justify-end gap-1">
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('action.moveTop')}
-                  disabled={index === 0}
-                  onClick={() => move(item.id, 'top')}
-                >
-                  <ChevronsUp className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('action.moveUp')}
-                  disabled={index === 0}
-                  onClick={() => move(item.id, 'up')}
-                >
-                  <ChevronUp className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('action.moveDown')}
-                  disabled={index === items.length - 1}
-                  onClick={() => move(item.id, 'down')}
-                >
-                  <ChevronDown className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('action.moveBottom')}
-                  disabled={index === items.length - 1}
-                  onClick={() => move(item.id, 'bottom')}
-                >
-                  <ChevronsDown className="size-4" />
-                </Button>
-                <Button
-                  size="icon"
-                  variant="ghost"
-                  aria-label={t('action.delete')}
-                  onClick={() => setPendingRemoval(item)}
-                >
-                  <Trash2 className="size-4 text-danger" />
-                </Button>
-              </div>
-            )}
-          </li>
-        ))}
-        {items.length === 0 ? (
-          <li className="rounded-card border border-dashed border-line-strong px-4 py-4 text-center text-sm text-ink-faint">
-            {t('list.empty')}
-          </li>
-        ) : null}
-      </ul>
+                }
+                name={item.name}
+                quantity={quantityCell}
+                factor={factorCell}
+                amount={money(item.line_gross)}
+                newest={newest}
+                marker={changed}
+                // While the quantity is typed: which steps it takes, and how it bills.
+                hint={
+                  isOpen('quantity') && item.dispense ? (
+                    <span className="numeric">
+                      {dispenseRuleText(item.dispense.rule, item.unit, t, formatQuantity)}
+                      {breakdown ? ` · ${breakdown}` : ''}
+                    </span>
+                  ) : undefined
+                }
+                notice={
+                  kmMissing || changed ? (
+                    <>
+                      {kmMissing ? (
+                        <span className="font-medium text-danger">
+                          {t('treatments.kmRequiredForInvoice')}
+                        </span>
+                      ) : null}
+                      {changed ? (
+                        <span className="font-semibold text-rust">{t('pdfStale.lineChanged')}</span>
+                      ) : null}
+                    </>
+                  ) : undefined
+                }
+                removeLabel={t('action.delete')}
+                onRemove={readOnly ? undefined : () => setPendingRemoval(item)}
+                details={
+                  <LineDetails
+                    item={item}
+                    index={index}
+                    count={items.length}
+                    treatment={treatment}
+                    readOnly={readOnly}
+                    breakdown={breakdown}
+                    onPatch={(data) => patchItem.mutate({ id: item.id, data })}
+                    onMove={(direction) => move(item.id, direction)}
+                  />
+                }
+              />
+            )
+          })}
+        </PositionList>
+      )}
 
       {/* Under the list: a picked position appears right above the search it came from,
           where the vet is looking, instead of off screen at the end of a long list. */}
@@ -572,6 +481,203 @@ export function PositionGroup({
           <p className="mt-2 text-ink-faint">{t('treatments.removeItemReturnsStock')}</p>
         ) : null}
       </ConfirmDialog>
+    </div>
+  )
+}
+
+interface LineDetailsProps {
+  item: TreatmentItem
+  index: number
+  count: number
+  treatment: Treatment
+  readOnly: boolean
+  /** What the invoice prints for the quantity, already composed. */
+  breakdown: string | null
+  onPatch: (data: PatchTreatmentItem) => void
+  onMove: (direction: MoveDirection) => void
+}
+
+/** Everything of a line that waits behind its name: rename, prices, animal, notes, order. */
+function LineDetails({
+  item,
+  index,
+  count,
+  treatment,
+  readOnly,
+  breakdown,
+  onPatch,
+  onMove,
+}: LineDetailsProps) {
+  const { t } = useTranslation()
+  const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
+
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="grid gap-3 sm:grid-cols-3">
+        <label className="flex flex-col gap-1 sm:col-span-3">
+          <span className="text-xs font-semibold text-ink-soft">{t('field.name')}</span>
+          <input
+            defaultValue={item.name}
+            disabled={readOnly}
+            onBlur={(event) => {
+              if (event.target.value !== item.name) onPatch({ name: event.target.value })
+            }}
+            className="min-h-11 rounded-control border border-line-strong bg-surface px-3 py-2 text-ink disabled:bg-sunken disabled:text-ink-faint sm:min-h-9"
+          />
+        </label>
+        {/* A Wegegeld line shows its kilometres in the row; its count is here. */}
+        {item.travel_expenses ? (
+          <NumberInput
+            label={t('field.quantity')}
+            value={item.quantity}
+            disabled={readOnly}
+            onChange={(value) => value && onPatch({ quantity: value })}
+          />
+        ) : null}
+        {/* A GOT position costs what the schedule says, net as the GOT publishes it; the
+            factor adjusts it, the price stays (the server refuses one). */}
+        {gotPosition(item) ? (
+          <NumberInput
+            label={t('field.priceNet')}
+            value={item.price_net}
+            unit={currencySymbol}
+            money
+            hint={`${t('field.priceGross')}: ${money(item.price_gross)} · ${t('treatments.gotPriceHint')}`}
+            disabled
+            onChange={() => undefined}
+          />
+        ) : (
+          // Every other position is priced as the customer sees it: gross, after the factor,
+          // with the net underneath. The server stores the net that comes closest.
+          <NumberInput
+            label={item.dispense ? t('dispense.packPrice') : t('field.priceGross')}
+            value={item.price_gross}
+            unit={currencySymbol}
+            money
+            hint={`${t('field.priceNet')}: ${money(item.unit_net)}`}
+            disabled={readOnly}
+            onChange={(value) => value && onPatch({ price_gross: value })}
+          />
+        )}
+        {/* The rest's price per unit, when there is a rest: stored for the Teilmenge. */}
+        {item.dispense?.remainder ? (
+          <NumberInput
+            label={t('dispense.subsetPrice', { unit: item.unit ?? '' })}
+            value={item.dispense.remainder.price_gross}
+            unit={currencySymbol}
+            decimals={4}
+            disabled={readOnly}
+            onChange={(value) => value && onPatch({ subset_price_gross: value })}
+          />
+        ) : null}
+        {item.travel_expenses ? (
+          <NumberInput
+            label={t('field.kmMultiplier')}
+            value={item.km_multiplier ?? null}
+            decimals={3}
+            disabled={readOnly}
+            hint={t('treatments.kmHint')}
+            onChange={(value) => value && onPatch({ km_multiplier: value })}
+          />
+        ) : null}
+        {/* Moving a line to the animal it belongs to, when it was entered under the wrong
+            one. Never between an animal and the visit: that is the service's to say. */}
+        {treatment.patients.length > 1 && item.patient_treatment_id !== null ? (
+          <label className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-ink-soft">{t('field.patient')}</span>
+            <select
+              value={item.patient_treatment_id}
+              disabled={readOnly}
+              onChange={(event) => onPatch({ patient_treatment_id: Number(event.target.value) })}
+              className="min-h-11 rounded-control border border-line-strong bg-surface px-2 py-2 sm:min-h-9"
+            >
+              {treatment.patients.map((patient) => (
+                <option key={patient.id} value={patient.id}>
+                  {patient.name}
+                </option>
+              ))}
+            </select>
+          </label>
+        ) : null}
+      </div>
+
+      {item.kind === 'drug_packaging' ? (
+        // Ad-hoc Umwidmung — an eye preparation used in an ear. Documentation only: it is
+        // recorded on this line and never touches the price.
+        <div>
+          <CheckboxField
+            label={t('treatments.redesignation')}
+            defaultChecked={item.redesignation}
+            disabled={readOnly}
+            onChange={(event) => onPatch({ redesignation: event.target.checked })}
+          />
+          <p className="text-xs text-ink-faint">{t('treatments.redesignationHint')}</p>
+        </div>
+      ) : null}
+
+      <div className="flex flex-wrap items-end justify-between gap-2">
+        <div className="min-w-0 text-xs text-ink-faint">
+          <p>
+            {item.got_number ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · ` : ''}
+            {percent(item.vat_percent)} {t('field.vat')}
+          </p>
+          {/* What the invoice prints for the quantity: whole packs and a Teilmenge. */}
+          {breakdown ? <p className="numeric text-ink-soft">{breakdown}</p> : null}
+          {item.lots.length > 0 ? (
+            <p>
+              {t('treatments.lots')}:{' '}
+              {item.lots
+                .map(
+                  (lot) =>
+                    `${lot.batch_number ?? lot.lot_id} (${formatQuantity(lot.quantity)} ${
+                      item.unit ?? ''
+                    })`,
+                )
+                .join(', ')}
+            </p>
+          ) : null}
+        </div>
+        {readOnly ? null : (
+          <div className="flex gap-1">
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={t('action.moveTop')}
+              disabled={index === 0}
+              onClick={() => onMove('top')}
+            >
+              <ChevronsUp className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={t('action.moveUp')}
+              disabled={index === 0}
+              onClick={() => onMove('up')}
+            >
+              <ChevronUp className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={t('action.moveDown')}
+              disabled={index === count - 1}
+              onClick={() => onMove('down')}
+            >
+              <ChevronDown className="size-4" />
+            </Button>
+            <Button
+              size="icon"
+              variant="ghost"
+              aria-label={t('action.moveBottom')}
+              disabled={index === count - 1}
+              onClick={() => onMove('bottom')}
+            >
+              <ChevronsDown className="size-4" />
+            </Button>
+          </div>
+        )}
+      </div>
     </div>
   )
 }

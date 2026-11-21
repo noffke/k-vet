@@ -301,7 +301,8 @@
     },
     "recomputeKm": "Recompute the distance (Google Maps)",
     "kmRequiredForInvoice": "No invoice can be created without the kilometres.",
-    "stockShort": "Not enough stock"
+    "stockShort": "Not enough stock",
+    "kmMissingShort": "km missing"
   },
   "invoices": {
     "accept": "Accept invoice",
@@ -842,5 +843,8 @@
     "available": "k-vet {{version}} has been installed.",
     "reload": "Reload",
     "saving": "Saving …"
+  },
+  "position": {
+    "edit": "Change {{label}}:"
   }
 }

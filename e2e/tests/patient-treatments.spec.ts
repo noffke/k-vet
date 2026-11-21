@@ -12,7 +12,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
-import { signIn } from './helpers'
+import { allPositions, openPosition, signIn } from './helpers'
 
 const run = promisify(execFile)
 
@@ -53,7 +53,7 @@ test.describe('patient treatments', () => {
     expect(await tabBar.evaluate((list) => list.scrollHeight - list.clientHeight)).toBe(0)
     await picker.fill(drug.drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
-    await expect(panel.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
+    await expect(allPositions(panel)).toContainText([new RegExp(drug.drugName)])
     await panel.getByLabel('Vorbericht und Untersuchung').fill('Verbandswechsel')
     await panel.getByLabel('Therapie und weiteres Vorgehen').fill('Wunde sauber und trocken.')
     await panel.getByLabel('Therapie und weiteres Vorgehen').blur()
@@ -66,9 +66,12 @@ test.describe('patient treatments', () => {
     await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
     await expect(page.getByText(`„${serviceName}“ pro Termin hinzugefügt`)).toBeVisible()
     await expect(panel.getByText('pro Termin')).toBeVisible()
-    await expect(panel.getByLabel('Name')).toHaveCount(2)
-    // Only Eddie's line can move — between the two animals, never to the visit.
+    await expect(allPositions(panel)).toHaveCount(2)
+    // Only Eddie's line can move — between the two animals, never to the visit. The choice is
+    // behind each line's name; the visit's line, opened as well, has none.
     // By role: the label wraps the select, so its text content carries the options as well.
+    await openPosition(page, drug.drugName)
+    await openPosition(page, serviceName)
     const owner = panel.getByRole('combobox', { name: 'Patient', exact: true })
     await expect(owner).toHaveCount(1)
     expect(await owner.locator('option').allTextContents()).toEqual(['Eddie', 'Helene'])
@@ -79,9 +82,8 @@ test.describe('patient treatments', () => {
     await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveText('')
     await picker.fill('Beratung im')
     await page.getByRole('option', { name: /Beratung/ }).first().click()
-    await expect(panel.getByLabel('Name')).toHaveCount(2)
-    await expect(panel.getByLabel('Name').first()).toHaveValue(/Beratung/)
-    await expect(panel.getByLabel('Name').last()).toHaveValue(new RegExp(serviceName))
+    await expect(allPositions(panel)).toHaveCount(2)
+    await expect(allPositions(panel)).toContainText([/Beratung/, new RegExp(serviceName)])
 
     // Back to Eddie: what was typed is still there.
     await page.getByRole('tab', { name: 'Eddie' }).click()
@@ -175,7 +177,7 @@ test.describe('patient treatments', () => {
 
     await signIn(page, `/treatments/${treatmentId}`)
     // The button is disabled until the lines are on screen: the open tab's and the visit's.
-    await expect(page.getByLabel('Name')).toHaveCount(2)
+    await expect(allPositions(page)).toHaveCount(2)
     await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
     const openedTab = page.context().waitForEvent('page')
     await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
@@ -263,7 +265,7 @@ test.describe('patient treatments', () => {
     await expect(page).not.toHaveURL(new RegExp(`/appointments/${appointmentId}(\\?|$)`))
     await expect(page.getByRole('tab')).toHaveCount(1)
     await expect(page.getByRole('tab', { name: 'Helene' })).toHaveAttribute('aria-selected', 'true')
-    await expect(page.getByRole('tabpanel').getByLabel('Name')).toHaveValue(new RegExp(serviceName))
+    await expect(allPositions(page.getByRole('tabpanel'))).toContainText([new RegExp(serviceName)])
 
     // Eddie keeps the visit and the house call.
     const left = await lines(treatmentId)
@@ -282,7 +284,7 @@ test.describe('patient treatments', () => {
     await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
-    await expect(page.getByLabel('Name')).toHaveValue(new RegExp(drug.drugName))
+    await expect(allPositions(page)).toContainText([new RegExp(drug.drugName)])
 
     // Which animal received which batch is what the ownership is for, so the API refuses.
     const line = await (await request.get(`/api/treatments/${treatmentId}/items`)).json()

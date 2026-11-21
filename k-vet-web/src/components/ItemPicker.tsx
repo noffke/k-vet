@@ -46,6 +46,8 @@ interface ItemPickerProps {
    */
   disabled?: boolean
   placeholder?: string
+  /** The search field, for a page that sends the focus back to it (Enter after a quantity). */
+  inputRef?: { current: HTMLInputElement | null } | undefined
 }
 
 /** Below Tailwind's `sm`: a phone, where the keyboard takes half the screen. */
@@ -71,6 +73,7 @@ export function ItemPicker({
   drugsOnly = false,
   disabled,
   placeholder,
+  inputRef,
 }: ItemPickerProps) {
   const { t } = useTranslation()
   const { money, quantity } = useLocaleFormat()
@@ -138,6 +141,7 @@ export function ItemPicker({
         ref={(node) => {
           unmarkCmdkInput(node)
           input.current = node
+          if (inputRef) inputRef.current = node
           node?.setAttribute('aria-expanded', String(open))
         }}
         value={term}

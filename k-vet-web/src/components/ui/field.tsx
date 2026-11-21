@@ -33,6 +33,11 @@ interface FieldShellProps {
   warning?: string | undefined
   hint?: string | undefined
   className?: string | undefined
+  /**
+   * The label for screen readers only — for a control whose place says what it is, like a
+   * position's quantity in its row.
+   */
+  hideLabel?: boolean | undefined
   children: (id: string) => ReactNode
 }
 
@@ -44,13 +49,18 @@ export function Field({
   warning,
   hint,
   className,
+  hideLabel,
   children,
 }: FieldShellProps) {
   const generated = useId()
   const id = given ?? generated
   return (
     <div className={cn('flex flex-col gap-1', className)}>
-      <label id={`${id}-label`} htmlFor={id} className="text-xs font-semibold text-ink-soft">
+      <label
+        id={`${id}-label`}
+        htmlFor={id}
+        className={cn('text-xs font-semibold text-ink-soft', hideLabel && 'sr-only')}
+      >
         {label}
       </label>
       {children(id)}
