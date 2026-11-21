@@ -563,9 +563,16 @@ pub fn dispense_check(pricing: &DispensePricing, quantity: Decimal) -> Result<()
     }
 }
 
-/// What a newly picked drug starts at: one base unit where that can be dispensed, otherwise the
+/// What a newly picked drug starts at: a tenth of a base unit for one that is "beliebig teilbar"
+/// (0,1 ml of an injection), else one base unit where that can be dispensed, otherwise the
 /// smallest Teilmenge, otherwise one whole pack.
+///
+/// The tenth because the stock is checked from the first moment: starting at 1 ml, the last
+/// 0,4 ml of a bottle could not be put on an invoice at all (seen 2026-11-21).
 pub fn dispense_preset(pricing: &DispensePricing) -> Decimal {
+    if pricing.freely_divisible {
+        return Decimal::new(1, 1);
+    }
     if dispense_check(pricing, Decimal::ONE).is_ok() {
         return Decimal::ONE;
     }
@@ -1374,7 +1381,8 @@ mod tests {
             assert_eq!(dispense_check(&pricing, dec("2.7")), Ok(()));
             let rows = dispense_rows(&pricing, dec("2.7"), dec("19"));
             assert_eq!(gross(&rows), (None, Some(dec("0.64"))));
-            assert_eq!(dispense_preset(&pricing), dec("1"));
+            // A tenth of a millilitre to start with, so the last drops of a bottle still go.
+            assert_eq!(dispense_preset(&pricing), dec("0.1"));
         }
         // 150 ml: a bottle and 50 ml, exactly as for the drug with steps.
         let rows = dispense_rows(&without_subset, dec("150"), dec("19"));

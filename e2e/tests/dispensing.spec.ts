@@ -81,9 +81,10 @@ test.describe('dispensing a drug', () => {
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
     await page.getByRole('option', { name: /· 100 ml/ }).first().click()
-    // One ml to start with, and any amount from there.
+    // A tenth of a ml to start with — the last drops of a bottle still go — and any amount from
+    // there.
     const quantity = page.getByRole('textbox', { name: 'Menge' }).first()
-    await expect(quantity).toHaveValue('1')
+    await expect(quantity).toHaveValue('0,1')
     await expect(page.getByText('beliebige Menge').first()).toBeVisible()
     await quantity.fill('2,7')
     await quantity.blur()

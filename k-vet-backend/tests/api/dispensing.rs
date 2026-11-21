@@ -166,7 +166,7 @@ async fn the_rest_goes_in_teilmenge_steps_unless_the_drug_is_freely_divisible() 
     assert_eq!(injection["line_net"], "0.54");
     assert_eq!(injection["dispense"]["rule"]["freely_divisible"], true);
     assert_eq!(injection["dispense"]["rule"]["step"], Value::Null);
-    assert_eq!(injection["dispense"]["rule"]["preset"], "1");
+    assert_eq!(injection["dispense"]["rule"]["preset"], "0.1");
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("77.3"));
 
     // The line entered before the flag keeps the rule it was entered by.
@@ -839,4 +839,53 @@ async fn a_freely_divisible_product_that_is_no_medicine_bills_its_rest_pro_rata(
     assert_eq!(line["dispense"]["packs"]["line_net"], "12.50");
     assert_eq!(line["dispense"]["remainder"]["line_net"], "6.25");
     assert_eq!(line["line_net"], "18.75");
+}
+
+/// A "beliebig teilbar" drug starts at 0,1 ml: the last 0,4 ml of a bottle could not be put on
+/// an invoice while a new line started at 1 ml, more than the shelf held (seen 2026-11-21).
+#[tokio::test]
+async fn the_last_drops_of_a_freely_divisible_drug_can_be_dispensed() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let treatment_id = treatment(&pool).await;
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("0.4"), None).await;
+    app.delete(&format!("/api/packagings/{}", drug.subset_packaging_id))
+        .await;
+    set_freely_divisible(&app, drug.drug_id).await;
+
+    // Picked without a quantity, as the picker does: it starts at a tenth.
+    let line = dispense(
+        &app,
+        treatment_id,
+        json!({ "kind": "drug_packaging", "drug_packaging_id": drug.packaging_id }),
+    )
+    .await;
+    assert_eq!(
+        line.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&line.body)
+    );
+    let line = line.json();
+    assert_eq!(line["quantity"], "0.10");
+    assert_eq!(line["dispense"]["rule"]["preset"], "0.1");
+
+    // What is left is all that goes.
+    let all = app
+        .patch(
+            &format!("/api/treatment-items/{}", line["id"]),
+            json!({ "quantity": "0.4" }),
+        )
+        .await;
+    assert_eq!(all.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("0"));
+    let more = app
+        .patch(
+            &format!("/api/treatment-items/{}", line["id"]),
+            json!({ "quantity": "0.5" }),
+        )
+        .await;
+    assert_eq!(more.status, StatusCode::UNPROCESSABLE_ENTITY);
 }

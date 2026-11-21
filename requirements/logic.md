@@ -8,7 +8,7 @@ or service was used in a treatment. It's sufficient to update weights once at ni
 A drug is offered once, as its original packaging — never its Teilmengen. The vet enters what was dispensed, in the
 pack's unit (Tbl., ml): 12 tablets from a pack of 10, 150 ml from a 100 ml bottle. k-vet bills the whole packs at the
 pack price and the rest as a Teilmenge with Anbruchaufschlag, and the invoice prints the two as two rows
-(requirements/prices.md). The quantity starts at 1 where one unit can be dispensed, else at the smallest Teilmenge,
+(requirements/prices.md). The quantity starts at 0,1 for a drug marked "Beliebig teilbar" (decided 2026-11-21: starting at 1 ml, the last 0,4 ml of a bottle could not be dispensed), else at 1 where one unit can be dispensed, else at the smallest Teilmenge,
 else at one pack. A rest that is not a multiple of the drug's smallest Teilmenge is refused ("nur in Schritten von
 10 ml"); a drug without a Teilmenge goes in whole packs; a drug marked "Beliebig teilbar" takes any amount and has no
 Teilmengen — the mark is set once they are deleted, and none can be added while it is set. A Teilmenge is deleted
