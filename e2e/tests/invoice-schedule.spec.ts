@@ -1,4 +1,3 @@
-import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import {
   clearPendingInvoices,
@@ -7,6 +6,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -106,8 +106,11 @@ test.describe('sending an invoice later', () => {
     await expect(page.getByText('Storniert').first()).toBeVisible()
     await expect(planned).toHaveCount(0)
     expect(
-      ((await (await request.get(`/api/invoices/${invoice.id}`)).json()) as { email_queue: unknown })
-        .email_queue,
+      (
+        (await (await request.get(`/api/invoices/${invoice.id}`)).json()) as {
+          email_queue: unknown
+        }
+      ).email_queue,
     ).toBeNull()
 
     // Nothing planned anywhere: not on the dashboard, not in the invoices list.

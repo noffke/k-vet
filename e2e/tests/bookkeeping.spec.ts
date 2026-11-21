@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { clearPendingInvoices, seedAcceptedInvoice, seedSentInvoice } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 /**

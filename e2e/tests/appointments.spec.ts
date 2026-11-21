@@ -1,4 +1,3 @@
-import { type APIRequestContext, expect, test } from '../fixtures/test'
 import { practiceMidday } from '../fixtures/clock'
 import {
   seedAcceptedInvoice,
@@ -7,6 +6,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { type APIRequestContext, expect, test } from '../fixtures/test'
 import { expectNoSidewaysScroll, navigate, signIn } from './helpers'
 
 /**
@@ -45,7 +45,10 @@ test.describe('appointments', () => {
     await expect(picker).toHaveCount(0)
 
     await page.getByPlaceholder('Kunde suchen …').fill(mine.lastName)
-    await page.getByRole('option', { name: new RegExp(mine.lastName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(mine.lastName) })
+      .first()
+      .click()
 
     // Same page — the treatment is the appointment's other half. The picker is filtered from
     // the first animal on, not from the second — which is what it used to be, leaving the
@@ -56,7 +59,7 @@ test.describe('appointments', () => {
     await expect(page.getByRole('option', { name: new RegExp(theirAnimal) })).toHaveCount(0)
   })
 
-  test('a customer\'s only animal is attached by itself and cannot be removed', async ({
+  test("a customer's only animal is attached by itself and cannot be removed", async ({
     page,
     request,
   }) => {
@@ -71,13 +74,18 @@ test.describe('appointments', () => {
     await page.getByLabel('Uhrzeit').blur()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
     await page.getByPlaceholder('Kunde suchen …').fill(lastName)
-    await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(lastName) })
+      .first()
+      .click()
 
     // Nothing to choose: the animal is there as the one tab, with no way to take it off.
     await expect(page.getByRole('tab', { name: new RegExp(animal) })).toBeVisible()
     await expect(page.getByRole('tab')).toHaveCount(1)
     await expect(page.getByPlaceholder('Patienten')).toHaveCount(0)
-    await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+    await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(
+      0,
+    )
     // "+ Tier" is only for one the practice has not seen yet: no known animal is offered.
     await page.getByRole('button', { name: 'Tier', exact: true }).click()
     await expect(page.getByRole('option', { name: 'Neues Tier …' })).toBeVisible()
@@ -224,13 +232,19 @@ test.describe('appointments', () => {
 
     // No animal yet: the search is offered straight away, and the first pick becomes a tab.
     await picker.fill(first)
-    await page.getByRole('option', { name: new RegExp(first) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(first) })
+      .first()
+      .click()
     await expect(page.getByRole('tab', { name: new RegExp(first) })).toBeVisible()
 
     // The second comes through "+ Tier", and its tab opens.
     await addAnimal.click()
     await picker.fill(second)
-    await page.getByRole('option', { name: new RegExp(second) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(second) })
+      .first()
+      .click()
     await expect(page.getByRole('tab', { name: new RegExp(second) })).toHaveAttribute(
       'aria-selected',
       'true',
@@ -238,7 +252,9 @@ test.describe('appointments', () => {
     // Both are tabs: no known animal is left to add, only a new one.
     await addAnimal.click()
     await picker.fill('')
-    await expect(page.getByRole('option', { name: new RegExp(`^(${first}|${second})`) })).toHaveCount(0)
+    await expect(
+      page.getByRole('option', { name: new RegExp(`^(${first}|${second})`) }),
+    ).toHaveCount(0)
     await expect(page.getByRole('option', { name: 'Neues Tier …' })).toBeVisible()
     await addAnimal.click()
 
@@ -338,7 +354,9 @@ test.describe('appointments', () => {
     // Found by the animal's name, now that the list is about customer and animals, not notes.
     await page.getByPlaceholder('Suchen …').fill(animal)
     await expect(page.getByText(animal, { exact: true }).filter({ visible: true })).toBeVisible()
-    await expect(page.getByText(new RegExp(lastName)).filter({ visible: true }).first()).toBeVisible()
+    await expect(
+      page.getByText(new RegExp(lastName)).filter({ visible: true }).first(),
+    ).toBeVisible()
 
     // Where it goes, and the drive there: the address under the visit, the route in Google Maps.
     await expect(

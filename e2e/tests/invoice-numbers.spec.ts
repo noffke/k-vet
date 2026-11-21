@@ -1,6 +1,6 @@
-import { expect, type Page, test } from '../fixtures/test'
 import { practiceYear } from '../fixtures/clock'
 import { seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import { expect, type Page, test } from '../fixtures/test'
 import { signIn } from './helpers'
 
 /**
@@ -10,7 +10,11 @@ import { signIn } from './helpers'
 
 /** The invoice number currently shown on the treatment page. */
 async function shownNumber(page: Page): Promise<string> {
-  const text = await page.getByText(/\d{4}-\d{4}/).first().innerText()
+  const text =
+    (await page
+      .getByText(/\d{4}-\d{4}/)
+      .first()
+      .textContent()) ?? ''
   return text.match(/\d{4}-\d{4}/)?.[0] ?? ''
 }
 

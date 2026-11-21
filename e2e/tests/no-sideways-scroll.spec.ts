@@ -1,7 +1,6 @@
 import { readFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
-import { type APIRequestContext, expect, test } from '../fixtures/test'
 import {
   doc,
   seedAcceptedInvoice,
@@ -13,6 +12,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { type APIRequestContext, expect, test } from '../fixtures/test'
 import { editValue, expectNoSidewaysScroll, openPosition, signIn } from './helpers'
 
 /**
@@ -28,7 +28,8 @@ const stamp = () => String(Date.now() % 1e6)
 const LONG = {
   lastName: 'Müller-Lüdenscheidt-von Hohenzollern-Sigmaringen',
   street: 'Hauptstraße 123, Hinterhaus, Aufgang C, 3. Obergeschoss links',
-  email: 'anna-katharina.mueller-luedenscheidt.von-hohenzollern@tierarztpraxis-mit-sehr-langem-namen.de',
+  email:
+    'anna-katharina.mueller-luedenscheidt.von-hohenzollern@tierarztpraxis-mit-sehr-langem-namen.de',
   animal: 'Prinzessin Anastasia von der Blumenwiese am Waldesrand',
   drug: 'Amoxicillin/Clavulansäure 400/100 mg Filmtabletten für Hunde und Katzen',
   // Names no other spec searches for ("Beratung im einzelnen Fall", "Wegegeld"): the specs of
@@ -94,12 +95,18 @@ test('no screen scrolls sideways, with long names everywhere', async ({ page, re
   await post(request, `/api/appointments/${appointmentId}/reminders`, {
     drug_packaging_id: drug.packagingId,
   })
-  await patch(request, `/api/patient-treatments/${(await (await request.get(`/api/treatments/${treatmentId}`)).json()).patients[0].id}`, {
-    treatment_reason: doc(`${LONG.service}. ${LONG.street}.`),
-  })
+  await patch(
+    request,
+    `/api/patient-treatments/${(await (await request.get(`/api/treatments/${treatmentId}`)).json()).patients[0].id}`,
+    {
+      treatment_reason: doc(`${LONG.service}. ${LONG.street}.`),
+    },
+  )
 
   const manufacturer = await post<{ id: number }>(request, '/api/manufacturers')
-  await patch(request, `/api/manufacturers/${manufacturer.id}`, { name: `${LONG.company} ${stamp()}` })
+  await patch(request, `/api/manufacturers/${manufacturer.id}`, {
+    name: `${LONG.company} ${stamp()}`,
+  })
   const supplier = await post<{ id: number }>(request, '/api/suppliers')
   await patch(request, `/api/suppliers/${supplier.id}`, {
     name: `${LONG.company} ${stamp()}`,

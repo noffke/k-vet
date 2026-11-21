@@ -1,6 +1,6 @@
 import type { APIRequestContext } from '@playwright/test'
-import { E2E_PASSWORD, E2E_USERNAME } from './credentials'
 import { Client } from 'pg'
+import { E2E_PASSWORD, E2E_USERNAME } from './credentials'
 
 /**
  * API-driven seeding (T023): each spec asks for the master data it needs instead of
@@ -340,4 +340,3 @@ export async function markEmailed(invoiceId: number, address: string, template: 
     await client.end()
   }
 }
-

@@ -1,10 +1,10 @@
-import { expect, test } from '../fixtures/test'
 import {
   clearPendingInvoices,
   seedAcceptedInvoice,
   seedDrug,
   seedSentInvoice,
 } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { hasColourNearTop, navigate, pdfFirstPage, pdfText, signIn } from './helpers'
 
 /**
@@ -148,8 +148,10 @@ test.describe('dashboard and settings', () => {
     expect(response.status()).toBe(200)
     const raster = await pdfFirstPage(Buffer.from(await response.body()))
 
-    expect(hasColourNearTop(raster, [220, 60, 40]), 'the top band of the logo is on the page')
-      .toBeTruthy()
+    expect(
+      hasColourNearTop(raster, [220, 60, 40]),
+      'the top band of the logo is on the page',
+    ).toBeTruthy()
     expect(hasColourNearTop(raster, [60, 160, 80]), 'the middle band too').toBeTruthy()
     expect(hasColourNearTop(raster, [40, 80, 200]), 'and the bottom band').toBeTruthy()
 

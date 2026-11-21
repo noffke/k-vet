@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { clearPendingInvoices, seedAcceptedInvoice, seedFailedMail } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { signIn } from './helpers'
 
 /**
@@ -77,7 +77,9 @@ test.describe('sending an invoice', () => {
 
     // The appointment says so too, and leads here.
     await row(retried.invoiceNumber).getByRole('link').click()
-    await expect(page.getByText(/E-Mail-Versand abgebrochen: permanent error \(550\)/)).toBeVisible()
+    await expect(
+      page.getByText(/E-Mail-Versand abgebrochen: permanent error \(550\)/),
+    ).toBeVisible()
     await page.goto('/')
 
     await row(retried.invoiceNumber).getByRole('button', { name: 'Erneut versuchen' }).click()

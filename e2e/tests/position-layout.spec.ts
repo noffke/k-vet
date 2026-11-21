@@ -1,5 +1,5 @@
-import { expect, type Locator, type Page, test } from '../fixtures/test'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, type Locator, type Page, test } from '../fixtures/test'
 import { editValue, expectInside, expectNoSidewaysScroll, position, signIn } from './helpers'
 
 /**
@@ -13,7 +13,9 @@ const LONG = 'Amoxicillin/Clavulansäure 400/100 mg Filmtabletten für Hunde und
 async function expectWithin(inner: Locator, outer: Locator): Promise<void> {
   await expectInside(inner, outer)
   const [box, frame] = await Promise.all([inner.boundingBox(), outer.boundingBox()])
-  expect(box && frame && box.y >= frame.y - 0.5 && box.y + box.height <= frame.y + frame.height + 0.5).toBe(true)
+  expect(
+    box && frame && box.y >= frame.y - 0.5 && box.y + box.height <= frame.y + frame.height + 0.5,
+  ).toBe(true)
 }
 
 async function checkRow(page: Page, name: RegExp): Promise<void> {
@@ -54,7 +56,10 @@ test.describe('positions with a long name and a long unit', () => {
     await expect(position(page, pattern)).toHaveCount(1)
     // Another line picked after it, so the long one is no longer the newest and reads as text.
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
-    await page.getByRole('option', { name: /Beratung/ }).first().click()
+    await page
+      .getByRole('option', { name: /Beratung/ })
+      .first()
+      .click()
     await expect(position(page, /Beratung/)).toHaveCount(1)
     await checkRow(page, pattern)
 
@@ -62,7 +67,10 @@ test.describe('positions with a long name and a long unit', () => {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(name.slice(0, 30))
     await page.getByRole('option', { name: pattern }).first().click()
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
-    await page.getByRole('option', { name: /Beratung/ }).first().click()
+    await page
+      .getByRole('option', { name: /Beratung/ })
+      .first()
+      .click()
     await expect(position(page, /Beratung/)).toHaveCount(1)
     await checkRow(page, pattern)
   })

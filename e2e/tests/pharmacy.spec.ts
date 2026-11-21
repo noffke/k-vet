@@ -1,7 +1,7 @@
-import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, openPosition, positions, signIn } from './helpers'
 
 /**
@@ -62,7 +62,9 @@ test.describe('pharmacy', () => {
     // The mark is set on the drug's page, and says what it does.
     await signIn(page, `/pharmacy/${drug.drugId}`)
     await page.getByLabel('Euthanasie').check()
-    await expect(page.getByText(/trägt die Freigabe der Rechnung den Tag des Termins/)).toBeVisible()
+    await expect(
+      page.getByText(/trägt die Freigabe der Rechnung den Tag des Termins/),
+    ).toBeVisible()
     await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
     await request.post(`/api/treatments/${treatmentId}/items`, {
@@ -157,10 +159,7 @@ test.describe('pharmacy', () => {
     await expect(page.getByRole('heading', { name: /Bestand/ })).toContainText('200')
   })
 
-  test("an expiry typed as month and year is that month's last day", async ({
-    page,
-    request,
-  }) => {
+  test("an expiry typed as month and year is that month's last day", async ({ page, request }) => {
     const { drugId, packagingId } = await seedDrug(request, { packages: 0 })
     await signIn(page, `/pharmacy/${drugId}`)
 
@@ -208,9 +207,11 @@ test.describe('pharmacy', () => {
     await page.getByRole('button', { name: 'Hinzufügen' }).click()
     await expect(page).toHaveURL(new RegExp(`/pharmacy/${drugId}$`))
 
-    const packagings = (await (
-      await request.get(`/api/drugs/${drugId}/packagings`)
-    ).json()) as { id: number; list_price_net: string; sales_price_gross: string }[]
+    const packagings = (await (await request.get(`/api/drugs/${drugId}/packagings`)).json()) as {
+      id: number
+      list_price_net: string
+      sales_price_gross: string
+    }[]
     const original = packagings.find((packaging) => packaging.id === packagingId)
     expect(original?.list_price_net).toBe('12.00')
     expect(original?.sales_price_gross).toBe(preview.gross)
@@ -360,7 +361,10 @@ test.describe('pharmacy', () => {
 
     // 30 ml: 20 from CH-A, 10 from CH-B.
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
     await page.getByLabel('Menge').first().fill('30')
     // Which lots it came from is behind the line's name.
     const line = await openPosition(page, drugName)
@@ -449,7 +453,10 @@ test.describe('pharmacy', () => {
     // On an appointment: 150 ml are one bottle and five Teilmengen, 11,90 € + 5 × 1,19 €.
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
-    await page.getByRole('option', { name: new RegExp(drugName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(drugName) })
+      .first()
+      .click()
     await expect(page.getByText(`„${drugName}“ hinzugefügt`)).toBeVisible()
     await page.getByLabel('Menge').first().fill('150')
     await expect(page.getByText('17,85 €').first()).toBeVisible()

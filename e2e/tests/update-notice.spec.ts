@@ -1,5 +1,5 @@
-import { expect, type Page, test } from '../fixtures/test'
 import { seedCustomer } from '../fixtures/seed'
+import { expect, type Page, test } from '../fixtures/test'
 import { signIn } from './helpers'
 
 /**

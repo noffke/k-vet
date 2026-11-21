@@ -145,6 +145,10 @@ jobs:
       - name: Install Playwright dependencies
         working-directory: e2e
         run: npm ci
+      # The specs are held to the web app's Biome settings (e2e/biome.json extends them).
+      - name: Lint E2E
+        working-directory: e2e
+        run: npx biome ci
       - name: Cache Playwright browsers
         uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
         with:

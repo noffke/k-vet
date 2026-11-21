@@ -1,6 +1,6 @@
-import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedService } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, openPosition, positions, signIn } from './helpers'
 
 /**
@@ -36,7 +36,10 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   // Whose visit it is, before anything can be billed against it — and what limits the animals
   // the picker offers further down (issues.md 7).
   await page.getByPlaceholder('Kunde suchen …').fill(lastName)
-  await page.getByRole('option', { name: new RegExp(lastName) }).first().click()
+  await page
+    .getByRole('option', { name: new RegExp(lastName) })
+    .first()
+    .click()
 
   // ── The treatment is part of the appointment, and the customer's only animal is on it
   //    already, in its own tab: nothing to pick, and the record is right here ─────
@@ -49,16 +52,24 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
 
   // The reason and the finding belong to the animal — written in its tab, without leaving.
   await page.getByLabel('Vorbericht und Untersuchung').fill('Jahresimpfung und Kontrolle')
-  await page.getByLabel('Therapie und weiteres Vorgehen').fill('Allgemeinzustand unauffällig, Gewicht stabil.')
+  await page
+    .getByLabel('Therapie und weiteres Vorgehen')
+    .fill('Allgemeinzustand unauffällig, Gewicht stabil.')
   await page.getByLabel('Therapie und weiteres Vorgehen').blur()
   await expect(page.getByRole('status')).toHaveText('Gespeichert')
 
   // ── Two lines from the picker: a stocked drug and a service ──────────────────
   const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
   await picker.fill(drugName)
-  await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+  await page
+    .getByRole('option', { name: /· 100 ml/ })
+    .first()
+    .click()
   await picker.fill(serviceName)
-  await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+  await page
+    .getByRole('option', { name: new RegExp(serviceName) })
+    .first()
+    .click()
 
   await expect(positions(page)).toHaveCount(2)
   // The drug is offered as its 100 ml bottle and starts at its 10 ml Teilmenge: net 2,00 € (AMPreisV
@@ -84,7 +95,11 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
   await pdfTab.close()
 
   // The panel shows the number and the status in one line, so read the number out of it.
-  const panelText = await page.getByText(/\d{4}-\d{4}/).first().innerText()
+  const panelText =
+    (await page
+      .getByText(/\d{4}-\d{4}/)
+      .first()
+      .textContent()) ?? ''
   const invoiceNumber = panelText.match(/\d{4}-\d{4}/)?.[0] ?? ''
   expect(invoiceNumber).toMatch(/^\d{4}-\d{4}$/)
   await expect(page.getByText('Erstellt').first()).toBeVisible()

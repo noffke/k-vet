@@ -1,6 +1,6 @@
-import { expect, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { allPositions, expectInside, navigate, signIn } from './helpers'
 
 /**
@@ -21,7 +21,10 @@ test.describe('Mitbringen', () => {
 
     await signIn(page, `/appointments/${appointmentId}`)
     await page.getByPlaceholder('Medikament suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
     const card = page.locator('section').filter({ hasText: 'Mitbringen' }).first()
     const row = card.getByRole('listitem').filter({ has: page.getByLabel('Notiz') })
     await expect(row).toContainText(`${drugName} · 100 ml`)
@@ -69,7 +72,10 @@ test.describe('Mitbringen', () => {
 
     await signIn(page, `/appointments/${appointmentId}`)
     await page.getByPlaceholder('Medikament suchen …').fill(drugName)
-    await page.getByRole('option', { name: new RegExp(drugName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(drugName) })
+      .first()
+      .click()
     const card = page.locator('section').filter({ hasText: 'Mitbringen' }).first()
     const row = card.getByRole('listitem').filter({ has: page.getByLabel('Notiz') })
     const quantity = row.getByLabel('Menge')

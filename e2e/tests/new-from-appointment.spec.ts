@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { login } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 const stamp = () => Date.now().toString().slice(-6)
@@ -68,7 +68,9 @@ test.describe('a new customer from the appointment', () => {
     // The appointment is theirs, and the animal made since — their only one — is on the visit
     // by itself, as if it had been there when the customer was picked.
     await expect(page.getByPlaceholder('Kunde suchen …')).toHaveCount(0)
-    await expect(page.getByText(`Erika ${lastName}`).filter({ visible: true }).first()).toBeVisible()
+    await expect(
+      page.getByText(`Erika ${lastName}`).filter({ visible: true }).first(),
+    ).toBeVisible()
     await expect(page.getByRole('tab', { name: new RegExp(animal) })).toBeVisible()
   })
 
@@ -119,7 +121,9 @@ test.describe('a new animal from the appointment', () => {
     // No address yet: no new animal, and the search says where to complete the customer.
     const picker = page.getByPlaceholder('Patienten')
     const newAnimal = page.getByRole('option', { name: 'Neues Tier …' })
-    await expect(page.getByText('Ein neues Tier gibt es erst, wenn der Kunde vollständig ist.')).toBeVisible()
+    await expect(
+      page.getByText('Ein neues Tier gibt es erst, wenn der Kunde vollständig ist.'),
+    ).toBeVisible()
     await expect(newAnimal).toHaveCount(0)
     await page.getByRole('link', { name: 'Adresse eintragen' }).click()
     await expect(page).toHaveURL(new RegExp(`/customers/${customer.id}$`))
@@ -148,9 +152,13 @@ test.describe('a new animal from the appointment', () => {
       'aria-selected',
       'true',
     )
-    await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(0)
+    await expect(page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' })).toHaveCount(
+      0,
+    )
 
     await page.goto(`/customers/${customer.id}`)
-    await expect(page.getByRole('button', { name: new RegExp(`^${animal}`) }).filter({ visible: true })).toBeVisible()
+    await expect(
+      page.getByRole('button', { name: new RegExp(`^${animal}`) }).filter({ visible: true }),
+    ).toBeVisible()
   })
 })

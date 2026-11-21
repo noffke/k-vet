@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -48,10 +48,7 @@ test.describe('text blocks', () => {
     // survive the dialog opening.
     for (let step = 0; step < 'Ende'.length; step += 1) await reason.press('ArrowLeft')
 
-    await page
-      .getByRole('button', { name: 'Textbaustein einfügen' })
-      .first()
-      .click()
+    await page.getByRole('button', { name: 'Textbaustein einfügen' }).first().click()
     await page.getByPlaceholder('Name oder Inhalt suchen …').fill(blockName)
     await page.getByRole('button', { name: new RegExp(blockName) }).click()
 

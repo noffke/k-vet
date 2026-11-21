@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, openPosition, pdfText, position, positions, signIn } from './helpers'
 
 /**
@@ -15,7 +15,10 @@ test.describe('services and templates', () => {
     // A position from Teil A of the imported schedule.
     await page.getByPlaceholder('GOT-Nummer oder Bezeichnung suchen …').fill('Beratung im')
     await expect(
-      page.getByText('Beratung im einzelnen Fall', { exact: false }).filter({ visible: true }).first(),
+      page
+        .getByText('Beratung im einzelnen Fall', { exact: false })
+        .filter({ visible: true })
+        .first(),
     ).toBeVisible()
 
     // A surgical position is out of the way until the toggle asks for it.
@@ -62,9 +65,15 @@ test.describe('services and templates', () => {
     await page.goto(`/treatments/${treatmentId}`)
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(name)
-    await page.getByRole('option', { name: new RegExp(name) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(name) })
+      .first()
+      .click()
     await picker.fill('Beratung im einzelnen Fall')
-    await page.getByRole('option', { name: /Beratung im einzelnen Fall/ }).first().click()
+    await page
+      .getByRole('option', { name: /Beratung im einzelnen Fall/ })
+      .first()
+      .click()
 
     // Both picks have to have landed before the server is asked: clicking an option fires the
     // mutation and returns, so reading the API straight away races it — which under the load of
@@ -130,7 +139,10 @@ test.describe('services and templates', () => {
     // On a treatment the line asks for the distance and prices itself (GOT § 10).
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Wegegeld')
-    await page.getByRole('option', { name: /Wegegeld/ }).first().click()
+    await page
+      .getByRole('option', { name: /Wegegeld/ })
+      .first()
+      .click()
 
     // The line just picked asks for its kilometres in its own row.
     await page.getByLabel('Kilometer').fill('12')
@@ -160,7 +172,10 @@ test.describe('services and templates', () => {
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill('Beratung im')
     await page.getByRole('option').first().click()
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
 
     // Reordering moves the drug up. The navigation is a list too, so scope to the lines.
     const lines = page.locator('section li')
@@ -176,7 +191,10 @@ test.describe('services and templates', () => {
     await expect(
       page.locator('[cmdk-group-heading]', { hasText: 'Behandlungsgruppen' }),
     ).toBeVisible()
-    await page.getByRole('option', { name: new RegExp(templateName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(templateName) })
+      .first()
+      .click()
 
     await expect(positions(page).first()).toContainText(drugName)
     // The group's 10 ml are the drug's 10 ml Teilmenge of a 100 ml bottle listed at 10.00 net:
@@ -204,7 +222,10 @@ test.describe('services and templates', () => {
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill('Beratung im')
     await page.getByRole('option').first().click()
     await page.getByPlaceholder('Medikament oder Leistung suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
 
     // One position the vet entered herself — the undo must not touch it. Named explicitly:
     // this picker lists the Behandlungsgruppen above the positions, so the first option is
@@ -212,13 +233,19 @@ test.describe('services and templates', () => {
     await page.goto(`/treatments/${treatmentId}`)
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill('Beratung im einzelnen Fall')
-    await page.getByRole('option', { name: /Beratung im einzelnen Fall/ }).first().click()
+    await page
+      .getByRole('option', { name: /Beratung im einzelnen Fall/ })
+      .first()
+      .click()
     const lines = positions(page)
     await expect(lines).toHaveCount(1)
 
     // The wrong group, and the way back out of it.
     await picker.fill(templateName)
-    await page.getByRole('option', { name: new RegExp(templateName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(templateName) })
+      .first()
+      .click()
     await expect(lines).toHaveCount(3)
 
     await expect(page.getByText(new RegExp(`2 Positionen aus .${templateName}`))).toBeVisible()
@@ -243,7 +270,10 @@ test.describe('treatment lines', () => {
 
     await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
 
     // The price before and after must be identical: an Umwidmung documents, it does not price.
     const line = await openPosition(page, drug.drugName)
@@ -284,7 +314,10 @@ test.describe('treatment lines', () => {
     await page.goto(`/treatments/${treatmentId}`)
     await expect(page.getByRole('button', { name: 'Ohne Tier' })).toHaveCount(0)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
-    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(serviceName) })
+      .first()
+      .click()
     await expect(page.getByText(`„${serviceName}“ pro Termin hinzugefügt`)).toBeVisible()
     await expect(page.getByText('pro Termin', { exact: true })).toBeVisible()
     // One animal, and the line is the visit's: there is nothing to move it to — not even
@@ -294,7 +327,9 @@ test.describe('treatment lines', () => {
 
     await expect
       .poll(async () => {
-        const lines = (await (await request.get(`/api/treatments/${treatmentId}/items`)).json()) as {
+        const lines = (await (
+          await request.get(`/api/treatments/${treatmentId}/items`)
+        ).json()) as {
           patient_treatment_id: number | null
         }[]
         return lines.map((line) => line.patient_treatment_id)
@@ -309,7 +344,10 @@ test.describe('treatment lines', () => {
 
     await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill('Beratung im')
-    await page.getByRole('option', { name: /Beratung/ }).first().click()
+    await page
+      .getByRole('option', { name: /Beratung/ })
+      .first()
+      .click()
 
     // The factor is in the line's row, open on the line just picked; the price behind its name.
     await expect(page.getByLabel('Faktor', { exact: true })).toBeEnabled()
@@ -329,7 +367,10 @@ test.describe('treatment lines', () => {
 
     await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
-    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(serviceName) })
+      .first()
+      .click()
 
     const line = await openPosition(page, serviceName)
     const price = line.getByLabel('Preis (brutto)')
@@ -357,7 +398,10 @@ test.describe('treatment lines', () => {
 
     await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
 
     // Scoped to the position: the treatment's patient list carries a "Löschen" of its own.
     const positionRow = position(page, drug.drugName)

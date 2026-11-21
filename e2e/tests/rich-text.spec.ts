@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { login, seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { pdfFonts, pdfText, signIn } from './helpers'
 
 /**
@@ -26,7 +26,10 @@ test.describe('formatted text', () => {
     const tools = page.getByRole('toolbar', { name: 'Formatierung' }).first()
     await reason.click()
     await tools.getByRole('button', { name: 'Fett' }).click()
-    await expect(tools.getByRole('button', { name: 'Fett' })).toHaveAttribute('aria-pressed', 'true')
+    await expect(tools.getByRole('button', { name: 'Fett' })).toHaveAttribute(
+      'aria-pressed',
+      'true',
+    )
     await page.keyboard.type('Ohr')
     await tools.getByRole('button', { name: 'Fett' }).click()
     // Typography as it is typed: `->` is an arrow, quotes are German.

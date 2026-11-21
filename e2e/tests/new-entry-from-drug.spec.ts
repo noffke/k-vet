@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { login, seedDrug } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 const stamp = () => Date.now().toString().slice(-6)

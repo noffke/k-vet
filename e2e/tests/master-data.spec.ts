@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedPatient } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -64,7 +64,10 @@ test.describe('customers and patients', () => {
     await signIn(page, `/customers/${customerId}`)
 
     // The bin sits beside the address's own fields, so the click alone must not remove it.
-    const row = page.getByRole('listitem').filter({ has: page.getByLabel('Art') }).first()
+    const row = page
+      .getByRole('listitem')
+      .filter({ has: page.getByLabel('Art') })
+      .first()
     await row.getByRole('button', { name: 'Löschen', exact: true }).click()
     const dialog = page.getByRole('dialog')
     await expect(dialog).toBeVisible()
@@ -271,7 +274,7 @@ test.describe('customers and patients', () => {
     await expect(page.getByText('„riesig.jpg“ ist zu groß – höchstens 25 MB.')).toBeVisible()
   })
 
-  test("a file uploaded on an animal can actually be opened", async ({ page, request }) => {
+  test('a file uploaded on an animal can actually be opened', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const patientId = await seedPatient(request, customerId, `Datei-${Date.now() % 1e6}`)
 
@@ -301,7 +304,7 @@ test.describe('customers and patients', () => {
     expect(served.headers()['content-disposition']).toContain('inline')
   })
 
-  test("a date of death archives the patient and takes it off the customer", async ({
+  test('a date of death archives the patient and takes it off the customer', async ({
     page,
     request,
   }) => {

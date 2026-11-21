@@ -1,4 +1,3 @@
-import { expect, test } from '../fixtures/test'
 import {
   markEmailed,
   seedAcceptedInvoice,
@@ -7,6 +6,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { signIn } from './helpers'
 
 /**

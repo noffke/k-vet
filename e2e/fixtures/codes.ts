@@ -23,7 +23,10 @@ export function uniquePzn(): string {
 /** The PPN of a PZN: ASCII values weighted from 2 upwards, mod 97. */
 export function ppnOf(pzn: string): string {
   const body = `11${pzn}`
-  const sum = [...body].reduce((total, character, i) => total + character.charCodeAt(0) * (i + 2), 0)
+  const sum = [...body].reduce(
+    (total, character, i) => total + character.charCodeAt(0) * (i + 2),
+    0,
+  )
   return `${body}${String(sum % 97).padStart(2, '0')}`
 }
 

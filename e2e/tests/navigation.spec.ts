@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { signIn } from './helpers'
 
 /**
@@ -19,7 +19,10 @@ test.describe('navigation', () => {
     await expect(page).toHaveURL(new RegExp(`/patients/${patientId}$`))
 
     // The visit history opens the appointment on this animal's tab.
-    await page.getByRole('link', { name: /\d{2}\.\d{2}\.\d{4}/ }).first().click()
+    await page
+      .getByRole('link', { name: /\d{2}\.\d{2}\.\d{4}/ })
+      .first()
+      .click()
     await expect(page).toHaveURL(new RegExp(`/appointments/${appointmentId}\\?tier=`))
 
     await page.getByRole('link', { name: `Zurück: ${name}` }).click()

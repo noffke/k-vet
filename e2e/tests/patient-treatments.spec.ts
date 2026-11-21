@@ -3,7 +3,6 @@ import { mkdtemp, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { type APIRequestContext, expect, test } from '../fixtures/test'
 import {
   doc,
   seedCustomer,
@@ -12,6 +11,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { type APIRequestContext, expect, test } from '../fixtures/test'
 import { allPositions, openPosition, signIn } from './helpers'
 
 const run = promisify(execFile)
@@ -52,7 +52,10 @@ test.describe('patient treatments', () => {
     const tabBar = page.getByRole('tablist')
     expect(await tabBar.evaluate((list) => list.scrollHeight - list.clientHeight)).toBe(0)
     await picker.fill(drug.drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
     await expect(allPositions(panel)).toContainText([new RegExp(drug.drugName)])
     await panel.getByLabel('Vorbericht und Untersuchung').fill('Verbandswechsel')
     await panel.getByLabel('Therapie und weiteres Vorgehen').fill('Wunde sauber und trocken.')
@@ -63,7 +66,10 @@ test.describe('patient treatments', () => {
     // "pro Termin", so it goes to the visit by itself — there is no "Ohne Tier" to choose.
     await expect(panel.getByRole('button', { name: 'Ohne Tier' })).toHaveCount(0)
     await picker.fill(serviceName)
-    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(serviceName) })
+      .first()
+      .click()
     await expect(page.getByText(`„${serviceName}“ pro Termin hinzugefügt`)).toBeVisible()
     await expect(panel.getByText('pro Termin')).toBeVisible()
     await expect(allPositions(panel)).toHaveCount(2)
@@ -81,7 +87,10 @@ test.describe('patient treatments', () => {
     await page.getByRole('tab', { name: 'Helene' }).click()
     await expect(panel.getByLabel('Vorbericht und Untersuchung')).toHaveText('')
     await picker.fill('Beratung im')
-    await page.getByRole('option', { name: /Beratung/ }).first().click()
+    await page
+      .getByRole('option', { name: /Beratung/ })
+      .first()
+      .click()
     await expect(allPositions(panel)).toHaveCount(2)
     await expect(allPositions(panel)).toContainText([/Beratung/, new RegExp(serviceName)])
 
@@ -115,10 +124,14 @@ test.describe('patient treatments', () => {
     // Anton's tab is open: no banner — but Bruno's tab carries the mark.
     await expect(page.getByRole('tab', { name: /Anton/ })).toHaveAttribute('aria-selected', 'true')
     await expect(page.getByRole('alert')).toHaveCount(0)
-    await expect(page.getByRole('tab', { name: /Bruno/ }).getByRole('img', { name: 'Warnhinweis' })).toBeVisible()
+    await expect(
+      page.getByRole('tab', { name: /Bruno/ }).getByRole('img', { name: 'Warnhinweis' }),
+    ).toBeVisible()
 
     await page.getByRole('tab', { name: /Bruno/ }).click()
-    await expect(page.getByRole('tabpanel').getByRole('alert')).toContainText('Beißt bei der Blutabnahme')
+    await expect(page.getByRole('tabpanel').getByRole('alert')).toContainText(
+      'Beißt bei der Blutabnahme',
+    )
   })
 
   test("the animal's visit history opens the visit on its tab", async ({ page, request }) => {
@@ -129,17 +142,17 @@ test.describe('patient treatments', () => {
     await request.post(`/api/treatments/${treatmentId}/patients`, { data: { patient_id: second } })
 
     await signIn(page, `/patients/${second}`)
-    await page.getByRole('link', { name: /\d{2}\.\d{2}\.\d{4}/ }).first().click()
+    await page
+      .getByRole('link', { name: /\d{2}\.\d{2}\.\d{4}/ })
+      .first()
+      .click()
 
     // Fritz's tab, not the first one.
     await expect(page).toHaveURL(/\/appointments\/\d+\?tier=\d+/)
     await expect(page.getByRole('tab', { name: /Fritz/ })).toHaveAttribute('aria-selected', 'true')
   })
 
-  test('the invoice groups the positions and the report per animal', async ({
-    page,
-    request,
-  }) => {
+  test('the invoice groups the positions and the report per animal', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     const eddie = await seedPatient(request, customerId, 'Eddie')
     const helene = await seedPatient(request, customerId, 'Helene')
@@ -258,7 +271,10 @@ test.describe('patient treatments', () => {
 
     await page.getByRole('tab', { name: 'Helene' }).click()
     await page.getByRole('tabpanel').getByRole('button', { name: 'Entfernen' }).click()
-    await page.getByRole('dialog').getByRole('button', { name: 'In eigenen Termin verschieben' }).click()
+    await page
+      .getByRole('dialog')
+      .getByRole('button', { name: 'In eigenen Termin verschieben' })
+      .click()
     await expect(page.getByText('„Helene“ hat jetzt einen eigenen Termin.')).toBeVisible()
 
     // Her own appointment opens, on her tab, with her line — and only her.
@@ -283,7 +299,10 @@ test.describe('patient treatments', () => {
 
     await signIn(page, `/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drug.drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
     await expect(allPositions(page)).toContainText([new RegExp(drug.drugName)])
 
     // Which animal received which batch is what the ownership is for, so the API refuses.

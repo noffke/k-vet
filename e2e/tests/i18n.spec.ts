@@ -1,6 +1,6 @@
-import { expect, test } from '../fixtures/test'
 import { americanDate, germanDate } from '../fixtures/clock'
 import { seedAcceptedInvoice } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 /**

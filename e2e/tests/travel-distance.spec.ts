@@ -1,4 +1,3 @@
-import { expect, type Page, test } from '../fixtures/test'
 import { germanDate } from '../fixtures/clock'
 import { ROUTED_KM, ROUTED_STREET } from '../fixtures/fakeGoogle'
 import {
@@ -8,6 +7,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { expect, type Page, test } from '../fixtures/test'
 import { editValue, openPosition, position, signIn } from './helpers'
 
 /**
@@ -21,7 +21,10 @@ test.describe('Wegegeld kilometres', () => {
   async function pick(page: Page, treatmentId: number, serviceName: string) {
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(serviceName)
-    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(serviceName) })
+      .first()
+      .click()
   }
 
   test('come from Google, then from the last visit, then from Google after a move', async ({
@@ -100,18 +103,16 @@ test.describe('Wegegeld kilometres', () => {
     ).toBeVisible()
 
     await page.goto(`/treatments/${treatmentId}/invoice`)
-    await expect(
-      page.getByText(`${serviceName}: bitte erst die Kilometer eintragen`),
-    ).toBeVisible()
+    await expect(page.getByText(`${serviceName}: bitte erst die Kilometer eintragen`)).toBeVisible()
     await expect(page.getByRole('button', { name: 'Rechnung erstellen' })).toBeDisabled()
 
     // Back on the visit no line is the newest: the row says "km fehlt" until they are typed.
     await page.goto(`/treatments/${treatmentId}`)
     await expect(position(page, serviceName)).toContainText('km fehlt')
     await (await editValue(page, serviceName, 'Kilometer')).fill('4')
-    await expect(
-      (await openPosition(page, serviceName)).getByLabel('Preis (brutto)'),
-    ).toHaveValue('16,66')
+    await expect((await openPosition(page, serviceName)).getByLabel('Preis (brutto)')).toHaveValue(
+      '16,66',
+    )
     await page.goto(`/treatments/${treatmentId}/invoice`)
     await expect(page.getByRole('button', { name: 'Rechnung erstellen' })).toBeEnabled()
   })

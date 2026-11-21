@@ -3,8 +3,8 @@ import { mkdtemp, readFile, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 import { promisify } from 'node:util'
-import { expect, type Locator, type Page } from '../fixtures/test'
 import { E2E_PASSWORD, E2E_USERNAME } from '../fixtures/credentials'
+import { expect, type Locator, type Page } from '../fixtures/test'
 
 const run = promisify(execFile)
 
@@ -33,7 +33,7 @@ export async function pdfFirstPage(bytes: Buffer, dpi = 40): Promise<Raster> {
   const token = () => {
     while (ppm[at] === 0x20 || ppm[at] === 0x0a || ppm[at] === 0x0d || ppm[at] === 0x09) at += 1
     const start = at
-    while (at < ppm.length && ppm[at] !== undefined && ppm[at]! > 0x20) at += 1
+    while (at < ppm.length && (ppm[at] ?? 0) > 0x20) at += 1
     return ppm.subarray(start, at).toString('ascii')
   }
   const magic = token()
@@ -91,7 +91,13 @@ export async function pdfFonts(bytes: Buffer): Promise<string[]> {
   return stdout
     .split('\n')
     .slice(2)
-    .map((line) => line.split(/\s+/)[0]?.replace(/^[A-Z]{6}\+/, '').replace(/-Identity-H$/, '') ?? '')
+    .map(
+      (line) =>
+        line
+          .split(/\s+/)[0]
+          ?.replace(/^[A-Z]{6}\+/, '')
+          .replace(/-Identity-H$/, '') ?? '',
+    )
     .filter((name) => name !== '')
 }
 

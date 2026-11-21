@@ -1,4 +1,3 @@
-import { expect, type Page, test } from '../fixtures/test'
 import {
   login,
   seedCustomer,
@@ -7,6 +6,7 @@ import {
   seedService,
   seedTreatment,
 } from '../fixtures/seed'
+import { expect, type Page, test } from '../fixtures/test'
 import { editValue, navigate, openPosition, position, signIn } from './helpers'
 
 /**
@@ -20,7 +20,10 @@ test.describe('Preisauskunft', () => {
 
   async function pick(page: Page, name: string) {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(name)
-    await page.getByRole('option', { name: new RegExp(name) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(name) })
+      .first()
+      .click()
   }
 
   test('prices positions as a treatment would and saves them as typed', async ({

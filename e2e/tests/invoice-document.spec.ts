@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { doc, seedCustomer, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { pdfText, position, positions, signIn } from './helpers'
 
 /**
@@ -31,7 +31,10 @@ test.describe('the invoice document', () => {
     await signIn(page, `/treatments/${treatmentId}`)
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(serviceName)
-    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(serviceName) })
+      .first()
+      .click()
     // The pick landed as a position of its own; text on the page alone matched the passing toast.
     await expect(position(page, serviceName)).toHaveCount(1)
 
@@ -40,10 +43,7 @@ test.describe('the invoice document', () => {
     // Back on the appointment, which the treatment is part of.
     await expect(page).toHaveURL(/\/appointments\/\d+$/)
 
-    const pdfUrl = await page
-      .getByRole('link', { name: 'PDF' })
-      .first()
-      .getAttribute('href')
+    const pdfUrl = await page.getByRole('link', { name: 'PDF' }).first().getAttribute('href')
     expect(pdfUrl).toBeTruthy()
     const text = await pdfText(Buffer.from(await (await request.get(pdfUrl as string)).body()))
 
@@ -75,7 +75,10 @@ test.describe('the invoice document', () => {
 
     const picker = page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')
     await picker.fill(serviceName)
-    await page.getByRole('option', { name: new RegExp(serviceName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(serviceName) })
+      .first()
+      .click()
 
     // The pick has to have landed first, or the id read back here is `undefined`.
     await expect(positions(page)).toHaveCount(1)
@@ -85,15 +88,12 @@ test.describe('the invoice document', () => {
     // Record something under both headings, so the report block is printed. `patients[].id` is
     // the Patientenbehandlung, which is what carries the two texts.
     const treatment = await (await request.get(`/api/treatments/${treatmentId}`)).json()
-    const recorded = await request.patch(
-      `/api/patient-treatments/${treatment.patients[0].id}`,
-      {
-        data: {
-          treatment_reason: doc('Routinekontrolle'),
-          finding: doc('Kontrolle in vier Wochen'),
-        },
+    const recorded = await request.patch(`/api/patient-treatments/${treatment.patients[0].id}`, {
+      data: {
+        treatment_reason: doc('Routinekontrolle'),
+        finding: doc('Kontrolle in vier Wochen'),
       },
-    )
+    })
     expect(recorded.status()).toBe(200)
 
     await page.reload()

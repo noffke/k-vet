@@ -1,6 +1,6 @@
-import { type APIRequestContext, expect, type Page, test } from '../fixtures/test'
 import { ifaMatrix, uniquePzn } from '../fixtures/codes'
 import { login, seedDrug } from '../fixtures/seed'
+import { type APIRequestContext, expect, type Page, test } from '../fixtures/test'
 import { navigate, signIn } from './helpers'
 
 /**
@@ -81,7 +81,10 @@ test.describe('booking a delivery by scanner', () => {
     await scan(page, ifaMatrix(pzn, 'CH-NEU', '300100'))
     await expect(page.getByText(`Unbekannter Code PZN ${pzn}`)).toBeVisible()
     await page.getByPlaceholder('Medikament suchen …').fill(drugName)
-    await page.getByRole('option', { name: new RegExp(drugName) }).first().click()
+    await page
+      .getByRole('option', { name: new RegExp(drugName) })
+      .first()
+      .click()
 
     // Found now, with what the Data Matrix carried.
     await expect(page.getByRole('heading', { name: drugName })).toBeVisible()
@@ -101,7 +104,9 @@ test.describe('booking a delivery by scanner', () => {
     await booked.getByRole('button', { name: 'Rückgängig' }).click()
     await page.getByRole('dialog').getByRole('button', { name: 'Rückgängig' }).click()
     await expect(booked).toHaveCount(0)
-    const lots = (await (await request.get(`/api/lots?drug_id=${drugId}&empty=true`)).json()) as unknown[]
+    const lots = (await (
+      await request.get(`/api/lots?drug_id=${drugId}&empty=true`)
+    ).json()) as unknown[]
     expect(lots).toHaveLength(0)
   })
 

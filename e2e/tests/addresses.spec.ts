@@ -1,6 +1,6 @@
-import { expect, test } from '../fixtures/test'
 import { DOUBTFUL_ZIP, MISSPELLED_STREET, UNKNOWN_HOUSE, WRONG_ZIP } from '../fixtures/fakeGoogle'
 import { seedCustomer, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { signIn } from './helpers'
 
 /**
@@ -10,10 +10,7 @@ import { signIn } from './helpers'
 test.describe('customer addresses', () => {
   const drive = 'destination=Musterweg%205%2C%2012345%20Musterstadt'
 
-  test('are checked once typed, and a correction can be taken over', async ({
-    page,
-    request,
-  }) => {
+  test('are checked once typed, and a correction can be taken over', async ({ page, request }) => {
     const { customerId } = await seedCustomer(request)
     await signIn(page, `/customers/${customerId}`)
     const street = page.getByLabel('Straße und Hausnummer')

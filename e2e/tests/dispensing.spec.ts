@@ -1,5 +1,5 @@
-import { expect, test } from '../fixtures/test'
 import { seedCustomer, seedDrug, seedPatient, seedTreatment } from '../fixtures/seed'
+import { expect, test } from '../fixtures/test'
 import { pdfText, signIn } from './helpers'
 
 /**
@@ -24,7 +24,10 @@ test.describe('dispensing a drug', () => {
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
     // Only the bottle is offered, not its Teilmenge.
     await expect(page.getByRole('option', { name: new RegExp(drugName) })).toHaveCount(1)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
 
     const quantity = page.getByRole('textbox', { name: 'Menge' }).first()
     await expect(quantity).toHaveValue('10')
@@ -80,7 +83,10 @@ test.describe('dispensing a drug', () => {
 
     await page.goto(`/treatments/${treatmentId}`)
     await page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …').fill(drugName)
-    await page.getByRole('option', { name: /· 100 ml/ }).first().click()
+    await page
+      .getByRole('option', { name: /· 100 ml/ })
+      .first()
+      .click()
     // A tenth of a ml to start with — the last drops of a bottle still go — and any amount from
     // there.
     const quantity = page.getByRole('textbox', { name: 'Menge' }).first()
