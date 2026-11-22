@@ -116,13 +116,15 @@ export function PositionRow({
           </Button>
         ) : null}
       </span>
+      {/* Clear of the open field's focus ring (2 px outline at 2 px offset), which otherwise
+          ran over the first line of text under it. */}
       {hint ? (
-        <div className="col-span-3 col-start-2 pb-1 text-xs text-ink-faint sm:col-span-4 sm:text-right">
+        <div className="col-span-3 col-start-2 pt-1.5 pb-1 text-xs text-ink-faint sm:col-span-4 sm:text-right">
           {hint}
         </div>
       ) : null}
       {notice ? (
-        <div className="col-span-3 col-start-2 flex flex-col pb-1.5 text-xs sm:col-span-4">
+        <div className="col-span-3 col-start-2 flex flex-col pt-1 pb-1.5 text-xs sm:col-span-4">
           {notice}
         </div>
       ) : null}

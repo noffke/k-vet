@@ -673,6 +673,10 @@ function QuoteLineCard({
     ? dispenseBreakdown(priced.dispense, priced.unit, t, { quantity, money, unitPrice })
     : null
   const factor = line.factor ?? priced?.factor ?? null
+  const typing = isOpen('quantity') || isOpen('factor') || isOpen('km')
+  const meta = priced
+    ? `${priced.got_number ? `GOT ${priced.got_number} · ` : ''}${percent(priced.vat_percent)} ${t('field.vat')}`
+    : null
 
   return (
     <PositionRow
@@ -743,11 +747,17 @@ function QuoteLineCard({
         ) : null
       }
       amount={priced ? money(priced.line_gross) : '—'}
+      // While a value is typed: the steps, how it bills, and GOT and VAT — said here once.
       hint={
-        isOpen('quantity') && !travel && rule ? (
+        typing && priced ? (
           <span className="numeric">
-            {dispenseRuleText(rule, priced?.unit, t, quantity)}
-            {breakdown ? ` · ${breakdown}` : ''}
+            {[
+              !travel && rule ? dispenseRuleText(rule, priced.unit, t, quantity) : null,
+              breakdown,
+              meta,
+            ]
+              .filter(Boolean)
+              .join(' · ')}
           </span>
         ) : undefined
       }
@@ -795,16 +805,13 @@ function QuoteLineCard({
               />
             </div>
           ) : null}
-          <div className="text-xs text-ink-faint">
-            {priced ? (
-              <p>
-                {priced.got_number ? `GOT ${priced.got_number} · ` : ''}
-                {percent(priced.vat_percent)} {t('field.vat')}
-              </p>
-            ) : null}
-            {/* Whole packs and the rest as a Teilmenge, as the invoice will print them. */}
-            {breakdown ? <p className="numeric text-ink-soft">{breakdown}</p> : null}
-          </div>
+          {/* GOT, VAT and the breakdown — unless the subline is saying them right now. */}
+          {typing ? null : (
+            <div className="text-xs text-ink-faint">
+              {meta ? <p>{meta}</p> : null}
+              {breakdown ? <p className="numeric text-ink-soft">{breakdown}</p> : null}
+            </div>
+          )}
         </div>
       }
     />

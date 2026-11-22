@@ -351,8 +351,11 @@ test.describe('treatment lines', () => {
 
     // The factor is in the line's row, open on the line just picked; the price behind its name.
     await expect(page.getByLabel('Faktor', { exact: true })).toBeEnabled()
+    // The price is said, not offered as a greyed-out field: there is nothing to type.
     const line = await openPosition(page, /Beratung/)
-    await expect(line.getByLabel('Preis (netto)')).toBeDisabled()
+    await expect(line.getByLabel('Preis (netto)')).toHaveCount(0)
+    await expect(line.getByText('Preis (netto)', { exact: true })).toBeVisible()
+    await expect(line.getByText(/Preis \(brutto\): \d+,\d{2}\s€/)).toBeVisible()
     await expect(line.getByText(/fest nach GOT/)).toBeVisible()
   })
 

@@ -397,6 +397,12 @@ export function PositionGroup({
                   unitPrice,
                 })
               : null
+            // "GOT 25 · 19 % USt." — said once: in the subline while a value is open, else in
+            // the details.
+            const meta = `${
+              item.got_number ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · ` : ''
+            }${percent(item.vat_percent)} ${t('field.vat')}`
+            const typing = isOpen('quantity') || isOpen('factor') || isOpen('km')
             const kmMissing = item.travel_expenses && item.km == null && !readOnly
             const changed = changedSincePdf.has(item.id)
             return (
@@ -415,12 +421,20 @@ export function PositionGroup({
                 amount={money(item.line_gross)}
                 newest={newest}
                 marker={changed}
-                // While the quantity is typed: which steps it takes, and how it bills.
+                // While a value is typed: the steps, how it bills, and GOT and VAT — so opening
+                // the details is never needed just to read them.
                 hint={
-                  isOpen('quantity') && item.dispense ? (
+                  typing ? (
                     <span className="numeric">
-                      {dispenseRuleText(item.dispense.rule, item.unit, t, formatQuantity)}
-                      {breakdown ? ` · ${breakdown}` : ''}
+                      {[
+                        item.dispense
+                          ? dispenseRuleText(item.dispense.rule, item.unit, t, formatQuantity)
+                          : null,
+                        breakdown,
+                        meta,
+                      ]
+                        .filter(Boolean)
+                        .join(' · ')}
                     </span>
                   ) : undefined
                 }
@@ -448,6 +462,7 @@ export function PositionGroup({
                     treatment={treatment}
                     readOnly={readOnly}
                     breakdown={breakdown}
+                    meta={typing ? null : meta}
                     onPatch={(data) => patchItem.mutate({ id: item.id, data })}
                     onMove={(direction) => move(item.id, direction)}
                   />
@@ -493,6 +508,8 @@ interface LineDetailsProps {
   readOnly: boolean
   /** What the invoice prints for the quantity, already composed. */
   breakdown: string | null
+  /** "GOT 25 · 19 % USt." — `null` while the row's subline already says it, with the breakdown. */
+  meta: string | null
   onPatch: (data: PatchTreatmentItem) => void
   onMove: (direction: MoveDirection) => void
 }
@@ -505,11 +522,12 @@ function LineDetails({
   treatment,
   readOnly,
   breakdown,
+  meta,
   onPatch,
   onMove,
 }: LineDetailsProps) {
   const { t } = useTranslation()
-  const { money, quantity: formatQuantity, percent, currencySymbol } = useLocaleFormat()
+  const { money, quantity: formatQuantity, currencySymbol } = useLocaleFormat()
 
   return (
     <div className="flex flex-col gap-3">
@@ -537,15 +555,18 @@ function LineDetails({
         {/* A GOT position costs what the schedule says, net as the GOT publishes it; the
             factor adjusts it, the price stays (the server refuses one). */}
         {gotPosition(item) ? (
-          <NumberInput
-            label={t('field.priceNet')}
-            value={item.price_net}
-            unit={currencySymbol}
-            money
-            hint={`${t('field.priceGross')}: ${money(item.price_gross)} · ${t('treatments.gotPriceHint')}`}
-            disabled
-            onChange={() => undefined}
-          />
+          // Not a field: nothing to type, so nothing greyed out either.
+          <div className="flex flex-col gap-1">
+            <span className="text-xs font-semibold text-ink-soft">{t('field.priceNet')}</span>
+            <p className="flex min-h-11 flex-wrap items-center gap-x-2 text-ink sm:min-h-9">
+              <span className="numeric">{money(item.price_net)}</span>
+              <span className="text-ink-soft">
+                · {t('field.priceGross')}:{' '}
+                <span className="numeric">{money(item.price_gross)}</span>
+              </span>
+            </p>
+            <p className="text-xs text-ink-faint">{t('treatments.gotPriceHint')}</p>
+          </div>
         ) : (
           // Every other position is priced as the customer sees it: gross, after the factor,
           // with the net underneath. The server stores the net that comes closest.
@@ -617,12 +638,10 @@ function LineDetails({
 
       <div className="flex flex-wrap items-end justify-between gap-2">
         <div className="min-w-0 text-xs text-ink-faint">
-          <p>
-            {item.got_number ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · ` : ''}
-            {percent(item.vat_percent)} {t('field.vat')}
-          </p>
-          {/* What the invoice prints for the quantity: whole packs and a Teilmenge. */}
-          {breakdown ? <p className="numeric text-ink-soft">{breakdown}</p> : null}
+          {/* GOT, VAT and what the invoice prints for the quantity — unless the row's subline
+              is saying them right now. */}
+          {meta ? <p>{meta}</p> : null}
+          {meta && breakdown ? <p className="numeric text-ink-soft">{breakdown}</p> : null}
           {item.lots.length > 0 ? (
             <p>
               {t('treatments.lots')}:{' '}

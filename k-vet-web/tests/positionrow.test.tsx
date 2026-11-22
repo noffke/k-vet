@@ -89,6 +89,21 @@ describe('a position row', () => {
     expect(screen.queryByLabelText('Menge')).toBeNull()
   })
 
+  it('closes a value left by a press only once the press is released', async () => {
+    render(<Row />)
+    fireEvent.click(screen.getByRole('button', { name: /^Menge ändern:/ }))
+    const field = screen.getByLabelText('Menge')
+    // Pressed elsewhere: the row must not shrink under the pointer before the release.
+    fireEvent.pointerDown(window)
+    act(() => field.blur())
+    expect(screen.getByLabelText('Menge')).toBeInTheDocument()
+    fireEvent.pointerUp(window)
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 0))
+    })
+    expect(screen.queryByLabelText('Menge')).toBeNull()
+  })
+
   it('opens the values of the line just picked and focuses its quantity', () => {
     render(<Row newest />)
     expect(screen.getByLabelText('Menge')).toHaveFocus()
