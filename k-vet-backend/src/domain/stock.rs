@@ -174,6 +174,66 @@ pub async fn freeze_treatment(connection: &mut PgConnection, treatment_id: i64) 
     Ok(())
 }
 
+/// Books again what a Storno gave back (FR-020). Cancelling a released invoice puts its
+/// dispenses back on the shelf while the positions stay; the next invoice for them bills the
+/// same drugs, so accepting it takes them off the shelf once more — by FEFO, and refused with
+/// `invoice.stockShort` when the lots no longer have them.
+///
+/// Only a line whose dispenses were reversed and that now holds less than it bills: a line
+/// changed since already booked what it holds, and a line with no dispense in its history (one
+/// carried over from before k-vet kept stock, a drug that has no lots) never held anything a
+/// Storno could have given back.
+pub async fn book_given_back(connection: &mut PgConnection, treatment_id: i64) -> AppResult<()> {
+    let lines = sqlx::query!(
+        r#"SELECT item.id, item.drug_packaging_id AS "packaging_id!", item.quantity,
+                  item.pack_size,
+                  COALESCE((SELECT -sum(held.quantity)
+                              FROM drug_stock_movement held
+                             WHERE held.treatment_item_id = item.id
+                               AND held.kind = 'dispense'
+                               AND NOT EXISTS (SELECT 1 FROM drug_stock_movement reversal
+                                                WHERE reversal.reverses_movement_id = held.id)),
+                           0) AS "held!"
+           FROM treatment_item item
+           WHERE item.treatment_id = $1
+             AND item.drug_packaging_id IS NOT NULL
+             AND EXISTS (SELECT 1
+                           FROM drug_stock_movement given
+                           JOIN drug_stock_movement reversal
+                             ON reversal.reverses_movement_id = given.id
+                          WHERE given.treatment_item_id = item.id
+                            AND given.kind = 'dispense')
+           ORDER BY item.id"#,
+        treatment_id,
+    )
+    .fetch_all(&mut *connection)
+    .await?;
+
+    for line in lines {
+        let Some(target) = stock_target(&mut *connection, line.packaging_id).await? else {
+            continue;
+        };
+        let dispensed = Dispensed::of_line(line.quantity, line.pack_size);
+        if !target.tracked || line.held >= dispensed.base_units(&target) {
+            continue;
+        }
+        rewrite_draft_dispenses(&mut *connection, line.id, line.packaging_id, dispensed)
+            .await
+            .map_err(|error| match error {
+                // Said for the invoice, where the vet is: the line itself was fine when typed.
+                AppError::Validation(fields)
+                    if fields
+                        .iter()
+                        .any(|field| field.message == "item.stockShort") =>
+                {
+                    AppError::field("items", "invoice.stockShort")
+                }
+                other => other,
+            })?;
+    }
+    Ok(())
+}
+
 /// Reverses a line's frozen dispenses that are not reversed yet, each by a correction linked to
 /// it: the line was changed after its invoice froze them, and the ledger only ever grows.
 pub async fn reverse_line(connection: &mut PgConnection, treatment_item_id: i64) -> AppResult<()> {

@@ -363,7 +363,7 @@ pub async fn pdf(State(state): State<AppState>, Path(id): Path<i64>) -> AppResul
     responses(
         (status = 200, description = "Accepted; a mail to the recipients is queued", body = Invoice),
         (status = 409, description = "Only a created invoice can be accepted"),
-        (status = 422, description = "A Wegegeld line has no kilometres")
+        (status = 422, description = "A Wegegeld line has no kilometres, or the lots no longer hold what a Storno gave back")
     )
 )]
 pub async fn accept(
@@ -394,6 +394,8 @@ pub async fn accept(
     // Lines stay editable until here, so a Wegegeld line may have come after the invoice.
     ensure_travel_has_km(&mut transaction, current.treatment_id).await?;
 
+    // After a Storno the positions bill drugs the shelf got back: they leave it again now.
+    stock::book_given_back(&mut transaction, current.treatment_id).await?;
     // Acceptance is the freeze point: from here the treatment's dispenses are append-only — a
     // later change reverses them and books new drafts (FR-020).
     stock::freeze_treatment(&mut transaction, current.treatment_id).await?;

@@ -14,6 +14,7 @@ import {
 import { InvoiceMailForm, useQueuedToast } from '@/features/treatments/InvoiceMailForm'
 import { linesWithoutKm } from '@/features/treatments/travelKm'
 import { useLocaleFormat } from '@/lib/locale'
+import { refusalKey } from '@/lib/refusal'
 import { scheduleOf } from '@/lib/schedule'
 import { useGoBack } from '@/lib/trail'
 
@@ -68,7 +69,13 @@ export function InvoiceAcceptPage() {
           ? t('invoices.travelWithoutKm', { names: withoutKm.map((item) => item.name).join(', ') })
           : null
       }
-      failedText={t('invoices.acceptFailed')}
+      // Why the server refused, where it says (the stock a Storno gave back is gone); else the
+      // generic failure.
+      failedText={
+        refusalKey(acceptInvoice.error) === 'error.generic'
+          ? t('invoices.acceptFailed')
+          : t(refusalKey(acceptInvoice.error))
+      }
       pending={acceptInvoice.isPending}
       failed={acceptInvoice.isError}
       submit={(invoiceId, choice) =>

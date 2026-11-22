@@ -164,7 +164,9 @@ is pure and unit-tested, including path-traversal refusal).
   number (`domain/invoice_number.rs` allocates from the configured pattern, counter scoped by the
   pattern's date parts, never reused) — **keeping the stock**: the lines still hold what was
   dispensed, so an invoice can be corrected any number of times. Only a Storno (`cancel`) gives
-  the dispenses back. Every step is timestamped.
+  the dispenses back; accepting the invoice issued after it books them again
+  (`stock::book_given_back`, refused with `invoice.stockShort` when the lots are empty). Every
+  step is timestamped.
 - `src/api/treatment_items.rs` — which animal a line belongs to is its *service's* call:
   `service.per_visit` ("pro Termin": house call, Wegegeld) puts the line on the visit, every
   other line names an animal. The line keeps a `per_visit` snapshot that a CHECK ties to

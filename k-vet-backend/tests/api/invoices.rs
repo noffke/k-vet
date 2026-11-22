@@ -313,6 +313,138 @@ async fn cancelling_an_accepted_invoice_restores_the_stock() {
     assert_eq!(again.status, StatusCode::CONFLICT);
 }
 
+/// Accepts the treatment's created invoice; the response, refused or not.
+async fn accept(app: &TestApp, invoice_id: i64) -> common::TestResponse {
+    app.post(
+        &format!("/api/invoices/{invoice_id}/accept"),
+        json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+    )
+    .await
+}
+
+/// A released invoice's Storno and the invoice issued after it for the same positions.
+async fn storno_and_reinvoice(app: &TestApp, treatment_id: i64) -> i64 {
+    let first = create_invoice(app, treatment_id).await;
+    let first_id = first["id"].as_i64().unwrap_or_default();
+    assert_eq!(accept(app, first_id).await.status, StatusCode::OK);
+    let cancelled = app
+        .post_empty(&format!("/api/invoices/{first_id}/cancel"))
+        .await;
+    assert_eq!(cancelled.status, StatusCode::OK);
+    create_invoice(app, treatment_id).await["id"]
+        .as_i64()
+        .unwrap_or_default()
+}
+
+/// A Storno gives the stock back; the positions stay. The invoice issued for them afterwards
+/// bills the same drugs, so accepting it takes them off the shelf again (2026-11-22) — the
+/// old code billed them without, and the shelf counted them twice.
+#[tokio::test]
+async fn a_new_invoice_after_a_storno_books_the_stock_again() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+
+    let invoice_id = storno_and_reinvoice(&app, billed.treatment_id).await;
+    assert_eq!(
+        common::lot_remaining(&pool, billed.lot_id).await,
+        dec("100"),
+        "a created invoice books nothing yet"
+    );
+
+    let accepted = accept(&app, invoice_id).await;
+    assert_eq!(
+        accepted.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&accepted.body)
+    );
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("90"));
+
+    // The ledger tells it as it happened: dispensed, given back by the Storno, dispensed again
+    // — and the last one is frozen with the invoice that holds it.
+    let ledger: Vec<(String, Decimal, Option<String>, bool)> = sqlx::query_as(
+        "SELECT kind::text, quantity, reason, frozen_at IS NOT NULL
+           FROM drug_stock_movement WHERE lot_id = $1 ORDER BY id",
+    )
+    .bind(billed.lot_id)
+    .fetch_all(&pool)
+    .await
+    .expect("ledger");
+    assert_eq!(
+        ledger,
+        vec![
+            ("dispense".to_owned(), dec("-10"), None, true),
+            (
+                "correction".to_owned(),
+                dec("10"),
+                Some("Rechnungsstorno".to_owned()),
+                false
+            ),
+            ("dispense".to_owned(), dec("-10"), None, true),
+        ]
+    );
+}
+
+#[tokio::test]
+async fn accepting_after_a_storno_is_refused_when_the_stock_is_gone() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let invoice_id = storno_and_reinvoice(&app, billed.treatment_id).await;
+
+    // Meanwhile the shelf emptied: 5 ml left of what the line bills as 10.
+    sqlx::query(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason)
+         VALUES ($1, 'correction', -95, 'Inventur')",
+    )
+    .bind(billed.lot_id)
+    .execute(&pool)
+    .await
+    .expect("stocktake");
+
+    let refused = accept(&app, invoice_id).await;
+    assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
+    assert_eq!(refused.json()["errors"][0]["field"], "items");
+    assert_eq!(refused.json()["errors"][0]["message"], "invoice.stockShort");
+    assert_eq!(
+        app.get(&format!("/api/invoices/{invoice_id}")).await.json()["status"],
+        "created",
+        "not released, nothing booked"
+    );
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("5"));
+}
+
+/// Changed between the Storno and the new invoice, a line books what it holds then — and the
+/// acceptance does not book it a second time.
+#[tokio::test]
+async fn a_line_changed_after_a_storno_is_not_booked_twice() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let invoice_id = storno_and_reinvoice(&app, billed.treatment_id).await;
+
+    let items = app
+        .get(&format!("/api/treatments/{}/items", billed.treatment_id))
+        .await
+        .json();
+    let drug_item = items[1]["id"].as_i64().unwrap_or_default();
+    let changed = app
+        .patch(
+            &format!("/api/treatment-items/{drug_item}"),
+            json!({ "quantity": "20" }),
+        )
+        .await;
+    assert_eq!(changed.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("80"));
+
+    assert_eq!(accept(&app, invoice_id).await.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("80"));
+}
+
 #[tokio::test]
 async fn cancelling_a_created_invoice_leaves_the_draft_dispenses_alone() {
     let db = common::database().await;

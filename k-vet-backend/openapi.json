@@ -1627,7 +1627,7 @@
             "description": "Only a created invoice can be accepted"
           },
           "422": {
-            "description": "A Wegegeld line has no kilometres"
+            "description": "A Wegegeld line has no kilometres, or the lots no longer hold what a Storno gave back"
           }
         }
       }

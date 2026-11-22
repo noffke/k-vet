@@ -6,8 +6,8 @@ import { navigate, openPosition, positions, signIn } from './helpers'
 
 /**
  * Pharmacy (quickstart #7 and #4): a delivery becomes stock, a treatment dispenses it
- * FEFO across lots, accepting the invoice freezes it, cancelling gives it back — and the
- * lot's history says who received what.
+ * FEFO across lots, accepting the invoice freezes it, cancelling gives it back and the next
+ * invoice takes it again — and the lot's history says who received what.
  */
 test.describe('pharmacy', () => {
   test('a drug is created with a computed AMPreisV price and a subset', async ({
@@ -335,7 +335,7 @@ test.describe('pharmacy', () => {
     await expect(page.getByText('Aufgebraucht').filter({ visible: true }).first()).toBeVisible()
   })
 
-  test('dispensing splits FEFO across lots and cancelling returns the stock', async ({
+  test('dispensing splits FEFO across lots, a Storno returns the stock, a new invoice takes it again', async ({
     page,
     request,
   }) => {
@@ -389,6 +389,18 @@ test.describe('pharmacy', () => {
 
     await page.goto(`/pharmacy/${drugId}`)
     await expect(page.getByRole('heading', { name: /Bestand/ })).toContainText('120')
+
+    // The positions outlived the Storno: the invoice issued for them bills the same 30 ml, so
+    // releasing it takes them off the shelf again (2026-11-22).
+    await page.goto(`/treatments/${treatmentId}`)
+    await page.getByRole('button', { name: 'Rechnung erstellen' }).click()
+    await page.getByRole('button', { name: 'Rechnung erstellen' }).last().click()
+    await page.getByRole('button', { name: 'Rechnung freigeben' }).click()
+    await page.getByRole('button', { name: 'Rechnung freigeben' }).last().click()
+    await expect(page.getByText('Freigegeben').first()).toBeVisible()
+
+    await page.goto(`/pharmacy/${drugId}`)
+    await expect(page.getByRole('heading', { name: /Bestand/ })).toContainText('90')
   })
 
   // Consumables (issues.md): syringes, needles, bandages go on the invoice without any stock

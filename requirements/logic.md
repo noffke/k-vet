@@ -128,6 +128,11 @@ quantity; the appointment says "PDF veraltet", and "Rechnung aktualisieren" issu
 number. The update replaces the invoice without undoing the treatment, so the stock stays as the lines hold it, and it
 can be repeated any number of times. The animals of a released visit stay fixed until the invoice is updated.
 
+A Storno is different: it cancels the invoice and gives its drugs back to the shelf, while the positions stay. A new
+invoice for those positions bills the same drugs, so accepting it takes them off the shelf again (decided 2026-11-22);
+when the lots no longer hold them, accepting is refused until the goods receipt or a stocktake is entered, or the
+quantity changed. Lines that never held stock (a drug without lots) are not booked by it.
+
 The PDF is made once, with the invoice; the treatment can change after. When what the PDF prints no longer matches —
 a line new, changed, removed or moved, an animal's report changed (the finding only when it is printed) — the treatment
 says so first on its page ("PDF veraltet", with what changed and "Rechnung aktualisieren"), the changed lines and

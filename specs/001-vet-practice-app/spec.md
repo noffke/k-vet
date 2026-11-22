@@ -353,6 +353,8 @@ reflected on the next generated invoice.
   is never deleted. The positions of a released invoice stay editable: changing or removing a
   line writes compensating counter-movements linked to the frozen movements they reverse, and
   books new drafts for what the line holds now; a cancellation (Storno) likewise reverses them.
+  The positions outlive a Storno, so the invoice issued for them afterwards bills the same drugs:
+  accepting it books them again (FEFO), and is refused while the lots no longer hold them.
 
 #### Services & Templates
 

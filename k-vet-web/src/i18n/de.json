@@ -601,6 +601,7 @@
     "liveInvoiceExists": "Für diese Behandlung existiert bereits eine Rechnung",
     "noLines": "Die Behandlung hat noch keine Positionen",
     "noPatient": "Der Behandlung ist noch kein Tier zugeordnet",
+    "stockShort": "Die Medikamente, die die Stornierung zurückgebucht hat, sind nicht mehr ausreichend vorrätig. Bitte zuerst den Wareneingang oder eine Inventur erfassen – oder die Menge der Position anpassen.",
     "templateMissing": "Die Datei dieser Vorlage fehlt im Vorlagenordner.",
     "unknownTemplate": "Diese Vorlage ist nicht eingerichtet.",
     "travelWithoutKm": "Eine Wegegeld-Position hat noch keine Kilometer"

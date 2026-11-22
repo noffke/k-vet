@@ -601,6 +601,7 @@
     "liveInvoiceExists": "This treatment already has an invoice",
     "noLines": "The treatment has no positions yet",
     "noPatient": "No animal is attached to the treatment yet",
+    "stockShort": "The drugs the cancellation put back on the shelf are no longer in stock. Please record the goods receipt or a stocktake first – or change the position's quantity.",
     "templateMissing": "The file of this template is missing from the templates folder.",
     "unknownTemplate": "This template is not configured.",
     "travelWithoutKm": "A Wegegeld line has no kilometres yet"
