@@ -1,7 +1,7 @@
 import { germanDate } from '../fixtures/clock'
 import { seedCustomer, seedDrug, seedPatient, seedService } from '../fixtures/seed'
 import { expect, test } from '../fixtures/test'
-import { navigate, openPosition, positions, signIn } from './helpers'
+import { navigate, openPosition, position, positions, signIn } from './helpers'
 
 /**
  * The core loop (T039, quickstart #1, SC-001): appointment → treatment → a stocked drug line
@@ -65,6 +65,9 @@ test('a visit is recorded and its invoice accepted', async ({ page, request }) =
     .getByRole('option', { name: /· 100 ml/ })
     .first()
     .click()
+  // The drug comes in with its quantity open and focused; the vet goes back to the search from
+  // there (typed into before the line arrived, the search lost the next name to its quantity).
+  await expect(position(page, drugName).getByLabel('Menge', { exact: true })).toBeFocused()
   await picker.fill(serviceName)
   await page
     .getByRole('option', { name: new RegExp(serviceName) })

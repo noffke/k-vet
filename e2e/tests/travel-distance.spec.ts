@@ -48,20 +48,21 @@ test.describe('Wegegeld kilometres', () => {
     await expect(
       page.getByText(`${serviceName}: ${ROUTED_KM} km, kürzeste Strecke laut Google Maps`),
     ).toBeVisible()
-    // The line just picked has its kilometres open in its row; its price is behind its name.
-    await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
+    // The kilometres are in the line's row, its price behind its name.
+    const km = () => editValue(page, serviceName, 'Kilometer')
+    await expect(await km()).toHaveValue(ROUTED_KM)
     // 12 km × 3.50 € = 42.00 € net.
     const price = async () => (await openPosition(page, serviceName)).getByLabel('Preis (brutto)')
     await expect(await price()).toHaveValue('49,98')
 
     // The vet knows a better way; the next visit takes her figure.
-    await page.getByLabel('Kilometer').fill('13,2')
+    await (await km()).fill('13,2')
     await expect(await price()).toHaveValue('54,98')
     await pick(page, second, serviceName)
     await expect(
       page.getByText(`${serviceName}: 13,2 km wie beim Termin am ${today}`),
     ).toBeVisible()
-    await expect(page.getByLabel('Kilometer')).toHaveValue('13,2')
+    await expect(await km()).toHaveValue('13,2')
 
     // The customer moves: the next visit asks Google again.
     await page.goto(`/customers/${customerId}`)
@@ -74,13 +75,14 @@ test.describe('Wegegeld kilometres', () => {
     await expect(
       page.getByText(`${serviceName}: ${ROUTED_KM} km, kürzeste Strecke laut Google Maps`),
     ).toBeVisible()
-    await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
+    await expect(await km()).toHaveValue(ROUTED_KM)
 
     // Typed over, the figure can be fetched again with the icon beside it.
-    await page.getByLabel('Kilometer').fill('30')
+    await (await km()).fill('30')
     await expect(await price()).toHaveValue('124,95')
+    await km()
     await page.getByRole('button', { name: 'Entfernung neu berechnen (Google Maps)' }).click()
-    await expect(page.getByLabel('Kilometer')).toHaveValue(ROUTED_KM)
+    await expect(await km()).toHaveValue(ROUTED_KM)
     await expect(await price()).toHaveValue('49,98')
   })
 

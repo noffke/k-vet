@@ -636,7 +636,7 @@ interface QuoteLineCardProps {
   priced: QuoteLine | undefined
   error: string | undefined
   canLookUp: boolean
-  /** The line just picked: its values open, its quantity focused. */
+  /** The line just picked: marked, and a drug's quantity open and focused. */
   newest: boolean
   /** Enter in the newest line's value: back to the search. */
   onReturnToSearch: () => void
@@ -666,7 +666,10 @@ function QuoteLineCard({
   const Icon = line.kind === 'drug_packaging' ? Pill : Stethoscope
   const rule = priced?.today_rule ?? priced?.dispense?.rule
   const travel = priced?.travel_expenses ?? false
-  const isOpen = (cell: QuoteCell) => newest || editing === cell
+  // The drug just picked opens its quantity and takes the focus; a service mostly stays 1 × at
+  // 100 % (2026-11-22), so the search keeps it for the next position.
+  const typed = newest && line.kind !== 'service'
+  const isOpen = (cell: QuoteCell) => typed || editing === cell
   const closeCell = (cell: QuoteCell) => () =>
     setEditing((current) => (current === cell ? null : current))
   const breakdown = priced?.dispense
@@ -702,8 +705,8 @@ function QuoteLineCard({
             open={isOpen('km')}
             onOpen={() => setEditing('km')}
             onClose={closeCell('km')}
-            autoFocus={newest}
-            onEnter={newest ? onReturnToSearch : undefined}
+            autoFocus={typed}
+            onEnter={typed ? onReturnToSearch : undefined}
             onChange={(value) => onChange({ km: value, kmTyped: value !== null })}
             action={
               canLookUp
@@ -724,8 +727,8 @@ function QuoteLineCard({
             open={isOpen('quantity')}
             onOpen={() => setEditing('quantity')}
             onClose={closeCell('quantity')}
-            autoFocus={newest}
-            onEnter={newest ? onReturnToSearch : undefined}
+            autoFocus={typed}
+            onEnter={typed ? onReturnToSearch : undefined}
             onChange={(value) => value && onChange({ quantity: value })}
           />
         )
@@ -741,7 +744,7 @@ function QuoteLineCard({
             open={isOpen('factor')}
             onOpen={() => setEditing('factor')}
             onClose={closeCell('factor')}
-            onEnter={newest ? onReturnToSearch : undefined}
+            onEnter={typed ? onReturnToSearch : undefined}
             onChange={(value) => onChange({ factor: value })}
           />
         ) : null

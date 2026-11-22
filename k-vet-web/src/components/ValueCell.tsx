@@ -3,46 +3,8 @@ import type { KeyboardEvent, ReactNode } from 'react'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { NumberInput } from '@/components/NumberInput'
+import { closeWhenReleased } from '@/lib/pointer'
 import { cn } from '@/lib/utils'
-
-/** Whether a mouse button, pen or finger is down right now — kept for `closeWhenReleased`. */
-let pointerDown = false
-if (typeof window !== 'undefined') {
-  window.addEventListener(
-    'pointerdown',
-    () => {
-      pointerDown = true
-    },
-    true,
-  )
-  window.addEventListener(
-    'pointerup',
-    () => {
-      pointerDown = false
-    },
-    true,
-  )
-  window.addEventListener(
-    'pointercancel',
-    () => {
-      pointerDown = false
-    },
-    true,
-  )
-}
-
-/**
- * Runs `close` now — or, when a press elsewhere took the focus, once that press is released.
- * Closing shrinks the row (its subline goes); done between press and release, near the bottom of
- * the page it moved what was pressed away from under the pointer, and the click was lost.
- */
-function closeWhenReleased(close: () => void): void {
-  if (!pointerDown) {
-    close()
-    return
-  }
-  window.addEventListener('pointerup', () => setTimeout(close, 0), { once: true })
-}
 
 interface ValueCellProps {
   /** What the value is — "Menge", "Faktor", "Kilometer": the field's label, said not shown. */
@@ -151,9 +113,11 @@ export function ValueCell({
     // Closed when the focus leaves the cell, not the input: the button inside it (the
     // kilometres from Google Maps) must still take its click.
     <fieldset
-      // As wide as a few digits and a long unit ("Tablette"), not the input's default 20
-      // characters, which widened the whole column while it was open; more with a button.
-      className={cn('m-0 min-w-0 border-0 p-0', action ? 'w-48' : 'w-36', className)}
+      // As wide as a few digits and its unit need — `NumberInput` keeps that much for them —
+      // and never narrower than the usual cell (more with a button); not the input's default
+      // 20 characters, which widened the whole column while it was open. A fixed width let a
+      // long unit ("Originalpackung") run out of it over the amount beside it.
+      className={cn('m-0 w-min border-0 p-0', action ? 'min-w-48' : 'min-w-36', className)}
       onBlur={(event) => {
         if (!event.currentTarget.contains(event.relatedTarget as Node | null)) {
           closeWhenReleased(onClose)

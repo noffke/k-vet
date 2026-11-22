@@ -40,9 +40,13 @@ test.describe('Preisauskunft', () => {
     // Saved: the quote has an address of its own now.
     await expect(page).toHaveURL(/\/quote\?id=\d+/)
 
-    await page.getByLabel('Menge').fill('2')
+    // A service mostly stays 1 × at 100 %: the search keeps the focus for the next position,
+    // and its values open where they are tapped.
+    await expect(page.getByPlaceholder('Medikament, Leistung oder Gruppe suchen …')).toBeFocused()
+    await expect(position(page, serviceName).getByLabel('Menge', { exact: true })).toHaveCount(0)
+    await (await editValue(page, serviceName, 'Menge')).fill('2')
     await expect(total(page)).toContainText('56,22 €')
-    await page.getByLabel('Faktor', { exact: true }).fill('200')
+    await (await editValue(page, serviceName, 'Faktor')).fill('200')
     await expect(total(page)).toContainText('112,43 €')
     await expect(total(page)).toContainText('netto 94,48 €')
 

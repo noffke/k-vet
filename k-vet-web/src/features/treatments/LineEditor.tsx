@@ -300,8 +300,12 @@ export function PositionGroup({
         <PositionList label={typeof heading === 'string' ? heading : t('treatments.items')}>
           {items.map((item, index) => {
             const newest = item.id === newestId
+            // A drug's quantity is nearly always typed, so the drug just picked opens it and
+            // takes the focus; a service mostly stays 1 × at 100 % (2026-11-22), so the search
+            // keeps the focus for the next position.
+            const typed = newest && item.kind !== 'service'
             const isOpen = (cell: Cell) =>
-              newest || (editing?.id === item.id && editing.cell === cell)
+              typed || (editing?.id === item.id && editing.cell === cell)
             const close = (cell: Cell) => () =>
               setEditing((current) =>
                 current?.id === item.id && current.cell === cell ? null : current,
@@ -319,8 +323,8 @@ export function PositionGroup({
                 open={isOpen('km')}
                 onOpen={open('km')}
                 onClose={close('km')}
-                autoFocus={newest}
-                onEnter={newest ? onReturnToSearch : undefined}
+                autoFocus={typed}
+                onEnter={typed ? onReturnToSearch : undefined}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { km: value } })
                 }
@@ -338,12 +342,16 @@ export function PositionGroup({
                             )}
                           />
                         ),
-                        disabled: recomputeKm.isPending,
-                        onClick: () =>
+                        // Not disabled while asking: a focused button that is disabled drops
+                        // the focus, and the field closed under the figure it was fetching.
+                        // A second press meanwhile is ignored; the icon spins.
+                        onClick: () => {
+                          if (recomputeKm.isPending) return
                           recomputeKm.mutate(
                             { id: item.id },
                             { onSuccess: (line) => kmToast(line.km_suggestion, item.name) },
-                          ),
+                          )
+                        },
                       }
                     : undefined
                 }
@@ -359,8 +367,8 @@ export function PositionGroup({
                 open={isOpen('quantity')}
                 onOpen={open('quantity')}
                 onClose={close('quantity')}
-                autoFocus={newest}
-                onEnter={newest ? onReturnToSearch : undefined}
+                autoFocus={typed}
+                onEnter={typed ? onReturnToSearch : undefined}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { quantity: value } })
                 }
@@ -377,7 +385,7 @@ export function PositionGroup({
                   open={isOpen('factor')}
                   onOpen={open('factor')}
                   onClose={close('factor')}
-                  onEnter={newest ? onReturnToSearch : undefined}
+                  onEnter={typed ? onReturnToSearch : undefined}
                   onChange={(value) =>
                     value && patchItem.mutate({ id: item.id, data: { factor: value } })
                   }

@@ -6,6 +6,7 @@ import { useListTemplates, usePickerItems } from '@/api/generated/endpoints'
 import type { PickerItem, Template } from '@/api/generated/model'
 import { unmarkCmdkInput } from '@/lib/cmdk'
 import { useLocaleFormat } from '@/lib/locale'
+import { closeWhenReleased } from '@/lib/pointer'
 import { cn } from '@/lib/utils'
 
 /** Keystrokes settle before a request goes out — the picker is typed into fast. */
@@ -153,7 +154,14 @@ export function ItemPicker({
           setOpen(true)
           reveal()
         }}
-        onBlur={() => setOpen(false)}
+        // Closed once a press elsewhere is released, not on the press: the results going shrinks
+        // the page, and the row just added — whose value the vet is tapping — moved away from
+        // under the pointer before the release, so the tap was lost.
+        onBlur={() =>
+          closeWhenReleased(() => {
+            if (document.activeElement !== input.current) setOpen(false)
+          })
+        }
         placeholder={
           placeholder ??
           (perVisitOnly

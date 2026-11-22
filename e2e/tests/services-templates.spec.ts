@@ -1,6 +1,6 @@
 import { seedCustomer, seedDrug, seedPatient, seedService, seedTreatment } from '../fixtures/seed'
 import { expect, test } from '../fixtures/test'
-import { navigate, openPosition, pdfText, position, positions, signIn } from './helpers'
+import { editValue, navigate, openPosition, pdfText, position, positions, signIn } from './helpers'
 
 /**
  * Services and templates (T066): the GOT catalog is searchable with surgery hidden, a
@@ -144,8 +144,8 @@ test.describe('services and templates', () => {
       .first()
       .click()
 
-    // The line just picked asks for its kilometres in its own row.
-    await page.getByLabel('Kilometer').fill('12')
+    // Its kilometres are typed in its own row.
+    await (await editValue(page, 'Wegegeld Hausbesuch', 'Kilometer')).fill('12')
     // 12 km × 3.50 € net = 42.00 € net (GOT quotes the Wegegeld net).
     const line = await openPosition(page, 'Wegegeld Hausbesuch')
     await expect(line.getByLabel('Preis (brutto)')).toHaveValue('49,98')
@@ -349,8 +349,8 @@ test.describe('treatment lines', () => {
       .first()
       .click()
 
-    // The factor is in the line's row, open on the line just picked; the price behind its name.
-    await expect(page.getByLabel('Faktor', { exact: true })).toBeEnabled()
+    // The factor is in the line's row, a tap away; the price behind its name.
+    await expect(await editValue(page, /Beratung/, 'Faktor')).toBeEnabled()
     // The price is said, not offered as a greyed-out field: there is nothing to type.
     const line = await openPosition(page, /Beratung/)
     await expect(line.getByLabel('Preis (netto)')).toHaveCount(0)
