@@ -163,9 +163,12 @@ pub async fn create_or_update(
             .await?;
             current.id
         }
-        // An accepted invoice is cancelled first; its number is burned.
+        // A released invoice is cancelled first; its number is burned. The stock stays: the
+        // lines still hold what was dispensed, changes since already booked against it
+        // (`stock::rewrite_draft_dispenses`) — so an invoice can be corrected any number of
+        // times without the shelf drifting.
         Some(current) => {
-            cancel_in_transaction(&mut transaction, current.id, treatment_id).await?;
+            cancel_in_transaction(&mut transaction, current.id, treatment_id, Stock::Keep).await?;
             insert_invoice(
                 &mut transaction,
                 &pattern,
@@ -391,7 +394,9 @@ pub async fn accept(
     // Lines stay editable until here, so a Wegegeld line may have come after the invoice.
     ensure_travel_has_km(&mut transaction, current.treatment_id).await?;
 
-    // Acceptance is the freeze point: from here the stock ledger is append-only.
+    // Acceptance is the freeze point: from here the treatment's dispenses are append-only — a
+    // later change reverses them and books new drafts (FR-020).
+    stock::freeze_treatment(&mut transaction, current.treatment_id).await?;
     let recipients = clean_recipients(body.recipient_emails);
     sqlx::query!(
         "UPDATE invoice
@@ -605,17 +610,27 @@ pub async fn cancel(
         ));
     }
 
-    cancel_in_transaction(&mut transaction, id, current.treatment_id).await?;
+    cancel_in_transaction(&mut transaction, id, current.treatment_id, Stock::GiveBack).await?;
     transaction.commit().await?;
 
     load(&state.pool, id).await.map(Json)
 }
 
-/// Cancels an invoice and compensates its frozen dispenses.
+/// What cancelling does to the treatment's stock.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Stock {
+    /// A Storno: the dispenses go back on the shelf by compensating corrections.
+    GiveBack,
+    /// An update: the invoice is replaced, the treatment's dispenses stand.
+    Keep,
+}
+
+/// Cancels an invoice; a Storno also compensates its frozen dispenses.
 async fn cancel_in_transaction(
     transaction: &mut Transaction<'_, Postgres>,
     invoice_id: i64,
     treatment_id: i64,
+    stock: Stock,
 ) -> AppResult<()> {
     let status = sqlx::query_scalar!(
         r#"SELECT status AS "status: InvoiceStatus" FROM invoice WHERE id = $1"#,
@@ -633,11 +648,13 @@ async fn cancel_in_transaction(
     // A cancelled invoice must not reach the customer — not even from the queue.
     mail_queue::drop_for_invoice(transaction, invoice_id).await?;
 
-    // Only frozen (released) dispenses need reversing — draft ones were never booked.
-    if matches!(
-        status,
-        InvoiceStatus::Accepted | InvoiceStatus::Sent | InvoiceStatus::Submitted
-    ) {
+    // Only a released invoice froze dispenses — a created one's were never booked.
+    if stock == Stock::GiveBack
+        && matches!(
+            status,
+            InvoiceStatus::Accepted | InvoiceStatus::Sent | InvoiceStatus::Submitted
+        )
+    {
         let reversed = stock::reverse_treatment_dispenses(transaction, treatment_id).await?;
         tracing::info!(
             invoice_id,

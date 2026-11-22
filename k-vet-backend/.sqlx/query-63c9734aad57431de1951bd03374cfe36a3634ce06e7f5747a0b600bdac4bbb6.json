@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason, reverses_movement_id)\n         SELECT movement.lot_id, 'correction', -movement.quantity, 'Positionskorrektur',\n                movement.id\n           FROM drug_stock_movement movement\n          WHERE movement.treatment_item_id = $1\n            AND movement.kind = 'dispense'\n            AND movement.frozen_at IS NOT NULL\n            AND NOT EXISTS (SELECT 1 FROM drug_stock_movement reversal\n                             WHERE reversal.reverses_movement_id = movement.id)",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "63c9734aad57431de1951bd03374cfe36a3634ce06e7f5747a0b600bdac4bbb6"
+}

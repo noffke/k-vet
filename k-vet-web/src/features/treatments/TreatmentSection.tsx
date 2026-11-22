@@ -93,7 +93,6 @@ function TreatmentBody({
             heading={t('treatments.perVisit')}
             patientTreatmentId={null}
             items={general}
-            readOnly={treatment.frozen}
             {...lines}
           />
         </>
@@ -251,7 +250,6 @@ function AnimalPanel({
         heading={t('treatments.items')}
         patientTreatmentId={patient.id}
         items={items.filter((item) => item.patient_treatment_id === patient.id)}
-        readOnly={treatment.frozen}
         {...lines}
       />
 
@@ -261,7 +259,6 @@ function AnimalPanel({
           heading={t('treatments.perVisit')}
           patientTreatmentId={null}
           items={general}
-          readOnly={treatment.frozen}
           showPicker={false}
           {...lines}
           pickerRef={undefined}

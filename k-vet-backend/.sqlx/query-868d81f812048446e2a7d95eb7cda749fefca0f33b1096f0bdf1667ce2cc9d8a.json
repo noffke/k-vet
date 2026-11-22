@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "UPDATE drug_stock_movement movement\n            SET frozen_at = now()\n           FROM treatment_item item\n          WHERE item.id = movement.treatment_item_id\n            AND item.treatment_id = $1\n            AND movement.kind = 'dispense'\n            AND movement.frozen_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "868d81f812048446e2a7d95eb7cda749fefca0f33b1096f0bdf1667ce2cc9d8a"
+}

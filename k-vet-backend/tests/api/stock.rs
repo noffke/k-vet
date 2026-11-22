@@ -581,23 +581,55 @@ async fn frozen_movements_are_append_only() {
     )
     .await;
 
-    // Neither editing nor deleting the line may touch a frozen movement.
-    assert_eq!(
-        app.patch(
+    // Editing and deleting the line stay possible (2026-11-22), and neither touches a frozen
+    // movement: each is reversed by a linked correction, and only drafts are ever deleted.
+    let edited = app
+        .patch(
             &format!("/api/treatment-items/{item_id}"),
-            json!({ "quantity": "50" })
+            json!({ "quantity": "50" }),
         )
+        .await;
+    assert_eq!(edited.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("50"));
+    // Typed over before the next release: the 50 ml draft is replaced, not reversed.
+    let retyped = app
+        .patch(
+            &format!("/api/treatment-items/{item_id}"),
+            json!({ "quantity": "30" }),
+        )
+        .await;
+    assert_eq!(retyped.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("70"));
+    let movements = |pool: PgPool| async move {
+        sqlx::query_as::<_, (String, Decimal, bool, Option<i64>)>(
+            "SELECT kind::text, quantity, reverses_movement_id IS NOT NULL, treatment_item_id
+             FROM drug_stock_movement WHERE lot_id = $1 ORDER BY id",
+        )
+        .bind(lot)
+        .fetch_all(&pool)
         .await
-        .status,
-        StatusCode::CONFLICT
-    );
+        .expect("movements")
+    };
     assert_eq!(
-        app.delete(&format!("/api/treatment-items/{item_id}"))
-            .await
-            .status,
-        StatusCode::CONFLICT
+        movements(pool.clone()).await,
+        vec![
+            ("dispense".to_owned(), dec("-10"), false, Some(item_id)),
+            ("correction".to_owned(), dec("10"), true, None),
+            ("dispense".to_owned(), dec("-30"), false, Some(item_id)),
+        ]
     );
-    assert_eq!(common::lot_remaining(&pool, lot).await, dec("90"));
+
+    // Deleted: the draft goes, the frozen dispense stays in the ledger, detached from the line.
+    let deleted = app.delete(&format!("/api/treatment-items/{item_id}")).await;
+    assert_eq!(deleted.status, StatusCode::NO_CONTENT);
+    assert_eq!(common::lot_remaining(&pool, lot).await, dec("100"));
+    assert_eq!(
+        movements(pool.clone()).await,
+        vec![
+            ("dispense".to_owned(), dec("-10"), false, None),
+            ("correction".to_owned(), dec("10"), true, None),
+        ]
+    );
 }
 
 #[tokio::test]
@@ -623,6 +655,17 @@ async fn the_movement_shape_checks_hold_at_the_database_level() {
             "a dispense of {quantity} without a line must be rejected"
         );
     }
+
+    // Only a frozen dispense may name no line: the history of a line deleted after its invoice
+    // froze it (migration 0046).
+    let detached = sqlx::query(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, frozen_at)
+         VALUES ($1, 'dispense', -5, now())",
+    )
+    .bind(lot)
+    .execute(&pool)
+    .await;
+    assert!(detached.is_ok(), "{detached:?}");
 
     // A correction never points at a treatment line.
     let result = sqlx::query(
@@ -1203,4 +1246,109 @@ async fn the_migration_makes_every_consumable_no_medicine(pool: PgPool) {
             .await
             .expect("the pack's price");
     assert_eq!(price, Decimal::from_str_exact("12.50").expect("decimal"));
+}
+
+/// Migration 0046 marks what was frozen before it: the dispenses of a released invoice and every
+/// reversed one; a dispense still in the making stays a draft. And a line whose dispense was
+/// reversed can be deleted now — its history stays, detached.
+#[sqlx::test(migrations = false)]
+async fn the_migration_freezes_what_was_released(pool: PgPool) {
+    let migrator = sqlx::migrate!("./migrations");
+    migrator.run_to(45, &pool).await.expect("migrate to 0045");
+    let drug = common::seed_drug(&pool).await;
+    let lot = common::seed_lot(&pool, drug.packaging_id, 1, dec("100"), None).await;
+    let customer_id = common::seed_customer(&pool).await;
+    let patient_id = common::seed_patient(&pool, customer_id).await;
+
+    // A line with one dispense, on its own visit; `status` its invoice, if any.
+    let line = |status: Option<&'static str>, number: &'static str| {
+        let pool = pool.clone();
+        async move {
+            let appointment = common::seed_appointment(&pool, Utc::now()).await;
+            let (treatment, record) =
+                common::seed_patient_treatment(&pool, appointment, patient_id).await;
+            let item: i64 = sqlx::query_scalar(
+                "INSERT INTO treatment_item
+                     (treatment_id, position, kind, drug_packaging_id, patient_treatment_id,
+                      per_visit, name, quantity, unit, price_net, vat_percent, pack_size)
+                 VALUES ($1, 1, 'drug_packaging', $2, $3, false, 'Amoxicillin 100', 10, 'ml',
+                         12.50, 19, 100)
+                 RETURNING id",
+            )
+            .bind(treatment)
+            .bind(drug.packaging_id)
+            .bind(record)
+            .fetch_one(&pool)
+            .await
+            .expect("a line");
+            let movement: i64 = sqlx::query_scalar(
+                "INSERT INTO drug_stock_movement (lot_id, kind, quantity, treatment_item_id)
+                 VALUES ($1, 'dispense', -10, $2) RETURNING id",
+            )
+            .bind(lot)
+            .bind(item)
+            .fetch_one(&pool)
+            .await
+            .expect("a dispense");
+            if let Some(status) = status {
+                sqlx::query(
+                    "INSERT INTO invoice (treatment_id, invoice_number, invoice_date, status,
+                                          ts_accepted, ts_cancelled)
+                     VALUES ($1, $2, current_date, $3::invoice_status, now(),
+                             CASE WHEN $3 = 'cancelled' THEN now() END)",
+                )
+                .bind(treatment)
+                .bind(number)
+                .bind(status)
+                .execute(&pool)
+                .await
+                .expect("an invoice");
+            }
+            (item, movement)
+        }
+    };
+    let (_, released) = line(Some("accepted"), "2026-0001").await;
+    let (_, draft) = line(None, "").await;
+    let (reversed_item, reversed) = line(Some("cancelled"), "2026-0002").await;
+    sqlx::query(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason, reverses_movement_id)
+         VALUES ($1, 'correction', 10, 'Rechnungsstorno', $2)",
+    )
+    .bind(lot)
+    .bind(reversed)
+    .execute(&pool)
+    .await
+    .expect("a reversal");
+
+    migrator.run(&pool).await.expect("migrate to the end");
+
+    let frozen = |movement: i64| {
+        let pool = pool.clone();
+        async move {
+            sqlx::query_scalar::<_, bool>(
+                "SELECT frozen_at IS NOT NULL FROM drug_stock_movement WHERE id = $1",
+            )
+            .bind(movement)
+            .fetch_one(&pool)
+            .await
+            .expect("the movement")
+        }
+    };
+    assert!(frozen(released).await, "a released invoice's dispense");
+    assert!(frozen(reversed).await, "a reversed dispense");
+    assert!(!frozen(draft).await, "a dispense in the making");
+
+    // The line whose dispense was reversed: deleting it used to fail on the reversal's reference.
+    sqlx::query("DELETE FROM treatment_item WHERE id = $1")
+        .bind(reversed_item)
+        .execute(&pool)
+        .await
+        .expect("a line with reversed history can be deleted");
+    let kept: Option<i64> =
+        sqlx::query_scalar("SELECT treatment_item_id FROM drug_stock_movement WHERE id = $1")
+            .bind(reversed)
+            .fetch_one(&pool)
+            .await
+            .expect("the dispense is still there");
+    assert_eq!(kept, None, "detached from the deleted line");
 }

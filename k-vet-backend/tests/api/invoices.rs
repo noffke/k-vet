@@ -161,20 +161,50 @@ async fn accepting_freezes_the_treatment() {
     // No SMTP server in tests: the send fails, the invoice stays accepted and retriable.
     assert!(accepted["ts_sent_email"].is_null());
 
-    // The stock movements are frozen: lines can no longer be changed.
+    // The dispense is frozen — but the line stays editable: the change reverses the frozen 10 ml
+    // with a linked correction and books the new 20 ml as a draft (2026-11-22).
     let items = app
         .get(&format!("/api/treatments/{}/items", billed.treatment_id))
         .await
         .json();
     let drug_item = items[1]["id"].as_i64().unwrap_or_default();
-    let rejected = app
+    let changed = app
         .patch(
             &format!("/api/treatment-items/{drug_item}"),
             json!({ "quantity": "20" }),
         )
         .await;
-    assert_eq!(rejected.status, StatusCode::CONFLICT);
-    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("90"));
+    assert_eq!(changed.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("80"));
+    let movements: Vec<(String, Decimal, bool, bool)> = sqlx::query_as(
+        "SELECT kind::text, quantity, reverses_movement_id IS NOT NULL, frozen_at IS NOT NULL
+         FROM drug_stock_movement WHERE lot_id = $1 ORDER BY id",
+    )
+    .bind(billed.lot_id)
+    .fetch_all(&pool)
+    .await
+    .expect("movements");
+    assert_eq!(
+        movements,
+        vec![
+            ("dispense".to_owned(), dec("-10"), false, true),
+            ("correction".to_owned(), dec("10"), true, false),
+            ("dispense".to_owned(), dec("-20"), false, false),
+        ],
+        "the frozen dispense stays, reversed; the new one is a draft"
+    );
+    // The PDF shows the old quantity: the treatment says so.
+    let treatment = app
+        .get(&format!("/api/treatments/{}", billed.treatment_id))
+        .await
+        .json();
+    assert!(
+        treatment["pdf_changes"]["changed_items"]
+            .as_array()
+            .is_some_and(|ids| ids.iter().any(|id| id == drug_item)),
+        "{}",
+        treatment["pdf_changes"]
+    );
 
     let treatment = app
         .get(&format!("/api/treatments/{}", billed.treatment_id))
@@ -184,7 +214,7 @@ async fn accepting_freezes_the_treatment() {
 }
 
 #[tokio::test]
-async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock() {
+async fn updating_an_accepted_invoice_burns_its_number_and_keeps_the_stock() {
     let db = common::database().await;
     let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
@@ -217,31 +247,19 @@ async fn updating_an_accepted_invoice_burns_its_number_and_reverses_the_stock() 
     assert_eq!(cancelled["status"], "cancelled");
     assert!(!cancelled["ts_cancelled"].is_null());
 
-    // The frozen dispense was compensated, so the lot is whole again ...
-    assert_eq!(
-        common::lot_remaining(&pool, billed.lot_id).await,
-        dec("100")
-    );
-    // ... and the history was not rewritten: dispense plus linked correction.
-    let movements: Vec<(String, Decimal, Option<i64>)> = sqlx::query_as(
-        "SELECT kind::text, quantity, reverses_movement_id
-         FROM drug_stock_movement WHERE lot_id = $1 ORDER BY id",
+    // The 10 ml stay dispensed: the invoice is replaced, the treatment is not undone. Until now
+    // the update gave them back, and the reissued invoice billed drugs the shelf still counted.
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("90"));
+    let movements: Vec<(String, Decimal)> = sqlx::query_as(
+        "SELECT kind::text, quantity FROM drug_stock_movement WHERE lot_id = $1 ORDER BY id",
     )
     .bind(billed.lot_id)
     .fetch_all(&pool)
     .await
     .expect("movements");
-    assert_eq!(movements.len(), 2, "append-only: {movements:?}");
-    assert_eq!(movements[0].0, "dispense");
-    assert_eq!(movements[0].1, dec("-10"), "10 ml were dispensed");
-    assert_eq!(movements[1].0, "correction");
-    assert_eq!(movements[1].1, dec("10"));
-    assert!(
-        movements[1].2.is_some(),
-        "the correction links the movement it reverses"
-    );
+    assert_eq!(movements, vec![("dispense".to_owned(), dec("-10"))]);
 
-    // The treatment is editable again (its new invoice is only `created`).
+    // Raised to 20 ml: the frozen 10 ml are reversed, the 20 ml booked.
     let items = app
         .get(&format!("/api/treatments/{}/items", billed.treatment_id))
         .await
@@ -1311,4 +1329,230 @@ async fn the_migration_snapshots_only_pdfs_that_are_current() {
         treatment_of(&app, outdated.treatment_id).await["pdf_stale"],
         true
     );
+}
+
+/// Releases the treatment's created invoice; returns it.
+async fn release(app: &TestApp, treatment_id: i64) -> Value {
+    let invoice = create_invoice(app, treatment_id).await;
+    let accepted = app
+        .post(
+            &format!("/api/invoices/{}/accept", invoice["id"]),
+            json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+        )
+        .await;
+    assert_eq!(accepted.status, StatusCode::OK);
+    accepted.json()
+}
+
+/// The positions of a released invoice stay editable however far it got — accepted, sent,
+/// handed over to bookkeeping (2026-11-22). The animals do not.
+#[tokio::test]
+async fn a_released_invoice_s_positions_stay_editable_in_every_state() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    for stage in ["accepted", "sent", "submitted"] {
+        let billed = billable_treatment(&app, &pool).await;
+        let invoice = release(&app, billed.treatment_id).await;
+        let id = invoice["id"].as_i64().unwrap_or_default();
+        if stage != "accepted" {
+            let posted = app
+                .post_empty(&format!("/api/invoices/{id}/mark-posted"))
+                .await;
+            assert_eq!(posted.status, StatusCode::OK, "{stage}");
+        }
+        if stage == "submitted" {
+            let submitted = app.post_empty(&format!("/api/invoices/{id}/submit")).await;
+            assert_eq!(submitted.status, StatusCode::OK, "{stage}");
+        }
+        assert_eq!(
+            app.get(&format!("/api/invoices/{id}")).await.json()["status"],
+            stage
+        );
+
+        let items = app
+            .get(&format!("/api/treatments/{}/items", billed.treatment_id))
+            .await
+            .json();
+        let drug_item = items[1]["id"].as_i64().unwrap_or_default();
+        let changed = app
+            .patch(
+                &format!("/api/treatment-items/{drug_item}"),
+                json!({ "quantity": "20" }),
+            )
+            .await;
+        assert_eq!(changed.status, StatusCode::OK, "{stage}");
+        assert_eq!(
+            common::lot_remaining(&pool, billed.lot_id).await,
+            dec("80"),
+            "{stage}"
+        );
+
+        // Whom the invoice is for stays fixed until it is updated.
+        let treatment = app
+            .get(&format!("/api/treatments/{}", billed.treatment_id))
+            .await
+            .json();
+        assert_eq!(treatment["frozen"], true, "{stage}");
+        let customer_id = treatment["customer_id"].as_i64().unwrap_or_default();
+        let other = common::seed_patient(&pool, customer_id).await;
+        let added = app
+            .post(
+                &format!("/api/treatments/{}/patients", billed.treatment_id),
+                json!({ "patient_id": other }),
+            )
+            .await;
+        assert_eq!(added.status, StatusCode::CONFLICT, "{stage}");
+    }
+}
+
+/// Corrected as often as needed: release, change a line, update — three times over. Every round
+/// burns one number and leaves one live invoice; the shelf always shows what the lines hold now,
+/// and the ledger keeps every frozen dispense with its reversal.
+#[tokio::test]
+async fn a_released_invoice_can_be_corrected_any_number_of_times() {
+    let db = common::database().await;
+    let pool = db.pool();
+    let app = TestApp::new(pool.clone()).await;
+    let billed = billable_treatment(&app, &pool).await;
+    let items = app
+        .get(&format!("/api/treatments/{}/items", billed.treatment_id))
+        .await
+        .json();
+    let drug_item = items[1]["id"].as_i64().unwrap_or_default();
+    let quantity = |value: &str| {
+        let app = &app;
+        let value = value.to_owned();
+        async move {
+            let response = app
+                .patch(
+                    &format!("/api/treatment-items/{drug_item}"),
+                    json!({ "quantity": value }),
+                )
+                .await;
+            assert_eq!(
+                response.status,
+                StatusCode::OK,
+                "{}",
+                String::from_utf8_lossy(&response.body)
+            );
+        }
+    };
+
+    // Updating a created invoice keeps its number, however often.
+    let created = create_invoice(&app, billed.treatment_id).await;
+    let again = create_invoice(&app, billed.treatment_id).await;
+    let and_again = create_invoice(&app, billed.treatment_id).await;
+    assert_eq!(again["invoice_number"], created["invoice_number"]);
+    assert_eq!(and_again["invoice_number"], created["invoice_number"]);
+
+    let mut numbers = Vec::new();
+    let mut invoice = app
+        .post(
+            &format!("/api/invoices/{}/accept", and_again["id"]),
+            json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+        )
+        .await
+        .json();
+    numbers.push(invoice["invoice_number"].clone());
+    for (round, (typed, kept)) in [
+        (vec!["30", "20"], "20"),
+        (vec!["40"], "40"),
+        (vec!["10", "60", "50"], "50"),
+    ]
+    .into_iter()
+    .enumerate()
+    {
+        // Typed over and over between two releases: only drafts are replaced.
+        for value in typed {
+            quantity(value).await;
+        }
+        let kept_quantity = dec(kept);
+        assert_eq!(
+            common::lot_remaining(&pool, billed.lot_id).await,
+            dec("100") - kept_quantity,
+            "round {round}"
+        );
+        // "Rechnung aktualisieren": a new number, the shelf untouched; then released again.
+        let updated = create_invoice(&app, billed.treatment_id).await;
+        assert!(
+            !numbers.contains(&updated["invoice_number"]),
+            "round {round}: a number never seen before"
+        );
+        assert_eq!(
+            common::lot_remaining(&pool, billed.lot_id).await,
+            dec("100") - kept_quantity,
+            "round {round}: the update keeps the stock"
+        );
+        invoice = app
+            .post(
+                &format!("/api/invoices/{}/accept", updated["id"]),
+                json!({ "recipient_emails": [], "send_at": Utc::now(), "template": "Standard" }),
+            )
+            .await
+            .json();
+        assert_eq!(invoice["status"], "accepted", "round {round}");
+        numbers.push(updated["invoice_number"].clone());
+    }
+
+    // Four numbers, three of them burned; one live invoice.
+    let statuses: Vec<(String, String)> = sqlx::query_as(
+        "SELECT invoice_number, status::text FROM invoice WHERE treatment_id = $1 ORDER BY id",
+    )
+    .bind(billed.treatment_id)
+    .fetch_all(&pool)
+    .await
+    .expect("invoices");
+    assert_eq!(statuses.len(), 4);
+    assert_eq!(
+        statuses
+            .iter()
+            .filter(|(_, status)| status == "cancelled")
+            .count(),
+        3
+    );
+    assert_eq!(statuses[3].1, "accepted");
+
+    // The ledger: each round's frozen dispense reversed, never deleted; the last one live.
+    let movements: Vec<(String, Decimal, bool, bool)> = sqlx::query_as(
+        "SELECT kind::text, quantity, reverses_movement_id IS NOT NULL, frozen_at IS NOT NULL
+         FROM drug_stock_movement WHERE lot_id = $1 ORDER BY id",
+    )
+    .bind(billed.lot_id)
+    .fetch_all(&pool)
+    .await
+    .expect("movements");
+    let frozen: Vec<Decimal> = movements
+        .iter()
+        .filter(|(kind, _, _, frozen)| kind == "dispense" && *frozen)
+        .map(|(_, quantity, _, _)| *quantity)
+        .collect();
+    assert_eq!(frozen, vec![dec("-10"), dec("-20"), dec("-40"), dec("-50")]);
+    let reversals = movements
+        .iter()
+        .filter(|(kind, _, reverses, _)| kind == "correction" && *reverses)
+        .count();
+    assert_eq!(
+        reversals, 3,
+        "one per change of a frozen line: {movements:?}"
+    );
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("50"));
+
+    // A line added and one removed after the last release: booked and given back alike.
+    let added = app
+        .post(
+            &format!("/api/treatments/{}/items", billed.treatment_id),
+            json!({ "kind": "drug_packaging", "drug_packaging_id": billed.packaging_id,
+                    "quantity": "10" }),
+        )
+        .await;
+    assert_eq!(added.status, StatusCode::OK);
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("40"));
+    let removed = app
+        .delete(&format!("/api/treatment-items/{drug_item}"))
+        .await;
+    assert_eq!(removed.status, StatusCode::NO_CONTENT);
+    assert_eq!(common::lot_remaining(&pool, billed.lot_id).await, dec("90"));
+    let fourth = create_invoice(&app, billed.treatment_id).await;
+    assert!(!numbers.contains(&fourth["invoice_number"]));
 }

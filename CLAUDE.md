@@ -143,8 +143,12 @@ is pure and unit-tested, including path-traversal refusal).
   The one way back is `net_for_gross`: a position's price is typed gross (after the factor) and
   stored as the net that comes closest — the nearest below when no net in cents gives it exactly.
 - `src/domain/stock.rs` — FEFO allocation and the append-only movement ledger. A dispense is a
-  *draft* until the invoice is accepted, then *frozen*; corrections are compensating rows that
-  reference what they reverse. A movement with a reversal is never deleted. A drug line counts
+  *draft* until an invoice with it is accepted (`freeze_treatment` sets `frozen_at`, migration
+  0046), then *frozen* and never deleted. Positions stay editable after the release: a changed
+  line reverses its frozen dispenses with linked corrections (`reverse_line`) and books new
+  drafts (`rewrite_draft_dispenses`); a deleted line's frozen dispenses are reversed and kept,
+  detached, by the trigger `treatment_item_keeps_frozen_dispenses`. Only the animals are fixed
+  while the invoice is released (`ensure_animals_editable`). A drug line counts
   **base units dispensed** from the drug's **original** packaging (migration 0039) and takes them
   off that packaging's lots; a line billed before 0039 (`pack_size` NULL) still counts
   packagings, `quantity × packaging.quantity` (`stock::Dispensed`, `stock::stock_target`).
@@ -155,10 +159,12 @@ is pure and unit-tested, including path-traversal refusal).
   quantity is typed (line, Behandlungsgruppe, Preisauskunft, Mitbringen), and each of those
   reports the drug's `DispenseRule` so the page can say "in Schritten von 10 ml". The picker
   offers a drug once, as its original packaging.
-- `src/api/invoices.rs` — lifecycle `created → accepted → submitted`, or `cancelled`. Updating a
-  created invoice keeps its number; updating an accepted one cancels it and burns the number
-  (`domain/invoice_number.rs` allocates from the configured pattern, counter scoped by the
-  pattern's date parts, never reused). Every step is timestamped.
+- `src/api/invoices.rs` — lifecycle `created → accepted → sent → submitted`, or `cancelled`.
+  Updating a created invoice keeps its number; updating a released one cancels it and burns the
+  number (`domain/invoice_number.rs` allocates from the configured pattern, counter scoped by the
+  pattern's date parts, never reused) — **keeping the stock**: the lines still hold what was
+  dispensed, so an invoice can be corrected any number of times. Only a Storno (`cancel`) gives
+  the dispenses back. Every step is timestamped.
 - `src/api/treatment_items.rs` — which animal a line belongs to is its *service's* call:
   `service.per_visit` ("pro Termin": house call, Wegegeld) puts the line on the visit, every
   other line names an animal. The line keeps a `per_visit` snapshot that a CHECK ties to

@@ -47,7 +47,9 @@ pub struct Treatment {
     /// How many positions are billed here. Zero means there is nothing to invoice yet, which
     /// is what tells "still being written up" apart from "worked and never billed" (FR-036).
     pub item_count: i64,
-    /// `true` once the invoice is accepted: lines and stock movements are frozen.
+    /// `true` while the invoice is released (accepted, sent or handed over): its animals are
+    /// fixed until the invoice is updated. Its positions stay editable — a change reverses the
+    /// frozen dispenses and books new ones, and the PDF shows as outdated.
     pub frozen: bool,
     /// The treatment changed after its invoice PDF was rendered, so the document on file no
     /// longer shows what is billed. The PDF is only ever written when an invoice is created.
@@ -183,7 +185,7 @@ pub async fn add_patient(
     Json(body): Json<AddPatient>,
 ) -> AppResult<Json<Treatment>> {
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, id).await?;
+    stock::ensure_animals_editable(&mut transaction, id).await?;
     ensure_open(&mut transaction, id).await?;
     attach_patient(&mut transaction, id, body.patient_id).await?;
     transaction.commit().await?;
@@ -209,7 +211,7 @@ pub async fn remove_patient(
     Path((id, patient_id)): Path<(i64, i64)>,
 ) -> AppResult<Json<Treatment>> {
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, id).await?;
+    stock::ensure_animals_editable(&mut transaction, id).await?;
 
     // The customer's only animal is the treatment's, and stays on it (issues.md, 2026-10-17):
     // there is nothing else it could be. With a second animal it can come off again.
@@ -270,7 +272,7 @@ pub async fn move_to_own_appointment(
     Path((id, patient_id)): Path<(i64, i64)>,
 ) -> AppResult<Json<Appointment>> {
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, id).await?;
+    stock::ensure_animals_editable(&mut transaction, id).await?;
     ensure_open(&mut transaction, id).await?;
     let record_id = record_of(&mut transaction, id, patient_id)
         .await?
@@ -533,7 +535,6 @@ pub async fn apply_template(
     .await?;
     let suggestion = if has_travel {
         let mut connection = state.pool.acquire().await?;
-        stock::ensure_editable(&mut connection, id).await?;
         ensure_open(&mut connection, id).await?;
         drop(connection);
         travel_distance::suggest_km(&state, id).await?
@@ -543,7 +544,6 @@ pub async fn apply_template(
     let km = suggestion.as_ref().and_then(|suggestion| suggestion.km);
 
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, id).await?;
     ensure_open(&mut transaction, id).await?;
 
     let template = sqlx::query!(

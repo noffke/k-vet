@@ -30,7 +30,6 @@ use crate::api::treatment_items::{self, Attribution, PinnedDispense, TreatmentIt
 use crate::config::Config;
 use crate::domain::enums::TreatmentItemKind;
 use crate::domain::money::{self, DispensePricing};
-use crate::domain::stock;
 use crate::error::{AppError, AppResult};
 
 /// More positions than any visit has; a guard, not a rule the vet meets.
@@ -831,7 +830,6 @@ pub async fn apply_quote(
     Json(body): Json<ApplyQuote>,
 ) -> AppResult<Json<Vec<TreatmentItem>>> {
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, id).await?;
     crate::api::treatments::ensure_open(&mut transaction, id).await?;
 
     let quote = sqlx::query!(

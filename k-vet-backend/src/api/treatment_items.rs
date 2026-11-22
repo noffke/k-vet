@@ -321,7 +321,6 @@ pub async fn create(
     };
     let suggestion = if travel && body.km.is_none() {
         let mut connection = state.pool.acquire().await?;
-        stock::ensure_editable(&mut connection, treatment_id).await?;
         crate::api::treatments::ensure_open(&mut connection, treatment_id).await?;
         drop(connection);
         travel_distance::suggest_km(&state, treatment_id).await?
@@ -333,7 +332,6 @@ pub async fn create(
         .or_else(|| suggestion.as_ref().and_then(|suggestion| suggestion.km));
 
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, treatment_id).await?;
     crate::api::treatments::ensure_open(&mut transaction, treatment_id).await?;
 
     let reference_id = match body.kind {
@@ -546,8 +544,6 @@ pub async fn patch(
     .await?
     .ok_or(AppError::NotFound)?;
 
-    stock::ensure_editable(&mut transaction, current.treatment_id).await?;
-
     if let Some(quantity) = body.quantity
         && quantity <= Decimal::ZERO
     {
@@ -729,7 +725,6 @@ pub async fn delete(State(state): State<AppState>, Path(id): Path<i64>) -> AppRe
             .fetch_optional(&mut *transaction)
             .await?
             .ok_or(AppError::NotFound)?;
-    stock::ensure_editable(&mut transaction, treatment_id).await?;
 
     // Draft movements go with the line (the FK cascades, this is explicit for clarity).
     stock::remove_draft_dispenses(&mut transaction, id).await?;
@@ -767,7 +762,6 @@ pub async fn bulk_delete(
     Json(body): Json<BulkDeleteItems>,
 ) -> AppResult<Json<Vec<TreatmentItem>>> {
     let mut transaction = state.pool.begin().await?;
-    stock::ensure_editable(&mut transaction, treatment_id).await?;
 
     // Undoing a Behandlungsgruppe is the caller for this, and it hands back ids it read a
     // moment ago — so an id from elsewhere is a bug worth reporting, not a silent no-op.
@@ -862,7 +856,6 @@ pub async fn move_item(
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::NotFound)?;
-    stock::ensure_editable(&mut transaction, current.treatment_id).await?;
 
     reorder(
         &mut transaction,
@@ -1002,7 +995,6 @@ pub async fn set_lots(
     .fetch_optional(&mut *transaction)
     .await?
     .ok_or(AppError::NotFound)?;
-    stock::ensure_editable(&mut transaction, current.treatment_id).await?;
 
     let packaging_id = current
         .drug_packaging_id

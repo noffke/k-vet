@@ -4524,7 +4524,7 @@ export const GetTreatmentResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.'),zod.null()]).optional(),
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "frozen": zod.boolean().describe('`true` while the invoice is released (accepted, sent or handed over): its animals are\nfixed until the invoice is updated. Its positions stay editable — a change reverses the\nfrozen dispenses and books new ones, and the PDF shows as outdated.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "pdf_changes": zod.union([zod.object({
   "changed_items": zod.array(zod.int()).describe('Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to.'),
@@ -5025,7 +5025,7 @@ export const AddTreatmentPatientResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.'),zod.null()]).optional(),
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "frozen": zod.boolean().describe('`true` while the invoice is released (accepted, sent or handed over): its animals are\nfixed until the invoice is updated. Its positions stay editable — a change reverses the\nfrozen dispenses and books new ones, and the PDF shows as outdated.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "pdf_changes": zod.union([zod.object({
   "changed_items": zod.array(zod.int()).describe('Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to.'),
@@ -5140,7 +5140,7 @@ export const RemoveTreatmentPatientResponse = zod.object({
   "status": zod.enum(['created', 'accepted', 'sent', 'submitted', 'cancelled']).describe('Invoice lifecycle: written, released, dispatched to the customer, handed to bookkeeping.\nDispatch is a precondition of the hand-off, which is what keeps one column sufficient.')
 }).describe('The live invoice of this treatment, or the most recent cancelled one — the vet has\nto see that the last attempt was cancelled, and can then bill again.'),zod.null()]).optional(),
   "item_count": zod.int().describe('How many positions are billed here. Zero means there is nothing to invoice yet, which\nis what tells "still being written up" apart from "worked and never billed" (FR-036).'),
-  "frozen": zod.boolean().describe('`true` once the invoice is accepted: lines and stock movements are frozen.'),
+  "frozen": zod.boolean().describe('`true` while the invoice is released (accepted, sent or handed over): its animals are\nfixed until the invoice is updated. Its positions stay editable — a change reverses the\nfrozen dispenses and books new ones, and the PDF shows as outdated.'),
   "pdf_stale": zod.boolean().describe('The treatment changed after its invoice PDF was rendered, so the document on file no\nlonger shows what is billed. The PDF is only ever written when an invoice is created.'),
   "pdf_changes": zod.union([zod.object({
   "changed_items": zod.array(zod.int()).describe('Lines that are new, or print differently: name, quantity, price, factor, kilometres, VAT,\nor the animal they belong to.'),

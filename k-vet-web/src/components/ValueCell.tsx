@@ -65,8 +65,6 @@ interface ValueCellProps {
   onEnter?: (() => void) | undefined
   /** A value still missing, said in the danger colour ("km fehlt"). */
   missing?: boolean | undefined
-  /** Read-only: the value as text, nothing to open. */
-  readOnly?: boolean | undefined
   /** A button inside the open editor — the kilometres from Google Maps. */
   action?: { label: string; icon: ReactNode; onClick: () => void; disabled?: boolean } | undefined
   className?: string | undefined
@@ -91,7 +89,6 @@ export function ValueCell({
   onChange,
   onEnter,
   missing,
-  readOnly,
   action,
   className,
 }: ValueCellProps) {
@@ -112,19 +109,6 @@ export function ValueCell({
     requestAnimationFrame(() => field.select())
     setFocusWhenOpen(false)
   }, [open, autoFocus, focusWhenOpen])
-
-  if (readOnly) {
-    return (
-      <span
-        className={cn(
-          'numeric flex min-h-11 items-center justify-end whitespace-nowrap px-2 text-sm text-ink-soft sm:min-h-9',
-          className,
-        )}
-      >
-        {display}
-      </span>
-    )
-  }
 
   if (!open) {
     return (

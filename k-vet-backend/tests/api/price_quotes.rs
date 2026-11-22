@@ -595,7 +595,8 @@ async fn a_quote_goes_only_into_its_customer_s_open_visit() {
     assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
     assert_eq!(refused.json()["errors"][0]["message"], "record.incomplete");
 
-    // Released, the visit takes nothing more.
+    // Released, the visit still takes it: its positions stay editable, and the PDF then shows as
+    // outdated (2026-11-22).
     assert_eq!(apply(own, &kept["id"]).await.status, StatusCode::OK);
     let invoice = app
         .post(
@@ -611,7 +612,7 @@ async fn a_quote_goes_only_into_its_customer_s_open_visit() {
         )
         .await;
     assert_eq!(accepted.status, StatusCode::OK);
-    assert_eq!(apply(own, &kept["id"]).await.status, StatusCode::CONFLICT);
+    assert_eq!(apply(own, &kept["id"]).await.status, StatusCode::OK);
 }
 
 #[tokio::test]

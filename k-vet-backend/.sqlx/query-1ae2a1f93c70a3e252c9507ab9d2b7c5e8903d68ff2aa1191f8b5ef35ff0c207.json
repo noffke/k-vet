@@ -1,0 +1,14 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "DELETE FROM drug_stock_movement\n         WHERE treatment_item_id = $1\n           AND kind = 'dispense'\n           AND frozen_at IS NULL",
+  "describe": {
+    "columns": [],
+    "parameters": {
+      "Left": [
+        "Int8"
+      ]
+    },
+    "nullable": []
+  },
+  "hash": "1ae2a1f93c70a3e252c9507ab9d2b7c5e8903d68ff2aa1191f8b5ef35ff0c207"
+}

@@ -442,7 +442,7 @@ async fn recomputing_asks_google_for_this_line() {
         .await;
     assert_eq!(refused.status, StatusCode::UNPROCESSABLE_ENTITY);
 
-    // Released, the line is frozen, and Google is not even asked.
+    // Released, the line stays editable (2026-11-22): asked again, Google answers again.
     let invoice = app
         .post(
             &format!("/api/treatments/{treatment_id}/invoice"),
@@ -464,11 +464,16 @@ async fn recomputing_asks_google_for_this_line() {
         .await;
     assert_eq!(accepted.status, StatusCode::OK);
     let asked = google.requests().len();
-    let frozen = app
+    let again = app
         .post_empty(&format!("/api/treatment-items/{item_id}/recompute-km"))
         .await;
-    assert_eq!(frozen.status, StatusCode::CONFLICT);
-    assert_eq!(google.requests().len(), asked);
+    assert_eq!(
+        again.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&again.body)
+    );
+    assert_eq!(google.requests().len(), asked + 1);
 }
 
 #[tokio::test]

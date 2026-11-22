@@ -22,7 +22,6 @@ use crate::api::dispense::{self, DispenseRule};
 use crate::api::treatment_items;
 use crate::config::PharmacyConfig;
 use crate::domain::enums::TreatmentItemKind;
-use crate::domain::stock;
 use crate::error::{AppError, AppResult};
 
 #[derive(Debug, Clone, Serialize, ToSchema)]
@@ -453,7 +452,6 @@ pub async fn take(
     if reminder.taken_item_id.is_some() {
         return Err(AppError::field("reminder", "reminder.alreadyTaken"));
     }
-    stock::ensure_editable(&mut transaction, reminder.treatment_id).await?;
     crate::api::treatments::ensure_open(&mut transaction, reminder.treatment_id).await?;
 
     let item_id = treatment_items::insert_pinned_item(

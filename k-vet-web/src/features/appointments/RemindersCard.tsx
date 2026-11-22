@@ -157,7 +157,9 @@ function ReminderRow({
 
   const animals = treatment?.patients ?? []
   // A position needs an animal, an open treatment, and an invoice not yet released.
-  const takeBlocked = !treatment || treatment.frozen || animals.length === 0
+  // A released invoice does not stop it: its positions stay editable, and the PDF then shows
+  // as outdated.
+  const takeBlocked = !treatment || animals.length === 0
   const takeTo = (patientTreatmentId?: number) =>
     take.mutate({ id: reminder.id, data: { patient_treatment_id: patientTreatmentId } })
   const size = reminder.size ? `${quantity(reminder.size)} ${reminder.unit ?? ''}`.trim() : ''

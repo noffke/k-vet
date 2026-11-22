@@ -726,7 +726,7 @@
     "notePlaceholder": "z. B. für Bello",
     "packed": "Gepackt",
     "take": "Als Position übernehmen",
-    "takeBlocked": "Erst ein Tier am Termin erfassen; nach der Freigabe der Rechnung nicht mehr möglich.",
+    "takeBlocked": "Erst ein Tier am Termin erfassen.",
     "takeFor": "„{{name}}“ für welches Tier?",
     "taken": "„{{name}}“ als Position übernommen",
     "takenMark": "Übernommen",

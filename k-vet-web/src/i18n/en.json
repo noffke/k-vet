@@ -726,7 +726,7 @@
     "notePlaceholder": "e.g. for Bello",
     "packed": "Packed",
     "take": "Take into a position",
-    "takeBlocked": "Add an animal to the appointment first; not possible once the invoice is released.",
+    "takeBlocked": "Add an animal to the appointment first.",
     "takeFor": "“{{name}}” for which animal?",
     "taken": "“{{name}}” taken into a position",
     "takenMark": "Taken",

@@ -122,9 +122,10 @@ where
     Ok(total.unwrap_or_default())
 }
 
-/// `true` once the treatment's invoice is released — from then on the dispense movements are
-/// frozen and the ledger is append-only (FR-020). Acceptance is the freeze point; sending and
-/// handing over are later stages of the same released invoice.
+/// `true` while the treatment's invoice is released (accepted, sent or handed over). Its
+/// positions stay editable — a change is booked against the frozen dispenses with
+/// compensating rows (`rewrite_draft_dispenses`) — but its animals are fixed until the invoice
+/// is updated: an animal added or removed changes whom the invoice is for.
 pub async fn treatment_is_frozen<'e, E>(executor: E, treatment_id: i64) -> AppResult<bool>
 where
     E: PgExecutor<'e>,
@@ -141,13 +142,55 @@ where
     Ok(frozen.unwrap_or(false))
 }
 
-/// Rejects edits to a treatment whose stock movements are already frozen.
-pub async fn ensure_editable(connection: &mut PgConnection, treatment_id: i64) -> AppResult<()> {
+/// Rejects adding or removing an animal while the treatment's invoice is released.
+pub async fn ensure_animals_editable(
+    connection: &mut PgConnection,
+    treatment_id: i64,
+) -> AppResult<()> {
     if treatment_is_frozen(&mut *connection, treatment_id).await? {
         return Err(AppError::Conflict(
-            "the treatment's invoice is accepted — update the invoice to edit it".to_owned(),
+            "the treatment's invoice is released — update the invoice to change its animals"
+                .to_owned(),
         ));
     }
+    Ok(())
+}
+
+/// Freezes the treatment's draft dispenses: its invoice was accepted (FR-020). From here they
+/// are never deleted; a later change reverses them.
+pub async fn freeze_treatment(connection: &mut PgConnection, treatment_id: i64) -> AppResult<()> {
+    sqlx::query!(
+        "UPDATE drug_stock_movement movement
+            SET frozen_at = now()
+           FROM treatment_item item
+          WHERE item.id = movement.treatment_item_id
+            AND item.treatment_id = $1
+            AND movement.kind = 'dispense'
+            AND movement.frozen_at IS NULL",
+        treatment_id,
+    )
+    .execute(connection)
+    .await?;
+    Ok(())
+}
+
+/// Reverses a line's frozen dispenses that are not reversed yet, each by a correction linked to
+/// it: the line was changed after its invoice froze them, and the ledger only ever grows.
+pub async fn reverse_line(connection: &mut PgConnection, treatment_item_id: i64) -> AppResult<()> {
+    sqlx::query!(
+        "INSERT INTO drug_stock_movement (lot_id, kind, quantity, reason, reverses_movement_id)
+         SELECT movement.lot_id, 'correction', -movement.quantity, 'Positionskorrektur',
+                movement.id
+           FROM drug_stock_movement movement
+          WHERE movement.treatment_item_id = $1
+            AND movement.kind = 'dispense'
+            AND movement.frozen_at IS NOT NULL
+            AND NOT EXISTS (SELECT 1 FROM drug_stock_movement reversal
+                             WHERE reversal.reverses_movement_id = movement.id)",
+        treatment_item_id,
+    )
+    .execute(connection)
+    .await?;
     Ok(())
 }
 
@@ -241,13 +284,15 @@ pub async fn rewrite_draft_dispenses(
     // A consumable "Ohne Bestand" is billed and nothing more: no lot, no movement, and never
     // refused for want of stock. Whatever the line held from before the flag goes back first.
     if !target.tracked {
+        reverse_line(&mut *connection, treatment_item_id).await?;
         remove_draft_dispenses(&mut *connection, treatment_item_id).await?;
         return Ok(Vec::new());
     }
     let needed = dispensed.base_units(&target);
     // What the line holds now goes back on the shelf first: raising 10 ml to the whole 100 ml
-    // bottle must count the 10 ml the line already took. Every caller is inside a transaction,
-    // so a refusal below puts them back.
+    // bottle must count the 10 ml the line already took — a draft is deleted, a frozen dispense
+    // reversed. Every caller is inside a transaction, so a refusal below puts them back.
+    reverse_line(&mut *connection, treatment_item_id).await?;
     remove_draft_dispenses(&mut *connection, treatment_item_id).await?;
     let lots = lot_availability(&mut *connection, target.packaging_id).await?;
     // Refused rather than booked against lots that cannot supply it. The message points at the
@@ -266,32 +311,30 @@ pub async fn rewrite_draft_dispenses(
     Ok(allocations)
 }
 
-/// Replaces the draft dispenses with an explicit, user-chosen lot selection (FR-019).
+/// Replaces the line's dispenses with an explicit, user-chosen lot selection (FR-019): frozen
+/// ones reversed, drafts replaced.
 pub async fn rewrite_draft_dispenses_with_lots(
     connection: &mut PgConnection,
     treatment_item_id: i64,
     allocations: &[LotAllocation],
 ) -> AppResult<()> {
+    reverse_line(&mut *connection, treatment_item_id).await?;
     write_dispenses(connection, treatment_item_id, allocations).await
 }
 
 /// Deletes the *draft* dispenses of a line (line removed, quantity changed).
 ///
-/// A dispense that already carries a compensating correction was frozen once and is
-/// history — it is never deleted. After an accept/cancel cycle a fresh edit therefore adds
-/// new movements on top of the reversed pair instead of rewriting the past.
+/// A frozen dispense — one an accepted invoice froze, which every reversed one is — is history
+/// and never deleted: a change reverses it (`reverse_line`) and books new drafts on top.
 pub async fn remove_draft_dispenses(
     connection: &mut PgConnection,
     treatment_item_id: i64,
 ) -> AppResult<()> {
     sqlx::query!(
-        "DELETE FROM drug_stock_movement movement
-         WHERE movement.treatment_item_id = $1
-           AND movement.kind = 'dispense'
-           AND NOT EXISTS (
-               SELECT 1 FROM drug_stock_movement reversal
-               WHERE reversal.reverses_movement_id = movement.id
-           )",
+        "DELETE FROM drug_stock_movement
+         WHERE treatment_item_id = $1
+           AND kind = 'dispense'
+           AND frozen_at IS NULL",
         treatment_item_id,
     )
     .execute(connection)
@@ -322,8 +365,9 @@ async fn write_dispenses(
     Ok(())
 }
 
-/// Writes compensating corrections for every frozen dispense of a treatment, each linked
-/// to the movement it reverses. Idempotent: an already reversed movement is skipped.
+/// A cancelled invoice (Storno) gives the treatment's stock back: compensating corrections for
+/// every frozen dispense, each linked to the movement it reverses, and its drafts deleted.
+/// Idempotent: an already reversed movement is skipped.
 pub async fn reverse_treatment_dispenses(
     connection: &mut PgConnection,
     treatment_id: i64,
@@ -334,6 +378,7 @@ pub async fn reverse_treatment_dispenses(
            JOIN treatment_item item ON item.id = movement.treatment_item_id
            WHERE item.treatment_id = $1
              AND movement.kind = 'dispense'
+             AND movement.frozen_at IS NOT NULL
              AND NOT EXISTS (
                  SELECT 1 FROM drug_stock_movement reversal
                  WHERE reversal.reverses_movement_id = movement.id
@@ -341,6 +386,18 @@ pub async fn reverse_treatment_dispenses(
         treatment_id,
     )
     .fetch_all(&mut *connection)
+    .await?;
+    // Drafts — a change made after the release, not yet invoiced — were never booked.
+    sqlx::query!(
+        "DELETE FROM drug_stock_movement movement
+          USING treatment_item item
+          WHERE item.id = movement.treatment_item_id
+            AND item.treatment_id = $1
+            AND movement.kind = 'dispense'
+            AND movement.frozen_at IS NULL",
+        treatment_id,
+    )
+    .execute(&mut *connection)
     .await?;
 
     let mut written = 0u64;

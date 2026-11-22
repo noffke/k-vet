@@ -10715,7 +10715,7 @@
           },
           "frozen": {
             "type": "boolean",
-            "description": "`true` once the invoice is accepted: lines and stock movements are frozen."
+            "description": "`true` while the invoice is released (accepted, sent or handed over): its animals are\nfixed until the invoice is updated. Its positions stay editable — a change reverses the\nfrozen dispenses and books new ones, and the PDF shows as outdated."
           },
           "pdf_stale": {
             "type": "boolean",

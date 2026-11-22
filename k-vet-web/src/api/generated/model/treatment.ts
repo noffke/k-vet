@@ -30,7 +30,11 @@ export interface Treatment {
      * is what tells "still being written up" apart from "worked and never billed" (FR-036).
      */
   item_count: number;
-  /** `true` once the invoice is accepted: lines and stock movements are frozen. */
+  /**
+     * `true` while the invoice is released (accepted, sent or handed over): its animals are
+     * fixed until the invoice is updated. Its positions stay editable — a change reverses the
+     * frozen dispenses and books new ones, and the PDF shows as outdated.
+     */
   frozen: boolean;
   /**
      * The treatment changed after its invoice PDF was rendered, so the document on file no

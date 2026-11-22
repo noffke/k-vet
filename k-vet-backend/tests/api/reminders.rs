@@ -224,9 +224,10 @@ async fn a_reminder_is_taken_into_a_position() {
     assert_eq!(common::lot_remaining(&pool, lot).await, dec("100"));
 }
 
-/// Released, the invoice holds the treatment: a reminder cannot become a position any more.
+/// Released, the invoice no longer holds the positions (2026-11-22): a reminder still becomes
+/// one, and the PDF then shows as outdated.
 #[tokio::test]
-async fn a_released_invoice_takes_no_reminder() {
+async fn a_released_invoice_still_takes_a_reminder() {
     let db = common::database().await;
     let pool = db.pool();
     let app = TestApp::new(pool.clone()).await;
@@ -253,13 +254,18 @@ async fn a_released_invoice_takes_no_reminder() {
     .await;
     let reminder = remind(&app, appointment_id, drug.subset_packaging_id, "10").await;
 
-    let refused = app
+    let taken = app
         .post(
             &format!("/api/reminders/{}/take", reminder["id"]),
             json!({}),
         )
         .await;
-    assert_eq!(refused.status, StatusCode::CONFLICT);
+    assert_eq!(
+        taken.status,
+        StatusCode::OK,
+        "{}",
+        String::from_utf8_lossy(&taken.body)
+    );
 }
 
 /// The Packliste adds up a day's open reminders per drug, in base units, and checks them against

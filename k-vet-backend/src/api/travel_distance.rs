@@ -19,7 +19,6 @@ use crate::AppState;
 use crate::api::treatment_items::{self, TreatmentItem};
 use crate::config::TravelExpenseConfig;
 use crate::domain::money;
-use crate::domain::stock;
 use crate::error::{AppError, AppResult};
 use crate::maps::{Address, MapsClient, MapsError};
 
@@ -347,8 +346,6 @@ pub async fn recompute_km(
     if !line.travel {
         return Err(AppError::field("km", "item.notTravel"));
     }
-    // Refused before Google is asked, not after.
-    stock::ensure_editable(&mut connection, line.treatment_id).await?;
 
     let customer_id = sqlx::query_scalar!(
         "SELECT customer_id FROM treatment WHERE id = $1",
@@ -378,7 +375,6 @@ pub async fn recompute_km(
         .fetch_optional(&mut *transaction)
         .await?
         .ok_or(AppError::NotFound)?;
-        stock::ensure_editable(&mut transaction, current.treatment_id).await?;
         let price_net = travel_price(&state.config.travel_expenses, km, current.km_multiplier);
         sqlx::query!(
             "UPDATE treatment_item SET km = $2, price_net = $3 WHERE id = $1",

@@ -349,9 +349,10 @@ reflected on the next generated invoice.
   rather than booked against a lot that cannot supply it, and the vet is pointed at the remedy:
   a stocktake correction (FR-016).
 - **FR-020**: Dispense movements MUST remain drafts (freely recalculated on treatment edits)
-  until the treatment's invoice is Accepted, at which point they are frozen; after freezing,
-  the movement history is append-only and cancellations write compensating counter-movements
-  linked to the movements they reverse.
+  until the treatment's invoice is Accepted, at which point they are frozen; a frozen movement
+  is never deleted. The positions of a released invoice stay editable: changing or removing a
+  line writes compensating counter-movements linked to the frozen movements they reverse, and
+  books new drafts for what the line holds now; a cancellation (Storno) likewise reverses them.
 
 #### Services & Templates
 
@@ -431,8 +432,10 @@ reflected on the next generated invoice.
 - **FR-031a**: An invoice handed to the customer on paper MUST be markable as sent by post,
   from Accepted only, with its own timestamp. The two routes stay distinguishable.
 - **FR-032**: Updating an invoice MUST keep the invoice number if the invoice is still
-  Created; if it is Accepted, the invoice is automatically cancelled first and the new invoice
-  gets a fresh number — numbers of Accepted invoices are burned, never reused.
+  Created; if it is released (Accepted, Sent or Submitted), the invoice is automatically
+  cancelled first and the new invoice gets a fresh number — numbers of released invoices are
+  burned, never reused. The update keeps the treatment's stock as it is, and may be repeated
+  any number of times.
 - **FR-033**: Invoice numbers MUST follow an operator-configured pattern with a monotonic
   counter per scope (e.g. per year); the counter never decrements and numbers are never
   reissued.

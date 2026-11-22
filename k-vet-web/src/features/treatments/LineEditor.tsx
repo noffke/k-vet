@@ -62,7 +62,6 @@ interface PositionGroupProps {
   /** The animal these lines belong to, or null for the visit's own. */
   patientTreatmentId: number | null
   items: TreatmentItem[]
-  readOnly: boolean
   /**
    * Whether the group has a search box of its own. The visit's lines have one only while no
    * animal is on the visit; after that a per-visit service is picked in an animal's tab and
@@ -94,7 +93,6 @@ export function PositionGroup({
   heading,
   patientTreatmentId,
   items,
-  readOnly,
   showPicker = true,
   newestId = null,
   onAdded,
@@ -234,65 +232,63 @@ export function PositionGroup({
   const move = (itemId: number, direction: MoveDirection) =>
     moveItem.mutate({ id: itemId, data: { direction } })
 
-  const pickerBlock =
-    readOnly || !showPicker ? null : (
-      <div className="mt-2">
-        <ItemPicker
-          onPick={pick}
-          inputRef={pickerRef}
-          perVisitOnly={patientTreatmentId === null}
-          onPickTemplate={
-            patientTreatmentId === null
-              ? undefined
-              : (template) => {
-                  // What the treatment holds right now, before the group adds to it.
-                  const current = client.getQueryData<TreatmentItem[]>(
-                    getListTreatmentItemsQueryKey(treatment.id),
-                  )
-                  const before = current ? new Set(current.map((item) => item.id)) : null
-                  applyTemplate.mutate(
-                    {
-                      id: treatment.id,
-                      data: {
-                        template_id: template.id,
-                        patient_treatment_id: patientTreatmentId,
-                      },
+  const pickerBlock = !showPicker ? null : (
+    <div className="mt-2">
+      <ItemPicker
+        onPick={pick}
+        inputRef={pickerRef}
+        perVisitOnly={patientTreatmentId === null}
+        onPickTemplate={
+          patientTreatmentId === null
+            ? undefined
+            : (template) => {
+                // What the treatment holds right now, before the group adds to it.
+                const current = client.getQueryData<TreatmentItem[]>(
+                  getListTreatmentItemsQueryKey(treatment.id),
+                )
+                const before = current ? new Set(current.map((item) => item.id)) : null
+                applyTemplate.mutate(
+                  {
+                    id: treatment.id,
+                    data: {
+                      template_id: template.id,
+                      patient_treatment_id: patientTreatmentId,
                     },
-                    // Here rather than on the hook: this is where the group that was
-                    // clicked is known, and its name is what the undo has to say.
-                    { onSuccess: (applied) => offerUndo(applied, before, template.name ?? '') },
-                  )
-                }
-          }
+                  },
+                  // Here rather than on the hook: this is where the group that was
+                  // clicked is known, and its name is what the undo has to say.
+                  { onSuccess: (applied) => offerUndo(applied, before, template.name ?? '') },
+                )
+              }
+        }
+        disabled={addItem.isPending}
+      />
+      {/* A Preisauskunft the customer was given goes in whole, like a group. */}
+      {patientTreatmentId === null ? null : (
+        <ApplyQuote
+          treatmentId={treatment.id}
+          customerId={treatment.customer_id}
+          patientTreatmentId={patientTreatmentId}
           disabled={addItem.isPending}
+          onApplied={(applied, name) => {
+            const before = new Set(
+              (
+                client.getQueryData<TreatmentItem[]>(getListTreatmentItemsQueryKey(treatment.id)) ??
+                []
+              ).map((item) => item.id),
+            )
+            void invalidate()
+            offerUndo(applied, before, name)
+          }}
         />
-        {/* A Preisauskunft the customer was given goes in whole, like a group. */}
-        {patientTreatmentId === null ? null : (
-          <ApplyQuote
-            treatmentId={treatment.id}
-            customerId={treatment.customer_id}
-            patientTreatmentId={patientTreatmentId}
-            disabled={addItem.isPending}
-            onApplied={(applied, name) => {
-              const before = new Set(
-                (
-                  client.getQueryData<TreatmentItem[]>(
-                    getListTreatmentItemsQueryKey(treatment.id),
-                  ) ?? []
-                ).map((item) => item.id),
-              )
-              void invalidate()
-              offerUndo(applied, before, name)
-            }}
-          />
-        )}
-      </div>
-    )
+      )}
+    </div>
+  )
 
   return (
     <div className="mt-4">
       <h3 className="text-sm font-semibold text-ink">{heading}</h3>
-      {patientTreatmentId === null && !readOnly && showPicker ? (
+      {patientTreatmentId === null && showPicker ? (
         <p className="mt-0.5 text-xs text-ink-faint">{t('treatments.withoutPatientHint')}</p>
       ) : null}
 
@@ -303,7 +299,7 @@ export function PositionGroup({
       ) : (
         <PositionList label={typeof heading === 'string' ? heading : t('treatments.items')}>
           {items.map((item, index) => {
-            const newest = item.id === newestId && !readOnly
+            const newest = item.id === newestId
             const isOpen = (cell: Cell) =>
               newest || (editing?.id === item.id && editing.cell === cell)
             const close = (cell: Cell) => () =>
@@ -325,7 +321,6 @@ export function PositionGroup({
                 onClose={close('km')}
                 autoFocus={newest}
                 onEnter={newest ? onReturnToSearch : undefined}
-                readOnly={readOnly}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { km: value } })
                 }
@@ -366,7 +361,6 @@ export function PositionGroup({
                 onClose={close('quantity')}
                 autoFocus={newest}
                 onEnter={newest ? onReturnToSearch : undefined}
-                readOnly={readOnly}
                 onChange={(value) =>
                   value && patchItem.mutate({ id: item.id, data: { quantity: value } })
                 }
@@ -384,7 +378,6 @@ export function PositionGroup({
                   onOpen={open('factor')}
                   onClose={close('factor')}
                   onEnter={newest ? onReturnToSearch : undefined}
-                  readOnly={readOnly}
                   onChange={(value) =>
                     value && patchItem.mutate({ id: item.id, data: { factor: value } })
                   }
@@ -403,7 +396,7 @@ export function PositionGroup({
               item.got_number ? `${item.got_analogous ? '§8' : 'GOT'} ${item.got_number} · ` : ''
             }${percent(item.vat_percent)} ${t('field.vat')}`
             const typing = isOpen('quantity') || isOpen('factor') || isOpen('km')
-            const kmMissing = item.travel_expenses && item.km == null && !readOnly
+            const kmMissing = item.travel_expenses && item.km == null
             const changed = changedSincePdf.has(item.id)
             return (
               <PositionRow
@@ -453,14 +446,13 @@ export function PositionGroup({
                   ) : undefined
                 }
                 removeLabel={t('action.delete')}
-                onRemove={readOnly ? undefined : () => setPendingRemoval(item)}
+                onRemove={() => setPendingRemoval(item)}
                 details={
                   <LineDetails
                     item={item}
                     index={index}
                     count={items.length}
                     treatment={treatment}
-                    readOnly={readOnly}
                     breakdown={breakdown}
                     meta={typing ? null : meta}
                     onPatch={(data) => patchItem.mutate({ id: item.id, data })}
@@ -505,7 +497,6 @@ interface LineDetailsProps {
   index: number
   count: number
   treatment: Treatment
-  readOnly: boolean
   /** What the invoice prints for the quantity, already composed. */
   breakdown: string | null
   /** "GOT 25 · 19 % USt." — `null` while the row's subline already says it, with the breakdown. */
@@ -520,7 +511,6 @@ function LineDetails({
   index,
   count,
   treatment,
-  readOnly,
   breakdown,
   meta,
   onPatch,
@@ -536,7 +526,6 @@ function LineDetails({
           <span className="text-xs font-semibold text-ink-soft">{t('field.name')}</span>
           <input
             defaultValue={item.name}
-            disabled={readOnly}
             onBlur={(event) => {
               if (event.target.value !== item.name) onPatch({ name: event.target.value })
             }}
@@ -548,7 +537,6 @@ function LineDetails({
           <NumberInput
             label={t('field.quantity')}
             value={item.quantity}
-            disabled={readOnly}
             onChange={(value) => value && onPatch({ quantity: value })}
           />
         ) : null}
@@ -576,7 +564,6 @@ function LineDetails({
             unit={currencySymbol}
             money
             hint={`${t('field.priceNet')}: ${money(item.unit_net)}`}
-            disabled={readOnly}
             onChange={(value) => value && onPatch({ price_gross: value })}
           />
         )}
@@ -587,7 +574,6 @@ function LineDetails({
             value={item.dispense.remainder.price_gross}
             unit={currencySymbol}
             decimals={4}
-            disabled={readOnly}
             onChange={(value) => value && onPatch({ subset_price_gross: value })}
           />
         ) : null}
@@ -596,7 +582,6 @@ function LineDetails({
             label={t('field.kmMultiplier')}
             value={item.km_multiplier ?? null}
             decimals={3}
-            disabled={readOnly}
             hint={t('treatments.kmHint')}
             onChange={(value) => value && onPatch({ km_multiplier: value })}
           />
@@ -608,7 +593,6 @@ function LineDetails({
             <span className="text-xs font-semibold text-ink-soft">{t('field.patient')}</span>
             <select
               value={item.patient_treatment_id}
-              disabled={readOnly}
               onChange={(event) => onPatch({ patient_treatment_id: Number(event.target.value) })}
               className="min-h-11 rounded-control border border-line-strong bg-surface px-2 py-2 sm:min-h-9"
             >
@@ -629,7 +613,6 @@ function LineDetails({
           <CheckboxField
             label={t('treatments.redesignation')}
             defaultChecked={item.redesignation}
-            disabled={readOnly}
             onChange={(event) => onPatch({ redesignation: event.target.checked })}
           />
           <p className="text-xs text-ink-faint">{t('treatments.redesignationHint')}</p>
@@ -656,46 +639,44 @@ function LineDetails({
             </p>
           ) : null}
         </div>
-        {readOnly ? null : (
-          <div className="flex gap-1">
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={t('action.moveTop')}
-              disabled={index === 0}
-              onClick={() => onMove('top')}
-            >
-              <ChevronsUp className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={t('action.moveUp')}
-              disabled={index === 0}
-              onClick={() => onMove('up')}
-            >
-              <ChevronUp className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={t('action.moveDown')}
-              disabled={index === count - 1}
-              onClick={() => onMove('down')}
-            >
-              <ChevronDown className="size-4" />
-            </Button>
-            <Button
-              size="icon"
-              variant="ghost"
-              aria-label={t('action.moveBottom')}
-              disabled={index === count - 1}
-              onClick={() => onMove('bottom')}
-            >
-              <ChevronsDown className="size-4" />
-            </Button>
-          </div>
-        )}
+        <div className="flex gap-1">
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={t('action.moveTop')}
+            disabled={index === 0}
+            onClick={() => onMove('top')}
+          >
+            <ChevronsUp className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={t('action.moveUp')}
+            disabled={index === 0}
+            onClick={() => onMove('up')}
+          >
+            <ChevronUp className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={t('action.moveDown')}
+            disabled={index === count - 1}
+            onClick={() => onMove('down')}
+          >
+            <ChevronDown className="size-4" />
+          </Button>
+          <Button
+            size="icon"
+            variant="ghost"
+            aria-label={t('action.moveBottom')}
+            disabled={index === count - 1}
+            onClick={() => onMove('bottom')}
+          >
+            <ChevronsDown className="size-4" />
+          </Button>
+        </div>
       </div>
     </div>
   )

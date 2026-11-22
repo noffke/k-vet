@@ -122,6 +122,12 @@ be the possibility to update an invoice (e.g. finding changed, etc.). If the inv
 has to be automatically canceled first. Created invoices can keep their invoice number on update, Accepted invoice
 numbers are "burned".
 
+The positions stay editable after the invoice is released — accepted, sent by email or post, handed over to bookkeeping
+(decided 2026-11-22). A change then reverses the frozen dispense with a linked counter-movement and books the new
+quantity; the appointment says "PDF veraltet", and "Rechnung aktualisieren" issues the corrected invoice with a new
+number. The update replaces the invoice without undoing the treatment, so the stock stays as the lines hold it, and it
+can be repeated any number of times. The animals of a released visit stay fixed until the invoice is updated.
+
 The PDF is made once, with the invoice; the treatment can change after. When what the PDF prints no longer matches —
 a line new, changed, removed or moved, an animal's report changed (the finding only when it is printed) — the treatment
 says so first on its page ("PDF veraltet", with what changed and "Rechnung aktualisieren"), the changed lines and
